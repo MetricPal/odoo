@@ -1,0 +1,28 @@
+.o_main_navbar {
+    .o_metric_navbar_logo {
+        flex: 0 0 auto;
+        height: 100%;
+        padding: 0 10px;
+        text-decoration: none;
+
+        img {
+            display: block;
+            width: auto;
+            height: 28px;
+            max-width: 140px;
+            object-fit: contain;
+        }
+    }
+
+    .o_menu_systray {
+        .o_navbar_apps_menu {
+            button  {
+                padding-left: 4px;
+            }
+        }
+
+        .o_user_menu {
+            order: 1;
+        }
+    }
+}

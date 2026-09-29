@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="base.main_company" model="res.company" forcecreate="0">
+        <field name="name">metric.io</field>
+        <field name="logo" type="base64" file="branding/static/src/img/metric_io_logo.png"/>
+    </record>
+</odoo>

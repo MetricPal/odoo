@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="branding.NavBar"
+       t-inherit="web.NavBar"
+       t-inherit-mode="extension">
+
+        <!-- Replace original Home Menu position with Metric.io logo -->
+        <xpath expr="//t[@t-call='web.NavBar.AppsMenu']"
+               position="replace">
+
+            <a href="/odoo"
+               class="o_metric_navbar_logo d-flex align-items-center"
+               title="Metric.io">
+                <img src="/branding/static/src/img/metric_io_logo_light.png"
+                     alt="Metric.io"/>
+            </a>
+
+        </xpath>
+
+        <!-- Move Home/Apps Menu into systray -->
+        <xpath expr="//div[contains(@class, 'o_menu_systray')]"
+               position="inside">
+
+            <t t-call="web.NavBar.AppsMenu"
+               apps="this.menuService.getApps()"/>
+
+        </xpath>
+
+    </t>
+
+</templates>

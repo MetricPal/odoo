@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="reset_password_email_branding" inherit_id="auth_signup.reset_password_email" name="metric.io Reset Password Email Branding">
+        <!-- <xpath expr="//td[@align='right']/img[contains(@t-attf-src, '/logo.png?company=')]" position="replace">
+            <img src="cid:metric-io-logo@branding" style="padding: 0px; margin: 0px; height: auto; width: 80px;" t-att-alt="object.company_id.name"/>
+        </xpath> -->
+        <!-- <xpath expr="//tr[td/table//a[contains(@href, 'utm_medium=auth')]]" position="replace"/> -->
+    </template>
+</odoo>

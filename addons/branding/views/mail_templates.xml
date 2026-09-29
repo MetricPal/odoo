@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="mail_notification_layout_brand_promotion_remove" inherit_id="mail.mail_notification_layout" name="Remove Mail Notification Odoo Brand Promotion" priority="99">
+        <xpath expr="//div[a[contains(@href, 'utm_medium=email')]]" position="replace">
+            <div t-if="show_footer" style="color: #555555; font-size:11px;">
+                <span t-if="show_unfollow" id="mail_unfollow">
+                    <a href="/mail/unfollow" style="text-decoration:none; color:#555555;">Unfollow</a>
+                </span>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="mail_notification_light_brand_promotion_remove" inherit_id="mail.mail_notification_light" name="Remove Light Mail Notification Odoo Brand Promotion" priority="99">
+        <xpath expr="//td[b[@t-out='company.name']]" position="attributes">
+            <attribute name="align">left</attribute>
+        </xpath>
+        <xpath expr="//tr[td/a[contains(@href, 'utm_medium=email')]]" position="replace">
+            <tr t-if="show_unfollow">
+                <td align="center" style="min-width: 590px;">
+                    <a href="/mail/unfollow" style="text-decoration:none; color:#555555;">Unfollow</a>
+                </td>
+            </tr>
+        </xpath>
+    </template>
+</odoo>

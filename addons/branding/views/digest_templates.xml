@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="digest_mail_powered_by_remove" inherit_id="digest.digest_mail_main" name="Remove Digest Odoo Brand Promotion" priority="99">
+        <xpath expr="//p[@id='powered']" position="replace"/>
+    </template>
+</odoo>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="website_favicon" inherit_id="website.layout" name="metric.io Website Favicon">
+        <xpath expr="//link[@rel='shortcut icon']" position="replace">
+            <link type="image/x-icon" rel="shortcut icon" href="/branding/static/src/img/metric_io_favicon.ico"/>
+        </xpath>
+    </template>
+</odoo>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="portal_record_sidebar_brand_promotion_remove" inherit_id="portal.portal_record_sidebar" name="Remove Portal Odoo Brand Promotion" priority="99">
+        <xpath expr="//div[a[contains(@href, 'utm_medium=portal')]]" position="replace"/>
+    </template>
+</odoo>

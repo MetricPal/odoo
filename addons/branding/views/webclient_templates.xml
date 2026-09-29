@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="web_layout_favicon" inherit_id="web.layout" name="metric.io Web Favicon">
+        <xpath expr="//link[@rel='shortcut icon']" position="attributes">
+            <attribute name="t-att-href">x_icon or '/branding/static/src/img/metric_io_favicon.ico'</attribute>
+        </xpath>
+    </template>
+
+    <template id="brand_promotion_message_remove" inherit_id="web.brand_promotion_message" name="Remove Odoo Brand Promotion Message" priority="99">
+        <xpath expr="//t[@t-set='odoo_logo']" position="replace"/>
+        <xpath expr="//t[@t-set='final_message']" position="replace"/>
+        <xpath expr="//t[@t-out]" position="replace"/>
+    </template>
+
+    <template id="brand_promotion_remove" inherit_id="web.brand_promotion" name="Remove Odoo Brand Promotion" priority="99">
+        <xpath expr="//div[hasclass('o_brand_promotion')]" position="replace"/>
+    </template>
+
+    <template id="login_layout_brand_promotion_remove" inherit_id="web.login_layout" name="Remove Login Odoo Brand Promotion" priority="19">
+        <xpath expr="//div[a[contains(@href, 'utm_medium=auth')]]" position="attributes">
+            <attribute name="t-if">not disable_footer and not disable_database_manager</attribute>
+        </xpath>
+        <xpath expr="//a[contains(@href, 'utm_medium=auth')]" position="replace"/>
+    </template>
+</odoo>
