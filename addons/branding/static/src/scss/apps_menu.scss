@@ -1,0 +1,105 @@
+/* ==========================================================
+   Shadcn Apps Menu
+   ========================================================== */
+
+/* Dropdown is portaled outside .o_navbar_apps_menu */
+.o-dropdown--menu:has(.o_shadcn_app) {
+    display: grid !important;
+    grid-template-columns: repeat(3, 80px) !important;
+
+    min-width: 270px !important;
+    max-height: 500px;
+
+    gap: 8px;
+    padding: 8px !important;
+
+    border: 1px solid rgba(0, 0, 0, 0.08);
+
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.14),
+        0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+
+/* App */
+.o-dropdown--menu .o_shadcn_app {
+    display: block !important;
+
+    width: 80px !important;
+    min-width: 80px !important;
+    max-width: 80px !important;
+
+    padding: 8px 4px !important;
+    margin: 0 !important;
+
+    border-radius: 6px;
+    background: transparent;
+}
+
+.o-dropdown--menu .o_shadcn_app:hover,
+.o-dropdown--menu .o_shadcn_app.focus {
+    background: rgba(127, 127, 127, 0.1);
+}
+
+
+/* Icon + name */
+.o_shadcn_app_item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    width: 100%;
+    gap: 7px;
+
+    text-align: center;
+}
+
+
+/* Image icon */
+.o_shadcn_app_icon {
+    display: block !important;
+
+    width: 32px !important;
+    height: 32px !important;
+
+    min-width: 32px !important;
+    min-height: 32px !important;
+
+    max-width: 32px !important;
+    max-height: 32px !important;
+
+    object-fit: contain !important;
+    border-radius: 7px;
+}
+
+
+/* Odoo icon fallback */
+.o_shadcn_app_icon_fallback {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    width: 32px !important;
+    height: 32px !important;
+
+    font-size: 28px !important;
+}
+
+
+/* Name */
+.o_shadcn_app_name {
+    display: block;
+
+    width: 100%;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 400;
+
+    text-align: center;
+}

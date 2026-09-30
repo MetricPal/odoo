@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="branding.ShadcnAppsMenu"
+       t-inherit="web.NavBar.AppsMenu"
+       t-inherit-mode="extension">
+
+        <xpath expr="//DropdownItem[@t-foreach='apps']"
+               position="replace">
+
+            <DropdownItem
+                t-foreach="apps"
+                t-as="app"
+                t-key="app.id"
+                class="{
+                    'o_app': true,
+                    'o_shadcn_app': true,
+                    focus: this.menuService.getCurrentApp() === app,
+                    'o_disabled_offline': !this._isAvailable(app)
+                }"
+                onSelected="() => this.onNavBarDropdownItemSelection(app)"
+                attrs="{
+                    href: this.getMenuItemHref(app),
+                    'data-menu-xmlid': app.xmlid,
+                    'data-section': app.id
+                }"
+            >
+                <div class="o_shadcn_app_item">
+
+                    <img t-if="app.webIconData"
+                         class="o_shadcn_app_icon"
+                         t-att-src="app.webIconData"
+                         t-att-alt="app.name"/>
+
+                    <i t-elif="app.webIcon"
+                       class="oi o_shadcn_app_icon_fallback"
+                       t-att-data-icon="app.webIcon.split(',')[0]"
+                       t-att-style="'color:' + app.webIcon.split(',')[1]"/>
+
+                    <span class="o_shadcn_app_name">
+                        <t t-out="app.name"/>
+                    </span>
+
+                </div>
+            </DropdownItem>
+
+        </xpath>
+
+    </t>
+
+</templates>

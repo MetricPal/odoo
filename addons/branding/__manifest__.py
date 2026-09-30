@@ -22,6 +22,8 @@
             'branding/static/src/scss/navbar.scss',
             'branding/static/src/xml/navbar.xml',
             "branding/static/src/js/user_menu.js",
+            "branding/static/src/scss/apps_menu.scss",
+            'branding/static/src/xml/apps_menu.xml',
             "branding/static/src/scss/user_menu.scss",
             'branding/static/src/xml/user_menu.xml'
         ],
