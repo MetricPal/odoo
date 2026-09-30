@@ -19,9 +19,11 @@
         'web.assets_backend': [
             'after',
             'web/static/src/webclient/user_menu/user_menu_items.js',
-            'branding/static/src/user_menu/user_menu_items.js',
             'branding/static/src/scss/navbar.scss',
             'branding/static/src/xml/navbar.xml',
+            "branding/static/src/js/user_menu.js",
+            "branding/static/src/scss/user_menu.scss",
+            'branding/static/src/xml/user_menu.xml'
         ],
         'web.assets_unit_tests': [
             'branding/static/tests/user_menu.test.js',

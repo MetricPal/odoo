@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="branding.ShadcnUserMenu"
+       t-inherit="web.UserMenu"
+       t-inherit-mode="extension">
+
+        <xpath expr="//t[@t-set-slot='content']/t[@t-foreach='this.getElements()']"
+            position="before">
+
+            <div class="o_shadcn_user_profile">
+                <img
+                    class="o_shadcn_user_avatar"
+                    t-att-src="this.source"
+                    alt="User"
+                />
+
+                <div class="o_shadcn_user_identity">
+                    <div class="o_shadcn_user_name text-truncate">
+                        <t t-out="this.userName"/>
+                    </div>
+
+                    <div t-if="this.userEmail"
+                         class="o_shadcn_user_email text-truncate">
+                        <t t-out="this.userEmail"/>
+                    </div>
+                </div>
+            </div>
+
+        </xpath>
+
+        <xpath expr="//DropdownItem/div/t[@t-out='element.description']"
+               position="before">
+
+            <span class="o_shadcn_menu_icon">
+
+                <!-- Help -->
+                <svg t-if="element.id === 'support'"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4"/>
+                    <path d="M12 18h.01"/>
+                </svg>
+
+                <!-- Shortcuts -->
+                <svg t-elif="element.id === 'shortcuts'"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+                    <rect width="20" height="16" x="2" y="4" rx="2"/>
+                    <path d="M6 8h.001"/>
+                    <path d="M10 8h.001"/>
+                    <path d="M14 8h.001"/>
+                    <path d="M18 8h.001"/>
+                    <path d="M8 12h.001"/>
+                    <path d="M12 12h.001"/>
+                    <path d="M16 12h.001"/>
+                    <path d="M7 16h10"/>
+                </svg>
+
+                <!-- Preferences -->
+                <svg t-elif="element.id === 'preferences'"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+                    <path d="M20 21a8 8 0 0 0-16 0"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+
+                <!-- Install App -->
+                <svg t-elif="element.id === 'install_pwa'"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+                    <path d="M12 3v12"/>
+                    <path d="m7 10 5 5 5-5"/>
+                    <path d="M5 21h14"/>
+                </svg>
+
+                <!-- Share -->
+                <svg t-elif="element.id === 'share_url'"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="3"/>
+                    <circle cx="6" cy="12" r="3"/>
+                    <circle cx="18" cy="19" r="3"/>
+                    <path d="m8.6 13.5 6.8 4"/>
+                    <path d="m15.4 6.5-6.8 4"/>
+                </svg>
+
+                <!-- Logout -->
+                <svg t-elif="element.id === 'logout'"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+                    <path d="M10 17l5-5-5-5"/>
+                    <path d="M15 12H3"/>
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                </svg>
+
+            </span>
+
+        </xpath>
+
+        <xpath expr="//DropdownItem" position="before">
+            <div t-if="element.id === 'logout'"
+                class="dropdown-divider"
+                role="separator"/>
+        </xpath>
+        
+        <xpath expr="//DropdownItem/div[contains(@class, 'justify-content-between')]"
+            position="attributes">
+            <attribute name="class">d-flex align-items-center p-0 w-100</attribute>
+        </xpath>
+
+    </t>
+
+</templates>

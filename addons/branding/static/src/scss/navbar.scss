@@ -16,13 +16,53 @@
 
     .o_menu_systray {
         .o_navbar_apps_menu {
+            height: auto;
+            margin-top: -10px;
+            margin-bottom: -10px;
+
             button  {
-                padding-left: 4px;
+                padding-left: 4px!important;
+                height: 100%!important;
+                padding: 8px!important;
+                margin-top: 0!important;
+                margin-bottom: 0!important;
+                border-radius: 0!important;
             }
         }
 
         .o_user_menu {
             order: 1;
+            height: auto;
+            margin-top: -10px;
+            margin-bottom: -10px;
+            padding-left: 8px;
+            padding-right: 8px;
+            // margin-right: 8px;
+        }
+
+        .o_menu_systray_item > button,
+        .o_menu_systray_item > a,
+        button  {
+            height: auto!important;
+            margin-top: -10px!important;
+            margin-bottom: -10px!important;
+            padding-left: 8px!important;
+            padding-right: 8px!important;
+            // margin-right: 8px!important;
+            border-radius: 0!important;
+        }
+    }
+
+    .o_menu_sections {
+        button,
+        a {
+            height: auto!important;
+            margin-top: -10px!important;
+            margin-bottom: -10px!important;
+            padding-left: 8px!important;
+            padding-right: 8px!important;
+            // margin-right: 8px!important;
+            border-radius: 0!important;
         }
     }
 }

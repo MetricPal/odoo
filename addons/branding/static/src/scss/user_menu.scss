@@ -1,0 +1,65 @@
+.o_shadcn_menu_icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    margin-right: 10px;
+    opacity: 0.7;
+
+    svg {
+        display: block;
+        width: 16px;
+        height: 16px;
+    }
+}
+
+.o_shadcn_user_profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 0 10px;
+}
+
+.o_shadcn_user_avatar {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.o_shadcn_user_identity {
+    min-width: 0;
+    flex: 1;
+
+    line-height: 1.25;
+}
+
+.o_shadcn_user_name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.o_shadcn_user_email {
+    margin-top: 2px;
+
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.o-dropdown-item.dropdown-item.o-navigable {
+    padding: 4px 8px;
+}
+
+.o_popover.o-dropdown--menu.dropdown-menu:has([data-menu="logout"]) {
+    padding-left: 4px;
+    padding-right: 4px;
+
+    .o-dropdown-item.dropdown-item.o-navigable {
+        border-radius: 4px;
+    }
+}
