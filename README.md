@@ -35,3 +35,25 @@ Developers can start with [the developer tutorials](https://www.odoo.com/documen
 
 If you believe you have found a security issue, check our [Responsible Disclosure page](https://www.odoo.com/security-report)
 for details and get in touch with us via email.
+
+
+## Start here
+
+1. Read `AGENTS.md`.
+2. Read `docs/PRODUCT.md`.
+3. Read `docs/ARCHITECTURE.md`.
+4. Read `docs/AI_AGENT.md` and `docs/APPROVALS.md`.
+5. Read the relevant skill under `.codex/skills/` for the task.
+6. Check `docs/exec-plans/active/` for the current execution plan.
+
+## Source of truth
+
+- Product principles: `docs/PRODUCT.md`
+- Architecture: `docs/ARCHITECTURE.md`
+- Security and authorization: `docs/SECURITY.md`
+- AI behavior: `docs/AI_AGENT.md`
+- Approval/governance: `docs/APPROVALS.md`
+- UX: `docs/DESIGN.md`
+- Odoo implementation: `docs/ODOO20.md`
+- Quality: `docs/QUALITY.md`
+- Active work: `docs/exec-plans/active/`

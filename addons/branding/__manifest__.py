@@ -1,8 +1,9 @@
 {
     'name': 'metric.io Branding',
-    'version': '1.0',
+    'version': '20.0.1.1.0',
     'category': 'Hidden',
     'summary': 'Apply the metric.io identity to company, website, and authentication emails',
+    'author': 'metric.io',
     'icon': '/branding/static/src/img/metric_io_favicon.png',
     'depends': ['auth_signup', 'digest', 'website'],
     'data': [

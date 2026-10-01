@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_authentication_settings_form" model="ir.ui.view">
+        <field name="name">auth.authentication.settings.form</field>
+        <field name="model">auth.authentication.settings</field>
+        <field name="arch" type="xml">
+            <form string="Authentication">
+                <sheet>
+                    <div class="text-muted mb-3">
+                        Choose how users sign in to this Odoo database.
+                    </div>
+
+                    <field name="name" invisible="1"/>
+                    <field name="auth_admin_has_valid_email" invisible="1"/>
+                    <field name="auth_outbound_email_ready" invisible="1"/>
+                    <field name="auth_admin_has_active_oauth" invisible="1"/>
+
+                    <group>
+                        <group string="Login method" col="1">
+                            <field name="auth_login_method"
+                                   nolabel="1"
+                                   widget="auth_login_method_radio"
+                                   options="{'email_ready_field': 'auth_outbound_email_ready', 'oauth_ready_field': 'auth_admin_has_active_oauth'}"/>
+                        </group>
+                    </group>
+
+                    <group invisible="auth_login_method not in ('magic_link', 'both')">
+                        <group string="Email verification">
+                            <field name="auth_magic_link_ttl"/>
+                        </group>
+                    </group>
+
+                </sheet>
+                <footer>
+                    <button string="Save"
+                            name="action_save"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Discard"
+                            special="cancel"
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_authentication_settings" model="ir.actions.act_window">
+        <field name="name">Authentication</field>
+        <field name="res_model">auth.authentication.settings</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_authentication_settings_form"/>
+        <field name="res_id" ref="authentication_settings_singleton"/>
+        <field name="target">current</field>
+        <field name="context">{'form_view_initial_mode': 'edit'}</field>
+    </record>
+
+    <record id="menu_authentication_settings" model="ir.ui.menu">
+        <field name="name">Authentication</field>
+        <field name="parent_id" ref="base.menu_users"/>
+        <field name="sequence">25</field>
+        <field name="action" ref="action_authentication_settings"/>
+        <field name="group_ids" eval="[Command.set([ref('base.group_no_one')])]"/>
+    </record>
+</odoo>

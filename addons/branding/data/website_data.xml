@@ -2,6 +2,7 @@
 <odoo>
     <record id="base.default_website" model="website" forcecreate="0">
         <field name="name">metric.io</field>
-        <field name="logo" type="base64" file="branding/static/src/img/metric_io_logo.png"/>
+        <field name="logo" type="bytes" file="branding/static/src/img/metric_io_logo.png"/>
+        <field name="favicon" type="bytes" file="branding/static/src/img/metric_io_favicon.png"/>
     </record>
 </odoo>

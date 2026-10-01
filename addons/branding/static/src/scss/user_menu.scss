@@ -51,11 +51,16 @@
     opacity: 0.7;
 }
 
-.o-dropdown-item.dropdown-item.o-navigable {
+
+.o_shadcn_user_profile ~ .o-dropdown-item.dropdown-item.o-navigable {
     padding: 4px 8px;
 }
 
 .o_popover.o-dropdown--menu.dropdown-menu:has([data-menu="logout"]) {
+    width: 222px;
+    min-width: 222px;
+    max-width: 222px;
+
     padding-left: 4px;
     padding-right: 4px;
 

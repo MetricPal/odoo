@@ -1,0 +1,41 @@
+// Odoo 20 Community - standalone passwordless login styling.
+// The Website module's login inheritance is bypassed by web.login_layout's
+// no_header/no_footer parameters, so the login remains outside the website chrome.
+
+.o_magic_link_login_form,
+.o_magic_link_state {
+    max-width: 360px;
+    margin-inline: auto;
+}
+
+.o_magic_or {
+    position: relative;
+    color: var(--o-gray-500);
+    font-size: 12px;
+
+    &::before,
+    &::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        width: calc(50% - 18px);
+        height: 1px;
+        background: var(--o-border-color);
+    }
+
+    &::before {
+        left: 0;
+    }
+
+    &::after {
+        right: 0;
+    }
+
+    span {
+        display: inline-block;
+        padding-inline: 8px;
+        background: var(--body-bg, #fff);
+        position: relative;
+        z-index: 1;
+    }
+}

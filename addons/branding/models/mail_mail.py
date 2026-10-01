@@ -1,4 +1,3 @@
-import base64
 import re
 
 from odoo import models
@@ -39,7 +38,7 @@ class MailMail(models.Model):
                 if company_id not in logo_cache:
                     company = self.env['res.company'].sudo().browse(company_id).exists()
                     logo_cache[company_id] = (
-                        base64.b64decode(company.logo_web) if company and company.logo_web else None
+                        company.logo_web.content if company and company.logo_web else None
                     )
 
             if INLINE_LOGO_SRC not in body:

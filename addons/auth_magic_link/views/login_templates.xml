@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="web_login_magic_link" inherit_id="web.login" name="Configurable authentication login">
+        <xpath expr="//div[hasclass('field-login')]" position="attributes">
+            <attribute name="t-if">auth_email_login_mode in ('password', 'both')</attribute>
+            <attribute name="t-attf-class" add="o_auth_password_field" separator=" "/>
+        </xpath>
+
+        <xpath expr="//div[hasclass('o_caps_lock_warning')]" position="attributes">
+            <attribute name="t-if">auth_email_login_mode in ('password', 'both')</attribute>
+            <attribute name="t-attf-class" add="o_auth_password_field" separator=" "/>
+        </xpath>
+
+        <xpath expr="//div[hasclass('o_caps_lock_warning')]" position="after">
+            <div t-if="auth_email_login_mode in ('magic_link', 'both')"
+                 t-attf-class="mt-3 mb-1 o_auth_magic_link_field {{ 'd-none' if auth_email_login_mode == 'both' and not auth_magic_link_magic_view else '' }}">
+                <label for="email_login" class="form-label d-flex justify-content-between w-100">Email</label>
+                <input type="email"
+                       name="email_login"
+                       id="email_login"
+                       t-att-value="login or ''"
+                       class="form-control"
+                       placeholder="Enter your email"
+                       autocomplete="email"
+                       autocapitalize="off"
+                       t-att-disabled="'disabled' if auth_email_login_mode == 'both' and not auth_magic_link_magic_view else None"
+                       required="required"/>
+            </div>
+        </xpath>
+
+        <!-- Scope Odoo's native alerts to the authentication view that produced them. -->
+        <xpath expr="//p[@role='alert']" position="attributes">
+            <attribute name="t-attf-class" add="o_auth_form_alert {{ 'o_auth_magic_alert' if auth_email_alert_view == 'magic' else 'o_auth_password_alert' }}" separator=" "/>
+        </xpath>
+        <xpath expr="//p[@role='status']" position="attributes">
+            <attribute name="t-attf-class" add="o_auth_form_alert {{ 'o_auth_magic_alert' if auth_email_alert_view == 'magic' else 'o_auth_password_alert' }}" separator=" "/>
+        </xpath>
+
+        <xpath expr="//div[hasclass('oe_login_buttons')]/button[@type='submit'][1]" position="attributes">
+            <attribute name="t-if">auth_email_login_mode in ('password', 'both')</attribute>
+        </xpath>
+
+        <xpath expr="//div[hasclass('oe_login_buttons')]/button[@type='submit'][1]" position="after">
+            <button t-if="auth_email_login_mode in ('magic_link', 'both')"
+                    type="submit"
+                    name="type"
+                    value="magic_link"
+                    t-attf-class="btn btn-primary mt-2 o_auth_email_submit {{ 'd-none' if auth_email_login_mode == 'both' and not auth_magic_link_magic_view else '' }}">
+                Send login link
+            </button>
+
+            <!-- One toggle stays below the active submit button in both views. -->
+            <button t-if="auth_email_login_mode == 'both'"
+                    type="button"
+                    class="btn btn-link w-100 mt-1 p-0 o_auth_method_toggle"
+                    t-att-data-auth-view="'magic' if auth_magic_link_magic_view else 'password'">
+                <t t-if="auth_magic_link_magic_view">Sign in with password</t>
+                <t t-else="">Sign in using magic link</t>
+            </button>
+
+            <!-- Magic-link view gets its own chooser trigger. JS delegates to Odoo's native UserSwitch. -->
+            <button t-if="auth_email_login_mode == 'both'"
+                    type="button"
+                    class="btn btn-link btn-sm mt-2 o_auth_magic_choose_user d-none">
+                Choose a user
+            </button>
+        </xpath>
+
+        <xpath expr="//input[@name='type' and @value='password']" position="attributes">
+            <attribute name="t-if">auth_email_login_mode in ('password', 'both')</attribute>
+            <attribute name="class">o_auth_password_type</attribute>
+        </xpath>
+    </template>
+</odoo>

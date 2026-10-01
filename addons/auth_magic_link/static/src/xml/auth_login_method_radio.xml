@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="auth_magic_link.AuthLoginMethodRadio">
+        <div class="o_auth_login_method_options w-100">
+            <t t-foreach="this.visibleItems" t-as="item" t-key="item[0]">
+                <div class="d-flex py-3 border-bottom">
+                    <div class="form-check pt-1 me-3">
+                        <input class="form-check-input"
+                               type="radio"
+                               t-att-id="`${this.id}_${item[0]}`"
+                               t-att-name="this.id"
+                               t-att-value="item[0]"
+                               t-att-checked="this.value === item[0]"
+                               t-att-disabled="this.props.readonly || this.isOptionDisabled(item[0])"
+                               t-on-change="() => this.onChange(item)"/>
+                    </div>
+                    <label class="flex-grow-1 mb-0"
+                           t-att-for="`${this.id}_${item[0]}`"
+                           t-att-class="{'text-muted': this.isOptionDisabled(item[0])}">
+                        <div class="fw-bold">
+                            <t t-out="item[1]"/>
+                        </div>
+                        <div class="text-muted mt-1">
+                            <t t-out="this.description(item[0])"/>
+                        </div>
+                        <div t-if="this.blocker(item[0])"
+                             class="alert alert-warning py-2 px-3 mt-2 mb-0 d-inline-block">
+                            <i class="fa fa-info-circle me-2"/>
+                            <t t-out="this.blocker(item[0])"/>
+                        </div>
+                    </label>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="authentication_settings_singleton" model="auth.authentication.settings">
+        <field name="name">Authentication</field>
+        <field name="auth_login_method">password</field>
+        <field name="auth_magic_link_ttl">10</field>
+    </record>
+</odoo>

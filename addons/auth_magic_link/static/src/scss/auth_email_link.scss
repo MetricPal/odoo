@@ -1,0 +1,10 @@
+
+/* Login-page alignment: Odoo may render "Choose a user" immediately beside the field label. */
+.oe_login_form .field-login,
+.oe_login_form .o_auth_magic_link_field {
+    position: relative;
+}
+.oe_login_form .o_auth_magic_link_field > a,
+.oe_login_form .o_auth_magic_link_field .o_choose_user {
+    float: right;
+}

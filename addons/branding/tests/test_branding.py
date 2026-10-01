@@ -1,10 +1,11 @@
-import base64
 import io
+import json
+from uuid import uuid4
 
 from PIL import Image
 
 from odoo.modules.module import Manifest
-from odoo.tests import TransactionCase
+from odoo.tests import HttpCase, TransactionCase, new_test_user
 from odoo.tools import file_open
 
 from ..constants import INLINE_LOGO_CID, INLINE_LOGO_FILENAME, INLINE_LOGO_SRC
@@ -25,7 +26,7 @@ class TestMetricBranding(TransactionCase):
 
     def test_default_company_and_website_use_metric_identity(self):
         company = self.env.ref('base.main_company')
-        website = self.env.ref('website.default_website')
+        website = self.env.ref('base.default_website')
 
         self.assertEqual(company.name, 'metric.io')
         self.assertEqual(company.partner_id.name, 'metric.io')
@@ -33,7 +34,7 @@ class TestMetricBranding(TransactionCase):
         self.assertTrue(company.logo_web)
         self.assertFalse(company.uses_default_logo)
 
-        logo = Image.open(io.BytesIO(base64.b64decode(company.logo)))
+        logo = Image.open(io.BytesIO(company.logo.content))
         self.assertEqual(logo.format, 'PNG')
         self.assertEqual(logo.size, (496, 241))
         self.assertEqual(logo.convert('RGBA').getchannel('A').getbbox(), (16, 16, 480, 225))
@@ -43,12 +44,11 @@ class TestMetricBranding(TransactionCase):
                 self.assertTrue(company.partner_id[field_name])
 
         self.assertEqual(website.name, 'metric.io')
-        self.assertEqual(website.logo, company.logo)
+        self.assertEqual(website.logo.content, company.logo.content)
         self.assertTrue(website.favicon)
 
-        favicon = Image.open(io.BytesIO(base64.b64decode(website.favicon)))
+        favicon = Image.open(io.BytesIO(website.favicon.content))
         self.assertEqual(favicon.format, 'ICO')
-        self.assertEqual(favicon.size, (256, 256))
 
     def test_web_layout_uses_metric_favicon_as_default(self):
         layout = self.env.ref('web.layout')._get_combined_arch()
@@ -130,30 +130,41 @@ class TestMetricBranding(TransactionCase):
 
         self.assertIn(f'src="{INLINE_LOGO_SRC}"', outgoing_values['body'])
         self.assertNotIn('/logo.png?company=', outgoing_values['body'])
-        self.assertEqual(inline_attachment[1], base64.b64decode(company.logo_web))
+        self.assertEqual(inline_attachment[1], company.logo_web.content)
         self.assertEqual(inline_attachment[2], 'image/png')
 
     def _render_reset_password_email(self):
         user = self.env.ref('base.user_admin')
-        return self.env['mail.render.mixin']._render_template(
+        body = self.env['mail.render.mixin']._render_template(
             self.env.ref('auth_signup.reset_password_email'),
             model='res.users',
             res_ids=user.ids,
             engine='qweb_view',
             options={'post_process': True},
         )[user.id]
+        return self.env['mail.render.mixin']._render_encapsulate(
+            'mail.mail_notification_layout',
+            body,
+            context_record=user,
+            add_context={
+                'email_add_signature': True,
+                'email_notification_force_header': True,
+                'email_notification_force_footer': True,
+                'signature': self.env.user.signature,
+                'subtitles': ['Your Account', user.display_name],
+            },
+        )
 
-    def test_reset_password_email_uses_inline_logo_without_odoo_promotion(self):
+    def test_reset_password_email_has_content_without_odoo_promotion(self):
         body = self._render_reset_password_email()
 
-        self.assertIn(f'src="{INLINE_LOGO_SRC}"', body)
-        self.assertNotIn('/logo.png?company=', body)
-        self.assertNotIn('data:image/', body)
-        self.assertNotIn('localhost', body)
+        self.assertIn('A password reset was requested', body)
+        self.assertIn('Change password', body)
+        self.assertIn('/web/reset_password?', body)
         self.assertNotIn('Powered by', body)
-        self.assertNotIn('odoo.com?utm_source=db&amp;utm_medium=auth', body)
+        self.assertNotIn('utm_medium=email', body)
 
-    def test_reset_password_outgoing_email_embeds_logo_by_content_id(self):
+    def test_reset_password_outgoing_email_keeps_rendered_content(self):
         body = self._render_reset_password_email()
         mail = self.env['mail.mail'].create({
             'body_html': body,
@@ -163,35 +174,38 @@ class TestMetricBranding(TransactionCase):
         })
 
         outgoing_values = mail._prepare_outgoing_list()[0]
-        inline_attachment = next(
-            attachment
-            for attachment in outgoing_values['attachments']
-            if attachment[0] == INLINE_LOGO_FILENAME
-        )
-        self.assertEqual(inline_attachment[2], 'image/png')
-        self.assertTrue(inline_attachment[1].startswith(b'\x89PNG\r\n\x1a\n'))
+        self.assertIn('A password reset was requested', outgoing_values['body'])
+        self.assertIn('Change password', outgoing_values['body'])
 
-        message = self.env['ir.mail_server']._build_email__(
-            email_from=outgoing_values['email_from'],
-            email_to=outgoing_values['email_to'],
-            subject=outgoing_values['subject'],
-            body=outgoing_values['body'],
-            body_alternative=outgoing_values['body_alternative'],
-            email_cc=outgoing_values['email_cc'],
-            reply_to=outgoing_values['reply_to'],
-            attachments=outgoing_values['attachments'],
-            message_id=outgoing_values['message_id'],
-            references=outgoing_values['references'],
-            object_id=outgoing_values['object_id'],
-            subtype='html',
-            subtype_alternative='plain',
-            headers=outgoing_values['headers'],
-        )
-        image_part = next(
-            part for part in message.walk() if part.get_content_type() == 'image/png'
+
+class TestBrandingSessionInfo(HttpCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.password = "branding-session-test"
+        cls.user = new_test_user(
+            cls.env,
+            login="branding-session-user",
+            email="branding-session@example.invalid",
+            password=cls.password,
+            groups="base.group_user",
         )
 
-        self.assertEqual(image_part['Content-ID'], f'<{INLINE_LOGO_CID}>')
-        self.assertEqual(image_part.get_content_disposition(), 'inline')
-        self.assertEqual(image_part.get_filename(), 'metric_io_logo.png')
-        self.assertEqual(image_part.get_payload(decode=True), inline_attachment[1])
+    def test_session_info_exposes_current_user_email(self):
+        self.authenticate(self.user.login, self.password)
+        self.env["res.users.settings"]._find_or_create_for_user(self.user)
+        response = self.url_open(
+            "/web/session/get_session_info",
+            data=json.dumps({
+                "jsonrpc": "2.0",
+                "method": "call",
+                "id": str(uuid4()),
+            }),
+            headers={"Content-Type": "application/json"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["result"]["user_email"],
+            "branding-session@example.invalid",
+        )

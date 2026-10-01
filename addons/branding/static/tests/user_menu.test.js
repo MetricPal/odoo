@@ -1,7 +1,10 @@
 import { afterEach, expect, test } from "@odoo/hoot";
 
 import { registry } from "@web/core/registry";
-import { removeOdooAccountItem } from "@branding/user_menu/user_menu_items";
+import {
+    offsetUserMenuPopover,
+    removeOdooAccountItem,
+} from "@branding/js/user_menu";
 
 const userMenuItems = registry.category("user_menuitems");
 
@@ -21,4 +24,18 @@ test("My Odoo.com Account is removed from the user menu", () => {
     removeOdooAccountItem();
 
     expect(userMenuItems.contains("odoo_account")).toBe(false);
+});
+
+test("user menu popover is shifted four pixels left after positioning", () => {
+    const popover = document.createElement("div");
+    popover.className = "o_popover o-dropdown--menu dropdown-menu";
+    popover.style.left = "844px";
+    popover.innerHTML = '<div data-menu="logout"></div>';
+
+    offsetUserMenuPopover(popover);
+    expect(popover.style.left).toBe("840px");
+
+    // Repeated callbacks without a new raw position must not accumulate offsets.
+    offsetUserMenuPopover(popover);
+    expect(popover.style.left).toBe("840px");
 });
