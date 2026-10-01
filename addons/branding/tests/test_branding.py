@@ -93,13 +93,22 @@ class TestMetricBranding(TransactionCase):
 
         self.assertNotIn('Powered by', ''.join(arch.itertext()))
         self.assertFalse(arch.xpath("//p[@id='powered']"))
+        self.assertFalse(arch.xpath("//p[hasclass('company_name')]"))
+        self.assertFalse(arch.xpath("//tr[@t-if='display_mobile_banner']"))
+        self.assertFalse(arch.xpath("//div[@id='footer']"))
+        by_odoo = arch.xpath("//div[hasclass('by_odoo')]")
+        self.assertEqual(len(by_odoo), 1)
+        self.assertIn('display:none', by_odoo[0].get('style'))
         self.assertEqual(
-            len(arch.xpath("//span[normalize-space()='Unsubscribe']")),
-            2,
+            arch.xpath('(//table)[1]')[0].get('data-branding-email-kind'),
+            'digest',
         )
-        self.assertFalse(
-            arch.xpath("//*[contains(@style, 'background-color: #F9FAFB')]")
-        )
+        header = arch.xpath("//table[@id='header']")[0]
+        content = arch.xpath("//table[hasclass('global_layout') and not(@id='header')]")[0]
+        self.assertIn('border-radius: 12px 12px 0 0', header.get('style'))
+        self.assertIn('border-radius: 0 0 12px 12px', content.get('style'))
+        self.assertIn('border-collapse: separate', header.get('style'))
+        self.assertIn('border-collapse: separate', content.get('style'))
 
     def test_light_mail_has_white_canvas_and_no_header_logo_or_legacy_footer(self):
         arch = self.env.ref('mail.mail_notification_light')._get_combined_arch()
@@ -165,6 +174,69 @@ class TestMetricBranding(TransactionCase):
 
         self.assertNotIn('/logo.png?company=', body)
         self.assertEqual(body.count(f'src="{INLINE_LOGO_SRC}"'), 1)
+
+    def test_newsletter_footer_stays_inside_colored_centered_canvas(self):
+        if 'mailing_id' not in self.env['mail.mail']._fields:
+            self.skipTest('Email Marketing is not installed')
+
+        newsletter_body = (
+            '<html><body>'
+            '<div style="background-color:#e9f4ff; padding:32px 20px;">'
+            '<table role="presentation" align="center" width="600" '
+            'style="background-color:#ffffff;"><tr><td>Newsletter</td></tr></table>'
+            '</div>'
+            '</body></html>'
+        )
+        mailing = self.env['mailing.mailing'].create({
+            'subject': 'Footer design preview',
+            'email_from': 'no-reply@metric.io',
+            'body_arch': newsletter_body,
+            'body_html': newsletter_body,
+        })
+        mail = self.env['mail.mail'].create({
+            'body_html': newsletter_body,
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'Footer design preview',
+            'mailing_id': mailing.id,
+        })
+
+        body = mail._prepare_outgoing_list()[0]['body']
+
+        self.assertIn('data-branding-footer-align="center"', body)
+        self.assertIn('align="center" border="0"', body)
+        self.assertIn('bgcolor="#e9f4ff"', body)
+        self.assertIn('background-color:#e9f4ff', body)
+        self.assertIn('Privacy</a> &middot; ', body)
+        self.assertIn('>Unsubscribe</a>', body)
+        self.assertIn('/unsubscribe_from_list', body)
+        self.assertNotIn('background-color:#ffffff !important', body)
+
+    def test_digest_unsubscribe_is_moved_to_shared_footer(self):
+        digest_body = (
+            '<html><body data-branding-email-kind="digest" '
+            'style="background-color:#F9FAFB;">'
+            '<div class="by_odoo" style="display:none;">'
+            '<a href="http://localhost:8069/digest/1/unsubscribe?token=test&amp;user_id=2">'
+            'Unsubscribe</a></div>'
+            '<p>Digest content</p>'
+            '</body></html>'
+        )
+        mail = self.env['mail.mail'].create({
+            'body_html': digest_body,
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'Periodic Digest',
+        })
+
+        body = mail._prepare_outgoing_list()[0]['body']
+
+        self.assertIn('bgcolor="#F9FAFB"', body)
+        self.assertIn('<body data-branding-email-kind="digest" style="background-color:#F9FAFB;" bgcolor="#F9FAFB">', body)
+        self.assertIn('Privacy</a> &middot; ', body)
+        self.assertIn('>Unsubscribe</a>', body)
+        self.assertIn('token=test&amp;user_id=2', body)
+        self.assertNotIn('background-color:#ffffff !important', body)
 
     def _render_reset_password_email(self):
         user = self.env.ref('base.user_admin')

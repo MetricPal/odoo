@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="digest_mail_powered_by_remove" inherit_id="digest.digest_mail_main" name="Remove Digest Odoo Brand Promotion" priority="99">
+        <xpath expr="(//table)[1]" position="attributes">
+            <attribute name="data-branding-email-kind">digest</attribute>
+        </xpath>
+        <xpath expr="//table[@id='header']" position="attributes">
+            <attribute name="style">border-radius: 12px 12px 0 0; border-collapse: separate; overflow: hidden;</attribute>
+        </xpath>
+        <xpath expr="//table[hasclass('global_layout') and not(@id='header')]" position="attributes">
+            <attribute name="style">border-radius: 0 0 12px 12px; border-collapse: separate; overflow: hidden;</attribute>
+        </xpath>
         <xpath expr="//p[@id='powered']" position="replace"/>
-        <xpath expr="(//table[contains(@style, 'background-color: #F9FAFB')])[2]" position="attributes">
-            <attribute name="style">width: 100%; background-color: #ffffff;</attribute>
+        <xpath expr="//p[hasclass('company_name')]" position="replace"/>
+        <xpath expr="//div[hasclass('by_odoo')]" position="attributes">
+            <attribute name="style">display:none; max-height:0; overflow:hidden; font-size:0; line-height:0;</attribute>
         </xpath>
-        <xpath expr="(//table[contains(@style, 'background-color: #F9FAFB')])[1]" position="attributes">
-            <attribute name="style">width: 100%; background-color: #ffffff;</attribute>
-        </xpath>
-        <xpath expr="//tr[contains(@style, 'background-color: #F9FAFB')]" position="attributes">
-            <attribute name="style">background-color: #ffffff;</attribute>
-        </xpath>
+        <xpath expr="//tr[@t-if='display_mobile_banner']" position="replace"/>
+        <xpath expr="//tfoot/tr[td//div[@id='footer']]" position="replace"/>
     </template>
 </odoo>

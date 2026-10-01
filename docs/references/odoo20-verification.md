@@ -58,6 +58,21 @@ Verified against the Odoo 20 Community source in this repository before adapting
   wrapper before rendering; the outgoing hook uses the marker (or an explicit
   left-aligned body) to align the footer box left and otherwise defaults it to
   center.
+- Mass-mail test messages carry `mail.mail.mailing_id`. Branding preserves the
+  first outer campaign background color on the footer's full-width wrapper and
+  places the alignment attribute directly on its inner table for compatibility
+  with email clients that do not center tables from a parent cell's text style.
+- Periodic Digest has no model marker on its generated `mail.mail`, and its
+  encapsulating layout is stored as escaped template text. Branding therefore
+  marks the rendered main digest table and applies the body canvas color in the
+  outgoing hook. Its original unsubscribe link remains hidden for token
+  preservation and is rendered beside Privacy in the shared footer. The same
+  footer uses mass mailing's standard
+  `/unsubscribe_from_list` placeholder, which Odoo personalizes per recipient.
+- Odoo's Periodic Digest card is rendered as two adjacent `.global_layout`
+  tables: `#header` and the KPI/content table. Branding rounds the header's top
+  corners and the content table's bottom corners with the same 12px radius as
+  the shared footer, retaining one continuous digest card.
 - The Website application provides `/privacy` as the standard privacy-policy
   path. The footer turns it into an absolute URL with the outgoing record's
   base URL.
