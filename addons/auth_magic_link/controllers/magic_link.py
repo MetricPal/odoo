@@ -29,7 +29,10 @@ def _admin_has_active_oauth():
 
 
 class EmailAuthLogin(OAuthLogin):
-    @http.route()
+    # The website module republishes /web/login with website=True. This module
+    # deliberately loads after website and restores the standalone web login
+    # context so website-specific views cannot wrap the authentication form.
+    @http.route(website=False, auth="none", sitemap=False)
     def web_login(self, *args, **kw):
         mode = _effective_mode()
 
@@ -68,7 +71,7 @@ class EmailAuthLogin(OAuthLogin):
         type="jsonrpc",
         auth="public",
         methods=["POST"],
-        website=True,
+        website=False,
     )
     def user_email(self, login=None, **kwargs):
         mode = _effective_mode()
@@ -157,7 +160,7 @@ class EmailLoginController(http.Controller):
         type="http",
         auth="public",
         methods=["GET"],
-        website=True,
+        website=False,
         sitemap=False,
         readonly=False,
     )

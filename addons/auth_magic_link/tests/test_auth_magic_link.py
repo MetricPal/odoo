@@ -166,6 +166,20 @@ class TestMagicLinkHttp(HttpCase):
         response.raise_for_status()
         return html.fromstring(response.content), response
 
+    def _assert_standalone_auth_layout(self, document):
+        login_card = document.xpath("//div[contains(@class, 'o_database_list')]")
+        self.assertTrue(login_card)
+        self.assertIn("bg-transparent", login_card[0].get("class", "").split())
+        self.assertNotIn("bg-100", login_card[0].get("class", "").split())
+        card_body = login_card[0].xpath("./div[contains(@class, 'card-body')]")
+        self.assertTrue(card_body)
+        self.assertIn("bg-transparent", card_body[0].get("class", "").split())
+        self.assertFalse(document.xpath(
+            "//div[contains(@class, 'oe_website_login_container')]"
+        ))
+        self.assertFalse(document.xpath("//header[@id='top']"))
+        self.assertFalse(document.xpath("//footer[@id='bottom']"))
+
     def test_authentication_settings_widget_renders(self):
         selector = ".o_auth_login_method_options input[type='radio']"
         self.browser_js(
@@ -198,6 +212,31 @@ class TestMagicLinkHttp(HttpCase):
         self.assertTrue(document.xpath(
             "//button[contains(@class, 'o_auth_method_toggle')]"
         ))
+
+    def test_login_uses_standalone_web_layout(self):
+        document, _response = self._login_document()
+        self._assert_standalone_auth_layout(document)
+
+    def test_reset_password_uses_standalone_web_layout(self):
+        self.env["ir.config_parameter"].sudo().set_bool(
+            "auth_signup.reset_password", True
+        )
+        response = self.url_open("/web/reset_password")
+        response.raise_for_status()
+        document = html.fromstring(response.content)
+        self.assertTrue(document.xpath("//form[@data-captcha='password_reset']"))
+        self._assert_standalone_auth_layout(document)
+
+    def test_signup_uses_standalone_web_layout(self):
+        self.env["ir.config_parameter"].sudo().set_str(
+            "auth_signup.invitation_scope", "b2c"
+        )
+        self.env["website"].search([], limit=1).auth_signup_uninvited = "b2c"
+        response = self.url_open("/web/signup")
+        response.raise_for_status()
+        document = html.fromstring(response.content)
+        self.assertTrue(document.xpath("//form[@data-captcha='signup']"))
+        self._assert_standalone_auth_layout(document)
 
     def test_oauth_only_renders_provider_without_local_forms(self):
         provider = self.env["auth.oauth.provider"].create({

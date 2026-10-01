@@ -8,7 +8,13 @@ Verified against the Odoo 20 Community source in this repository before adapting
 - `res.config.settings` persists `config_parameter` fields with the typed setters (`odoo/addons/base/models/res_config.py`).
 - Authentication credentials flow through `res.users.authenticate()` and `_check_credentials()`, returning `uid`, `auth_method`, and `mfa` (`odoo/addons/base/models/res_users.py`).
 - HTTP session authentication requires a `login` key before finalizing the session (`odoo/http/session.py`).
-- Website-backed login routes require `website=True` and `auth="public"` to render the website-inherited login layout (`addons/website/controllers/main.py`).
+- The `website` module republishes `/web/login` with `website=True` and
+  `auth="public"`, which activates its website-specific inheritance of
+  `web.login_layout` (`addons/website/controllers/main.py` and
+  `addons/website/views/website_templates.xml`). A later controller must restore
+  `website=False` and the core `auth="none"` behavior. Because primary QWeb view
+  inheritance still resolves the Website extension, a dedicated copy of the
+  small core login wrapper is required to isolate the authentication page.
 - Odoo 20 access CSV files target `ir.access` and use `model_id`, `group_id/id`, `operation`, and `domain` (`addons/*/security/ir.access.csv`).
 - SQL constraints use `models.Constraint`.
 - OAuth readiness is represented by an enabled `auth.oauth.provider` linked through `res.users.oauth_provider_id` with a non-empty `oauth_uid` (`addons/auth_oauth`).
@@ -22,6 +28,13 @@ Verified against the Odoo 20 Community source in this repository before adapting
 - Validate settings before saving a passwordless mode.
 - Keep raw tokens out of the database and consume them with an atomic SQL update.
 - Preserve Odoo's normal authentication and MFA pipeline.
+- Keep `/web/login` outside the website rendering context, even when Website is
+  installed; retain the Website dependency so this route override loads after
+  Website's own override.
+- Neutralize Website's shared `web.login_layout` replacement so reset, signup,
+  TOTP, and other authentication screens call `web.frontend_layout` directly
+  with their header and footer disabled. Signup and reset retain Odoo's native
+  public frontend request initialization, which the frontend layout requires.
 - Add model/security tests and HTTP rendering/request tests.
 
 ## Branding mail rendering

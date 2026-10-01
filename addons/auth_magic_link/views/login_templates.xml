@@ -1,6 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Keep the core web login structure independent from Website's global
+         extension of web.login_layout. -->
+    <template id="standalone_login_layout" name="Standalone Web Login Layout">
+        <t t-set="head">
+            <t t-out="head"/>
+        </t>
+        <t t-call="web.frontend_layout"
+           html_data="{'style': 'height: 100%;'}"
+           body_classname.f="bg-100"
+           no_header="True"
+           no_footer="True"
+           head="head">
+            <div class="container py-5">
+                <div t-attf-class="card border-0 mx-auto bg-transparent {{login_card_classes}} o_database_list"
+                     style="max-width: 300px;">
+                    <div class="card-body bg-transparent">
+                        <div class="text-center pb-3 border-bottom mb-4"
+                             t-if="not res_company.uses_default_logo">
+                            <img t-attf-src="/web/binary/company_logo{{ '?dbname='+db if db else '' }}"
+                                 alt="Logo"
+                                 style="max-height:120px; max-width: 100%; width:auto"/>
+                        </div>
+                        <t t-out="0"/>
+                        <div class="text-center small mt-4 pt-3 border-top"
+                             t-if="not disable_footer">
+                            <t t-if="not disable_database_manager">
+                                <a class="border-end pe-2 me-1"
+                                   href="/web/database/manager">Manage Databases</a>
+                            </t>
+                            <a href="https://www.odoo.com?utm_source=db&amp;utm_medium=auth"
+                               target="_blank">Powered by <span>Odoo</span></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Website replaces the shared authentication layout globally. Restore
+         the standalone wrapper for reset, signup, TOTP, and other auth pages. -->
+    <template id="standalone_auth_pages"
+              inherit_id="website.login_layout"
+              priority="99"
+              name="Standalone Authentication Pages">
+        <xpath expr="//t[@t-call='website.layout']" position="replace">
+            <t t-call="auth_magic_link.standalone_login_layout">
+                <t t-out="0"/>
+            </t>
+        </xpath>
+    </template>
+
     <template id="web_login_magic_link" inherit_id="web.login" name="Configurable authentication login">
+        <xpath expr="//t[@t-call='web.login_layout']" position="attributes">
+            <attribute name="t-call">auth_magic_link.standalone_login_layout</attribute>
+        </xpath>
+
         <xpath expr="//div[hasclass('field-login')]" position="attributes">
             <attribute name="t-if">auth_email_login_mode in ('password', 'both')</attribute>
             <attribute name="t-attf-class" add="o_auth_password_field" separator=" "/>

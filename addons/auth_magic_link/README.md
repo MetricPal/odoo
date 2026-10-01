@@ -8,6 +8,9 @@ This module provides four administrator-controlled login modes:
 - **OAuth only** — local password and magic-link forms are hidden.
 
 The administrator selects the global mode under **Settings → Authentication**.
+Login, signup, password reset, TOTP, and other authentication forms are rendered
+by Odoo's standalone web login layout, not inside the Website header, footer, or
+page structure.
 
 ## Safety gates
 
