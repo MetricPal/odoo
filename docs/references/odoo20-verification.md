@@ -48,6 +48,18 @@ Verified against the Odoo 20 Community source in this repository before adapting
   `ir.http.session_info()`. Branding extends that payload with the current
   user's email for the profile header instead of treating the login as email.
 
+## Branding navigation
+
+- Odoo 20 exposes root applications through `menu.getApps()` and navigates with
+  `menu.selectMenu()` (`addons/web/static/src/webclient/menus/menu_service.js`).
+- Apps and Settings are the permission-filtered roots
+  `base.menu_management` and `base.menu_administration`. Branding removes those
+  XML IDs from the launcher input and derives its user-menu entries from the
+  same app list, preserving native access rules and navigation behavior.
+- User-menu items are ordered through the `user_menuitems` registry sequence;
+  the moved pair uses a registry separator above Apps and the existing visual
+  separator before Log out.
+
 ## Unavailable referenced documentation
 
 `AGENTS.md` references project documents under `docs/` that were not present when this verification was performed. This note records the source-level verification required by the available local research skill.

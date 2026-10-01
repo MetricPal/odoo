@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
+    <!-- Feed both desktop and mobile app launchers without the roots moved to
+         the user menu. -->
+    <t t-name="branding.ShadcnNavBarApps"
+        t-inherit="web.NavBar"
+       t-inherit-mode="extension">
+        <xpath expr="//t[@t-call='web.NavBar.AppsMenu']" position="attributes">
+            <attribute name="apps">this.getBrandingApps()</attribute>
+        </xpath>
+    </t>
+
     <t t-name="branding.ShadcnAppsMenu"
        t-inherit="web.NavBar.AppsMenu"
        t-inherit-mode="extension">
