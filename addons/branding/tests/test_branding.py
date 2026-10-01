@@ -97,29 +97,32 @@ class TestMetricBranding(TransactionCase):
             len(arch.xpath("//span[normalize-space()='Unsubscribe']")),
             2,
         )
-
-    def test_light_mail_footer_is_left_aligned(self):
-        arch = self.env.ref('mail.mail_notification_light')._get_combined_arch()
-        footer_cells = arch.xpath("//td[b[@t-out='company.name']]")
-
-        self.assertEqual(len(footer_cells), 1)
-        self.assertEqual(footer_cells[0].get('align'), 'left')
-
-    def test_outgoing_company_logo_is_embedded_by_content_id(self):
-        company = self.env.ref('base.main_company')
-        body = self.env['mail.render.mixin']._render_encapsulate(
-            'mail.mail_notification_light',
-            '<p>Security notification</p>',
-            add_context={'model_description': 'Account'},
-            context_record=self.env.ref('base.user_admin'),
+        self.assertFalse(
+            arch.xpath("//*[contains(@style, 'background-color: #F9FAFB')]")
         )
-        self.assertIn(f'/logo.png?company={company.id}', body)
+
+    def test_light_mail_has_white_canvas_and_no_header_logo_or_legacy_footer(self):
+        arch = self.env.ref('mail.mail_notification_light')._get_combined_arch()
+
+        self.assertFalse(arch.xpath("//img[contains(@t-att-src, '/logo.png?company=')]"))
+        self.assertFalse(arch.xpath("//td[b[@t-out='company.name']]"))
+        self.assertIn('background-color: #ffffff', arch.xpath('//body/table[1]')[0].get('style'))
+
+    def test_all_outgoing_email_gets_shared_brand_footer(self):
+        company = self.env.ref('base.main_company')
+        company.street = 'Example Street 10'
+        company.street2 = False
+        company.zip = False
+        company.city = 'Kuala Lumpur'
+        company.state_id = False
+        company.country_id = self.env.ref('base.my')
 
         mail = self.env['mail.mail'].create({
-            'body_html': body,
+            'body_html': '<html><body><p>Security notification</p></body></html>',
             'email_from': 'no-reply@metric.io',
             'email_to': 'user@example.com',
             'subject': 'Security notification',
+            'record_company_id': company.id,
         })
         outgoing_values = mail._prepare_outgoing_list()[0]
         inline_attachment = next(
@@ -128,10 +131,40 @@ class TestMetricBranding(TransactionCase):
             if attachment[0] == INLINE_LOGO_FILENAME
         )
 
+        self.assertEqual(outgoing_values['body'].count('data-branding-mail-footer="1"'), 1)
+        self.assertIn('data-branding-footer-align="center"', outgoing_values['body'])
+        self.assertIn('align="center" style="padding:0; text-align:center;"', outgoing_values['body'])
         self.assertIn(f'src="{INLINE_LOGO_SRC}"', outgoing_values['body'])
-        self.assertNotIn('/logo.png?company=', outgoing_values['body'])
+        self.assertIn('width="64"', outgoing_values['body'])
+        self.assertIn('data-branding-company-name="1"', outgoing_values['body'])
+        self.assertIn('<span>metric</span><span>.</span><span>io</span>', outgoing_values['body'])
+        self.assertIn('Example Street 10', outgoing_values['body'])
+        self.assertIn('Kuala Lumpur, Malaysia', outgoing_values['body'])
+        self.assertIn('>Privacy</a>', outgoing_values['body'])
+        self.assertIn('data-branding-copyright="1"', outgoing_values['body'])
+        self.assertIn('&copy;', outgoing_values['body'])
+        self.assertIn('background-color:#ffffff !important', outgoing_values['body'])
         self.assertEqual(inline_attachment[1], company.logo_web.content)
         self.assertEqual(inline_attachment[2], 'image/png')
+
+    def test_outgoing_header_company_logo_is_removed(self):
+        company = self.env.ref('base.main_company')
+        mail = self.env['mail.mail'].create({
+            'body_html': (
+                '<html><body>'
+                f'<img src="/logo.png?company={company.id}" alt="Header logo"/>'
+                '<p>Notification</p>'
+                '</body></html>'
+            ),
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'Notification',
+        })
+
+        body = mail._prepare_outgoing_list()[0]['body']
+
+        self.assertNotIn('/logo.png?company=', body)
+        self.assertEqual(body.count(f'src="{INLINE_LOGO_SRC}"'), 1)
 
     def _render_reset_password_email(self):
         user = self.env.ref('base.user_admin')
@@ -176,6 +209,7 @@ class TestMetricBranding(TransactionCase):
         outgoing_values = mail._prepare_outgoing_list()[0]
         self.assertIn('A password reset was requested', outgoing_values['body'])
         self.assertIn('Change password', outgoing_values['body'])
+        self.assertIn('data-branding-footer-align="left"', outgoing_values['body'])
 
 
 class TestBrandingSessionInfo(HttpCase):

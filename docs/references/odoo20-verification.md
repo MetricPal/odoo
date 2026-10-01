@@ -42,6 +42,25 @@ Verified against the Odoo 20 Community source in this repository before adapting
 - Odoo 20 renders the password-reset QWeb body first, then wraps it with
   `mail.mail_notification_layout` in
   `auth_signup.models.res_users._action_reset_password()`.
+- Every SMTP-bound email is finalized through `mail.mail._prepare_outgoing_list()`;
+  this is the common hook used to append the branding footer to notifications,
+  alerts, template emails, and optional mass mailings. `mailing_id` identifies
+  mass-mailing output whose editor-selected background color must be preserved.
+- `mail.mail.record_company_id` provides the business-record company for the
+  footer, with `env.company` as the fallback. Company city and country are
+  address fields delegated by `res.company`. The footer uses every configured
+  address component and deliberately leaves the address empty when the company
+  record has no address rather than publishing invented business information.
+- `odoo.tools.mail.append_content_to_html()` inserts footer HTML before a
+  document's closing body tag and also supports HTML fragments.
+- Odoo's standard `mail.mail_notification_layout` content wrapper is naturally
+  left-aligned but has no explicit alignment attribute. Branding marks that
+  wrapper before rendering; the outgoing hook uses the marker (or an explicit
+  left-aligned body) to align the footer box left and otherwise defaults it to
+  center.
+- The Website application provides `/privacy` as the standard privacy-policy
+  path. The footer turns it into an absolute URL with the outgoing record's
+  base URL.
 - Odoo 20 Binary/Image fields expose `BinaryValue` objects; raw image bytes
   are read from `.content`. XML file data uses `type="bytes"`.
 - The backend web client receives authenticated-user metadata from

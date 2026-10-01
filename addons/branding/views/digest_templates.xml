@@ -2,5 +2,14 @@
 <odoo>
     <template id="digest_mail_powered_by_remove" inherit_id="digest.digest_mail_main" name="Remove Digest Odoo Brand Promotion" priority="99">
         <xpath expr="//p[@id='powered']" position="replace"/>
+        <xpath expr="(//table[contains(@style, 'background-color: #F9FAFB')])[2]" position="attributes">
+            <attribute name="style">width: 100%; background-color: #ffffff;</attribute>
+        </xpath>
+        <xpath expr="(//table[contains(@style, 'background-color: #F9FAFB')])[1]" position="attributes">
+            <attribute name="style">width: 100%; background-color: #ffffff;</attribute>
+        </xpath>
+        <xpath expr="//tr[contains(@style, 'background-color: #F9FAFB')]" position="attributes">
+            <attribute name="style">background-color: #ffffff;</attribute>
+        </xpath>
     </template>
 </odoo>
