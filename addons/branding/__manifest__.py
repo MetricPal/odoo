@@ -12,10 +12,12 @@
         'views/auth_signup_templates_email.xml',
         'views/digest_templates.xml',
         'views/mail_templates.xml',
+        'data/mail_template_data.xml',
         'views/portal_templates.xml',
         'views/webclient_templates.xml',
         'views/website_template.xml'
     ],
+    'post_init_hook': '_post_init_hook',
     'assets': {
         'web.assets_backend': [
             'after',

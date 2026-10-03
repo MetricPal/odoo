@@ -156,6 +156,102 @@ class TestMetricBranding(TransactionCase):
         self.assertEqual(inline_attachment[1], company.logo_web.content)
         self.assertEqual(inline_attachment[2], 'image/png')
 
+    def test_new_mail_templates_force_standard_footer_by_default(self):
+        template = self.env['mail.template'].create({
+            'name': 'Branding footer template',
+            'model_id': self.env['ir.model']._get_id('res.partner'),
+            'subject': 'Branding footer template',
+            'body_html': '<p>Hello <t t-out="object.name"/></p>',
+            'email_to': '{{ object.email }}',
+            'email_layout_xmlid': 'mail.mail_notification_light',
+        })
+
+        self.assertTrue(template.email_layout_force_footer)
+
+    def test_template_email_gets_standard_footer_even_when_template_footer_is_disabled(self):
+        partner = self.env['res.partner'].create({
+            'name': 'Template Recipient',
+            'email': 'recipient@example.invalid',
+        })
+        template = self.env['mail.template'].create({
+            'name': 'Branding footer send template',
+            'model_id': self.env['ir.model']._get_id('res.partner'),
+            'subject': 'Branding footer send template',
+            'body_html': '<p>Hello <t t-out="object.name"/></p>',
+            'email_to': '{{ object.email }}',
+            'email_layout_xmlid': 'mail.mail_notification_light',
+            'email_layout_force_footer': False,
+        })
+
+        mail = self.env['mail.mail'].browse(template.send_mail(partner.id))
+        outgoing_values = mail._prepare_outgoing_list()[0]
+
+        self.assertIn('Hello Template Recipient', outgoing_values['body'])
+        self.assertEqual(outgoing_values['body'].count('data-branding-mail-footer="1"'), 1)
+        self.assertIn('data-branding-company-name="1"', outgoing_values['body'])
+        self.assertNotIn('Powered by', outgoing_values['body'])
+        self.assertNotIn('odoo.com?utm_source=db', outgoing_values['body'])
+
+    def test_outgoing_email_removes_template_powered_by_odoo_promotion(self):
+        mail = self.env['mail.mail'].create({
+            'body_html': (
+                '<html><body>'
+                '<p>Expense notification</p>'
+                '<p style="text-align:center;">Powered by '
+                '<a target="_blank" href="https://www.odoo.com?utm_source=db&amp;utm_medium=expense">'
+                'Odoo</a>.</p>'
+                '</body></html>'
+            ),
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'Expense notification',
+        })
+
+        body = mail._prepare_outgoing_list()[0]['body']
+
+        self.assertIn('Expense notification', body)
+        self.assertNotIn('Powered by', body)
+        self.assertNotIn('utm_medium=expense', body)
+        self.assertEqual(body.count('data-branding-mail-footer="1"'), 1)
+
+    def test_outgoing_email_removes_template_sent_by_brand_promotion(self):
+        mail = self.env['mail.mail'].create({
+            'body_html': (
+                '<table style="padding-top:16px; background-color:#F1F1F1; width:100%;">'
+                '<tr><td align="center">'
+                '<table width="590" style="background-color:white;"><tr><td>'
+                '<p>Event confirmation</p>'
+                '</td></tr></table>'
+                '</td></tr>'
+                '<!-- FOOTER BY -->'
+                '<tr><td align="center" style="min-width:590px;">'
+                '<table width="590" style="background-color:#F1F1F1;">'
+                '<tr><td style="text-align:center;">Sent by '
+                '<a target="_blank" href="https://metric.io" style="color:#875A7B;">'
+                'metric.io</a><br/>Discover '
+                '<a href="/event" style="color:#875A7B;">all our events</a>.'
+                '</td></tr></table>'
+                '</td></tr>'
+                '</table>'
+            ),
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'Event confirmation',
+        })
+
+        body = mail._prepare_outgoing_list()[0]['body']
+
+        self.assertIn('Event confirmation', body)
+        self.assertNotIn('Sent by', body)
+        self.assertNotIn('Discover', body)
+        self.assertNotIn('https://metric.io', body)
+        self.assertEqual(body.count('data-branding-mail-footer="1"'), 1)
+        self.assertLess(
+            body.index('data-branding-mail-footer="1"'),
+            body.rindex('</table>'),
+        )
+        self.assertIn('bgcolor="#F1F1F1"', body)
+
     def test_outgoing_header_company_logo_is_removed(self):
         company = self.env.ref('base.main_company')
         mail = self.env['mail.mail'].create({

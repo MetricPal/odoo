@@ -49,6 +49,49 @@ _INLINE_BRANDING_LOGO_IMG_RE = re.compile(
     rf'<img\b[^>]*\bsrc=["\']{re.escape(INLINE_LOGO_SRC)}["\'][^>]*>',
     flags=re.IGNORECASE,
 )
+_POWERED_BY_ODOO_BLOCK_RE = re.compile(
+    r'<(?P<tag>p|div)\b[^>]*>'
+    r'(?:(?!</(?P=tag)>).)*?'
+    r'\bPower(?:ed)?\s+by\b'
+    r'(?:(?!</(?P=tag)>).)*?'
+    r'(?:odoo\.com|>\s*Odoo\s*<|>\s*Odoo\s*</a>|Odoo)'
+    r'(?:(?!</(?P=tag)>).)*?'
+    r'</(?P=tag)>',
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_POWERED_BY_ODOO_INLINE_RE = re.compile(
+    r'\bPower(?:ed)?\s+by\s+'
+    r'(?:<a\b[^>]*\bodoo\.com[^>]*>\s*Odoo\s*</a>|Odoo)\.?',
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_SENT_BY_BRAND_BLOCK_RE = re.compile(
+    r'<(?P<tag>p|div)\b[^>]*>'
+    r'(?:(?!</(?P=tag)>).)*?'
+    r'\bSent\s+by\b'
+    r'(?:(?!</(?P=tag)>).)*?'
+    r'(?:metric\.io|YourCompany|<a\b[^>]*>[^<]*</a>)'
+    r'(?:(?!</(?P=tag)>).)*?'
+    r'</(?P=tag)>',
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_SENT_BY_BRAND_INLINE_RE = re.compile(
+    r'\bSent\s+by\s+'
+    r'(?:<a\b[^>]*>[^<]*(?:metric\.io|YourCompany)[^<]*</a>|metric\.io|YourCompany)\.?',
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_SENT_BY_BRAND_TABLE_RE = re.compile(
+    r'\s*(?:<!--\s*FOOTER BY\s*-->\s*)?'
+    r'<tr>\s*<td\b[^>]*>\s*'
+    r'(?:<t\b[^>]*>\s*)?'
+    r'<table\b[^>]*>'
+    r'(?:(?!</table>).)*?'
+    r'\bSent\s+by\b'
+    r'(?:(?!</table>).)*?'
+    r'</table>\s*'
+    r'(?:</t>\s*)?'
+    r'</td>\s*</tr>\s*',
+    flags=re.IGNORECASE | re.DOTALL,
+)
 
 
 class MailMail(models.Model):
@@ -159,6 +202,36 @@ class MailMail(models.Model):
         return None
 
     @staticmethod
+    def _branding_remove_odoo_powered_by(body):
+        body = _POWERED_BY_ODOO_BLOCK_RE.sub('', body)
+        return _POWERED_BY_ODOO_INLINE_RE.sub('', body)
+
+    @staticmethod
+    def _branding_remove_sent_by_brand(body):
+        body = _SENT_BY_BRAND_TABLE_RE.sub('', body)
+        body = _SENT_BY_BRAND_BLOCK_RE.sub('', body)
+        return _SENT_BY_BRAND_INLINE_RE.sub('', body)
+
+    @staticmethod
+    def _branding_append_footer_to_canvas(body, footer_html, canvas_color):
+        if not canvas_color:
+            return None
+        stripped_body = body.lstrip()
+        if not stripped_body.lower().startswith('<table'):
+            return None
+        insert_at = body.lower().rfind('</table>')
+        if insert_at == -1:
+            return None
+        canvas_color = escape(canvas_color)
+        footer_row = (
+            f'<tr><td align="center" bgcolor="{canvas_color}" '
+            f'style="background-color:{canvas_color}; padding:0 0 32px 0;">'
+            f'{footer_html}'
+            '</td></tr>'
+        )
+        return f'{body[:insert_at]}{footer_row}{body[insert_at:]}'
+
+    @staticmethod
     def _branding_force_white_canvas(body):
         def _replace_body(match):
             attributes = match.group('attributes')
@@ -234,13 +307,12 @@ class MailMail(models.Model):
             is_promotional_email = is_marketing_email or is_digest_email
             # Company logos belong in the shared footer, never in an email header.
             body = _COMPANY_LOGO_IMG_RE.sub('', body)
+            body = self._branding_remove_odoo_powered_by(body)
+            body = self._branding_remove_sent_by_brand(body)
             if _BRANDING_FOOTER_MARKER not in body:
                 body = _INLINE_BRANDING_LOGO_IMG_RE.sub('', body)
                 alignment = self._branding_footer_alignment(body)
-                canvas_color = (
-                    self._branding_marketing_canvas_color(body)
-                    if is_promotional_email else None
-                )
+                canvas_color = self._branding_marketing_canvas_color(body)
                 unsubscribe_url = (
                     self._branding_unsubscribe_url(
                         body,
@@ -251,10 +323,17 @@ class MailMail(models.Model):
                 footer_html = self._branding_footer_html(
                     company,
                     alignment=alignment,
-                    canvas_color=canvas_color,
+                    canvas_color=canvas_color if is_promotional_email else None,
                     unsubscribe_url=unsubscribe_url,
                 )
-                body = tools.mail.append_content_to_html(body, footer_html, plaintext=False)
+                body = (
+                    None if is_promotional_email
+                    else self._branding_append_footer_to_canvas(
+                        body,
+                        footer_html,
+                        canvas_color,
+                    )
+                ) or tools.mail.append_content_to_html(body, footer_html, plaintext=False)
             if is_digest_email:
                 body = self._branding_set_digest_canvas(str(body))
             elif not is_promotional_email:
