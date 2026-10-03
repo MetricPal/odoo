@@ -2,7 +2,7 @@
 <odoo>
     <template id="mail_notification_layout_brand_promotion_remove" inherit_id="mail.mail_notification_layout" name="Remove Mail Notification Odoo Brand Promotion" priority="99">
         <xpath expr="//body/div[@style='max-width: 900px; width: 100%;']" position="attributes">
-            <attribute name="style">max-width: 590px; width: 100%; margin: 0 auto; padding: 24px 24px 0; box-sizing: border-box;</attribute>
+            <attribute name="style">max-width:656px; width: 100%; margin: 0 auto; padding: 24px 28px 0; box-sizing: border-box;</attribute>
             <attribute name="data-branding-content-align">center</attribute>
         </xpath>
         <xpath expr="//div[@t-if='show_footer'][hr and b[@t-out='company.name']]" position="replace">
@@ -13,10 +13,13 @@
             </div>
         </xpath>
         <xpath expr="//div[a[contains(@href, 'utm_medium=email')]]" position="replace">
-            <div t-if="show_footer" style="color: #555555; font-size:11px;">
-                <span t-if="show_unfollow" id="mail_unfollow">
+            <div t-if="show_footer" align="center" style="padding:0 0 32px 0; text-align:center;">
+                <span t-if="show_unfollow" id="mail_unfollow" style="display:none;">
                     <a href="/mail/unfollow" style="text-decoration:none; color:#555555;">Unfollow</a>
                 </span>
+                <div style="height:32px; line-height:32px; font-size:0;">&amp;nbsp;</div>
+                <t t-set="branding_unsubscribe_url" t-value="'/mail/unfollow' if show_unfollow else False"/>
+                <t t-call="branding.branding_mail_footer"/>
             </div>
         </xpath>
     </template>
@@ -26,11 +29,19 @@
             <attribute name="style">padding-top: 16px; background-color: #ffffff; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;</attribute>
         </xpath>
         <xpath expr="//td[@t-if='company and not company.uses_default_logo']" position="replace"/>
-        <xpath expr="//tr[td/b[@t-out='company.name']]" position="replace"/>
+        <xpath expr="//tr[td/b[@t-out='company.name']]" position="replace">
+            <tr>
+                <td height="32" style="height:32px; line-height:32px; font-size:0;">&amp;nbsp;</td>
+            </tr>
+        </xpath>
         <xpath expr="//tr[td/a[contains(@href, 'utm_medium=email')]]" position="replace">
-            <tr t-if="show_unfollow">
-                <td align="center" style="min-width: 590px;">
-                    <a href="/mail/unfollow" style="text-decoration:none; color:#555555;">Unfollow</a>
+            <tr>
+                <td align="center" style="padding:0 0 32px 0; text-align:center;">
+                    <span t-if="show_unfollow" id="mail_unfollow" style="display:none;">
+                        <a href="/mail/unfollow" style="text-decoration:none; color:#555555;">Unfollow</a>
+                    </span>
+                    <t t-set="branding_unsubscribe_url" t-value="'/mail/unfollow' if show_unfollow else False"/>
+                    <t t-call="branding.branding_mail_footer"/>
                 </td>
             </tr>
         </xpath>

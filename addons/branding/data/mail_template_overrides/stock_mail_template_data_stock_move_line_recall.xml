@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_stock_mail_template_data_stock_move_line_recall" model="branding.mail.template.override">
+            <field name="xmlid">stock.mail_template_data_stock_move_line_recall</field>
+            <field name="template_name">Stock Move Line: Product Recall</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.picking_partner_id.display_name or ''"/><br/><br/>
+        We would like to issue a product recall regarding the following product:<br/><br/>
+        Product:<br/>
+        <t t-out="object.product_id.display_name or ''"/><br/><br/>
+        Lot / Serial Number:<br/>
+        <t t-out="object.lot_id.name or object.lot_name or ''"/><br/><br/>
+        We apologize for the inconvenience caused.<br/><br/>
+        Best wishes,
+    </p>
+</div>
+        
+            </field>
+        </record>
+  </data>
+</odoo>

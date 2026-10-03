@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_survey_mail_template_certification" model="branding.mail.template.override">
+            <field name="xmlid">survey.mail_template_certification</field>
+            <field name="template_name">Survey: Certification Success</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="background:#F0F0F0;color:#515166;padding:10px 0px;font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+    <table style="width:600px;margin:5px auto;">
+        <tbody>
+            <tr><td>
+                <!-- We use the logo of the company that created the survey (to handle multi company cases) -->
+                <a href="/"/>
+            </td><td style="text-align:right;vertical-align:middle;">
+                    Certification: <t t-out="object.survey_id.display_name or ''">Feedback Form</t>
+            </td></tr>
+        </tbody>
+    </table>
+    <table style="width:600px;margin:0px auto;background:white;border:1px solid #e1e1e1;">
+        <tbody>
+            <tr><td style="padding:15px 20px 10px 20px;">
+                <p>Dear <span t-out="object.partner_id.name or 'participant'">participant</span></p>
+                <p>
+                    Please find attached your
+                        <strong t-out="object.survey_id.display_name or ''">Furniture Creation</strong>
+                    certification
+                </p>
+                <p>Congratulations for passing the test with a score of <strong t-out="object.scoring_percentage"/>%!</p>
+            </td></tr>
+        </tbody>
+    </table>
+</div>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

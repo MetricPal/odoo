@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_calendar_calendar_template_delete_event" model="branding.mail.template.override">
+            <field name="xmlid">calendar.calendar_template_delete_event</field>
+            <field name="template_name">Calendar: Event Canceled</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="font-size: 13px; color: #374151; ">
+    <t t-set="mail_tz" t-value="object._get_mail_tz() or ctx.get('mail_tz')"/>
+    <t t-set="event_name" t-value="object.name or ''"/>
+    <t t-set="event_organizer" t-value="object.user_id.name or ''"/>
+    <h1 style="font-size: 18px; font-weight: bold; color: #374151; margin-bottom: 28px;">
+        Event canceled
+        <img src="/calendar/static/src/img/times-circle.png" style="border:0; width: 20px; height: 20px; margin-left: 10px; text-decoration:none; vertical-align: middle; padding-bottom: 2px;"/>
+    </h1>
+    <p style="margin: 0;">
+        Hello,<br/>
+        <span style="display: block; margin-top: 8px;">
+            This is to inform you that the event <strong t-out="event_name or ''">Follow-up for Project proposal</strong> <t t-if="event_organizer">organized by </t><t t-out="event_organizer or ''">Colleen Diaz</t> has been canceled and removed from your calendar.
+        </span>
+    </p>
+    <div style="margin: 32px 0 0;">
+        <h2 t-attf-style="margin-bottom: 12px; font-size: 14px; font-weight: bold; color: {{user.company_id.email_secondary_color or '#875A7B'}};">Details</h2>
+        <table cellpadding="0" cellspacing="0" border="0" style="font-size: 13px; color: #374151;">
+            <tr>
+                <td style="width: 100px; color: #676F7B;">Date &amp; Time</td>
+                <td style="font-weight: bold;">
+                    <t t-out="format_datetime(dt=object.start, tz=mail_tz if not object.allday else None, dt_format='EEEE', lang_code=object.env.lang)">Tuesday</t>
+                    <t t-out="format_datetime(dt=object.start, tz=mail_tz if not object.allday else None, dt_format='d', lang_code=object.env.lang)">4</t>
+                    <t t-out="format_datetime(dt=object.start, tz=mail_tz if not object.allday else None, dt_format='MMMM y', lang_code=object.env.lang)">May 2021</t>
+                    <t t-if="not object.allday">
+                        <t t-out="format_time(time=object.start, tz=mail_tz, time_format='short', lang_code=object.env.lang)">11:00 AM</t>
+                        <t t-if="mail_tz">
+                            <span style="font-size: 11px; font-weight: normal;">
+                                (<t t-out="mail_tz or ''">Europe/Brussels</t>)
+                            </span>
+                        </t>
+                    </t>
+                </td>
+            </tr>
+            <tr t-if="not object.allday and object.duration">
+                <td style="width: 100px; padding-top: 6px; color: #676F7B;">Duration</td>
+                <td style="padding-top: 6px;"><t t-out="('%dH%02d' % (object.duration,round(object.duration*60)%60))">0H30</t></td>
+            </tr>
+            <tr t-if="object.location">
+                <td style="width: 100px; padding-top: 6px; color: #676F7B;">Location</td>
+                <td style="padding-top: 6px;"><t t-out="object.location or ''">Bruxelles</t></td>
+            </tr>
+        </table>
+    </div>
+    <p style="margin: 32px 0 0;">
+        If you have any questions or concerns, please feel free to contact us. <br/>
+        Best regards,
+        <span style="display: block; margin-top: 8px;">The Calendar Team</span>
+    </p>
+</div>
+            </field>
+        </record>
+  </data>
+</odoo>

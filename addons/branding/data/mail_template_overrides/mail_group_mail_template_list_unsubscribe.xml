@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_mail_group_mail_template_list_unsubscribe" model="branding.mail.template.override">
+            <field name="xmlid">mail_group.mail_template_list_unsubscribe</field>
+            <field name="template_name">Mail Group: Mailing List Unsubscription</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+                Hello,<br/><br/>
+                You have requested to be unsubscribed to the mailing list <strong t-out="object.name or ''"/>.
+                <br/><br/>
+                To confirm, please visit the following link: <strong t-if="ctx.get('token_url')"><a t-att-href="ctx['token_url']"><t t-out="ctx['token_url'] or ''"/></a></strong>.
+                <br/><br/>
+                If this was a mistake or you did not requested this action, please ignore this message.
+            </div>
+        
+            </field>
+        </record>
+  </data>
+</odoo>

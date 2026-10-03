@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_account_mail_template_data_payment_receipt" model="branding.mail.template.override">
+            <field name="xmlid">account.mail_template_data_payment_receipt</field>
+            <field name="template_name">Payment: Payment Receipt</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.partner_id.name or ''">Azure Interior</t><br/><br/>
+        <t t-if="object.partner_type == 'customer' and object.payment_type == 'outbound'">We have processed your refund of</t>
+        <t t-elif="object.partner_type == 'supplier' and object.payment_type == 'outbound'">We have processed your payment of</t>
+        <t t-elif="object.partner_type == 'supplier' and object.payment_type == 'inbound'">Thank you for your refund of</t>
+        <t t-else="">Thank you for your payment of</t> <span style="font-weight:bold;" t-out="format_amount(object.amount, object.currency_id) or ''">$ 10.00</span>.
+        Please find the <t t-out="object.payment_receipt_title.lower()">payment receipt</t> <span t-if="object.name" style="font-weight:bold;" t-out="object.name.replace('/','-')">BNK1-2021-05-0002</span> from <t t-out="object.company_id.name or ''">YourCompany</t>.
+        <br/><br/>
+        Do not hesitate to contact us if you have any questions.
+        <br/><br/>
+        Best regards,
+        <t t-if="not is_html_empty(user.signature)">
+            <br/><br/>
+            <div>--<br/><t t-out="user.signature or ''">Mitchell Admin</t></div>
+        </t>
+    </p>
+</div>
+            </field>
+        </record>
+  </data>
+</odoo>

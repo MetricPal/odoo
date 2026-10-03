@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_hr_presence_mail_template_presence" model="branding.mail.template.override">
+            <field name="xmlid">hr_presence.mail_template_presence</field>
+            <field name="template_name">HR: Employee Absence email</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div>
+                    Dear <t t-out="object.name or ''">Abigail Peterson</t>,<br/><br/>
+We hope this message finds you well. It has come to our attention that you are currently not present at work, and there is no record of a time off request from you. If this absence is due to an oversight on our part, we sincerely apologize for any confusion.
+Please take the necessary steps to address this unplanned absence. Should you have any questions or need assistance, do not hesitate to reach out to your manager or the HR department at your earliest convenience.
+Thank you for your prompt attention to this matter.
+                    <br/>Best Regards,<br/><br/>
+                </div>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

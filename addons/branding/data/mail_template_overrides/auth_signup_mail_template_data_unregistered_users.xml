@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_auth_signup_mail_template_data_unregistered_users" model="branding.mail.template.override">
+            <field name="xmlid">auth_signup.mail_template_data_unregistered_users</field>
+            <field name="template_name">Settings: Unregistered User Reminder</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<t>
+Dear <t t-out="object.name or ''">Mitchell Admin</t>,<br/> <br/>
+You added the following user(s) to your database but they haven't registered yet:
+<ul>
+    <t t-foreach="invited_users" t-as="invited_user">
+        <li t-out="invited_user or ''">demo@example.com</li>
+    </t>
+</ul>
+Follow up with them so they can access your database and start working with you.
+<br/><br/>
+Have a nice day!<br/>
+--<br/>The <t t-out="object.company_id.name or ''">YourCompany</t> Team
+            </t>
+            </field>
+        </record>
+  </data>
+</odoo>

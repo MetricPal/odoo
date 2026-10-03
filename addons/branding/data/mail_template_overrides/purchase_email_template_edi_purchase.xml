@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_purchase_email_template_edi_purchase" model="branding.mail.template.override">
+            <field name="xmlid">purchase.email_template_edi_purchase</field>
+            <field name="template_name">Purchase: Request For Quotation</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.partner_id.name or ''">Brandon Freeman</t>
+        <t t-if="object.partner_id.parent_id">
+            (<t t-out="object.partner_id.parent_id.name or ''">Azure Interior</t>)
+        </t>
+        <br/><br/>
+        Here is in attachment a request for quotation <span style="font-weight:bold;" t-out="object.name or ''">P00015</span>
+        <t t-if="object.partner_ref">
+            with reference: <t t-out="object.partner_ref or ''">REF_XXX</t>
+        </t>
+        from <t t-out="object.company_id.name or ''">YourCompany</t>.
+        <br/><br/>
+        If you have any questions, please do not hesitate to contact us.
+        <br/><br/>
+        Best regards,
+        <t t-if="not is_html_empty(object.user_id.signature)">
+            <br/><br/>
+            <div>--<br/><t t-out="object.user_id.signature or ''">Mitchell Admin</t></div>
+        </t>
+    </p>
+</div>
+            </field>
+        </record>
+  </data>
+</odoo>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="branding_mail_footer" name="metric.io Mail Footer">
+<table data-branding-mail-footer="1" role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" align="center" style="width:100%; max-width:600px; background-color:#EEEEEE; border-radius:12px; border-collapse:separate;">
+    <tr>
+        <td align="left" style="padding:24px 28px; color:#5f6368; font-family:Verdana, Arial,sans-serif; font-size:11px; font-weight:normal; line-height:16px; text-align:left;">
+            <img src="cid:metric-io-logo@branding" t-att-alt="company.name" width="64" style="display:block; width:64px; max-width:100%; height:auto; margin:0 0 12px 0; border:0;"/>
+            <div data-branding-company-name="1">
+                <t t-out="company.name"/>
+            </div>
+            <div data-branding-company-address="1" style="margin-top:4px;">
+                <div t-if="company.street" t-out="company.street"/>
+                <div t-if="company.street2" t-out="company.street2"/>
+                <div>
+                    <t t-if="company.zip" t-out="company.zip"/>
+                    <t t-if="company.city">
+                        <t t-if="company.zip"> </t><t t-out="company.city"/>
+                    </t>
+                    <t t-if="company.state_id or company.country_id">
+                        <t t-if="company.zip or company.city">, </t>
+                        <t t-if="company.state_id" t-out="company.state_id.name"/>
+                        <t t-if="company.state_id and company.country_id">, </t>
+                        <t t-if="company.country_id" t-out="company.country_id.name"/>
+                    </t>
+                </div>
+            </div>
+            <div style="margin-top:6px;">
+                <a t-att-href="company.get_base_url() + '/privacy'" style="color:#5f6368; font:inherit; text-decoration:underline;">Privacy</a>
+                <span t-if="branding_unsubscribe_url">
+                    &amp;middot; <a t-att-href="branding_unsubscribe_url" style="color:#5f6368; font:inherit; text-decoration:underline;">Unsubscribe</a>
+                </span>
+            </div>
+            <div data-branding-copyright="1" style="margin-top:16px;">
+                <t t-out="company.name"/> &amp;copy; 2026
+            </div>
+        </td>
+    </tr>
+</table>
+    </template>
+
+    <template id="branding_mail_layout" name="metric.io Mail Layout">
+<html t-att-lang="lang">
+<head>
+    <meta http-equiv="Content-Type" content="text/html charset=UTF-8"/>
+</head>
+<body style="margin:0; padding:0; font-family:Verdana, Arial,sans-serif; color:#454748;">
+<t t-set="subtype_internal" t-value="subtype and subtype.internal"/>
+<t t-call="mail.notification_preview"/>
+<table data-branding-body-canvas="1" role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="width:100%; padding:32px 0; border-collapse:separate;">
+    <tr>
+        <td align="center" style="padding:0; text-align:center;">
+            <table data-branding-content-shell="1" role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" align="center" style="width:100%; max-width:600px; border-collapse:separate;">
+                <tr>
+                    <td dir="ltr" align="left" style="padding:24px 28px; color:#454748; font-family:Verdana, Arial,sans-serif; font-size:13px; line-height:20px; text-align:left;">
+                        <t t-out="message.body"/>
+                        <t t-if="email_add_signature and not is_html_empty(signature)">
+                            <div t-out="signature" class="o_signature" style="font-size:13px; margin-top:16px;"/>
+                        </t>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td height="32" style="height:32px; line-height:32px; font-size:0;">&amp;nbsp;</td>
+    </tr>
+    <tr>
+        <td align="center" style="padding:0; text-align:center;">
+            <t t-set="branding_unsubscribe_url" t-value="'/mail/unfollow' if show_unfollow else False"/>
+            <t t-call="branding.branding_mail_footer"/>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
+    </template>
+
+    <template id="branding_mail_layout_with_responsible_signature"
+              name="metric.io Mail Layout with Responsible Signature"
+              inherit_id="branding.branding_mail_layout"
+              primary="True">
+        <xpath expr="//t[@t-if='email_add_signature and not is_html_empty(signature)']" position="replace">
+            <t t-if="email_add_signature and record and 'user_id' in record and record.user_id and not record.env.user._is_superuser() and not is_html_empty(record.user_id.sudo().signature)">
+                <div t-out="record.user_id.sudo().signature" class="o_signature" style="font-size:13px; margin-top:16px;"/>
+            </t>
+        </xpath>
+    </template>
+</odoo>

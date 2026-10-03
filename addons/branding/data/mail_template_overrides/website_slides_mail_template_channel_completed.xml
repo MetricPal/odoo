@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_website_slides_mail_template_channel_completed" model="branding.mail.template.override">
+            <field name="xmlid">website_slides.mail_template_channel_completed</field>
+            <field name="template_name">Elearning: Completed Course</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+                    <div style="margin: 0px; padding: 0px; font-size: 13px;">
+                        <p style="margin: 0px;">Hello <t t-out="object.partner_id.name or ''">Brandon Freeman</t>,</p><br/>
+                        <p><b>Congratulations!</b></p>
+                        <p>You've completed the course <b t-out="object.channel_id.name or ''">Basics of Gardening</b></p>
+                        <p>Check out the other available courses.</p><br/>
+
+                        <div style="padding: 16px 8px 16px 8px; text-align: center;">
+                            <a href="/slides" t-attf-style="background-color: {{object.channel_id.user_id.company_id.email_secondary_color or '#875A7B'}}; padding: 8px 16px 8px 16px; text-decoration: none; color: {{object.channel_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; border-radius: 5px;">
+                                Explore courses
+                            </a>
+                        </div>
+                        Enjoy this exclusive content!
+                        <t t-if="object.channel_id.user_id.signature">
+                            <br/>
+                            <div>--<br/><t t-out="object.channel_id.user_id.signature or ''">Mitchell Admin</t></div>
+                        </t>
+                    </div>
+                </div>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

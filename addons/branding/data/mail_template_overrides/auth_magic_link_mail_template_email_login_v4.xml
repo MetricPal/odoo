@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_auth_magic_link_mail_template_email_login_v4" model="branding.mail.template.override">
+            <field name="xmlid">auth_magic_link.mail_template_email_login_v4</field>
+            <field name="template_name">Email Login Link</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="font-size:13px; color:#374151; margin:0; padding:0;">
+    <div style="font-size:10px; margin:0 0 6px 0;">Your Account</div>
+    <div style="font-size:20px; font-weight:bold; margin:0 0 16px 0;"><t t-out="object.name or ''"/></div>
+    <hr width="100%" style="background-color:#eeeeee; border:medium none; clear:both; display:block; font-size:0px; min-height:1px; line-height:0; margin:0 0 20px 0;"/>
+    <p style="margin:0 0 16px 0;">Dear <t t-out="object.name or ''"/>,</p>
+    <p style="margin:0 0 16px 0;">A sign-in link was requested for the account linked to this email. Use the button below to sign in.<br/>This link can only be used once and will expire shortly.</p>
+    <div style="margin:0 0 16px 0;">
+        <a t-att-href="ctx.get('login_url')" t-attf-style="background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; padding:8px 16px; text-decoration:none; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; border-radius:5px; font-size:13px; display:inline-block;">Sign in</a>
+    </div>
+    <p style="margin:0 0 24px 0;">If you did not request this sign-in link, you can safely ignore this email.</p>
+    <p style="margin:0;">Thanks,<t t-if="user.signature"><br/><t t-out="user.signature"/></t></p>
+</div>
+            </field>
+        </record>
+  </data>
+</odoo>

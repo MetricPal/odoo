@@ -3,8 +3,5 @@
     <record id="base.main_company" model="res.company" forcecreate="0">
         <field name="name">metric.io</field>
         <field name="logo" type="bytes" file="branding/static/src/img/metric_io_logo.png"/>
-        <field name="email_body_background_color">#F7F8FA</field>
-        <field name="email_content_background_color">#FFFFFF</field>
-        <field name="email_footer_background_color">#EEEEEE</field>
     </record>
 </odoo>

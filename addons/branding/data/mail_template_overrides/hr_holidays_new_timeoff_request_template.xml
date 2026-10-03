@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_hr_holidays_new_timeoff_request_template" model="branding.mail.template.override">
+            <field name="xmlid">hr_holidays.new_timeoff_request_template</field>
+            <field name="template_name">New Time Off Request</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div>
+                    Dear <b><t t-out="object.env.context.get('manager')"/></b>,
+                    <br/><br/>
+                    <p>I'm requesting a Time Off. I would appreciate if you could approve it whenever possible!</p>
+                    <ul>
+                        <li>Time Type: <t t-out="object.work_entry_type_id.name"/></li>
+                        <li><t t-out="object.request_date_from"/> → <t t-out="object.request_date_to"/> (<t t-out="object.duration_display"/>)</li>
+                        <li t-if="object.name">Reason: <t t-out="object.name"/></li>
+                    </ul>
+                </div>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

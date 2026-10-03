@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_website_sale_email_template_back_in_stock" model="branding.mail.template.override">
+            <field name="xmlid">website_sale.email_template_back_in_stock</field>
+            <field name="template_name">Product: Back in Stock Email</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<t t-set="website" t-value="object.website_id or object.env.website or object.env.website.browse(env.context.get('host_id'))"/>
+                <div style="margin: 0px; padding: 0px;">
+                    <p>
+                        Hello <t t-out="ctx.get('customer_name')">Customer</t>,
+                    </p>
+                    <p>The product you were waiting for is now back in stock!</p>
+                    <div t-if="not is_html_empty(user.signature)" style="font-size: 14px; margin: 0 0 16px;">
+                        <t t-out="user.signature or ''">Mitchell Admin</t>
+                    </div>
+                    <div t-attf-style="margin-bottom: 22px; font-size: 14px;">
+                        <a t-att-href="website.get_base_url() + object.website_url" t-attf-style="background-color: {{website.company_id.email_secondary_color or '#875A7B'}}; padding: 8px 16px 8px 16px; text-decoration: none; color: {{website.company_id.email_primary_color or '#fff'}}; border-radius: 5px; font-size:14px;">
+                            Order Now
+                        </a>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <table role="presentation" width="100%" style="max-width:600px; border-collapse: collapse; font-size: 14px;">
+                            <tr>
+                                <td width="24%" style="max-width: 120px; padding: 0 10px 10px 0; vertical-align: top;">
+                                    <img t-att-src="website.image_url(object, 'image_1920')" style="width: 100px; height: 100px; object-fit: contain;" alt="Product image"/>
+                                </td>
+                                <td style="padding-bottom: 8px; vertical-align: top;">
+                                    <h2 t-att-style="'margin:0; font-size:14px; color:%s;' % ((website and website.company_id.email_secondary_color) or '#875A7B')">
+                                        <strong t-out="object.name or ''">Desk Combination</strong>
+                                    </h2>
+                                    <p t-if="object.product_template_attribute_value_ids" style="margin: 4px 0;">
+                                        ( <t t-out="', '.join(object.product_template_attribute_value_ids.mapped('name'))">Wood</t> )
+                                    </p>
+                                    <t t-out="object.description_ecommerce or ''">Desk Description</t>
+                                </td>
+                                <td width="19%" align="right" style="max-width: 100%; vertical-align: top;">
+                                    <t t-out="format_amount(object.list_price, object.currency_id)">$ 450</t>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

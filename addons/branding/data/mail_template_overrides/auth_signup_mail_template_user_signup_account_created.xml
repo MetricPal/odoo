@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_auth_signup_mail_template_user_signup_account_created" model="branding.mail.template.override">
+            <field name="xmlid">auth_signup.mail_template_user_signup_account_created</field>
+            <field name="template_name">Settings: New Portal Sign Up</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<t>
+                        Dear <t t-out="object.name or ''">Marc Demo</t>,<br/><br/>
+                        Your account has been successfully created!<br/>
+                        Your login is <strong><t t-out="object.email or ''">mark.brown23@example.com</t></strong><br/>
+                        To gain access to your account, you can use the following link:
+                        <div style="margin: 32px 0px 32px 0px;">
+                            <a t-attf-href="/web/login?auth_login={{object.email}}" t-attf-style="background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; padding: 8px 16px 8px 16px; text-decoration: none; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; border-radius: 5px; font-size:13px;">
+                                Go to My Account
+                            </a>
+                        </div>
+                        Thanks,<br/>
+                        <t t-if="user.signature">
+                            <br/>
+                            <div>--<br/><t t-out="user.signature or ''">Mitchell Admin</t></div>
+                        </t>
+                    </t>
+            </field>
+        </record>
+  </data>
+</odoo>

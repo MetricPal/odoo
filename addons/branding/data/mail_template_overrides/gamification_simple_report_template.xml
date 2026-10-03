@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_gamification_simple_report_template" model="branding.mail.template.override">
+            <field name="xmlid">gamification.simple_report_template</field>
+            <field name="template_name">Gamification: Challenge Report</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<table cellspacing="0" cellpadding="0" width="100%" style="background-color: #EEE; border-collapse: collapse;">
+<tr>
+    <td valign="top" align="center">
+        <t t-set="object_ctx" t-value="ctx.get('object')"/>
+        <t t-set="company" t-value="object_ctx and object_ctx.company_id or user.company_id"/>
+        <t t-set="challenge_lines" t-value="ctx.get('challenge_lines', [])"/>
+        <table cellspacing="0" cellpadding="0" width="600" style="margin: 0 auto; width: 570px;">
+            <tr><td>
+                <table cellspacing="0" cellpadding="0" width="100%">
+                    <tr>
+                        <div>
+                            <t t-if="object.visibility_mode == 'ranking'">
+                                <td style="padding:15px;">
+                                    <p style="font-size:20px;color:#666666;" align="center">Leaderboard</p>
+                                </td>
+                            </t>
+                        </div>
+                    </tr>
+                </table>
+                <table cellspacing="0" cellpadding="0" width="100%" bgcolor="#fff" style="background-color:#fff;">
+                    <tr><td style="padding: 15px;">
+                        <t t-if="object.visibility_mode == 'personal'">
+                            <span style="color:#666666;font-size:13px;">Here is your current progress in the challenge <strong t-out="object.name or ''"/>.</span>
+                            <table cellspacing="0" cellpadding="0" width="100%" style="margin-top:20px;">
+                                <tr>
+                                    <td align="center">
+                                        <div>Personal Performance</div>
+                                    </td>
+                                </tr>
+                            </table>
+                            <table cellspacing="0" cellpadding="0" width="100%" style="margin-top:30px;color:#666666;">
+                                <thead>
+                                    <tr style="color:#9A6C8E; font-size:12px;">
+                                        <th align="left" style="padding-bottom: 0px;width:40%;text-align:left;">Goals</th>
+                                        <th style="width:20%;text-align:right;" align="left">Target</th>
+                                        <th style="width:20%;text-align:right;" align="right">Current</th>
+                                        <th style="width:20%;text-align:right;" align="right">Completeness</th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="5" style="height:1px;background-color:#9A6C8E;"/>
+                                    </tr>
+                                </thead>
+                                <tbody t-foreach="challenge_lines" t-as="line">
+                                    <tr style="font-weight:bold;">
+                                        <td style="padding: 20px 0;" align="left">
+                                            <t t-out="line['name'] or ''"/>
+                                            <t t-if="line['suffix'] or line['monetary']">
+                                                (<t t-out="line['full_suffix'] or ''"/>)
+                                            </t>
+                                        </td>
+                                        <td style="padding: 20px 0;" align="right"><t t-out="&quot;%.2f&quot; % line['target'] or ''"/>
+                                            <t t-if="line['suffix']" t-out="line['suffix'] or ''"/>
+                                        </td>
+                                        <td style="padding: 20px 0;" align="right"><t t-out="&quot;%.2f&quot; % line['current'] or ''"/>
+                                            <t t-if="line['suffix']" t-out="line['suffix'] or ''"/>
+                                        </td>
+                                        <td style="padding: 20px 0;font-size:25px;color:#9A6C8E;" align="right"><strong><t t-out="int(line['completeness']) or ''"/>%</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="5" style="height:1px;background-color:#e3e3e3;"/>
+                                    </tr>
+                                </tbody>
+                            </table>                   
+                        </t>
+                        <t t-else="">
+                            <span style="color:#A8A8A8;font-size:13px;">
+                                Challenge: <strong t-out="object.name or ''"/>.
+                            </span> 
+                            <t t-foreach="challenge_lines" t-as="line">
+                                <!-- Header + Button table -->
+                                <table cellspacing="0" cellpadding="0" width="100%" style="margin-top:35px;">
+                                    <tr>
+                                        <td width="50%">
+                                            <div>Top Achievers for goal <strong t-out="line['name'] or ''"/></div>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <!-- Podium -->
+                                <t t-if="len(line['goals']) == 2">
+                                    <table cellspacing="0" cellpadding="0" width="100%" style="margin-top:10px;">
+                                        <tr><td style="padding:0 30px;">
+                                            <table cellspacing="0" cellpadding="0" width="100%" style="table-layout: fixed;">
+                                                <tr>
+                                                    <t t-set="top_goals" t-value="line['goals'][:3]"/>
+                                                    <t t-foreach="top_goals" t-as="goal">
+                                                        <td align="center" style="width:32%;">
+                                                            <t t-if="loop.index == 1">
+                                                                <t t-set="extra_div" t-value="'&lt;div style=&quot;height:40px;&quot;&gt;&lt;/div&gt;'"/>
+                                                                <t t-set="heightA" t-value="95"/>
+                                                                <t t-set="heightB" t-value="75"/>
+                                                                <t t-set="bgColor" t-value="'#b898b0'"/>
+                                                                <t t-set="fontSize" t-value="50"/>
+                                                                <t t-set="podiumPosition" t-value="'2'"/>
+                                                            </t>
+                                                            <t t-elif="loop.index == 2">
+                                                                <t t-set="extra_div" t-value="''"/>
+                                                                <t t-set="heightA" t-value="55"/>
+                                                                <t t-set="heightB" t-value="115"/>
+                                                                <t t-set="bgColor" t-value="'#9A6C8E'"/>
+                                                                <t t-set="fontSize" t-value="85"/>
+                                                                <t t-set="podiumPosition" t-value="'1'"/>
+                                                            </t>
+                                                            <t t-elif="loop.index == 3">
+                                                                <t t-set="extra_div" t-value="'&lt;div style=&quot;height:60px;&quot;&gt;&lt;/div&gt;'"/>
+                                                                <t t-set="heightA" t-value="115"/>
+                                                                <t t-set="heightB" t-value="55"/>
+                                                                <t t-set="bgColor" t-value="'#c8afc1'"/>
+                                                                <t t-set="fontSize" t-value="35"/>
+                                                                <t t-set="podiumPosition" t-value="'3'"/>
+                                                            </t>
+                                                            <div style="margin:0 3px 0 3px;height:220px;">
+                                                                <div t-attf-style="height:{{ heightA }}px;">
+                                                                    <t t-out="extra_div or ''"/>
+                                                                    <div style="height:55px;">
+                                                                        <img style="margin-bottom:5px;width:50px;height:50px;border-radius:50%;object-fit:cover;" t-att-src="image_data_uri(object.env['res.users'].browse(goal['user_id']).partner_id.image_128)" t-att-alt="goal['name']"/>
+                                                                    </div>
+                                                                    <div align="center" t-attf-style="color:{{ bgColor }};height:20px">
+                                                                        <t t-out="goal['name'] or ''"/>
+                                                                    </div>
+                                                                </div>
+                                                                <div t-attf-style="background-color:{{ bgColor }};height:{{ heightB }}px;">
+                                                                    <strong><span t-attf-style="color:#fff;font-size:{{ fontSize }}px;" t-out="podiumPosition or ''"/></strong>
+                                                                </div>
+                                                                <div style="height:30px;">
+                                                                    <t t-out="&quot;%.2f&quot; % goal['current'] or ''"/>
+                                                                    <t t-if="line['suffix'] or line['monetary']">
+                                                                        <t t-out="line['full_suffix'] or ''"/>
+                                                                    </t>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </t>
+                                                </tr>
+                                            </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </t>
+                                <!-- data table -->
+                                <table cellspacing="0" cellpadding="0" width="100%" style="margin-bottom:5px">
+                                    <tr>
+                                        <td>
+                                            <table cellspacing="0" cellpadding="0" width="100%" style="margin-top:30px;margin-bottom:5px;color:#666666;">
+                                                <thead>
+                                                    <tr style="color:#9A6C8E; font-size:12px;">
+                                                        <th style="width:15%;text-align:center;">Rank</th>
+                                                        <th style="width:25%;text-align:left;">Name</th>
+                                                        <th style="width:30%;text-align:right;">Performance 
+                                                            <t t-if="line['suffix']">
+                                                                (<t t-out="line['suffix'] or ''"/>)
+                                                            </t>
+                                                            <t t-elif="line['monetary']">
+                                                                (<t t-out="company.currency_id.symbol or ''"/>)
+                                                            </t>
+                                                        </th>
+                                                        <th style="width:30%;text-align:right;">Completeness</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td colspan="5" style="height:1px;background-color:#9A6C8E;"/>
+                                                    </tr>
+                                                </thead>
+                                                <tbody t-foreach="line['goals']" t-as="goal">
+                                                    <tr>
+                                                        <t t-set="tdBgColor" t-value="'#fff'"/>
+                                                        <t t-set="tdColor" t-value="'gray'"/>
+                                                        <t t-set="mutedColor" t-value="'#AAAAAA'"/>
+                                                        <t t-set="tdPercentageColor" t-value="'#9A6C8E'"/>
+                                                        <td width="15%" align="center" valign="middle" t-attf-style="background-color:{{ tdBgColor }};padding :5px 0;font-size:20px;"><t t-out="goal['rank']+1 or ''"/>
+                                                        </td>
+                                                        <td width="25%" align="left" valign="middle" t-attf-style="background-color:{{ tdBgColor }};padding :5px 0;font-size:13px;"><t t-out="goal['name'] or ''"/></td>
+                                                        <td width="30%" align="right" t-attf-style="background-color:{{ tdBgColor }};padding:5px 0;line-height:1;"><t t-out="&quot;%.2f&quot; % goal['current'] or ''"/><br/><span t-attf-style="font-size:13px;color:{{ mutedColor }};">on <t t-out="&quot;%.2f&quot; % line['target'] or ''"/></span>
+                                                        </td>
+                                                        <td width="30%" t-attf-style="color:{{ tdPercentageColor }};background-color:{{ tdBgColor }};padding-right:15px;font-size:22px;" align="right"><strong><t t-out="int(goal['completeness']) or ''"/>%</strong></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td colspan="5" style="height:1px;background-color:#DADADA;"/>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table> 
+                            </t>
+                        </t>
+                    </td></tr>
+                </table>
+            </td></tr>
+        </table>
+    </td>
+</tr>
+</table>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

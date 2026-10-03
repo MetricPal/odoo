@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_website_sale_mail_template_withdrawal_request_notification" model="branding.mail.template.override">
+            <field name="xmlid">website_sale.mail_template_withdrawal_request_notification</field>
+            <field name="template_name">Ecommerce: Withdrawal Request Notification</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<p>
+A withdrawal request was submitted for order <t t-out="object.order_reference">S00001</t>.
+</p>
+<div style="margin: 16px 0; text-align: center;">
+    <a t-att-href="ctx.get('order_access_link')" target="_blank" style="background-color: #875A7B; padding: 8px 16px; text-decoration: none; color: #fff; border-radius: 5px; font-size: 14px; display: inline-block;">
+        View Order
+    </a>
+</div>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

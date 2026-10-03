@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_point_of_sale_email_template_pos_receipt" model="branding.mail.template.override">
+            <field name="xmlid">point_of_sale.email_template_pos_receipt</field>
+            <field name="template_name">Point of Sale: Receipt</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-size: 14px;">
+                    <t t-set="client_name" t-value="object.partner_id.name"/>
+                    <t t-set="store_name" t-value="object.config_id.name"/>
+                    <t t-set="tz" t-value="object.company_id.partner_id.tz"/>
+                    <t t-set="lg" t-value="object.partner_id.lang or user.lang"/>
+                    <div>
+                        <t t-if="client_name">Hello <t t-out="client_name">Client name</t>,</t>
+                        <t t-else="">Hello,</t>
+                    </div>
+                    <br/>
+                    <div>Thank you for purchasing from <t t-out="store_name">Store name</t>!</div>
+                    <div>Attached, you will find your receipt for the purchase of <span><t t-out="format_datetime(dt=object.date_order, tz=tz, dt_format=&quot;EEEE d MMMM&quot;,                          lang_code=lg) or ''">date</t> <t t-out="format_time(time=object.date_order, tz=tz, time_format='short',                          lang_code=lg)">time</t>.</span>
+                    </div>
+                    <br/>
+                    <div>With kind regards,</div>
+                    <br/>
+                    <t t-out="store_name">Store name</t>
+                </div>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

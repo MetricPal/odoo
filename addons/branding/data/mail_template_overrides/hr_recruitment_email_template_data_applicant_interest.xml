@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_hr_recruitment_email_template_data_applicant_interest" model="branding.mail.template.override">
+            <field name="xmlid">hr_recruitment.email_template_data_applicant_interest</field>
+            <field name="template_name">Recruitment: Interest</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <div style="text-align: center">
+        <h2>Congratulations!</h2>
+        <div style="color:grey;">Your resume has been positively reviewed.</div>
+    </div>
+    <div style="font-size: 13px; margin: 0px; padding: 0px;">
+        We just reviewed your resume, and it caught our
+        attention. As we think you might be great for the
+        position, your application has been short listed for a
+        call or an interview.
+        <br/><br/>
+        <div t-if="'website_url' in object.job_id and object.job_id.website_url" style="padding: 16px 8px 16px 8px;">
+            <a t-att-href="object.job_id.website_url" t-attf-style="background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; text-decoration: none; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; padding: 8px 16px 8px 16px; border-radius: 5px;">Job Description</a>
+        </div>
+
+        <t t-if="object.recruiter_id and object.recruiter_id.user_id">
+            You will soon be contacted by:<br/>
+            <strong t-out="object.recruiter_id.name or ''">Mitchell Admin</strong><br/>
+            <span>Email: <t t-out="object.recruiter_id.work_email or ''">admin@yourcompany.example.com</t></span><br/>
+            <span>Phone: <t t-out="object.recruiter_id.work_phone or ''">+1 650-123-4567</t></span>
+            <br/><br/>
+        </t>
+        See you soon,
+        <div style="font-size: 11px; color: grey;">
+            -- <br/>
+            The HR Team
+            <t t-if="'website_url' in object.job_id and hasattr(object.job_id, 'website_url') and object.job_id.website_url">
+                Discover <a href="/jobs" style="text-decoration:none;color:#717188;">all our jobs</a>.<br/>
+            </t>
+        </div>
+
+        <hr width="97%" style="background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;"/>
+        <h3 style="color:#9A6C8E;"><strong>What is the next step?</strong></h3>
+        We usually <strong>answer applications within a few days</strong>.
+        <br/><br/>
+        The next step is either a call or a meeting in our offices.
+        <br/>
+        Feel free to <strong>contact us if you want a faster
+        feedback</strong> or if you don't get news from us
+        quickly enough (just reply to this email).
+        <br/>
+
+        <hr width="97%" style="background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 17px 0px 16px 0px;"/>
+        <t t-set="location" t-value="''"/>
+        <t t-if="object.job_id.address_id.name">
+            <strong t-out="object.job_id.address_id.name or ''">Teksa SpA</strong><br/>
+        </t>
+        <t t-if="object.job_id.address_id.street">
+            <t t-out="object.job_id.address_id.street or ''">Puerto Madero 9710</t><br/>
+            <t t-set="location" t-value="object.job_id.address_id.street"/>
+        </t>
+        <t t-if="object.job_id.address_id.street2">
+            <t t-out="object.job_id.address_id.street2 or ''">Of A15, Santiago (RM)</t><br/>
+            <t t-set="location" t-value="'%s, %s' % (location, object.job_id.address_id.street2)"/>
+        </t>
+        <t t-if="object.job_id.address_id.city">
+            <t t-out="object.job_id.address_id.city or ''">Pudahuel</t>,
+            <t t-set="location" t-value="'%s, %s' % (location, object.job_id.address_id.city)"/>
+        </t>
+        <t t-if="object.job_id.address_id.state_id.name">
+            <t t-out="object.job_id.address_id.state_id.name or ''">C1</t>,
+            <t t-set="location" t-value="'%s, %s' % (location, object.job_id.address_id.state_id.name)"/>
+        </t>
+        <t t-if="object.job_id.address_id.zip">
+            <t t-out="object.job_id.address_id.zip or ''">98450</t>
+            <t t-set="location" t-value="'%s, %s' % (location, object.job_id.address_id.zip)"/>
+        </t>
+        <br/>
+        <t t-if="object.job_id.address_id.country_id.name">
+            <t t-out="object.job_id.address_id.country_id.name or ''">Argentina</t><br/>
+            <t t-set="location" t-value="'%s, %s' % (location, object.job_id.address_id.country_id.name)"/>
+        </t>
+        <br/>
+    </div>
+</div>
+            </field>
+        </record>
+  </data>
+</odoo>

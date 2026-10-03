@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_hr_recruitment_email_template_data_applicant_not_interested" model="branding.mail.template.override">
+            <field name="xmlid">hr_recruitment.email_template_data_applicant_not_interested</field>
+            <field name="template_name">Recruitment: Not interested anymore</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <div style="font-size: 13px; margin: 0px; padding: 0px;">
+        Dear,<br/><br/>
+        We would like to thank you for your interest and your time.<br/>
+        We wish you all the best in your future endeavors.
+        <br/><br/>
+        Best<br/>
+        <div style="font-size: 11px; color: grey;">
+            <t t-if="object.recruiter_id and object.recruiter_id.user_id">
+                -- <br/>
+                <strong t-out="object.recruiter_id.name or ''">Marc Demo</strong><br/>
+                Email: <t t-out="object.recruiter_id.work_email or ''">mark.brown23@example.com</t><br/>
+                Phone: <t t-out="object.recruiter_id.work_phone or ''">+1 650-123-4567</t>
+            </t>
+            <t t-else="">
+                -- <br/>
+                <t t-out="object.company_id.name or ''">YourCompany</t><br/>
+                The HR Team<br/>
+            </t>
+        </div>
+    </div>
+</div>
+            </field>
+        </record>
+  </data>
+</odoo>

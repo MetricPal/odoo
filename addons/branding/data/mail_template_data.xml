@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <function model="mail.template" name="write">
-        <function model="mail.template" name="search">
-            <value eval="[('email_layout_force_footer', '=', False)]"/>
-        </function>
-        <value eval="{'email_layout_force_footer': True}"/>
-    </function>
-</odoo>

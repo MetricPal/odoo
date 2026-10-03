@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_hr_holidays_mail_template_allocation_confirmed" model="branding.mail.template.override">
+            <field name="xmlid">hr_holidays.mail_template_allocation_confirmed</field>
+            <field name="template_name">Time Off Allocation Confirmed</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<div>
+                    Dear <t t-out="object.employee_id.name or 'Employee'"/>,<br/><br/>
+                    Your time off allocation has been confirmed.<br/><br/>
+                    Details:<br/>
+                    <ul>
+                        <li>Time Type: <t t-out="object.work_entry_type_id.name or ''"/></li>
+                        <li>Allocation: <t t-out="object.duration_display or ''"/></li>
+                        <li>Valid From: <t t-out="object.date_from or ''"/> <t t-if="not object.date_to">(No Expiry)</t><t t-else=""> to <t t-out="object.date_to or ''"/></t></li>
+                        <li t-if="object.accrual_plan_id">Accrual Plan: <t t-out="object.accrual_plan_id.name or ''"/></li>
+                    </ul>
+                    <br/>
+                    For any questions, contact HR Responsible.<br/><br/>
+                    Regards,<br/>
+                    <t t-out="object.env.user.name or ''"/>
+                </div>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

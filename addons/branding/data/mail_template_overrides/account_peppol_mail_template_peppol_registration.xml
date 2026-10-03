@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="template_override_account_peppol_mail_template_peppol_registration" model="branding.mail.template.override">
+            <field name="xmlid">account_peppol.mail_template_peppol_registration</field>
+            <field name="template_name">Peppol: Registration update</field>
+            <field name="email_layout_xmlid">branding.branding_mail_layout</field>
+            <field name="body_html" type="html">
+<table border="0" cellpadding="0" cellspacing="0" style="padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;">
+    <tr>
+        <td align="center">
+            <table border="0" cellpadding="0" cellspacing="0" width="600" style="padding: 16px; background-color: white; color: #454748; border-collapse:separate;">
+                <!-- HEADER -->
+                <tr>
+                    <td align="center" style="">
+                        <table width="600" cellpadding="0" cellspacing="0" style="padding: 0px 8px; background-color: white; border-collapse:separate;">
+                            <tr>
+                                <td valign="middle">
+                                    <span style="font-size: 10px;">Notification</span>
+                                    <br/>
+                                    <span style="font-size: 20px; font-weight: bold;">
+                                        Welcome to Peppol
+                                    </span>
+                                    <div style="margin-bottom: 5px; margin-top: 18px;">
+                                        <a t-attf-href="/odoo/accounting/" target="_blank" t-attf-style="padding: 8px 12px; font-size: 12px; color: {{ object.email_primary_color or '#FFFFFF' }}; text-decoration: none !important; font-weight: 400; background-color: {{ object.email_secondary_color or '#875A7B' }}; border-radius:3px">
+                                            Send invoices
+                                        </a>
+                                    </div>
+                                </td>
+                                <td valign="middle" align="right">
+                                    <t t-if="not object.uses_default_logo">
+                                        </t>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="text-align:center;">
+                                    <hr style="background-color:#CCCCCC; border:none; height:1px; margin:16px 0;"/>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <!-- BODY -->
+                <tr>
+                    <td align="center">
+                        <table width="600" cellpadding="0" cellspacing="0" style="padding: 0px 8px; background-color: white; border-collapse:separate;">
+                            <tr>
+                                <td style="font-size: 14px;">
+                                    <p>Dear <t t-out="object.name or ''">YourCompany</t>,</p>
+
+                                    <p>We have successfully added your company to the <strong>Peppol Network</strong>.</p>
+
+                                    <p>You can now <strong>send<t t-if="object.account_peppol_proxy_state == 'receiver'"> and receive</t></strong> electronic invoices via Odoo — completely free of charge.</p>
+
+                                    <p>Best regards,</p>
+
+                                    <p style="margin-bottom: 24px;">The Odoo Team</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+            
+            </field>
+        </record>
+  </data>
+</odoo>

@@ -16,6 +16,16 @@
             <attribute name="style">display:none; max-height:0; overflow:hidden; font-size:0; line-height:0;</attribute>
         </xpath>
         <xpath expr="//tr[@t-if='display_mobile_banner']" position="replace"/>
-        <xpath expr="//tfoot/tr[td//div[@id='footer']]" position="replace"/>
+        <xpath expr="//tfoot/tr[td//div[@id='footer']]" position="replace">
+            <tr>
+                <td height="32" style="height:32px; line-height:32px; font-size:0;">&amp;nbsp;</td>
+            </tr>
+            <tr>
+                <td align="center" style="padding:0 0 32px 0; text-align:center;">
+                    <t t-set="branding_unsubscribe_url" t-value="'/digest/%s/unsubscribe?token=%s&amp;user_id=%s' % (object.id, unsubscribe_token, user.id) if unsubscribe_token else False"/>
+                    <t t-call="branding.branding_mail_footer"/>
+                </td>
+            </tr>
+        </xpath>
     </template>
 </odoo>

@@ -1,14 +1,16 @@
 import io
 import json
+from datetime import datetime
 from uuid import uuid4
 
 from PIL import Image
 
+from odoo import tools
 from odoo.modules.module import Manifest
 from odoo.tests import HttpCase, TransactionCase, new_test_user
 from odoo.tools import file_open
 
-from ..constants import INLINE_LOGO_CID, INLINE_LOGO_FILENAME, INLINE_LOGO_SRC
+from ..constants import INLINE_LOGO_FILENAME, INLINE_LOGO_SRC
 
 
 class TestMetricBranding(TransactionCase):
@@ -96,6 +98,8 @@ class TestMetricBranding(TransactionCase):
         self.assertFalse(arch.xpath("//p[hasclass('company_name')]"))
         self.assertFalse(arch.xpath("//tr[@t-if='display_mobile_banner']"))
         self.assertFalse(arch.xpath("//div[@id='footer']"))
+        self.assertEqual(len(arch.xpath("//t[@t-call='branding.branding_mail_footer']")), 1)
+        self.assertEqual(arch.xpath("//td[@height='32']")[0].get('height'), '32')
         by_odoo = arch.xpath("//div[hasclass('by_odoo')]")
         self.assertEqual(len(by_odoo), 1)
         self.assertIn('display:none', by_odoo[0].get('style'))
@@ -110,6 +114,50 @@ class TestMetricBranding(TransactionCase):
         self.assertIn('border-collapse: separate', header.get('style'))
         self.assertIn('border-collapse: separate', content.get('style'))
 
+    def test_rendered_digest_email_contains_shared_brand_footer(self):
+        digest = self.env.ref('digest.digest_digest_default')
+        user = self.env.ref('base.user_admin')
+        unsubscribe_token = digest._get_unsubscribe_token(user.id)
+
+        rendered_body = self.env['mail.render.mixin']._render_template(
+            'digest.digest_mail_main',
+            'digest.digest',
+            digest.ids,
+            engine='qweb_view',
+            add_context={
+                'title': digest.name,
+                'top_button_label': 'Connect',
+                'top_button_url': digest.get_base_url(),
+                'company': user.company_id,
+                'user': user,
+                'unsubscribe_token': unsubscribe_token,
+                'tips_count': 1,
+                'formatted_date': tools.format_date(self.env, datetime.today(), date_format='MMMM dd, yyyy'),
+                'display_mobile_banner': True,
+                'kpi_data': digest._compute_kpis(user.company_id, user),
+                'tips': digest._compute_tips(user.company_id, user, tips_count=1, consumed=False),
+                'preferences': digest._compute_preferences(user.company_id, user),
+            },
+            options={
+                'preserve_comments': True,
+                'post_process': True,
+            },
+        )[digest.id]
+        full_mail = self.env['mail.render.mixin']._render_encapsulate(
+            'digest.digest_mail_layout',
+            rendered_body,
+            add_context={
+                'company': user.company_id,
+                'user': user,
+            },
+        )
+
+        self.assertEqual(full_mail.count('data-branding-mail-footer="1"'), 1)
+        self.assertIn('width="600"', full_mail)
+        self.assertIn('height:32px; line-height:32px', full_mail)
+        self.assertIn('metric.io', full_mail)
+        self.assertIn('/digest/%s/unsubscribe' % digest.id, full_mail)
+
     def test_light_mail_has_white_canvas_and_no_header_logo_or_legacy_footer(self):
         arch = self.env.ref('mail.mail_notification_light')._get_combined_arch()
 
@@ -117,125 +165,66 @@ class TestMetricBranding(TransactionCase):
         self.assertFalse(arch.xpath("//td[b[@t-out='company.name']]"))
         self.assertIn('background-color: #ffffff', arch.xpath('//body/table[1]')[0].get('style'))
 
-    def test_all_outgoing_email_gets_shared_brand_footer(self):
-        company = self.env.ref('base.main_company')
-        company.street = 'Example Street 10'
-        company.street2 = False
-        company.zip = False
-        company.city = 'Kuala Lumpur'
-        company.state_id = False
-        company.country_id = self.env.ref('base.my')
-        company.email_body_background_color = '#F7F8FA'
-        company.email_content_background_color = '#FFFFFF'
-        company.email_footer_background_color = '#EEEEEE'
+    def _installed_mail_template_xmlids(self):
+        templates = self.env['mail.template'].sudo().search([])
+        return {
+            xmlid
+            for xmlid in templates.get_external_id().values()
+            if xmlid and not xmlid.startswith('__export__.')
+        }
 
-        mail = self.env['mail.mail'].create({
-            'body_html': '<html><body><p>Security notification</p></body></html>',
-            'email_from': 'no-reply@metric.io',
-            'email_to': 'user@example.com',
-            'subject': 'Security notification',
-            'record_company_id': company.id,
-        })
-        outgoing_values = mail._prepare_outgoing_list()[0]
-        inline_attachment = next(
-            attachment
-            for attachment in outgoing_values['attachments']
-            if attachment[0] == INLINE_LOGO_FILENAME
-        )
+    def test_branding_layout_has_single_centered_600px_structure(self):
+        arch = self.env.ref('branding.branding_mail_layout')._get_combined_arch()
+        footer_arch = self.env.ref('branding.branding_mail_footer')._get_combined_arch()
 
-        self.assertEqual(outgoing_values['body'].count('data-branding-mail-footer="1"'), 1)
-        self.assertIn('data-branding-footer-align="center"', outgoing_values['body'])
-        self.assertIn('align="center" style="padding:0; text-align:center;"', outgoing_values['body'])
-        self.assertIn('td dir="ltr" align="left"', outgoing_values['body'])
-        self.assertIn('width="590"', outgoing_values['body'])
-        self.assertIn('max-width:590px', outgoing_values['body'])
-        self.assertIn('background-color:#EEEEEE', outgoing_values['body'])
-        self.assertIn(f'src="{INLINE_LOGO_SRC}"', outgoing_values['body'])
-        self.assertIn('width="64"', outgoing_values['body'])
-        self.assertIn('data-branding-company-name="1"', outgoing_values['body'])
-        self.assertIn('<span>metric</span><span>.</span><span>io</span>', outgoing_values['body'])
-        self.assertIn('Example Street 10', outgoing_values['body'])
-        self.assertIn('Kuala Lumpur, Malaysia', outgoing_values['body'])
-        self.assertIn('>Privacy</a>', outgoing_values['body'])
-        self.assertIn('data-branding-copyright="1"', outgoing_values['body'])
-        self.assertIn('&copy;', outgoing_values['body'])
-        self.assertIn('background-color:#F7F8FA !important', outgoing_values['body'])
-        self.assertEqual(inline_attachment[1], company.logo_web.content)
-        self.assertEqual(inline_attachment[2], 'image/png')
+        self.assertEqual(len(arch.xpath("//table[@data-branding-body-canvas='1']")), 1)
+        self.assertEqual(len(arch.xpath("//table[@data-branding-content-shell='1']")), 1)
+        self.assertEqual(len(arch.xpath("//t[@t-call='branding.branding_mail_footer']")), 1)
+        self.assertEqual(len(footer_arch.xpath("//table[@data-branding-mail-footer='1']")), 1)
+        self.assertEqual(arch.xpath("//table[@data-branding-content-shell='1']")[0].get('width'), '600')
+        self.assertEqual(footer_arch.xpath("//table[@data-branding-mail-footer='1']")[0].get('width'), '600')
+        self.assertIn('padding:32px 0', arch.xpath("//table[@data-branding-body-canvas='1']")[0].get('style'))
+        self.assertIn('max-width:600px', arch.xpath("//table[@data-branding-content-shell='1']")[0].get('style'))
+        self.assertIn('max-width:600px', footer_arch.xpath("//table[@data-branding-mail-footer='1']")[0].get('style'))
+        self.assertIn('background-color:#EEEEEE', footer_arch.xpath("//table[@data-branding-mail-footer='1']")[0].get('style'))
+        self.assertIn('padding:24px 28px', arch.xpath("//table[@data-branding-content-shell='1']//td")[0].get('style'))
+        self.assertIn('padding:24px 28px', footer_arch.xpath("//table[@data-branding-mail-footer='1']//td")[0].get('style'))
+        self.assertEqual(arch.xpath("//td[@height='32']")[0].get('height'), '32')
 
-    def test_email_branding_colors_are_company_settings(self):
-        company = self.env.ref('base.main_company')
-        company.write({
-            'email_body_background_color': '#123456',
-            'email_content_background_color': '#abcdef',
-            'email_footer_background_color': '#654321',
-        })
-        settings = self.env['res.config.settings'].create({
-            'company_id': company.id,
-        })
+    def test_branding_template_override_records_cover_installed_templates(self):
+        overrides = self.env['branding.mail.template.override'].sudo().search([])
+        installed_xmlids = self._installed_mail_template_xmlids()
+        override_xmlids = set(overrides.mapped('xmlid'))
 
-        self.assertEqual(settings.email_body_background_color, '#123456')
-        self.assertEqual(settings.email_content_background_color, '#abcdef')
-        self.assertEqual(settings.email_footer_background_color, '#654321')
+        self.assertTrue(installed_xmlids)
+        self.assertLessEqual(installed_xmlids, override_xmlids)
+        for override in overrides:
+            with self.subTest(xmlid=override.xmlid):
+                body = override.body_html or ''
+                self.assertEqual(override.email_layout_xmlid, 'branding.branding_mail_layout')
+                self.assertNotIn('Sent by', body)
+                self.assertNotIn('Powered by', body)
+                self.assertNotIn('/logo.png?company=', body)
+                self.assertNotIn('width="590"', body)
+                self.assertNotIn("width='590'", body)
+                self.assertNotIn('min-width: 590px', body)
+                self.assertNotIn('min-width:590px', body)
 
-        settings.write({
-            'email_body_background_color': '#112233',
-            'email_content_background_color': '#445566',
-            'email_footer_background_color': '#778899',
-        })
-        settings.execute()
+    def test_installed_templates_use_branding_layout_and_clean_bodies(self):
+        for xmlid in self._installed_mail_template_xmlids():
+            with self.subTest(xmlid=xmlid):
+                template = self.env.ref(xmlid)
+                body = template.body_html or ''
+                self.assertEqual(template.email_layout_xmlid, 'branding.branding_mail_layout')
+                self.assertFalse(template.email_layout_force_header)
+                self.assertFalse(template.email_layout_force_footer)
+                self.assertNotIn('Sent by', body)
+                self.assertNotIn('Powered by', body)
+                self.assertNotIn('/logo.png?company=', body)
+                self.assertNotIn('width="590"', body)
+                self.assertNotIn('min-width', body)
 
-        self.assertEqual(company.email_body_background_color, '#112233')
-        self.assertEqual(company.email_content_background_color, '#445566')
-        self.assertEqual(company.email_footer_background_color, '#778899')
-
-    def test_email_surfaces_use_company_colors_and_content_border_style(self):
-        company = self.env.ref('base.main_company')
-        company.write({
-            'email_body_background_color': '#123456',
-            'email_content_background_color': '#abcdef',
-            'email_footer_background_color': '#654321',
-        })
-        mail = self.env['mail.mail'].create({
-            'body_html': (
-                '<table style="width:100%; background-color:#F1F1F1;">'
-                '<tr><td align="center">'
-                '<table width="590" style="background-color:#ffffff; '
-                'border:1px solid #d8dadd; border-collapse:collapse;">'
-                '<tr><td>Bordered content</td></tr>'
-                '</table>'
-                '</td></tr></table>'
-            ),
-            'email_from': 'no-reply@metric.io',
-            'email_to': 'user@example.com',
-            'subject': 'Custom colors',
-            'record_company_id': company.id,
-        })
-
-        body = mail._prepare_outgoing_list()[0]['body']
-
-        self.assertIn('background-color:#123456', body)
-        self.assertIn('bgcolor="#123456"', body)
-        self.assertIn('background-color:#abcdef', body)
-        self.assertIn('border:1px solid #eeeeee', body)
-        self.assertIn('border-radius:12px', body)
-        self.assertIn('background-color:#654321', body)
-        self.assertIn('width="590"', body)
-        self.assertNotIn('width="600"', body)
-
-    def test_new_mail_templates_force_standard_footer_by_default(self):
-        template = self.env['mail.template'].create({
-            'name': 'Branding footer template',
-            'model_id': self.env['ir.model']._get_id('res.partner'),
-            'subject': 'Branding footer template',
-            'body_html': '<p>Hello <t t-out="object.name"/></p>',
-            'email_to': '{{ object.email }}',
-            'email_layout_xmlid': 'mail.mail_notification_light',
-        })
-
-        self.assertTrue(template.email_layout_force_footer)
-
-    def test_template_email_gets_standard_footer_even_when_template_footer_is_disabled(self):
+    def test_template_email_gets_standard_branding_layout(self):
         partner = self.env['res.partner'].create({
             'name': 'Template Recipient',
             'email': 'recipient@example.invalid',
@@ -246,7 +235,7 @@ class TestMetricBranding(TransactionCase):
             'subject': 'Branding footer send template',
             'body_html': '<p>Hello <t t-out="object.name"/></p>',
             'email_to': '{{ object.email }}',
-            'email_layout_xmlid': 'mail.mail_notification_light',
+            'email_layout_xmlid': 'branding.branding_mail_layout',
             'email_layout_force_footer': False,
         })
 
@@ -255,239 +244,20 @@ class TestMetricBranding(TransactionCase):
 
         self.assertIn('Hello Template Recipient', outgoing_values['body'])
         self.assertEqual(outgoing_values['body'].count('data-branding-mail-footer="1"'), 1)
+        self.assertEqual(outgoing_values['body'].count('data-branding-content-shell="1"'), 1)
+        self.assertIn('width="600"', outgoing_values['body'])
+        self.assertIn('padding:32px 0', outgoing_values['body'])
+        self.assertIn('height:32px; line-height:32px', outgoing_values['body'])
+        self.assertIn('padding:24px 28px', outgoing_values['body'])
         self.assertIn('data-branding-company-name="1"', outgoing_values['body'])
         self.assertNotIn('Powered by', outgoing_values['body'])
         self.assertNotIn('odoo.com?utm_source=db', outgoing_values['body'])
-
-    def test_outgoing_email_removes_template_powered_by_odoo_promotion(self):
-        mail = self.env['mail.mail'].create({
-            'body_html': (
-                '<html><body>'
-                '<p>Expense notification</p>'
-                '<p style="text-align:center;">Powered by '
-                '<a target="_blank" href="https://www.odoo.com?utm_source=db&amp;utm_medium=expense">'
-                'Odoo</a>.</p>'
-                '</body></html>'
-            ),
-            'email_from': 'no-reply@metric.io',
-            'email_to': 'user@example.com',
-            'subject': 'Expense notification',
-        })
-
-        body = mail._prepare_outgoing_list()[0]['body']
-
-        self.assertIn('Expense notification', body)
-        self.assertNotIn('Powered by', body)
-        self.assertNotIn('utm_medium=expense', body)
-        self.assertEqual(body.count('data-branding-mail-footer="1"'), 1)
-
-    def test_outgoing_email_removes_template_sent_by_brand_promotion(self):
-        mail = self.env['mail.mail'].create({
-            'body_html': (
-                '<table style="padding-top:16px; background-color:#F1F1F1; width:100%;">'
-                '<tr><td align="center">'
-                '<table width="590" style="background-color:white;"><tr><td>'
-                '<p>Event confirmation</p>'
-                '</td></tr></table>'
-                '</td></tr>'
-                '<!-- FOOTER BY -->'
-                '<tr><td align="center" style="min-width:590px;">'
-                '<table width="590" style="background-color:#F1F1F1;">'
-                '<tr><td style="text-align:center;">Sent by '
-                '<a target="_blank" href="https://metric.io" style="color:#875A7B;">'
-                'metric.io</a><br/>Discover '
-                '<a href="/event" style="color:#875A7B;">all our events</a>.'
-                '</td></tr></table>'
-                '</td></tr>'
-                '</table>'
-            ),
-            'email_from': 'no-reply@metric.io',
-            'email_to': 'user@example.com',
-            'subject': 'Event confirmation',
-        })
-
-        body = mail._prepare_outgoing_list()[0]['body']
-
-        self.assertIn('Event confirmation', body)
-        self.assertNotIn('Sent by', body)
-        self.assertNotIn('Discover', body)
-        self.assertNotIn('https://metric.io', body)
-        self.assertEqual(body.count('data-branding-mail-footer="1"'), 1)
-        self.assertLess(
-            body.index('data-branding-mail-footer="1"'),
-            body.rindex('</table>'),
+        self.assertIn(INLINE_LOGO_SRC, outgoing_values['body'])
+        self.assertTrue(
+            any(attachment[0] == INLINE_LOGO_FILENAME for attachment in outgoing_values['attachments'])
         )
-        self.assertIn('bgcolor="#F7F8FA"', body)
-        self.assertIn('data-branding-footer-align="center"', body)
-        self.assertIn('td dir="ltr" align="left"', body)
-        self.assertNotIn('border:1px solid #eeeeee', body.split('data-branding-mail-footer="1"')[0])
-        self.assertNotIn('border-radius:12px', body.split('data-branding-mail-footer="1"')[0])
 
-    def test_magic_link_style_email_is_centered_without_legacy_company_footer(self):
-        company = self.env.ref('base.main_company')
-        mail = self.env['mail.mail'].create({
-            'body_html': (
-                '<table border="0" cellpadding="0" cellspacing="0" '
-                'style="padding-top:16px; background-color:#FFFFFF; width:100%;">'
-                '<tr><td align="left">'
-                '<table border="0" cellpadding="0" cellspacing="0" width="590" align="left" '
-                'style="padding:16px; background-color:#FFFFFF;">'
-                '<tbody>'
-                '<tr><td align="left" style="min-width:590px;">'
-                '<table border="0" cellpadding="0" cellspacing="0" width="590" '
-                'style="min-width:590px; background-color:white; padding:0px 8px;">'
-                '<tr><td><span style="font-size:10px;">Your Account</span><br/>'
-                '<span style="font-size:20px; font-weight:bold;">Administrator</span></td></tr>'
-                '<tr><td><hr width="100%" style="margin:16px 0px;"/></td></tr>'
-                '</table>'
-                '</td></tr>'
-                '<tr><td align="left" style="min-width:590px;">'
-                '<table border="0" cellpadding="0" cellspacing="0" width="590" '
-                'style="min-width:590px; background-color:white; padding:0px 8px;">'
-                '<tr><td valign="top" style="font-size:13px;">'
-                'A sign-in link was requested for the account linked to this email.'
-                '<div style="margin:16px 0px;"><a href="/auth/magic-login?token=test" '
-                'style="background-color:#875A7B; padding:8px 16px; text-decoration:none; '
-                'color:#FFFFFF; border-radius:5px; font-size:13px;">Sign in</a></div>'
-                '</td></tr>'
-                '<tr><td style="text-align:left;"><hr width="100%" style="margin:16px 0px;"/></td></tr>'
-                '</table>'
-                '</td></tr>'
-                '<tr><td align="left" style="min-width:590px;">'
-                '<table border="0" cellpadding="0" cellspacing="0" width="590" '
-                'style="min-width:590px; background-color:white; font-size:11px; padding:0px 8px;">'
-                '<tr><td valign="middle" align="left">metric.io</td></tr>'
-                '<tr><td valign="middle" align="left" style="opacity:0.7;">'
-                '<a href="https://metric.io">https://metric.io</a>'
-                '</td></tr>'
-                '</table>'
-                '</td></tr>'
-                '</tbody>'
-                '</table>'
-                '</td></tr>'
-                '</table>'
-            ),
-            'email_from': 'no-reply@metric.io',
-            'email_to': 'user@example.com',
-            'subject': 'Sign in to metric.io',
-            'record_company_id': company.id,
-        })
-
-        body = mail._prepare_outgoing_list()[0]['body']
-        content = body.split('data-branding-mail-footer="1"')[0]
-
-        self.assertIn('A sign-in link was requested', body)
-        self.assertIn('Sign in', body)
-        self.assertEqual(body.count('data-branding-mail-footer="1"'), 1)
-        self.assertIn('width="590" align="center"', content)
-        self.assertNotIn('width="590" align="left"', content)
-        self.assertNotIn('background-color:#FFFFFF', content)
-        self.assertNotIn('background-color:white', content)
-        self.assertEqual(content.count('<hr'), 1)
-        self.assertNotIn('valign="middle" align="left">metric.io', body)
-        self.assertIn('<span>metric</span><span>.</span><span>io</span>', body)
-
-    def test_outgoing_header_company_logo_is_removed(self):
-        company = self.env.ref('base.main_company')
-        mail = self.env['mail.mail'].create({
-            'body_html': (
-                '<html><body>'
-                f'<img src="/logo.png?company={company.id}" alt="Header logo"/>'
-                '<p>Notification</p>'
-                '</body></html>'
-            ),
-            'email_from': 'no-reply@metric.io',
-            'email_to': 'user@example.com',
-            'subject': 'Notification',
-        })
-
-        body = mail._prepare_outgoing_list()[0]['body']
-
-        self.assertNotIn('/logo.png?company=', body)
-        self.assertEqual(body.count(f'src="{INLINE_LOGO_SRC}"'), 1)
-
-    def test_newsletter_footer_stays_inside_colored_centered_canvas(self):
-        if 'mailing_id' not in self.env['mail.mail']._fields:
-            self.skipTest('Email Marketing is not installed')
-
-        newsletter_body = (
-            '<html><body>'
-            '<div style="background-color:#e9f4ff; padding:32px 20px;">'
-            '<table role="presentation" align="center" width="600" '
-            'style="background-color:#ffffff;"><tr><td>Newsletter</td></tr></table>'
-            '</div>'
-            '</body></html>'
-        )
-        mailing = self.env['mailing.mailing'].create({
-            'subject': 'Footer design preview',
-            'email_from': 'no-reply@metric.io',
-            'body_arch': newsletter_body,
-            'body_html': newsletter_body,
-        })
-        mail = self.env['mail.mail'].create({
-            'body_html': newsletter_body,
-            'email_from': 'no-reply@metric.io',
-            'email_to': 'user@example.com',
-            'subject': 'Footer design preview',
-            'mailing_id': mailing.id,
-        })
-
-        body = mail._prepare_outgoing_list()[0]['body']
-
-        self.assertIn('data-branding-footer-align="center"', body)
-        self.assertIn('align="center" border="0"', body)
-        self.assertIn('td dir="ltr" align="left"', body)
-        self.assertIn('bgcolor="#F7F8FA"', body)
-        self.assertIn('background-color:#F7F8FA', body)
-        self.assertIn('width="590"', body)
-        self.assertNotIn('width="600"', body)
-        self.assertIn('Privacy</a> &middot; ', body)
-        self.assertIn('>Unsubscribe</a>', body)
-        self.assertIn('/unsubscribe_from_list', body)
-        self.assertNotIn('background-color:#ffffff !important', body)
-
-    def test_rtl_email_footer_uses_reading_start_alignment(self):
-        mail = self.env['mail.mail'].create({
-            'body_html': '<html lang="fa"><body dir="rtl"><p>سلام</p></body></html>',
-            'email_from': 'no-reply@metric.io',
-            'email_to': 'user@example.com',
-            'subject': 'RTL notification',
-        })
-
-        body = mail._prepare_outgoing_list()[0]['body']
-
-        self.assertIn('data-branding-footer-align="right"', body)
-        self.assertIn('align="right" style="padding:0; text-align:right;"', body)
-        self.assertIn('td dir="rtl" align="right"', body)
-        self.assertIn('margin:0 0 12px auto', body)
-
-    def test_digest_unsubscribe_is_moved_to_shared_footer(self):
-        digest_body = (
-            '<html><body data-branding-email-kind="digest" '
-            'style="background-color:#F9FAFB;">'
-            '<div class="by_odoo" style="display:none;">'
-            '<a href="http://localhost:8069/digest/1/unsubscribe?token=test&amp;user_id=2">'
-            'Unsubscribe</a></div>'
-            '<p>Digest content</p>'
-            '</body></html>'
-        )
-        mail = self.env['mail.mail'].create({
-            'body_html': digest_body,
-            'email_from': 'no-reply@metric.io',
-            'email_to': 'user@example.com',
-            'subject': 'Periodic Digest',
-        })
-
-        body = mail._prepare_outgoing_list()[0]['body']
-
-        self.assertIn('bgcolor="#F7F8FA"', body)
-        self.assertIn('<body data-branding-email-kind="digest" style="background-color:#F7F8FA;" bgcolor="#F7F8FA">', body)
-        self.assertIn('Privacy</a> &middot; ', body)
-        self.assertIn('>Unsubscribe</a>', body)
-        self.assertIn('token=test&amp;user_id=2', body)
-        self.assertNotIn('background-color:#ffffff !important', body)
-
-    def _render_reset_password_email(self):
+    def test_reset_password_layout_gets_shared_branding_footer(self):
         user = self.env.ref('base.user_admin')
         body = self.env['mail.render.mixin']._render_template(
             self.env.ref('auth_signup.reset_password_email'),
@@ -496,7 +266,7 @@ class TestMetricBranding(TransactionCase):
             engine='qweb_view',
             options={'post_process': True},
         )[user.id]
-        return self.env['mail.render.mixin']._render_encapsulate(
+        body_html = self.env['mail.render.mixin']._render_encapsulate(
             'mail.mail_notification_layout',
             body,
             context_record=user,
@@ -509,40 +279,68 @@ class TestMetricBranding(TransactionCase):
             },
         )
 
-    def test_reset_password_email_has_content_without_odoo_promotion(self):
-        body = self._render_reset_password_email()
+        self.assertIn('A password reset was requested', body_html)
+        self.assertEqual(body_html.count('data-branding-mail-footer="1"'), 1)
+        self.assertIn('max-width:656px', body_html)
+        self.assertIn('width="600"', body_html)
+        self.assertIn('padding: 24px 28px 0', body_html)
+        self.assertIn('height:32px; line-height:32px', body_html)
+        self.assertIn(INLINE_LOGO_SRC, body_html)
+        self.assertNotIn('width="590"', body_html)
+        self.assertNotIn('Powered by', body_html)
 
-        self.assertIn('A password reset was requested', body)
-        self.assertIn('Change password', body)
-        self.assertIn('/web/reset_password?', body)
-        self.assertNotIn('Powered by', body)
-        self.assertNotIn('utm_medium=email', body)
-
-    def test_reset_password_outgoing_email_keeps_rendered_content(self):
-        body = self._render_reset_password_email()
+    def test_outgoing_email_does_not_attach_brand_logo_without_cid_reference(self):
         mail = self.env['mail.mail'].create({
-            'body_html': body,
+            'body_html': '<p>Notification</p>',
             'email_from': 'no-reply@metric.io',
             'email_to': 'user@example.com',
-            'subject': 'Reset your password',
+            'subject': 'Notification',
         })
 
         outgoing_values = mail._prepare_outgoing_list()[0]
-        self.assertIn('A password reset was requested', outgoing_values['body'])
-        self.assertIn('Change password', outgoing_values['body'])
-        self.assertIn(
-            'max-width: 590px; width: 100%; margin: 0 auto; padding: 24px 24px 0; box-sizing: border-box;',
-            outgoing_values['body'],
+
+        self.assertFalse(
+            any(attachment[0] == INLINE_LOGO_FILENAME for attachment in outgoing_values['attachments'])
         )
-        self.assertIn('data-branding-content-align="center"', outgoing_values['body'])
-        self.assertIn('data-branding-footer-align="center"', outgoing_values['body'])
-        self.assertNotIn('border:1px solid #eeeeee', outgoing_values['body'])
-        self.assertNotIn(
-            'border-radius:12px',
-            outgoing_values['body'].split('data-branding-mail-footer="1"')[0],
+
+    def test_inline_brand_logo_is_related_mime_part_not_attachment(self):
+        mail = self.env['mail.mail'].create({
+            'body_html': f'<p>Notification</p><img src="{INLINE_LOGO_SRC}"/>',
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'Notification',
+        })
+        outgoing_values = mail._prepare_outgoing_list()[0]
+        message = self.env['ir.mail_server']._build_email__(
+            email_from=outgoing_values['email_from'],
+            email_to=outgoing_values['email_to'],
+            subject=outgoing_values['subject'],
+            body=outgoing_values['body'],
+            body_alternative=outgoing_values['body_alternative'],
+            email_cc=outgoing_values['email_cc'],
+            reply_to=outgoing_values['reply_to'],
+            attachments=outgoing_values['attachments'],
+            message_id=outgoing_values['message_id'],
+            references=outgoing_values['references'],
+            object_id=outgoing_values['object_id'],
+            subtype='html',
+            subtype_alternative='plain',
+            headers=outgoing_values['headers'],
         )
-        self.assertIn('margin-top:0; margin-bottom:32px;', outgoing_values['body'])
-        self.assertIn('padding-bottom:32px', outgoing_values['body'])
+        logo_parts = [
+            part for part in message.walk()
+            if part.get('Content-ID') == '<metric-io-logo@branding>'
+        ]
+
+        self.assertEqual(len(logo_parts), 1)
+        self.assertEqual(logo_parts[0].get_content_disposition(), 'inline')
+        self.assertFalse(
+            any(
+                part.get_filename() == 'metric_io_logo.png'
+                and part.get_content_disposition() == 'attachment'
+                for part in message.walk()
+            )
+        )
 
 
 class TestBrandingSessionInfo(HttpCase):
