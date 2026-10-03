@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_ai_home" model="ir.actions.client">
+        <field name="name">Home</field>
+        <field name="path">home</field>
+        <field name="tag">ai_home.dashboard</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem
+        id="menu_ai_home_root"
+        name="Home"
+        action="action_ai_home"
+        sequence="1"
+        groups="base.group_user"
+        web_icon="ai_home,static/description/icon.svg"
+    />
+</odoo>

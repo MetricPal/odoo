@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="ai_home.WorkDashboard">
+        <div class="o_ai_home h-100 overflow-auto">
+            <main class="o_ai_home_container" aria-label="Home">
+                <section
+                    t-if="this.sections.attention.length"
+                    class="o_ai_home_section o_ai_home_attention"
+                    aria-labelledby="ai_home_attention_title"
+                >
+                    <div class="o_ai_home_section_heading">
+                        <h2 id="ai_home_attention_title">Needs Your Attention</h2>
+                        <button
+                            t-if="this.sections.attention.length &gt; 3"
+                            type="button"
+                            class="btn btn-link o_ai_home_section_toggle o_ai_home_show_more"
+                            t-att-aria-expanded="this.state.showAllAttention"
+                            t-on-click="() => this.state.showAllAttention = !this.state.showAllAttention"
+                        >
+                            <t t-if="this.state.showAllAttention">Show less</t>
+                            <t t-else="">Show more</t>
+                            <span class="oi o_ai_home_section_caret ms-1" data-icon="chevron_forward" aria-hidden="true"/>
+                        </button>
+                    </div>
+                    <div class="o_ai_home_attention_panel">
+                        <div class="o_ai_home_attention_summary">
+                            <img
+                                class="o_ai_home_attention_icon"
+                                src="/ai_home/static/img/shield-logo.svg"
+                                alt=""
+                                aria-hidden="true"
+                            />
+                            <strong>
+                                <t t-esc="this.sections.attention.length"/> items require your review
+                            </strong>
+                        </div>
+                        <div class="o_ai_home_attention_grid">
+                            <button
+                                t-foreach="this.attentionItems"
+                                t-as="item"
+                                t-key="item.id"
+                                type="button"
+                                class="o_ai_home_attention_card"
+                                t-att-class="'o_tone_' + item.tone"
+                                t-att-aria-label="'Open ' + item.name"
+                                t-on-click="() => this.openDashboardItem(item)"
+                            >
+                                <span class="o_ai_home_card_copy">
+                                    <strong t-esc="item.name"/>
+                                    <span t-esc="item.subtitle"/>
+                                    <small t-esc="item.occurredLabel"/>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section
+                    t-ref="this.favoritesRootRef"
+                    class="o_ai_home_section o_ai_home_favorites"
+                    aria-labelledby="ai_home_favorites_title"
+                >
+                    <div class="o_ai_home_section_heading">
+                        <h2 id="ai_home_favorites_title">Favorites</h2>
+                        <button
+                            t-if="this.nonFavoriteApps.length"
+                            type="button"
+                            class="btn btn-link o_ai_home_section_toggle o_ai_home_favorites_view_all"
+                            t-att-aria-expanded="this.state.showAllApps"
+                            t-on-click="() => this.state.showAllApps = !this.state.showAllApps"
+                        >
+                            <t t-if="this.state.showAllApps">Close</t>
+                            <t t-else="">View all</t>
+                            <span class="oi o_ai_home_section_caret ms-1" data-icon="chevron_forward" aria-hidden="true"/>
+                        </button>
+                    </div>
+                    <div
+                        class="o_ai_home_favorite_grid o_ai_home_sortable_group"
+                        data-sortable-group="favorites"
+                    >
+                        <div
+                            t-foreach="this.favoriteSlots"
+                            t-as="app"
+                            t-key="app_index"
+                            class="o_ai_home_favorite_item o_ai_home_sortable_item"
+                            t-att-class="{ 'o_is_draggable': app, 'o_is_empty': !app }"
+                            t-att-data-app-id="app ? app.id : false"
+                            t-att-data-favorite-origin="app ? 'favorite' : false"
+                            t-att-data-slot-index="app_index"
+                        >
+                            <button
+                                type="button"
+                                class="o_ai_home_favorite_slot"
+                                t-att-class="{ 'o_is_empty': !app }"
+                                t-att-aria-label="app ? 'Open ' + app.name : 'Add favorite'"
+                                t-on-click="() => this.openFavoriteSlot(app)"
+                            >
+                                <span class="o_ai_home_app_icon">
+                                    <img
+                                        t-if="app?.webIconData"
+                                        t-att-src="app.webIconData"
+                                        t-att-alt="app.name"
+                                    />
+                                    <span
+                                        t-elif="app"
+                                        class="o_ai_home_app_fallback"
+                                        t-esc="this.getAppInitial(app)"
+                                    />
+                                </span>
+                                <span
+                                    t-if="app"
+                                    class="o_ai_home_app_name"
+                                    t-esc="app.name"
+                                />
+                            </button>
+                            <button
+                                t-if="app"
+                                type="button"
+                                class="o_ai_home_favorite_toggle o_is_favorite"
+                                t-att-aria-label="'Remove ' + app.name + ' from favorites'"
+                                aria-pressed="true"
+                                t-on-click="() => this.toggleFavorite(app)"
+                            >
+                                <span class="oi oi-filled" data-icon="star" aria-hidden="true"/>
+                            </button>
+                        </div>
+                    </div>
+                    <div
+                        t-if="this.state.showAllApps and this.nonFavoriteApps.length"
+                        class="o_ai_home_all_apps o_ai_home_sortable_group"
+                        data-sortable-group="available"
+                        aria-label="Apps not in favorites"
+                    >
+                        <div
+                            t-foreach="this.nonFavoriteApps"
+                            t-as="app"
+                            t-key="app.id"
+                            class="o_ai_home_all_app o_ai_home_sortable_item"
+                            t-att-class="{ 'o_is_draggable': this.hasFavoriteCapacity }"
+                            t-att-data-app-id="app.id"
+                            data-favorite-origin="available"
+                        >
+                            <button
+                                type="button"
+                                class="o_ai_home_all_app_open"
+                                t-on-click="() => this.openApp(app)"
+                            >
+                                <span class="o_ai_home_app_icon">
+                                    <img
+                                        t-if="app.webIconData"
+                                        t-att-src="app.webIconData"
+                                        t-att-alt="app.name"
+                                    />
+                                    <span
+                                        t-else=""
+                                        class="o_ai_home_app_fallback"
+                                        t-esc="this.getAppInitial(app)"
+                                    />
+                                </span>
+                                <span class="o_ai_home_app_name" t-esc="app.name"/>
+                            </button>
+                            <button
+                                type="button"
+                                class="o_ai_home_favorite_toggle"
+                                t-att-class="{ 'o_is_favorite': this.isFavorite(app) }"
+                                t-att-aria-label="this.isFavorite(app)
+                                    ? 'Remove ' + app.name + ' from favorites'
+                                    : 'Add ' + app.name + ' to favorites'"
+                                t-att-aria-pressed="this.isFavorite(app)"
+                                t-on-click="() => this.toggleFavorite(app)"
+                            >
+                                <span
+                                    class="oi"
+                                    data-icon="star"
+                                    t-att-class="{ 'oi-filled': this.isFavorite(app) }"
+                                    aria-hidden="true"
+                                />
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section
+                    t-if="this.automationItems.length"
+                    class="o_ai_home_section o_ai_home_automations"
+                    aria-labelledby="ai_home_automations_title"
+                >
+                    <h2 id="ai_home_automations_title">Automations</h2>
+                    <div class="o_ai_home_automation_grid">
+                        <button
+                            t-foreach="this.automationItems"
+                            t-as="item"
+                            t-key="item.id"
+                            type="button"
+                            class="o_ai_home_automation_card"
+                            t-att-class="'o_tone_' + item.tone"
+                            t-att-aria-label="'Open ' + item.name"
+                            t-on-click="() => this.openDashboardItem(item)"
+                        >
+                            <strong t-esc="item.name"/>
+                            <span t-esc="item.subtitle"/>
+                            <small t-esc="item.occurredLabel"/>
+                        </button>
+                    </div>
+                </section>
+
+                <section
+                    t-if="this.sections.recent.length"
+                    class="o_ai_home_section o_ai_home_recent"
+                    aria-labelledby="ai_home_recent_title"
+                >
+                    <div class="o_ai_home_section_heading">
+                        <h2 id="ai_home_recent_title">Recent</h2>
+                        <button
+                            t-if="this.sections.recent.length &gt; 3"
+                            type="button"
+                            class="btn btn-link o_ai_home_section_toggle o_ai_home_recent_view_all"
+                            t-att-aria-expanded="this.state.showAllRecent"
+                            t-on-click="() => this.state.showAllRecent = !this.state.showAllRecent"
+                        >
+                            <t t-if="this.state.showAllRecent">Show less</t>
+                            <t t-else="">View all</t>
+                            <span class="oi o_ai_home_section_caret ms-1" data-icon="chevron_forward" aria-hidden="true"/>
+                        </button>
+                    </div>
+                    <div class="o_ai_home_recent_grid">
+                        <button
+                            t-foreach="this.recentItems"
+                            t-as="item"
+                            t-key="item.id"
+                            type="button"
+                            class="o_ai_home_recent_card"
+                            t-att-class="'o_tone_' + item.tone"
+                            t-att-aria-label="'Open ' + item.name"
+                            t-on-click="() => this.openDashboardItem(item)"
+                        >
+                            <span class="o_ai_home_recent_icon" t-esc="item.iconText"/>
+                            <span class="o_ai_home_card_copy">
+                                <strong t-esc="item.name"/>
+                                <span t-esc="item.subtitle"/>
+                                <small t-esc="item.occurredLabel"/>
+                            </span>
+                        </button>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </t>
+</templates>

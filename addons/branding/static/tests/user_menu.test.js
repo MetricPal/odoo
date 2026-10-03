@@ -4,6 +4,7 @@ import { registry } from "@web/core/registry";
 import {
     buildMovedAppMenuItem,
     isMovedUserMenuApp,
+    isHiddenLauncherApp,
     offsetUserMenuPopover,
     removeOdooAccountItem,
 } from "@branding/js/user_menu";
@@ -86,4 +87,13 @@ test("moved app user-menu item is hidden without menu access", () => {
     );
 
     expect(item.hide).toBe(true);
+});
+
+
+test("AI Home is hidden from the launcher without becoming a user-menu item", () => {
+    expect(isHiddenLauncherApp({ xmlid: "ai_home.menu_ai_home_root" })).toBe(true);
+    expect(isMovedUserMenuApp({ xmlid: "ai_home.menu_ai_home_root" })).toBe(false);
+    expect(isHiddenLauncherApp({ xmlid: "base.menu_management" })).toBe(true);
+    expect(isHiddenLauncherApp({ xmlid: "base.menu_administration" })).toBe(true);
+    expect(isHiddenLauncherApp({ xmlid: "sale.menu_sale_root" })).toBe(false);
 });

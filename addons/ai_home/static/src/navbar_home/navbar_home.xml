@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="ai_home.NavBarHomeBrand"
+       t-inherit="web.NavBar"
+       t-inherit-mode="extension">
+        <xpath expr="//DropdownItem[contains(@class, 'o_menu_brand')]" position="attributes">
+            <attribute name="t-if">
+                !this.ui.isSmall and this.currentApp and !this.isWorkDashboardCurrentApp
+            </attribute>
+        </xpath>
+    </t>
+
+</templates>

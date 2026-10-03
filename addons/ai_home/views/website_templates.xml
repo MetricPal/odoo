@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="website_home_menu" inherit_id="website.layout" name="Website Home Menu">
+        <xpath expr="//a[hasclass('o_frontend_to_backend_apps_btn')]" position="attributes">
+            <attribute name="href">/odoo/home</attribute>
+            <attribute name="title">Home Menu</attribute>
+            <attribute name="aria-label">Go to Home</attribute>
+            <attribute name="data-bs-toggle"/>
+            <attribute name="data-bs-display"/>
+        </xpath>
+        <xpath expr="//div[hasclass('o_frontend_to_backend_apps_menu')]" position="replace"/>
+    </template>
+</odoo>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="ai_home.GlobalSearch">
+        <div
+            class="o_ai_home_global_search"
+            role="search"
+            aria-label="Global search"
+        >
+            <button
+                type="button"
+                class="o_ai_home_global_search_shell"
+                aria-label="Global search"
+                aria-disabled="true"
+            >
+                <span class="oi oi-search o_ai_home_global_search_icon" aria-hidden="true"/>
+                <span class="o_ai_home_global_search_label">
+                    Search apps, records, and actions
+                </span>
+                <span class="o_ai_home_global_search_shortcut" aria-hidden="true">
+                    <kbd>Ctrl</kbd><kbd>K</kbd>
+                </span>
+            </button>
+        </div>
+    </t>
+
+    <t t-name="ai_home.NavBarGlobalSearch"
+       t-inherit="web.NavBar"
+       t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_menu_systray')]" position="before">
+            <WorkDashboardGlobalSearch/>
+        </xpath>
+    </t>
+</templates>

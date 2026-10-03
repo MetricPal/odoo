@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,operation
+access_ai_home_item_user,ai.home.item user,model_ai_home_item,base.group_user,r

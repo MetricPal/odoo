@@ -22,6 +22,10 @@ export function isMovedUserMenuApp(app) {
     return Object.values(MOVED_USER_MENU_APPS).includes(app.xmlid);
 }
 
+export function isHiddenLauncherApp(app) {
+    return isMovedUserMenuApp(app) || app.xmlid === "ai_home.menu_ai_home_root";
+}
+
 export function buildMovedAppMenuItem(menuService, { id, description, xmlid, sequence }) {
     const app = menuService.getApps().find((candidate) => candidate.xmlid === xmlid);
     return {
@@ -98,7 +102,7 @@ patch(UserMenu.prototype, {
 
 patch(NavBar.prototype, {
     getBrandingApps() {
-        return this.menuService.getApps().filter((app) => !isMovedUserMenuApp(app));
+        return this.menuService.getApps().filter((app) => !isHiddenLauncherApp(app));
     },
 });
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="ai_home_item_company_rule" model="ir.access">
+        <field name="name">AI Home items by company</field>
+        <field name="model_id" ref="model_ai_home_item"/>
+        <field name="operation">crud</field>
+        <field name="domain">[
+            '&amp;',
+            '|', ('company_id', '=', False), ('company_id', 'in', company_ids),
+            '|', ('group_ids', '=', False), ('group_ids', 'in', user.all_group_ids.ids),
+        ]</field>
+        <!-- Odoo 20 restrictions have no group; grouped records grant permissions. -->
+        <field name="group_id" eval="False"/>
+    </record>
+</odoo>

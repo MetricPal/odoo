@@ -1,5 +1,60 @@
 # Odoo 20 verification: auth_magic_link
 
+## AI Home entry navigation
+
+- Owl 3 exports `proxy` for reactive object state and `signal.ref()` for DOM
+  references; it does not export Owl 2's `useState` or `useRef`
+  (`addons/web/static/lib/owl/owl.js`). AI Home uses a proxy for dashboard
+  state and binds `t-ref="this.favoritesRootRef"` to its instance signal, matching
+  native navbar references. `useSortable` expects a callable reference
+  (`addons/web/static/src/core/utils/sortable.js`). Dashboard HOOT coverage
+  checks mounting, reactive updates, and favorite drag and drop.
+
+- Owl 3 initializes template context as `{ this: this.component, __owl__: this }`
+  in `ComponentNode` (`addons/web/static/lib/owl/owl.js`), so component members
+  must be referenced through `this`, including getters, method calls, state,
+  and DOM reference signals. Dashboard loop variables remain local expressions.
+  Database-free regression checks cover all dashboard component bindings.
+
+- AI Home loads `views/ai_home_views.xml` so its client action and internal
+  root menu exist after installation/upgrade. The `/odoo` router mapping needs
+  `ai_home.action_ai_home` to resolve successfully. Native desktop and mobile
+  app launchers are preserved; AI Home no longer replaces or hides them.
+
+- Owl 3 component props are declared with the instance hook `useProps`, not
+  static `props` or `defaultProps`. Odoo's compatibility layer explicitly
+  rejects static declarations (`addons/web/static/src/owl2/owl3_compatibility_layer.js`).
+  AI Home uses `useProps({})` for its search shell and `useProps()` for its
+  dashboard's unrestricted client-action props, matching the generic action
+  component in `addons/web/static/src/webclient/actions/action_plugin.js`.
+
+### Installation and access control
+
+- `odoo/tools/convert.py::convert_csv_import` derives the target model from
+  the CSV filename. Odoo 20 defines `ir.access`, not `ir.model.access`, in
+  `odoo/addons/base/models/ir_access.py`; use `security/ir.access.csv`.
+- Access records use `operation` (`r` for read permission, `crud` for a
+  restriction covering all operations) and `domain`. A record without `group_id` is a restriction; a grouped record is a
+  permission, even when it has a domain (`ir_access.py::_compute_kind`).
+- AI Home's model is `ai.home.item`, with generated model XML ID
+  `model_ai_home_item`. Internal users receive read permission subject
+  to the existing company and visibility-group domain; portal users receive
+  no permission. Access regression tests use Odoo 20's `has_access()` API.
+- The website template remains commented out; backend Home action/menu data
+  is enabled.
+
+- Branding's navbar logo links to `/odoo` in
+  `addons/branding/static/src/xml/navbar.xml`.
+- `addons/web/controllers/home.py` authenticates backend requests and redirects
+  non-internal users before rendering backend assets. AI Home retains this flow.
+- `WebClient.loadRouterState()` loads the router action before falling back to
+  the first app (`addons/web/static/src/webclient/webclient.js`).
+- AI Home maps an empty `/odoo` or `/odoo/` entry to its action XMLID using the
+  existing router patch, with canonical URL `/odoo/home`. Query parameters are
+  retained; explicit actions, models and menu selections keep native routing.
+- The router initializes before addon patches; synchronous `replaceState`
+  refreshes startup state. Regression coverage is in AI Home's navbar HOOT tests.
+
 Verified against the Odoo 20 Community source in this repository before adapting the Odoo 19 `auth_email_link` reference.
 
 ## Verified APIs and conventions
@@ -97,3 +152,69 @@ Verified against the Odoo 20 Community source in this repository before adapting
 ## Unavailable referenced documentation
 
 `AGENTS.md` references project documents under `docs/` that were not present when this verification was performed. This note records the source-level verification required by the available local research skill.
+
+## AI Home favorites and demo visibility
+
+- Favorites exclude `ai_home.menu_ai_home_root`, `base.menu_management`, and
+  `base.menu_administration` using the XML IDs returned by the permission-filtered
+  Odoo 20 menu service. Normalization also removes these IDs from previously
+  stored favorites. Favorite star buttons remain visible with View all closed.
+- Branding excludes the AI Home root from the shared desktop/mobile launcher
+  input, while retaining its client action and Home routing. AI Home is not added
+  to the user menu; Apps and Settings retain their existing user-menu entries.
+- `odoo/modules/loading.py` loads demo files on installation only when demo is
+  enabled, and on upgrade only when the module's `demo` flag is already true.
+  An ordinary upgrade therefore does not populate a module installed without
+  demo. The local `odoo20` database was inspected: AI Home is installed with
+  `demo=False` and zero dashboard items in every section.
+- Loading AI Home's demo file requires an approved database operation. Keep the
+  sample records in the manifest's `demo` list; do not install fictional approval
+  or activity records as production data or enable every module's demo records.
+  Only AI Home's `demo/ai_home_demo.xml` needs loading, followed by setting that
+  module's `demo` flag for future upgrades. The expected sample counts are five
+  attention cards, six administrator-only automation cards, and eight recent
+  cards. Company, group, and per-user seen restrictions still apply.
+
+## AI Home model rename
+
+- The model is `ai.home.item`, implemented by `AiHomeItem`. RPC calls, security
+  references, demo records, and tests use this name.
+- Verified Odoo 20's `MigrationManager` in `odoo/modules/migration.py`: a versioned
+  `migrations/1.1/pre-*.py` runs before model initialization when upgrading from
+  1.0 to 1.1. `ir.module.module.latest_version` stores the database version;
+  `installed_version` is computed from the manifest on disk.
+- The pre-migration renames `work_dashboard_item` to `ai_home_item`, preserving
+  row IDs, and renames the implicit group relation table and its source column.
+  Odoo 20 computes implicit many-to-many names from alphabetically sorted model
+  table names (`odoo/orm/fields_relational.py`). The explicitly named
+  `ai_home_item_seen_user_rel` remains valid and retains seen-user links.
+- Model and field metadata, relation targets, model references, and generated
+  model/field/selection XML IDs are updated before reflection, preserving access
+  record links to the same `ir.model` ID. Upgrades do not enable demo data.
+
+- Rename validation exposed a pre-existing company-rule issue: its internal-user
+  group made it an additional CRUD permission. Clearing `group_id` makes it a
+  global restriction, enforcing the existing company/group domain while the
+  separate internal-user permission remains read-only. Portal users still have
+  no model permission. Targeted tests verify these boundaries after upgrade.
+
+- Applied the upgrade to local database `odoo20` with `-u ai_home
+  --stop-after-init --no-http --test-enable`, selecting the migration test and six
+  model/security tests. Final result: seven database tests, zero failures/errors.
+  Three database-free template tests and JavaScript syntax checks also passed.
+  The migration fixture verifies row IDs, group and seen-user links, access-model
+  links, generated XML IDs, and repeat execution. Odoo 20 validates the callback
+  parameter names; the migration uses `migrate(cr, version)`.
+
+## AI Home native icons
+
+- Odoo 20's backend uses `.oi` with `data-icon` ligatures, defined in
+  `addons/web/static/src/webclient/icons.scss`. Filled stars use `.oi-filled`,
+  matching `views/fields/boolean_favorite/boolean_favorite_field.xml`.
+- Dashboard favorites use `data-icon="star"`; section toggles use
+  `chevron_forward` as in the native date picker. The attention badge uses `ai_home/static/img/shield-logo.svg`,
+  with an empty alternative text because the adjacent summary conveys its meaning. Legacy Font Awesome
+  dashboard classes were removed. Caret rotation selectors target the dashboard
+  caret class so expanded-state and reduced-motion behavior are preserved.
+- Template regression tests cover native icon names, filled-star state and
+  decorative accessibility attributes; dashboard HOOT selectors use native markup.

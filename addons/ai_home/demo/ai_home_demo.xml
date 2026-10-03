@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Needs Your Attention -->
+    <record id="dashboard_attention_sale_order" model="ai.home.item">
+        <field name="name">Sales Order S000025</field>
+        <field name="section">attention</field>
+        <field name="subtitle">Approval requested · RM 48,200</field>
+        <field name="occurred_label">10 minutes ago</field>
+        <field name="icon_text">SO</field>
+        <field name="tone">primary</field>
+        <field name="sequence">10</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_attention_purchase_order" model="ai.home.item">
+        <field name="name">Purchase Order P000045</field>
+        <field name="section">attention</field>
+        <field name="subtitle">Approval requested · RM 12,450</field>
+        <field name="occurred_label">25 minutes ago</field>
+        <field name="icon_text">PO</field>
+        <field name="tone">warning</field>
+        <field name="sequence">20</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_attention_expense" model="ai.home.item">
+        <field name="name">Expense Report EXP00012</field>
+        <field name="section">attention</field>
+        <field name="subtitle">Pending review · RM 850</field>
+        <field name="occurred_label">1 hour ago</field>
+        <field name="icon_text">EX</field>
+        <field name="tone">danger</field>
+        <field name="sequence">30</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_attention_payment_batch" model="ai.home.item">
+        <field name="name">Supplier Payment Batch PB0008</field>
+        <field name="section">attention</field>
+        <field name="subtitle">Final authorization · RM 31,780</field>
+        <field name="occurred_label">2 hours ago</field>
+        <field name="icon_text">PB</field>
+        <field name="tone">info</field>
+        <field name="sequence">40</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_attention_inventory" model="ai.home.item">
+        <field name="name">Inventory Exception WH/OUT/00128</field>
+        <field name="section">attention</field>
+        <field name="subtitle">Stock discrepancy requires review</field>
+        <field name="occurred_label">3 hours ago</field>
+        <field name="icon_text">WH</field>
+        <field name="tone">neutral</field>
+        <field name="sequence">50</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+
+    <!-- Automations are visible only to system administrators in this demo. -->
+    <record id="dashboard_automation_sales_report" model="ai.home.item">
+        <field name="name">Weekly Sales Report generated</field>
+        <field name="section">automation</field>
+        <field name="subtitle">Completed successfully</field>
+        <field name="occurred_label">Today · 9:00 AM</field>
+        <field name="icon_text">SR</field>
+        <field name="tone">danger</field>
+        <field name="sequence">10</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="group_ids" eval="[Command.link(ref('base.group_system'))]"/>
+    </record>
+    <record id="dashboard_automation_follow_up" model="ai.home.item">
+        <field name="name">Customer follow-up emails sent</field>
+        <field name="section">automation</field>
+        <field name="subtitle">18 customers contacted</field>
+        <field name="occurred_label">Today · 10:00 AM</field>
+        <field name="icon_text">CF</field>
+        <field name="tone">primary</field>
+        <field name="sequence">20</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="group_ids" eval="[Command.link(ref('base.group_system'))]"/>
+    </record>
+    <record id="dashboard_automation_reorder" model="ai.home.item">
+        <field name="name">Inventory reorder rules processed</field>
+        <field name="section">automation</field>
+        <field name="subtitle">12 replenishments prepared</field>
+        <field name="occurred_label">Today · 10:15 AM</field>
+        <field name="icon_text">IR</field>
+        <field name="tone">neutral</field>
+        <field name="sequence">30</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="group_ids" eval="[Command.link(ref('base.group_system'))]"/>
+    </record>
+    <record id="dashboard_automation_invoice_reminders" model="ai.home.item">
+        <field name="name">Invoice reminders scheduled</field>
+        <field name="section">automation</field>
+        <field name="subtitle">7 reminders queued</field>
+        <field name="occurred_label">Today · 10:30 AM</field>
+        <field name="icon_text">IN</field>
+        <field name="tone">info</field>
+        <field name="sequence">40</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="group_ids" eval="[Command.link(ref('base.group_system'))]"/>
+    </record>
+    <record id="dashboard_automation_supplier_check" model="ai.home.item">
+        <field name="name">Supplier lead times checked</field>
+        <field name="section">automation</field>
+        <field name="subtitle">2 exceptions detected</field>
+        <field name="occurred_label">Today · 11:00 AM</field>
+        <field name="icon_text">SL</field>
+        <field name="tone">warning</field>
+        <field name="sequence">50</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="group_ids" eval="[Command.link(ref('base.group_system'))]"/>
+    </record>
+    <record id="dashboard_automation_kpi" model="ai.home.item">
+        <field name="name">Monthly KPI snapshot prepared</field>
+        <field name="section">automation</field>
+        <field name="subtitle">Dashboard metrics refreshed</field>
+        <field name="occurred_label">Today · 11:30 AM</field>
+        <field name="icon_text">KP</field>
+        <field name="tone">success</field>
+        <field name="sequence">60</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="group_ids" eval="[Command.link(ref('base.group_system'))]"/>
+    </record>
+
+    <!-- Recent unseen activity -->
+    <record id="dashboard_recent_customer" model="ai.home.item">
+        <field name="name">Customer profile updated</field>
+        <field name="section">recent</field>
+        <field name="subtitle">Contact and billing details were changed.</field>
+        <field name="occurred_label">5 minutes ago</field>
+        <field name="icon_text">CU</field>
+        <field name="tone">primary</field>
+        <field name="sequence">10</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_recent_drive" model="ai.home.item">
+        <field name="name">Sales forecast uploaded</field>
+        <field name="section">recent</field>
+        <field name="subtitle">The Q4 forecast is ready for review.</field>
+        <field name="occurred_label">18 minutes ago</field>
+        <field name="icon_text">SF</field>
+        <field name="tone">success</field>
+        <field name="sequence">20</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_recent_invoice" model="ai.home.item">
+        <field name="name">Invoice batch verified</field>
+        <field name="section">recent</field>
+        <field name="subtitle">24 invoices passed validation.</field>
+        <field name="occurred_label">35 minutes ago</field>
+        <field name="icon_text">IV</field>
+        <field name="tone">warning</field>
+        <field name="sequence">30</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_recent_website" model="ai.home.item">
+        <field name="name">Website content published</field>
+        <field name="section">recent</field>
+        <field name="subtitle">The services page is now live.</field>
+        <field name="occurred_label">1 hour ago</field>
+        <field name="icon_text">WB</field>
+        <field name="tone">info</field>
+        <field name="sequence">40</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_recent_resume" model="ai.home.item">
+        <field name="name">Candidate resume received</field>
+        <field name="section">recent</field>
+        <field name="subtitle">A new application was added to the talent pool.</field>
+        <field name="occurred_label">2 hours ago</field>
+        <field name="icon_text">CV</field>
+        <field name="tone">neutral</field>
+        <field name="sequence">50</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_recent_delivery" model="ai.home.item">
+        <field name="name">Delivery completed</field>
+        <field name="section">recent</field>
+        <field name="subtitle">Shipment WH/OUT/00124 reached the customer.</field>
+        <field name="occurred_label">3 hours ago</field>
+        <field name="icon_text">DL</field>
+        <field name="tone">success</field>
+        <field name="sequence">60</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_recent_vendor" model="ai.home.item">
+        <field name="name">Vendor terms reviewed</field>
+        <field name="section">recent</field>
+        <field name="subtitle">Payment terms were updated for one supplier.</field>
+        <field name="occurred_label">Yesterday</field>
+        <field name="icon_text">VT</field>
+        <field name="tone">danger</field>
+        <field name="sequence">70</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="dashboard_recent_inventory" model="ai.home.item">
+        <field name="name">Cycle count completed</field>
+        <field name="section">recent</field>
+        <field name="subtitle">Warehouse A inventory quantities were reconciled.</field>
+        <field name="occurred_label">Yesterday</field>
+        <field name="icon_text">CC</field>
+        <field name="tone">primary</field>
+        <field name="sequence">80</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+</odoo>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Green shield logo">
+  <defs>
+    <linearGradient id="shieldFill" x1="18" y1="10" x2="46" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#74e38d"/>
+      <stop offset="0.55" stop-color="#16c957"/>
+      <stop offset="1" stop-color="#06a840"/>
+    </linearGradient>
+    <linearGradient id="shieldEdge" x1="20" y1="8" x2="44" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+
+  <path
+    d="M32 6 12 14v15.8c0 12.5 8.1 22.5 20 28.2 11.9-5.7 20-15.7 20-28.2V14L32 6Z"
+    fill="url(#shieldFill)"
+  />
+  <path
+    d="M32 10.4 16 16.8v12.9c0 9.8 6.1 18 16 23.1 9.9-5.1 16-13.3 16-23.1V16.8l-16-6.4Z"
+    fill="none"
+    stroke="url(#shieldEdge)"
+    stroke-width="3"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+  <path
+    d="M32 11.5 18.5 16.9v13c0 7.9 4.2 14.7 11.6 19.6V12.2L32 11.5Z"
+    fill="#ffffff"
+    opacity="0.16"
+  />
+</svg>
