@@ -14,6 +14,7 @@
         'views/mail_templates.xml',
         'data/mail_template_data.xml',
         'views/portal_templates.xml',
+        'views/res_config_settings_views.xml',
         'views/webclient_templates.xml',
         'views/website_template.xml'
     ],

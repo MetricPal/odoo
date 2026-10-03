@@ -125,6 +125,9 @@ class TestMetricBranding(TransactionCase):
         company.city = 'Kuala Lumpur'
         company.state_id = False
         company.country_id = self.env.ref('base.my')
+        company.email_body_background_color = '#F7F8FA'
+        company.email_content_background_color = '#FFFFFF'
+        company.email_footer_background_color = '#EEEEEE'
 
         mail = self.env['mail.mail'].create({
             'body_html': '<html><body><p>Security notification</p></body></html>',
@@ -143,6 +146,10 @@ class TestMetricBranding(TransactionCase):
         self.assertEqual(outgoing_values['body'].count('data-branding-mail-footer="1"'), 1)
         self.assertIn('data-branding-footer-align="center"', outgoing_values['body'])
         self.assertIn('align="center" style="padding:0; text-align:center;"', outgoing_values['body'])
+        self.assertIn('td dir="ltr" align="left"', outgoing_values['body'])
+        self.assertIn('width="590"', outgoing_values['body'])
+        self.assertIn('max-width:590px', outgoing_values['body'])
+        self.assertIn('background-color:#EEEEEE', outgoing_values['body'])
         self.assertIn(f'src="{INLINE_LOGO_SRC}"', outgoing_values['body'])
         self.assertIn('width="64"', outgoing_values['body'])
         self.assertIn('data-branding-company-name="1"', outgoing_values['body'])
@@ -152,9 +159,69 @@ class TestMetricBranding(TransactionCase):
         self.assertIn('>Privacy</a>', outgoing_values['body'])
         self.assertIn('data-branding-copyright="1"', outgoing_values['body'])
         self.assertIn('&copy;', outgoing_values['body'])
-        self.assertIn('background-color:#ffffff !important', outgoing_values['body'])
+        self.assertIn('background-color:#F7F8FA !important', outgoing_values['body'])
         self.assertEqual(inline_attachment[1], company.logo_web.content)
         self.assertEqual(inline_attachment[2], 'image/png')
+
+    def test_email_branding_colors_are_company_settings(self):
+        company = self.env.ref('base.main_company')
+        company.write({
+            'email_body_background_color': '#123456',
+            'email_content_background_color': '#abcdef',
+            'email_footer_background_color': '#654321',
+        })
+        settings = self.env['res.config.settings'].create({
+            'company_id': company.id,
+        })
+
+        self.assertEqual(settings.email_body_background_color, '#123456')
+        self.assertEqual(settings.email_content_background_color, '#abcdef')
+        self.assertEqual(settings.email_footer_background_color, '#654321')
+
+        settings.write({
+            'email_body_background_color': '#112233',
+            'email_content_background_color': '#445566',
+            'email_footer_background_color': '#778899',
+        })
+        settings.execute()
+
+        self.assertEqual(company.email_body_background_color, '#112233')
+        self.assertEqual(company.email_content_background_color, '#445566')
+        self.assertEqual(company.email_footer_background_color, '#778899')
+
+    def test_email_surfaces_use_company_colors_and_content_border_style(self):
+        company = self.env.ref('base.main_company')
+        company.write({
+            'email_body_background_color': '#123456',
+            'email_content_background_color': '#abcdef',
+            'email_footer_background_color': '#654321',
+        })
+        mail = self.env['mail.mail'].create({
+            'body_html': (
+                '<table style="width:100%; background-color:#F1F1F1;">'
+                '<tr><td align="center">'
+                '<table width="590" style="background-color:#ffffff; '
+                'border:1px solid #d8dadd; border-collapse:collapse;">'
+                '<tr><td>Bordered content</td></tr>'
+                '</table>'
+                '</td></tr></table>'
+            ),
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'Custom colors',
+            'record_company_id': company.id,
+        })
+
+        body = mail._prepare_outgoing_list()[0]['body']
+
+        self.assertIn('background-color:#123456', body)
+        self.assertIn('bgcolor="#123456"', body)
+        self.assertIn('background-color:#abcdef', body)
+        self.assertIn('border:1px solid #eeeeee', body)
+        self.assertIn('border-radius:12px', body)
+        self.assertIn('background-color:#654321', body)
+        self.assertIn('width="590"', body)
+        self.assertNotIn('width="600"', body)
 
     def test_new_mail_templates_force_standard_footer_by_default(self):
         template = self.env['mail.template'].create({
@@ -250,7 +317,75 @@ class TestMetricBranding(TransactionCase):
             body.index('data-branding-mail-footer="1"'),
             body.rindex('</table>'),
         )
-        self.assertIn('bgcolor="#F1F1F1"', body)
+        self.assertIn('bgcolor="#F7F8FA"', body)
+        self.assertIn('data-branding-footer-align="center"', body)
+        self.assertIn('td dir="ltr" align="left"', body)
+        self.assertNotIn('border:1px solid #eeeeee', body.split('data-branding-mail-footer="1"')[0])
+        self.assertNotIn('border-radius:12px', body.split('data-branding-mail-footer="1"')[0])
+
+    def test_magic_link_style_email_is_centered_without_legacy_company_footer(self):
+        company = self.env.ref('base.main_company')
+        mail = self.env['mail.mail'].create({
+            'body_html': (
+                '<table border="0" cellpadding="0" cellspacing="0" '
+                'style="padding-top:16px; background-color:#FFFFFF; width:100%;">'
+                '<tr><td align="left">'
+                '<table border="0" cellpadding="0" cellspacing="0" width="590" align="left" '
+                'style="padding:16px; background-color:#FFFFFF;">'
+                '<tbody>'
+                '<tr><td align="left" style="min-width:590px;">'
+                '<table border="0" cellpadding="0" cellspacing="0" width="590" '
+                'style="min-width:590px; background-color:white; padding:0px 8px;">'
+                '<tr><td><span style="font-size:10px;">Your Account</span><br/>'
+                '<span style="font-size:20px; font-weight:bold;">Administrator</span></td></tr>'
+                '<tr><td><hr width="100%" style="margin:16px 0px;"/></td></tr>'
+                '</table>'
+                '</td></tr>'
+                '<tr><td align="left" style="min-width:590px;">'
+                '<table border="0" cellpadding="0" cellspacing="0" width="590" '
+                'style="min-width:590px; background-color:white; padding:0px 8px;">'
+                '<tr><td valign="top" style="font-size:13px;">'
+                'A sign-in link was requested for the account linked to this email.'
+                '<div style="margin:16px 0px;"><a href="/auth/magic-login?token=test" '
+                'style="background-color:#875A7B; padding:8px 16px; text-decoration:none; '
+                'color:#FFFFFF; border-radius:5px; font-size:13px;">Sign in</a></div>'
+                '</td></tr>'
+                '<tr><td style="text-align:left;"><hr width="100%" style="margin:16px 0px;"/></td></tr>'
+                '</table>'
+                '</td></tr>'
+                '<tr><td align="left" style="min-width:590px;">'
+                '<table border="0" cellpadding="0" cellspacing="0" width="590" '
+                'style="min-width:590px; background-color:white; font-size:11px; padding:0px 8px;">'
+                '<tr><td valign="middle" align="left">metric.io</td></tr>'
+                '<tr><td valign="middle" align="left" style="opacity:0.7;">'
+                '<a href="https://metric.io">https://metric.io</a>'
+                '</td></tr>'
+                '</table>'
+                '</td></tr>'
+                '</tbody>'
+                '</table>'
+                '</td></tr>'
+                '</table>'
+            ),
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'Sign in to metric.io',
+            'record_company_id': company.id,
+        })
+
+        body = mail._prepare_outgoing_list()[0]['body']
+        content = body.split('data-branding-mail-footer="1"')[0]
+
+        self.assertIn('A sign-in link was requested', body)
+        self.assertIn('Sign in', body)
+        self.assertEqual(body.count('data-branding-mail-footer="1"'), 1)
+        self.assertIn('width="590" align="center"', content)
+        self.assertNotIn('width="590" align="left"', content)
+        self.assertNotIn('background-color:#FFFFFF', content)
+        self.assertNotIn('background-color:white', content)
+        self.assertEqual(content.count('<hr'), 1)
+        self.assertNotIn('valign="middle" align="left">metric.io', body)
+        self.assertIn('<span>metric</span><span>.</span><span>io</span>', body)
 
     def test_outgoing_header_company_logo_is_removed(self):
         company = self.env.ref('base.main_company')
@@ -301,12 +436,30 @@ class TestMetricBranding(TransactionCase):
 
         self.assertIn('data-branding-footer-align="center"', body)
         self.assertIn('align="center" border="0"', body)
-        self.assertIn('bgcolor="#e9f4ff"', body)
-        self.assertIn('background-color:#e9f4ff', body)
+        self.assertIn('td dir="ltr" align="left"', body)
+        self.assertIn('bgcolor="#F7F8FA"', body)
+        self.assertIn('background-color:#F7F8FA', body)
+        self.assertIn('width="590"', body)
+        self.assertNotIn('width="600"', body)
         self.assertIn('Privacy</a> &middot; ', body)
         self.assertIn('>Unsubscribe</a>', body)
         self.assertIn('/unsubscribe_from_list', body)
         self.assertNotIn('background-color:#ffffff !important', body)
+
+    def test_rtl_email_footer_uses_reading_start_alignment(self):
+        mail = self.env['mail.mail'].create({
+            'body_html': '<html lang="fa"><body dir="rtl"><p>سلام</p></body></html>',
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'RTL notification',
+        })
+
+        body = mail._prepare_outgoing_list()[0]['body']
+
+        self.assertIn('data-branding-footer-align="right"', body)
+        self.assertIn('align="right" style="padding:0; text-align:right;"', body)
+        self.assertIn('td dir="rtl" align="right"', body)
+        self.assertIn('margin:0 0 12px auto', body)
 
     def test_digest_unsubscribe_is_moved_to_shared_footer(self):
         digest_body = (
@@ -327,8 +480,8 @@ class TestMetricBranding(TransactionCase):
 
         body = mail._prepare_outgoing_list()[0]['body']
 
-        self.assertIn('bgcolor="#F9FAFB"', body)
-        self.assertIn('<body data-branding-email-kind="digest" style="background-color:#F9FAFB;" bgcolor="#F9FAFB">', body)
+        self.assertIn('bgcolor="#F7F8FA"', body)
+        self.assertIn('<body data-branding-email-kind="digest" style="background-color:#F7F8FA;" bgcolor="#F7F8FA">', body)
         self.assertIn('Privacy</a> &middot; ', body)
         self.assertIn('>Unsubscribe</a>', body)
         self.assertIn('token=test&amp;user_id=2', body)
@@ -377,7 +530,19 @@ class TestMetricBranding(TransactionCase):
         outgoing_values = mail._prepare_outgoing_list()[0]
         self.assertIn('A password reset was requested', outgoing_values['body'])
         self.assertIn('Change password', outgoing_values['body'])
-        self.assertIn('data-branding-footer-align="left"', outgoing_values['body'])
+        self.assertIn(
+            'max-width: 590px; width: 100%; margin: 0 auto; padding: 24px 24px 0; box-sizing: border-box;',
+            outgoing_values['body'],
+        )
+        self.assertIn('data-branding-content-align="center"', outgoing_values['body'])
+        self.assertIn('data-branding-footer-align="center"', outgoing_values['body'])
+        self.assertNotIn('border:1px solid #eeeeee', outgoing_values['body'])
+        self.assertNotIn(
+            'border-radius:12px',
+            outgoing_values['body'].split('data-branding-mail-footer="1"')[0],
+        )
+        self.assertIn('margin-top:0; margin-bottom:32px;', outgoing_values['body'])
+        self.assertIn('padding-bottom:32px', outgoing_values['body'])
 
 
 class TestBrandingSessionInfo(HttpCase):
