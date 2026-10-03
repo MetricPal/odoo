@@ -90,6 +90,17 @@ class TestMetricBranding(TransactionCase):
                 arch = self.env.ref(view_xmlid)._get_combined_arch()
                 self.assertEqual(len(arch.xpath("//a[@href='/mail/unfollow']")), 1)
 
+        notification_arch = self.env.ref('mail.mail_notification_layout')._get_combined_arch()
+        self.assertEqual(len(notification_arch.xpath("//table[@data-branding-content-shell='1']")), 1)
+        self.assertEqual(len(notification_arch.xpath("//td[@data-branding-content-cell='1']")), 1)
+        self.assertIn(
+            'padding:24px 28px',
+            notification_arch.xpath("//td[@data-branding-content-cell='1']")[0].get('style'),
+        )
+        self.assertFalse(
+            notification_arch.xpath("//div[@t-if='show_footer' and contains(@style, 'height:32px')]")
+        )
+
     def test_digest_footer_has_no_odoo_promotion(self):
         arch = self.env.ref('digest.digest_mail_main')._get_combined_arch()
 
@@ -113,6 +124,18 @@ class TestMetricBranding(TransactionCase):
         self.assertIn('border-radius: 0 0 12px 12px', content.get('style'))
         self.assertIn('border-collapse: separate', header.get('style'))
         self.assertIn('border-collapse: separate', content.get('style'))
+        self.assertEqual(header.get('width'), '656')
+        self.assertEqual(content.get('width'), '656')
+        self.assertIn('width:656px', header.get('style'))
+        self.assertIn('width:656px', content.get('style'))
+        self.assertIn('border-top:1px solid #eeeeee', header.get('style'))
+        self.assertIn('border-left:1px solid #eeeeee', header.get('style'))
+        self.assertIn('border-right:1px solid #eeeeee', header.get('style'))
+        self.assertIn('border-left:1px solid #eeeeee', content.get('style'))
+        self.assertIn('border-right:1px solid #eeeeee', content.get('style'))
+        self.assertIn('border-bottom:1px solid #eeeeee', content.get('style'))
+        self.assertIn('padding: 24px 28px 5px 28px', header.xpath(".//td[hasclass('p0')][1]")[0].get('style'))
+        self.assertIn('padding: 24px 28px 0px 28px', content.xpath(".//td[hasclass('global_td')]")[0].get('style'))
 
     def test_rendered_digest_email_contains_shared_brand_footer(self):
         digest = self.env.ref('digest.digest_digest_default')
@@ -153,7 +176,11 @@ class TestMetricBranding(TransactionCase):
         )
 
         self.assertEqual(full_mail.count('data-branding-mail-footer="1"'), 1)
-        self.assertIn('width="600"', full_mail)
+        self.assertIn('width="656"', full_mail)
+        self.assertIn('width:656px', full_mail)
+        self.assertIn('padding: 24px 28px 0px 28px', full_mail)
+        self.assertIn('border-left:1px solid #eeeeee', full_mail)
+        self.assertIn('border-right:1px solid #eeeeee', full_mail)
         self.assertIn('height:32px; line-height:32px', full_mail)
         self.assertIn('metric.io', full_mail)
         self.assertIn('/digest/%s/unsubscribe' % digest.id, full_mail)
@@ -173,7 +200,7 @@ class TestMetricBranding(TransactionCase):
             if xmlid and not xmlid.startswith('__export__.')
         }
 
-    def test_branding_layout_has_single_centered_600px_structure(self):
+    def test_branding_layout_has_single_centered_600px_content_area(self):
         arch = self.env.ref('branding.branding_mail_layout')._get_combined_arch()
         footer_arch = self.env.ref('branding.branding_mail_footer')._get_combined_arch()
 
@@ -181,11 +208,11 @@ class TestMetricBranding(TransactionCase):
         self.assertEqual(len(arch.xpath("//table[@data-branding-content-shell='1']")), 1)
         self.assertEqual(len(arch.xpath("//t[@t-call='branding.branding_mail_footer']")), 1)
         self.assertEqual(len(footer_arch.xpath("//table[@data-branding-mail-footer='1']")), 1)
-        self.assertEqual(arch.xpath("//table[@data-branding-content-shell='1']")[0].get('width'), '600')
-        self.assertEqual(footer_arch.xpath("//table[@data-branding-mail-footer='1']")[0].get('width'), '600')
+        self.assertEqual(arch.xpath("//table[@data-branding-content-shell='1']")[0].get('width'), '656')
+        self.assertEqual(footer_arch.xpath("//table[@data-branding-mail-footer='1']")[0].get('width'), '656')
         self.assertIn('padding:32px 0', arch.xpath("//table[@data-branding-body-canvas='1']")[0].get('style'))
-        self.assertIn('max-width:600px', arch.xpath("//table[@data-branding-content-shell='1']")[0].get('style'))
-        self.assertIn('max-width:600px', footer_arch.xpath("//table[@data-branding-mail-footer='1']")[0].get('style'))
+        self.assertIn('max-width:656px', arch.xpath("//table[@data-branding-content-shell='1']")[0].get('style'))
+        self.assertIn('max-width:656px', footer_arch.xpath("//table[@data-branding-mail-footer='1']")[0].get('style'))
         self.assertIn('background-color:#EEEEEE', footer_arch.xpath("//table[@data-branding-mail-footer='1']")[0].get('style'))
         self.assertIn('padding:24px 28px', arch.xpath("//table[@data-branding-content-shell='1']//td")[0].get('style'))
         self.assertIn('padding:24px 28px', footer_arch.xpath("//table[@data-branding-mail-footer='1']//td")[0].get('style'))
@@ -245,7 +272,7 @@ class TestMetricBranding(TransactionCase):
         self.assertIn('Hello Template Recipient', outgoing_values['body'])
         self.assertEqual(outgoing_values['body'].count('data-branding-mail-footer="1"'), 1)
         self.assertEqual(outgoing_values['body'].count('data-branding-content-shell="1"'), 1)
-        self.assertIn('width="600"', outgoing_values['body'])
+        self.assertIn('width="656"', outgoing_values['body'])
         self.assertIn('padding:32px 0', outgoing_values['body'])
         self.assertIn('height:32px; line-height:32px', outgoing_values['body'])
         self.assertIn('padding:24px 28px', outgoing_values['body'])
@@ -281,15 +308,17 @@ class TestMetricBranding(TransactionCase):
 
         self.assertIn('A password reset was requested', body_html)
         self.assertEqual(body_html.count('data-branding-mail-footer="1"'), 1)
+        self.assertEqual(body_html.count('data-branding-content-shell="1"'), 1)
+        self.assertEqual(body_html.count('data-branding-content-cell="1"'), 1)
         self.assertIn('max-width:656px', body_html)
-        self.assertIn('width="600"', body_html)
-        self.assertIn('padding: 24px 28px 0', body_html)
-        self.assertIn('height:32px; line-height:32px', body_html)
+        self.assertIn('width="656"', body_html)
+        self.assertIn('padding:24px 28px', body_html)
+        self.assertNotIn('height:32px; line-height:32px', body_html)
         self.assertIn(INLINE_LOGO_SRC, body_html)
         self.assertNotIn('width="590"', body_html)
         self.assertNotIn('Powered by', body_html)
 
-    def test_outgoing_email_does_not_attach_brand_logo_without_cid_reference(self):
+    def test_direct_outgoing_email_gets_standard_branding_layout(self):
         mail = self.env['mail.mail'].create({
             'body_html': '<p>Notification</p>',
             'email_from': 'no-reply@metric.io',
@@ -299,9 +328,35 @@ class TestMetricBranding(TransactionCase):
 
         outgoing_values = mail._prepare_outgoing_list()[0]
 
-        self.assertFalse(
+        self.assertIn('Notification', outgoing_values['body'])
+        self.assertEqual(outgoing_values['body'].count('data-branding-mail-footer="1"'), 1)
+        self.assertEqual(outgoing_values['body'].count('data-branding-content-shell="1"'), 1)
+        self.assertIn('width="656"', outgoing_values['body'])
+        self.assertIn('max-width:656px', outgoing_values['body'])
+        self.assertIn('background-color:#EEEEEE', outgoing_values['body'])
+        self.assertIn(INLINE_LOGO_SRC, outgoing_values['body'])
+        self.assertTrue(
             any(attachment[0] == INLINE_LOGO_FILENAME for attachment in outgoing_values['attachments'])
         )
+
+    def test_already_branded_outgoing_email_is_not_wrapped_twice(self):
+        branded_body = self.env['mail.render.mixin']._render_encapsulate(
+            'branding.branding_mail_layout',
+            '<p>Already branded</p>',
+            add_context={'company': self.env.company},
+        )
+        mail = self.env['mail.mail'].create({
+            'body_html': branded_body,
+            'email_from': 'no-reply@metric.io',
+            'email_to': 'user@example.com',
+            'subject': 'Already branded',
+        })
+
+        outgoing_values = mail._prepare_outgoing_list()[0]
+
+        self.assertIn('Already branded', outgoing_values['body'])
+        self.assertEqual(outgoing_values['body'].count('data-branding-mail-footer="1"'), 1)
+        self.assertEqual(outgoing_values['body'].count('data-branding-content-shell="1"'), 1)
 
     def test_inline_brand_logo_is_related_mime_part_not_attachment(self):
         mail = self.env['mail.mail'].create({

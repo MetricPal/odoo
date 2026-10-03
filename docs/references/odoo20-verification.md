@@ -128,6 +128,21 @@ Verified against the Odoo 20 Community source in this repository before adapting
   tables: `#header` and the KPI/content table. Branding rounds the header's top
   corners and the content table's bottom corners with the same 12px radius as
   the shared footer, retaining one continuous digest card.
+- Direct `mail.mail` creation is still used by several Odoo 20 outbound paths
+  in addition to `mail.template` and notification rendering. Because every
+  SMTP-bound email is finalized through `mail.mail._prepare_outgoing_list()`,
+  branding uses that hook as the final enforcement point: unbranded, non-mass
+  mailing HTML is wrapped once in `branding.branding_mail_layout`; already
+  branded notification/template/digest bodies are detected by branding markers
+  and are not wrapped a second time.
+- Email content and footer alignment uses a 656px outer shell with a single
+  content cell padded `24px 28px`, matching the footer's single padded cell and
+  leaving a 600px usable content area. Periodic Digest keeps
+  its native two-table card structure instead of using
+  `branding.branding_mail_layout`, but branding now sets the digest card tables
+  to the same explicit inline `width="656"`, `width:656px`, 28px horizontal
+  padding, and `#eeeeee` borders so email clients do not fall back to Odoo's
+  original `.global_layout` `588px`/`#d8dadd` CSS.
 - The Website application provides `/privacy` as the standard privacy-policy
   path. The footer turns it into an absolute URL with the outgoing record's
   base URL.

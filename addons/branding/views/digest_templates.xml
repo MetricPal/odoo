@@ -5,10 +5,30 @@
             <attribute name="data-branding-email-kind">digest</attribute>
         </xpath>
         <xpath expr="//table[@id='header']" position="attributes">
-            <attribute name="style">border-radius: 12px 12px 0 0; border-collapse: separate; overflow: hidden;</attribute>
+            <attribute name="width">656</attribute>
+            <attribute name="style">width:656px; max-width:656px; border-top:1px solid #eeeeee; border-left:1px solid #eeeeee; border-right:1px solid #eeeeee; border-radius: 12px 12px 0 0; border-collapse: separate; overflow: hidden;</attribute>
+        </xpath>
+        <xpath expr="//table[@id='header']//td[hasclass('p0')][1]" position="attributes">
+            <attribute name="style">padding: 24px 28px 5px 28px;</attribute>
+        </xpath>
+        <xpath expr="//table[@id='header']//td[@align='right'][hasclass('p0')]" position="attributes">
+            <attribute name="style">padding: 24px 28px 5px 0px;</attribute>
+        </xpath>
+        <xpath expr="//table[@id='header']//td[@colspan='4']" position="attributes">
+            <attribute name="style">padding-left: 28px; padding-right: 28px;</attribute>
         </xpath>
         <xpath expr="//table[hasclass('global_layout') and not(@id='header')]" position="attributes">
-            <attribute name="style">border-radius: 0 0 12px 12px; border-collapse: separate; overflow: hidden;</attribute>
+            <attribute name="width">656</attribute>
+            <attribute name="style">width:656px; max-width:656px; border-left:1px solid #eeeeee; border-right:1px solid #eeeeee; border-bottom:1px solid #eeeeee; border-radius: 0 0 12px 12px; border-collapse: separate; overflow: hidden;</attribute>
+        </xpath>
+        <xpath expr="//tr[@t-if='tips']/td" position="attributes">
+            <attribute name="style">width: 100%; padding: 24px 28px; border: 1px solid #F9FAFB;</attribute>
+        </xpath>
+        <xpath expr="//td[hasclass('global_td')]" position="attributes">
+            <attribute name="style">padding: 24px 28px 0px 28px;</attribute>
+        </xpath>
+        <xpath expr="//tfoot//td[@style='padding: 20px; border-bottom: 1px solid #d8dadd;']" position="attributes">
+            <attribute name="style">padding: 24px 28px; border-bottom: 1px solid #eeeeee;</attribute>
         </xpath>
         <xpath expr="//p[@id='powered']" position="replace"/>
         <xpath expr="//p[hasclass('company_name')]" position="replace"/>

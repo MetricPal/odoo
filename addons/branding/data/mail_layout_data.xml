@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="branding_mail_footer" name="metric.io Mail Footer">
-<table data-branding-mail-footer="1" role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" align="center" style="width:100%; max-width:600px; background-color:#EEEEEE; border-radius:12px; border-collapse:separate;">
+<table data-branding-mail-footer="1" role="presentation" border="0" cellpadding="0" cellspacing="0" width="656" align="center" style="width:100%; max-width:656px; background-color:#EEEEEE; border-radius:12px; border-collapse:separate;">
     <tr>
         <td align="left" style="padding:24px 28px; color:#5f6368; font-family:Verdana, Arial,sans-serif; font-size:11px; font-weight:normal; line-height:16px; text-align:left;">
             <img src="cid:metric-io-logo@branding" t-att-alt="company.name" width="64" style="display:block; width:64px; max-width:100%; height:auto; margin:0 0 12px 0; border:0;"/>
@@ -49,7 +49,7 @@
 <table data-branding-body-canvas="1" role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="width:100%; padding:32px 0; border-collapse:separate;">
     <tr>
         <td align="center" style="padding:0; text-align:center;">
-            <table data-branding-content-shell="1" role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" align="center" style="width:100%; max-width:600px; border-collapse:separate;">
+            <table data-branding-content-shell="1" role="presentation" border="0" cellpadding="0" cellspacing="0" width="656" align="center" style="width:100%; max-width:656px; border-collapse:separate;">
                 <tr>
                     <td dir="ltr" align="left" style="padding:24px 28px; color:#454748; font-family:Verdana, Arial,sans-serif; font-size:13px; line-height:20px; text-align:left;">
                         <t t-out="message.body"/>
