@@ -151,6 +151,20 @@ Verified against the Odoo 20 Community source in this repository before adapting
 - The backend web client receives authenticated-user metadata from
   `ir.http.session_info()`. Branding extends that payload with the current
   user's email for the profile header instead of treating the login as email.
+- Odoo 20 defines the shared authentication shell in `web.login_layout`, the
+  password login form in `web.login`, the OAuth provider block in
+  `web.login_oauth`, and the reset-password form in
+  `auth_signup.reset_password`. The `auth_oauth` module injects enabled
+  providers into `web.login_oauth`; it does not own the form order. Because
+  Website globally replaces `web.login_layout`, `auth_magic_link` routes auth
+  pages through its standalone copy, so branding applies the logo/footer
+  changes to that active standalone layout. Branding moves the single
+  `web.login_oauth` call before both the user-switch component and login form,
+  with the divider inside `web.login_oauth` after provider buttons. Page titles
+  are owned by page bodies, not the shared layout: login/user-switch renders the
+  single `Turn complexity into clarity` title, while reset-password removes
+  OAuth entirely and renders its single reset heading plus explanatory subtitle
+  before the form.
 
 ## Branding navigation
 

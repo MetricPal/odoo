@@ -105,6 +105,9 @@
         'views/website_template.xml',
     ],
     'assets': {
+        'web.assets_frontend_minimal': [
+            'branding/static/src/scss/auth.scss',
+        ],
         'web.assets_backend': [
             'after',
             'web/static/src/webclient/user_menu/user_menu_items.js',

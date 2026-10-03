@@ -15,4 +15,49 @@
     <template id="brand_promotion_remove" inherit_id="web.brand_promotion" name="Remove Odoo Brand Promotion" priority="99">
         <xpath expr="//div[hasclass('o_brand_promotion')]" position="replace"/>
     </template>
+
+    <template id="standalone_login_layout_branding" inherit_id="auth_magic_link.standalone_login_layout" name="metric.io Standalone Auth Layout Branding" priority="100">
+        <xpath expr="//div[hasclass('border-bottom') and hasclass('mb-4') and ./img]" position="attributes">
+            <attribute name="class" remove="border-bottom" separator=" "/>
+        </xpath>
+        <xpath expr="//div[hasclass('mb-4')]/img" position="attributes">
+            <attribute name="style">height:57px; max-width: 100%; width:auto</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('border-top') and .//a[contains(@href, 'odoo.com')]]" position="attributes">
+            <attribute name="class" remove="border-top" separator=" "/>
+        </xpath>
+        <xpath expr="//a[contains(@href, 'odoo.com') and contains(@href, 'utm_medium=auth')]" position="replace"/>
+    </template>
+
+    <template id="login_oauth_divider_branding" inherit_id="web.login_oauth" name="metric.io Login OAuth Divider" priority="100">
+        <xpath expr="//div[hasclass('o_login_auth')]/em" position="replace"/>
+        <xpath expr="//div[hasclass('o_login_auth')]/div[hasclass('list-group')]" position="after">
+            <div t-if="auth_email_login_mode != 'oauth_only'" class="d-flex align-items-center my-4 o_login_auth_divider" aria-hidden="true">
+                <span class="flex-grow-1 border-top"/>
+                <span class="px-3 text-muted">Or</span>
+                <span class="flex-grow-1 border-top"/>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="login_oauth_first" inherit_id="web.login" name="metric.io Login OAuth First" priority="100">
+        <xpath expr="//h1[hasclass('visually-hidden')]" position="replace">
+            <h1 class="mt-2 mb-4 text-center" style="font-size:19px; font-weight:400; color:#212529;">Turn complexity into clarity</h1>
+        </xpath>
+        <xpath expr="//owl-component" position="before">
+            <t t-call="web.login_oauth"/>
+        </xpath>
+        <xpath expr="//button[@name='redirect' and @value='/web/become']" position="replace"/>
+        <xpath expr="//div[hasclass('oe_login_buttons')]/t[@t-call='web.login_oauth']" position="replace"/>
+    </template>
+
+    <template id="reset_password_oauth_first" inherit_id="auth_signup.reset_password" name="metric.io Reset Password Branding" priority="100">
+        <xpath expr="//form" position="before">
+            <div t-if="not message" class="text-center mb-4 o_auth_reset_password_heading">
+                <h1 class="mb-2" style="font-size:19px; font-weight:400; color:#212529;">Reset your password</h1>
+                <p class="mb-0" style="font-size:14px; font-weight:400; color:#6c757d;">Forgot your password? Let's fix that. Enter your email below.</p>
+            </div>
+        </xpath>
+        <xpath expr="//div[hasclass('oe_login_buttons')]/t[@t-call='web.login_oauth']" position="replace"/>
+    </template>
 </odoo>

@@ -62,6 +62,81 @@ class TestMetricBranding(TransactionCase):
             "x_icon or '/branding/static/src/img/metric_io_favicon.ico'",
         )
 
+    def test_auth_styles_are_loaded_on_auth_pages(self):
+        manifest = Manifest.for_addon('branding')
+
+        self.assertIn(
+            'branding/static/src/scss/auth.scss',
+            manifest['assets']['web.assets_frontend_minimal'],
+        )
+
+    def test_auth_pages_use_metric_branding_and_oauth_first(self):
+        arch = self.env.ref('auth_magic_link.standalone_login_layout')._get_combined_arch()
+        logo = arch.xpath("//img[@alt='Logo']")[0]
+        logo_parent = logo.getparent()
+        footer = arch.xpath("//div[.//a[@href='/web/database/manager']]")[0]
+
+        self.assertIn('height:57px', logo.get('style'))
+        self.assertNotIn('border-bottom', logo_parent.get('class', ''))
+        self.assertFalse(logo_parent.xpath("./h1"))
+        self.assertNotIn('border-top', footer.get('class', ''))
+        self.assertNotIn('Powered by', ''.join(arch.itertext()))
+        self.assertFalse(arch.xpath("//a[contains(@href, 'odoo.com') and contains(@href, 'utm_medium=auth')]"))
+
+        login_arch = self.env.ref('web.login')._get_combined_arch()
+        oauth_arch = self.env.ref('web.login_oauth')._get_combined_arch()
+        reset_arch = self.env.ref('auth_signup.reset_password')._get_combined_arch()
+
+        self.assertEqual(
+            len(login_arch.xpath("//owl-component/preceding-sibling::t[@t-call='web.login_oauth']")),
+            1,
+        )
+        self.assertFalse(login_arch.xpath("//h1[hasclass('visually-hidden')]"))
+        self.assertEqual(
+            login_arch.xpath("normalize-space(//h1)"),
+            'Turn complexity into clarity',
+        )
+        self.assertEqual(
+            login_arch.xpath("//h1")[0].get('style'),
+            'font-size:19px; font-weight:400; color:#212529;',
+        )
+        self.assertFalse(login_arch.xpath("//button[@name='redirect' and @value='/web/become']"))
+        self.assertNotIn('Log in as superuser', ''.join(login_arch.itertext()))
+        self.assertFalse(login_arch.xpath("//form[contains(@t-attf-class, 'oe_login_form')]//t[@t-call='web.login_oauth']"))
+        self.assertNotIn('- or -', ''.join(oauth_arch.itertext()))
+        self.assertEqual(
+            oauth_arch.xpath("normalize-space(//div[hasclass('o_login_auth_divider')]/span[2])"),
+            'Or',
+        )
+        self.assertEqual(
+            oauth_arch.xpath("//div[hasclass('o_login_auth_divider')]")[0].get('t-if'),
+            "auth_email_login_mode != 'oauth_only'",
+        )
+        self.assertEqual(
+            len(oauth_arch.xpath("//div[hasclass('o_login_auth_divider')]/span[hasclass('border-top')]")),
+            2,
+        )
+
+        self.assertFalse(reset_arch.xpath("//t[@t-call='web.login_oauth']"))
+        self.assertFalse(reset_arch.xpath("//div[hasclass('o_login_auth_divider')]"))
+        self.assertEqual(len(reset_arch.xpath("//h1")), 1)
+        self.assertEqual(
+            reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_heading')]/h1)"),
+            'Reset your password',
+        )
+        self.assertEqual(
+            reset_arch.xpath("//div[hasclass('o_auth_reset_password_heading')]/h1")[0].get('style'),
+            'font-size:19px; font-weight:400; color:#212529;',
+        )
+        self.assertEqual(
+            reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_heading')]/p)"),
+            "Forgot your password? Let's fix that. Enter your email below.",
+        )
+        self.assertEqual(
+            reset_arch.xpath("//div[hasclass('o_auth_reset_password_heading')]/p")[0].get('style'),
+            'font-size:14px; font-weight:400; color:#6c757d;',
+        )
+
     def test_powered_by_odoo_is_removed_from_shared_views(self):
         view_xmlids = (
             'web.brand_promotion_message',
