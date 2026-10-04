@@ -35,6 +35,16 @@ Primary actions:
 
 The approval UI should make the decision understandable without forcing the user through the entire ERP record unless needed.
 
+## Naming and presentation
+
+Use clear product names, descriptions, and icons for approval-related modules.
+For the main project approval experience, prefer the name `Approval Center`
+unless a narrower module scope requires a more specific name. Descriptions must
+explain the business outcome in one sentence, not only list technical features.
+Icons should be intentionally selected and consistent with Odoo-style module
+icons; the Odoo Approvals icon URL provided as a reference is
+`https://download.odoocdn.com/icons/approvals/static/description/icon.svg`.
+
 ## Automation activation
 
 A learned automation is not active merely because AI detected it.

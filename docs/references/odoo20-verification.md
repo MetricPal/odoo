@@ -222,6 +222,11 @@ Verified against the Odoo 20 Community source in this repository before adapting
   this Community source tree. The Odoo Approvals application is documented as a
   separate Odoo app/product feature, not as a Community addon available in this
   repository.
+- For module identity research, use proper Odoo-style names, descriptions, and
+  icons. The Odoo Approvals app icon reference provided for comparison is
+  `https://download.odoocdn.com/icons/approvals/static/description/icon.svg`;
+  treat it as a visual reference unless an implementation explicitly downloads
+  or vendors an approved asset.
 - For this project, a reusable AI-native Approval Center should not assume a
   built-in Community approval engine. It should define its own approval object
   and policy layer, then execute approved work through Odoo app-specific actions

@@ -16,6 +16,14 @@ Review → Understand → Approve/Reject → Done.
 - Approval Center highly accessible
 - AI Workstream as a central work surface
 
+## Module identity
+
+- Every real module needs a deliberate name, one-sentence description, and icon.
+- Names should describe the business surface users recognize, not the internal
+  technical mechanism.
+- Icons should be sourced, designed, or adapted intentionally before delivery;
+  do not leave default or placeholder app icons in completed modules.
+
 ## Authentication
 
 - Authentication pages use the company logo, concise page-owned title, and
