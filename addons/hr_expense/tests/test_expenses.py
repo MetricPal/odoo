@@ -695,6 +695,30 @@ class TestExpenses(TestExpenseCommon):
         expense_data = self.env['hr.expense'].with_user(self.expense_user_employee).get_expense_dashboard()
         self.assertEqual(expense_data['draft']['amount'], 3000.00)
 
+    def test_dashboard_waiting_reimbursement_posted_expense(self):
+        """ Check that an employee-paid expense stays in the "Waiting Reimbursement"
+            total once its move is posted, until the payment is actually made.
+        """
+        expense = self.create_expenses({
+            'name': 'Employee expense',
+            'payment_mode': 'own_account',
+            'total_amount_currency': 1000.00,
+            'employee_id': self.expense_employee.id,
+        })
+        expense.action_submit()
+        expense.action_approve()
+        self.post_expenses(expense)
+
+        self.assertEqual(expense.state, 'posted')
+        expense_data = self.env['hr.expense'].with_user(self.expense_user_employee).get_expense_dashboard()
+        self.assertEqual(expense_data['approved']['amount'], 1000.00)
+
+        self.get_new_payment(expense, 1000.00)
+
+        self.assertIn(expense.state, ('in_payment', 'paid'))
+        expense_data = self.env['hr.expense'].with_user(self.expense_user_employee).get_expense_dashboard()
+        self.assertEqual(expense_data['approved']['amount'], 0.00)
+
     def test_update_expense_price_on_product_standard_price(self):
         """
         Tests that updating the standard price of a product will update all the un-submitted
@@ -1122,18 +1146,24 @@ class TestExpenses(TestExpenseCommon):
         })
         bill.action_post()
 
-        # 2. Create Expense linked to this bill
+        # 2. Create Expense with existing bill flag but let existing_bill_id empty
         expense = self.create_expenses({
             'name': 'Expense matched to bill',
             'payment_mode': 'company_account',
             'total_amount_currency': 100.0,
             'has_existing_bill': True,
-            'existing_bill_id': bill.id,
         })
+        expense.action_submit()
+        # shouldn't be able to approve without existing_bill_id
+        with self.assertRaisesRegex(UserError, "The existing bill must be set."):
+            expense.action_approve()
+        self.assertEqual(expense.state, 'submitted')
 
+        # 3. Link bill to the expense
+        expense.action_reset()
+        expense.existing_bill_id = bill.id
         self.assertEqual(expense.account_id, other_payable_account, "The expense account should be the bill's payable account")
 
-        expense.action_submit()
         expense.action_approve()
 
         payment_entry = expense.account_move_id
@@ -1266,7 +1296,10 @@ class TestExpenses(TestExpenseCommon):
             'partner_id': employee_partner.id,
             'amount': -100.0,
         })
-        self.env['account.bank.statement.line']._cron_try_auto_reconcile_statement_lines(batch_size=100, company_id=self.env.company)
-        bank_line_reconciled = bank_line.move_id.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_current')
-        self.assertEqual(bank_line_reconciled.reconciled_lines_excluding_exchange_diff_ids.move_id, payment_entry)
+
+        # Reconcile lines to check expense is marked as 'paid'
+        bank_line_to_reconcile = bank_line.move_id.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_current')
+        payment_line_to_reconcile = payment_entry.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_current')
+        bank_line_to_reconcile.account_id = payment_line_to_reconcile.account_id
+        (bank_line_to_reconcile + payment_line_to_reconcile).reconcile()
         self.assertEqual(expense.state, 'paid')
