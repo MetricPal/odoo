@@ -191,6 +191,48 @@ Verified against the Odoo 20 Community source in this repository before adapting
   the moved pair uses a registry separator above Apps and the existing visual
   separator before Log out.
 
+## Approval mechanisms
+
+- This Odoo 20 Community source tree does not include a standalone `approvals`
+  addon. Approval behavior is implemented inside individual applications as
+  model-specific state machines, groups, buttons, activities, and chatter.
+- Purchase approval is implemented on `purchase.order`. Company settings
+  `po_double_validation` and `po_double_validation_amount` control whether
+  orders above the threshold move from RFQ/RFQ Sent to `to approve` instead of
+  `purchase`. `button_approve()` writes state `purchase` and `date_approve`;
+  `_approval_allowed()` permits one-step approval, below-threshold orders, or a
+  user in `purchase.group_purchase_manager`.
+- Expenses approval is implemented on `hr.expense`. Draft expenses are submitted
+  with `action_submit()`, become `submitted` unless auto-validated, and
+  `action_approve()` checks permissions/duplicates before `_do_approve()` writes
+  `approval_state = approved`, approver, and approval date. Review activities use
+  `hr_expense.mail_act_expense_approval`; access is driven by Expense groups
+  such as Team Approver, All Approver, and Administrator.
+- Time Off approval is implemented on `hr.leave` and `hr.leave.allocation`.
+  Validation policy comes from work-entry type fields such as
+  `leave_validation_type` and `allocation_validation_type`. Supported patterns
+  include no validation, manager approval, HR approval, and two-step approval.
+  Pending states include `confirm` and `validate1`; final approved state is
+  `validate`. Approval activities use Time Off activity types for first and
+  second approval.
+- Maintenance requests contain an `approved` state, but it is a lightweight
+  request state rather than a general approval framework.
+- Odoo Studio approval rules exist in official Odoo 20 documentation as a
+  configurable button-level approval mechanism, but Studio is not present in
+  this Community source tree. The Odoo Approvals application is documented as a
+  separate Odoo app/product feature, not as a Community addon available in this
+  repository.
+- For this project, a reusable AI-native Approval Center should not assume a
+  built-in Community approval engine. It should define its own approval object
+  and policy layer, then execute approved work through Odoo app-specific actions
+  such as `button_approve()` or `action_approve()` where appropriate. The
+  Approval Center must not bypass those actions with direct state writes unless
+  the target module has no action API and the implementation records why.
+- Every approval execution path must evaluate project approval policy before the
+  Odoo action runs and must create an audit trail after execution, including
+  actor, policy, target record, action called, result, timestamp, and failure
+  reason when execution is blocked or fails.
+
 ## Unavailable referenced documentation
 
 `AGENTS.md` references project documents under `docs/` that were not present when this verification was performed. This note records the source-level verification required by the available local research skill.

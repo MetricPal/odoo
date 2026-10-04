@@ -44,3 +44,10 @@ Activation requires explicit user confirmation of the automation definition and 
 ## Audit
 
 Every approval and execution must be traceable.
+
+## Odoo execution rule
+
+When an approved request maps to existing Odoo behavior, execute it through the
+module's public action method instead of writing final states directly. The
+approval layer must enforce policy before calling the action and record the
+audit result after the action completes or fails.

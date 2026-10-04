@@ -22,7 +22,9 @@ subtitle: MESSAGE
 4.2 add a section the bottom of the page: COMPANY NAME © 2026 . Privacy 
 
 
-
+5. research about Approvals.
+do find out how it's work in Odoo.
+give me the report, explain propery that I can understand it in one glance.
 
 
 
