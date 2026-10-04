@@ -6,6 +6,9 @@ _build/
 !.gitignore
 !.gitkeep
 !.github
+!.codex
+!.codex/
+!.codex/**
 !.mailmap
 !.weblate.json
 # compiled python files

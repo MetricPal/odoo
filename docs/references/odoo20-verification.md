@@ -206,6 +206,22 @@ Verified against the Odoo 20 Community source in this repository before adapting
   `write_date`; approval center approver lines can expose these readonly fields
   in XML list/report views without adding custom columns to
   `approval.center.approver`.
+- Approval Center's `action_approval_center_requests` and
+  `action_approval_center_submitted_requests` both use the same
+  `approval.center.request` kanban/list/form views. A list-view change for
+  Approval Requests also affects the To Review list; do not duplicate the list
+  view only to add submitted-only columns.
+- Odoo 20 list views support `optional="hide"` for hidden-by-default columns.
+  Use it for audit fields such as `create_date` and `write_date` when users may
+  need the columns without making them part of the default scanning surface.
+- Kanban templates must preload every field used through `record.<field>` or a
+  `<field/>` node inside the card. For request audit dates, declare `state`,
+  `create_date`, and `write_date` at kanban root level before using conditional
+  card blocks.
+- Keep labels and values intentionally separate in kanban cards. If the design
+  asks for only the timestamp, render only `<field name="create_date"/>` or
+  `<field name="write_date"/>`; avoid hard-coded "Created On" / "Updated On"
+  text in the card body.
 - Purchase approval is implemented on `purchase.order`. Company settings
   `po_double_validation` and `po_double_validation_amount` control whether
   orders above the threshold move from RFQ/RFQ Sent to `to approve` instead of
