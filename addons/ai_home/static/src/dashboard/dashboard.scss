@@ -4,6 +4,7 @@
     --work-dashboard-muted-surface: #f7f7f8;
     --work-dashboard-text: #303036;
     --work-dashboard-muted: #6d6d76;
+    --work-dashboard-accent-bg: rgba(113, 75, 103, 0.08);
     --work-dashboard-shadow: 0 0.25rem 0.75rem rgba(33, 37, 41, 0.12);
     --work-dashboard-radius: 1rem;
 
@@ -113,7 +114,7 @@
 
         &:hover,
         &:focus-visible {
-            border-color: rgba(113, 75, 103, 0.3);
+            border-color: #eeeeee;
             box-shadow: 0 0.25rem 0.625rem rgba(33, 37, 41, 0.1);
             transform: translateY(-1px);
         }

@@ -114,7 +114,7 @@
                                 />
                             </button>
                             <button
-                                t-if="app"
+                                t-if="app and this.state.showAllApps"
                                 type="button"
                                 class="o_ai_home_favorite_toggle o_is_favorite"
                                 t-att-aria-label="'Remove ' + app.name + ' from favorites'"

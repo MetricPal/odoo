@@ -8,7 +8,7 @@ from lxml import etree
 
 
 class TestDashboardTemplates(unittest.TestCase):
-    def test_favorite_star_is_available_without_expanding_apps(self):
+    def test_favorite_star_is_only_available_when_favorites_are_expanded(self):
         template = etree.parse(str(
             Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
         ))
@@ -16,7 +16,7 @@ class TestDashboardTemplates(unittest.TestCase):
             "//button[contains(@class, 'o_ai_home_favorite_toggle') and @aria-pressed='true']"
         )
         self.assertEqual(len(buttons), 1)
-        self.assertEqual(buttons[0].get('t-if'), 'app')
+        self.assertEqual(buttons[0].get('t-if'), 'app and this.state.showAllApps')
         self.assertEqual(len(buttons[0].xpath("span[@data-icon='star' and @class='oi oi-filled']")), 1)
 
     def test_favorites_view_all_only_shows_when_apps_are_available(self):

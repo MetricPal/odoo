@@ -225,13 +225,14 @@ test("a remaining app can be dropped at an exact favorite position", async () =>
 });
 
 
-test("stars are visible before View all and administrative apps are excluded", async () => {
+test("favorite stars are visible only after View all and administrative apps are excluded", async () => {
     browser.localStorage.setItem("ai_home.favorite_apps.42", JSON.stringify([90, 2, 91]));
     await mountWithCleanup(WorkDashboard);
 
-    expect('.o_ai_home_favorite_item [data-icon="star"].oi-filled').toHaveCount(1);
+    expect('.o_ai_home_favorite_item [data-icon="star"].oi-filled').toHaveCount(0);
     expect(".o_ai_home_favorite_item .o_ai_home_app_name").toHaveText("Sales");
     await contains(".o_ai_home_favorites_view_all").click();
+    expect('.o_ai_home_favorite_item [data-icon="star"].oi-filled').toHaveCount(1);
     expect('[data-app-id="90"]').toHaveCount(0);
     expect('[data-app-id="91"]').toHaveCount(0);
 });

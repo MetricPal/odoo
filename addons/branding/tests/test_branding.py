@@ -74,12 +74,30 @@ class TestMetricBranding(TransactionCase):
         arch = self.env.ref('auth_magic_link.standalone_login_layout')._get_combined_arch()
         logo = arch.xpath("//img[@alt='Logo']")[0]
         logo_parent = logo.getparent()
-        footer = arch.xpath("//div[.//a[@href='/web/database/manager']]")[0]
+        footer = arch.xpath("//div[hasclass('o_auth_brand_footer')]")[0]
+        container = arch.xpath("//div[hasclass('container') and hasclass('py-5')]")[0]
+        login_card = arch.xpath("//div[contains(@t-attf-class, 'o_database_list')]")[0]
+        card_body = arch.xpath("//div[hasclass('card-body')]")[0]
 
         self.assertIn('height:57px', logo.get('style'))
+        self.assertLessEqual(
+            {'min-vh-100', 'd-flex', 'flex-column'},
+            set(container.get('class').split()),
+        )
+        self.assertIn('flex-grow-1 d-flex flex-column', login_card.get('t-attf-class'))
+        self.assertLessEqual(
+            {'d-flex', 'flex-column', 'flex-grow-1'},
+            set(card_body.get('class').split()),
+        )
         self.assertNotIn('border-bottom', logo_parent.get('class', ''))
         self.assertFalse(logo_parent.xpath("./h1"))
         self.assertNotIn('border-top', footer.get('class', ''))
+        self.assertIn('mt-auto', footer.get('class').split())
+        self.assertEqual(footer.get('t-if'), 'not disable_footer')
+        self.assertEqual(len(footer.xpath("./span[@t-out='res_company.name']")), 1)
+        self.assertIn('© 2026 .', ''.join(footer.itertext()))
+        self.assertEqual(footer.xpath("normalize-space(./a[@href='/privacy'])"), 'Privacy')
+        self.assertFalse(arch.xpath("//a[@href='/web/database/manager']"))
         self.assertNotIn('Powered by', ''.join(arch.itertext()))
         self.assertFalse(arch.xpath("//a[contains(@href, 'odoo.com') and contains(@href, 'utm_medium=auth')]"))
 
@@ -93,12 +111,60 @@ class TestMetricBranding(TransactionCase):
         )
         self.assertFalse(login_arch.xpath("//h1[hasclass('visually-hidden')]"))
         self.assertEqual(
-            login_arch.xpath("normalize-space(//h1)"),
+            login_arch.xpath("normalize-space(//h1[contains(@class, 'mt-2')])"),
             'Turn complexity into clarity',
         )
         self.assertEqual(
-            login_arch.xpath("//h1")[0].get('style'),
+            login_arch.xpath("//h1[contains(@class, 'mt-2')]")[0].get('style'),
             'font-size:19px; font-weight:400; color:#212529;',
+        )
+        self.assertEqual(
+            login_arch.xpath("//h1[contains(@class, 'mt-2')]")[0].get('t-if'),
+            "not (message and auth_email_alert_view == 'magic')",
+        )
+        self.assertEqual(
+            login_arch.xpath("normalize-space(//div[hasclass('o_auth_magic_link_message_heading')]/h1)"),
+            'Check your email',
+        )
+        self.assertEqual(
+            login_arch.xpath("//div[hasclass('o_auth_magic_link_message_heading')]/h1")[0].get('style'),
+            'font-size:19px; font-weight:400; color:#212529;',
+        )
+        self.assertEqual(
+            len(login_arch.xpath("//div[hasclass('o_auth_magic_link_message_heading')]/p/t[@t-out='message']")),
+            1,
+        )
+        self.assertEqual(
+            login_arch.xpath("//div[hasclass('o_auth_magic_link_message_heading')]/p")[0].get('style'),
+            'font-size:14px; font-weight:400; color:#6c757d;',
+        )
+        self.assertEqual(
+            login_arch.xpath("//div[hasclass('o_auth_magic_link_message_heading')]/p")[0].get('role'),
+            'status',
+        )
+        self.assertEqual(
+            login_arch.xpath("normalize-space(//div[hasclass('o_auth_magic_link_message_heading')]/a[@href='/web/login'])"),
+            'Back to Login',
+        )
+        self.assertIn(
+            'mx-auto',
+            login_arch.xpath("//div[hasclass('o_auth_magic_link_message_heading')]/a[@href='/web/login']")[0].get('class').split(),
+        )
+        self.assertEqual(
+            login_arch.xpath("//p[@role='status' and contains(@class, 'alert-success')]")[0].get('t-if'),
+            "message and auth_email_alert_view != 'magic'",
+        )
+        self.assertEqual(
+            login_arch.xpath("//form[contains(@t-attf-class, 'oe_login_form')]")[0].get('t-attf-class'),
+            "oe_login_form #{'' if login and not (message and auth_email_alert_view == 'magic') else 'd-none'}",
+        )
+        self.assertEqual(
+            login_arch.xpath("//owl-component")[0].get('t-if'),
+            "not login and not (message and auth_email_alert_view == 'magic')",
+        )
+        self.assertEqual(
+            login_arch.xpath("//owl-component/preceding-sibling::t[@t-call='web.login_oauth']")[0].get('t-if'),
+            "not (message and auth_email_alert_view == 'magic')",
         )
         self.assertFalse(login_arch.xpath("//button[@name='redirect' and @value='/web/become']"))
         self.assertNotIn('Log in as superuser', ''.join(login_arch.itertext()))
@@ -139,6 +205,14 @@ class TestMetricBranding(TransactionCase):
         self.assertEqual(
             reset_arch.xpath("//div[hasclass('o_auth_reset_password_message_heading')]/p")[0].get('role'),
             'status',
+        )
+        self.assertIn(
+            'mx-auto',
+            reset_arch.xpath("//div[hasclass('oe_login_form')]/a[@href='/web/login']")[0].get('class').split(),
+        )
+        self.assertEqual(
+            reset_arch.xpath("//div[hasclass('oe_login_buttons')]/div")[0].get('class'),
+            'text-center small mt-2',
         )
         self.assertEqual(
             reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_heading')]/h1/t[@t-if='token and not invalid_token'])"),
