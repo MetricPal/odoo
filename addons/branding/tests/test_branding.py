@@ -119,9 +119,33 @@ class TestMetricBranding(TransactionCase):
 
         self.assertFalse(reset_arch.xpath("//t[@t-call='web.login_oauth']"))
         self.assertFalse(reset_arch.xpath("//div[hasclass('o_login_auth_divider')]"))
-        self.assertEqual(len(reset_arch.xpath("//h1")), 1)
+        self.assertEqual(len(reset_arch.xpath("//h1")), 2)
         self.assertEqual(
-            reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_heading')]/h1)"),
+            reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_message_heading')]/h1)"),
+            'Check your email',
+        )
+        self.assertEqual(
+            reset_arch.xpath("//div[hasclass('o_auth_reset_password_message_heading')]/h1")[0].get('style'),
+            'font-size:19px; font-weight:400; color:#212529;',
+        )
+        self.assertEqual(
+            len(reset_arch.xpath("//div[hasclass('o_auth_reset_password_message_heading')]/p/t[@t-out='message']")),
+            1,
+        )
+        self.assertEqual(
+            reset_arch.xpath("//div[hasclass('o_auth_reset_password_message_heading')]/p")[0].get('style'),
+            'font-size:14px; font-weight:400; color:#6c757d;',
+        )
+        self.assertEqual(
+            reset_arch.xpath("//div[hasclass('o_auth_reset_password_message_heading')]/p")[0].get('role'),
+            'status',
+        )
+        self.assertEqual(
+            reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_heading')]/h1/t[@t-if='token and not invalid_token'])"),
+            'Set your password',
+        )
+        self.assertEqual(
+            reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_heading')]/h1/t[@t-else=''])"),
             'Reset your password',
         )
         self.assertEqual(
@@ -129,7 +153,11 @@ class TestMetricBranding(TransactionCase):
             'font-size:19px; font-weight:400; color:#212529;',
         )
         self.assertEqual(
-            reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_heading')]/p)"),
+            reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_heading')]/p/t[@t-if='token and not invalid_token'])"),
+            'Create a password to secure your account.',
+        )
+        self.assertEqual(
+            reset_arch.xpath("normalize-space(//div[hasclass('o_auth_reset_password_heading')]/p/t[@t-else=''])"),
             "Forgot your password? Let's fix that. Enter your email below.",
         )
         self.assertEqual(

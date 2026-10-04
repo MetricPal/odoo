@@ -52,10 +52,24 @@
     </template>
 
     <template id="reset_password_oauth_first" inherit_id="auth_signup.reset_password" name="metric.io Reset Password Branding" priority="100">
+        <xpath expr="//div[hasclass('oe_login_form')]/p[@t-if='message']" position="replace">
+            <div class="text-center mb-4 o_auth_reset_password_message_heading">
+                <h1 class="mb-2" style="font-size:19px; font-weight:400; color:#212529;">Check your email</h1>
+                <p class="mb-0" style="font-size:14px; font-weight:400; color:#6c757d;" role="status">
+                    <t t-out="message"/>
+                </p>
+            </div>
+        </xpath>
         <xpath expr="//form" position="before">
             <div t-if="not message" class="text-center mb-4 o_auth_reset_password_heading">
-                <h1 class="mb-2" style="font-size:19px; font-weight:400; color:#212529;">Reset your password</h1>
-                <p class="mb-0" style="font-size:14px; font-weight:400; color:#6c757d;">Forgot your password? Let's fix that. Enter your email below.</p>
+                <h1 class="mb-2" style="font-size:19px; font-weight:400; color:#212529;">
+                    <t t-if="token and not invalid_token">Set your password</t>
+                    <t t-else="">Reset your password</t>
+                </h1>
+                <p class="mb-0" style="font-size:14px; font-weight:400; color:#6c757d;">
+                    <t t-if="token and not invalid_token">Create a password to secure your account.</t>
+                    <t t-else="">Forgot your password? Let's fix that. Enter your email below.</t>
+                </p>
             </div>
         </xpath>
         <xpath expr="//div[hasclass('oe_login_buttons')]/t[@t-call='web.login_oauth']" position="replace"/>
