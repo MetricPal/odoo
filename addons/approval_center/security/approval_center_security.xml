@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="res.groups.privilege" id="res_groups_privilege_approval_center">
+        <field name="name">Approval Center</field>
+        <field name="sequence">9</field>
+        <field name="category_id" ref="base.module_category_productivity"/>
+    </record>
+
+    <record id="group_approval_center_user" model="res.groups">
+        <field name="name">User</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_approval_center"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_approval_center_approver" model="res.groups">
+        <field name="name">Approver</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="res_groups_privilege_approval_center"/>
+        <field name="implied_ids" eval="[(4, ref('approval_center.group_approval_center_user'))]"/>
+    </record>
+
+    <record id="group_approval_center_manager" model="res.groups">
+        <field name="name">Administrator</field>
+        <field name="sequence">30</field>
+        <field name="privilege_id" ref="res_groups_privilege_approval_center"/>
+        <field name="implied_ids" eval="[(4, ref('approval_center.group_approval_center_approver'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+
+    <record id="mail_act_approval_review" model="mail.activity.type">
+        <field name="name">Review Approval</field>
+        <field name="icon">checklist</field>
+        <field name="res_model">approval.center.request</field>
+    </record>
+</odoo>

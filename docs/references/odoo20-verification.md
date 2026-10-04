@@ -237,6 +237,39 @@ Verified against the Odoo 20 Community source in this repository before adapting
   Odoo action runs and must create an audit trail after execution, including
   actor, policy, target record, action called, result, timestamp, and failure
   reason when execution is blocked or fails.
+- Odoo's user-facing Approvals product is category/request first: users create
+  approval requests from approval categories/types, while each category defines
+  which request fields are hidden, optional, or required, who the approvers are,
+  whether approvers act in sequence, and how many approvals are required. The
+  requester should not have to know a target model or method name.
+- Odoo 20 Studio approval rules confirm the same separation for action-backed
+  approvals: an approval rule is attached to a button/action, approvers can be
+  specific users or a group, activities are created for approvers, and approvals
+  are tracked in chatter and approval entries. Source:
+  <https://www.odoo.com/documentation/20.0/applications/studio/approval_rules.html>.
+- Odoo's Approvals feature page describes the same product shape for request
+  categories: configure what information is required or optional for each
+  approval type. Source: <https://www.odoo.com/app/approvals-features>.
+- The project `approval_center` addon therefore exposes Approval Types,
+  Approval Requests, Approver(s), and Approval Audit. `approval.center.policy`
+  remains the internal model name for compatibility with the first foundation
+  pass, but its user-facing description and menus are Approval Type. Approval
+  Types are managed from Configuration and define icon, description, request
+  field rules (`required`, `optional`, `none`), default approvers, optional
+  employee manager approval, approver sequence, and `approval_minimum`
+  defaulting to 1. Requests copy the configured approvers on submit and count
+  approvals against the type minimum. Target model/action fields are kept as
+  hidden technical execution plumbing for integrations, not as requester-facing
+  fields. Approver lines enforce uniqueness per approval type and per approval
+  request. Inactive Approval Types follow Odoo archive behavior and remain
+  recoverable from Configuration by using the Archived search filter.
+- The default Approval Types seeded by the module are Business Trip, Borrow
+  Items, General Approval, Contract Approval, Payment Application, Car Rental
+  Application, Job Referral Award, and Procurement.
+- Odoo 20 `ir.actions.report` records use `report_name`, `binding_model_id`,
+  `binding_type`, and optional `print_report_name`; this source tree's report
+  records do not use `report_file`, and Odoo 20 rejects that field during XML
+  loading.
 
 ## Unavailable referenced documentation
 

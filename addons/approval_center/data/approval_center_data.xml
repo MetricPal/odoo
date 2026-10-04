@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="approval_type_business_trip" model="approval.center.policy">
+        <field name="name">Business Trip</field>
+        <field name="description">Approve travel requests before employees make arrangements.</field>
+        <field name="sequence">10</field>
+        <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_business_trip.svg"/>
+        <field name="has_document">optional</field>
+        <field name="has_period">required</field>
+        <field name="has_location">required</field>
+        <field name="manager_approval">1</field>
+        <field name="approval_minimum">1</field>
+    </record>
+
+    <record id="approval_type_borrow_items" model="approval.center.policy">
+        <field name="name">Borrow Items</field>
+        <field name="description">Approve requests to borrow company items or equipment.</field>
+        <field name="sequence">20</field>
+        <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_borrow_items.svg"/>
+        <field name="has_document">optional</field>
+        <field name="has_period">optional</field>
+        <field name="has_items">required</field>
+        <field name="has_quantity">required</field>
+        <field name="approval_minimum">1</field>
+    </record>
+
+    <record id="approval_type_general_approval" model="approval.center.policy">
+        <field name="name">General Approval</field>
+        <field name="description">Approve general business requests that need supervision.</field>
+        <field name="sequence">30</field>
+        <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_general_approval.svg"/>
+        <field name="has_document">optional</field>
+        <field name="approval_minimum">1</field>
+    </record>
+
+    <record id="approval_type_contract_approval" model="approval.center.policy">
+        <field name="name">Contract Approval</field>
+        <field name="description">Approve contract documents before signing or execution.</field>
+        <field name="sequence">40</field>
+        <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_contract_approval.svg"/>
+        <field name="has_document">required</field>
+        <field name="has_partner">optional</field>
+        <field name="has_reference">optional</field>
+        <field name="approval_minimum">1</field>
+    </record>
+
+    <record id="approval_type_payment_application" model="approval.center.policy">
+        <field name="name">Payment Application</field>
+        <field name="description">Approve payment requests before processing.</field>
+        <field name="sequence">50</field>
+        <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_payment_application.svg"/>
+        <field name="has_document">optional</field>
+        <field name="has_amount">required</field>
+        <field name="has_reference">optional</field>
+        <field name="has_payment">required</field>
+        <field name="approval_minimum">1</field>
+    </record>
+
+    <record id="approval_type_car_rental_application" model="approval.center.policy">
+        <field name="name">Car Rental Application</field>
+        <field name="description">Approve vehicle rental requests before booking.</field>
+        <field name="sequence">60</field>
+        <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_car_rental_application.svg"/>
+        <field name="has_document">optional</field>
+        <field name="has_period">required</field>
+        <field name="has_location">required</field>
+        <field name="approval_minimum">1</field>
+    </record>
+
+    <record id="approval_type_job_referral_award" model="approval.center.policy">
+        <field name="name">Job Referral Award</field>
+        <field name="description">Approve employee referral award requests.</field>
+        <field name="sequence">70</field>
+        <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_job_referral_award.svg"/>
+        <field name="has_document">optional</field>
+        <field name="has_partner">required</field>
+        <field name="approval_minimum">1</field>
+    </record>
+
+    <record id="approval_type_procurement" model="approval.center.policy">
+        <field name="name">Procurement</field>
+        <field name="description">Approve procurement requests before purchase processing.</field>
+        <field name="sequence">80</field>
+        <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_procurement.svg"/>
+        <field name="has_document">optional</field>
+        <field name="has_items">required</field>
+        <field name="has_quantity">optional</field>
+        <field name="has_amount">optional</field>
+        <field name="approval_minimum">1</field>
+    </record>
+</odoo>

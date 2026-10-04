@@ -27,7 +27,10 @@ do find out how it's work in Odoo.
 give me the report, explain propery that I can understand it in one glance.
 
 
+o_list_record_selector > cursor-pointer (add align-content-center here) > o_field_handle
 
+
+o_menu_sections_more > button (add class d-inline; and style  margin: 0 !important;)
 
 
 Approvals

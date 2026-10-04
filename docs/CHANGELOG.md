@@ -11,6 +11,33 @@ Format:
 
 ## 2026-10-04
 
+- Change: Reworked `approval_center` from an action-first prototype into an
+  Approval Types workflow with field rules, seeded default types, dashboard
+  request cards, multiple approvers, duplicate-approver protection,
+  employee-manager approval, minimum approval defaulting to 1, and hidden
+  technical action plumbing.
+- Change: Added horizontal Approval Type field-rule controls and an Archived
+  filter in the Approval Types configuration list.
+- Change: Filtered already-selected approvers out of the approver dropdown on
+  Approval Type and Approval Request forms.
+- Reason: Match the researched Odoo Approvals user model and keep target
+  model/action details out of the requester experience.
+- Affected areas: `approval_center` models, views, access rules, tests, and Odoo
+  verification references.
+- Migration/compatibility notes: New module was still in foundation stage.
+  Databases that installed the earlier prototype should upgrade before real use.
+
+- Change: Added the `approval_center` module foundation with approval requests,
+  policies, audit logs, security groups, backend views, module identity, and a
+  custom icon.
+- Reason: Start the real Approval Center module using the researched Odoo
+  approval model: project policy and audit first, execution through app-specific
+  Odoo actions.
+- Affected areas: `approval_center`, approval governance docs, Odoo verification
+  references.
+- Migration/compatibility notes: New module only. Full database-backed install
+  validation still requires PostgreSQL availability.
+
 - Change: Updated authentication branding states, shared auth footer, public
   auth `v` query alias, AI Home Favorites star visibility, and AI Home card
   hover/focus styling.
