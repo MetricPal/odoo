@@ -19,6 +19,7 @@ app-specific Odoo approvals such as Purchase, Expenses, and Time Off.
 - Action-based execution through configured public Odoo action methods.
 - Documentation and reference updates.
 - Basic static/syntax/XML checks.
+- Follow-up UX and permission fixes discovered during browser testing.
 
 ## Non-Scope
 
@@ -68,11 +69,44 @@ app-specific Odoo approvals such as Purchase, Expenses, and Time Off.
 - Restricted Approval Type create/edit to Configuration by making the dashboard
   kanban non-create and non-open.
 - Added duplicate-approver protection for Approval Types and Approval Requests.
+- Filtered already-selected approvers out of the approver dropdown on both
+  Approval Type and Approval Request forms.
+- Added Approval Type driven request fields and validation. Document, Contact,
+  Date, Period, Items, Quantity, Amount, Reference, Payment, and Location are
+  shown on requests only when the selected Approval Type marks them required or
+  optional, and required fields are checked before submit.
+- Approval Request forms now preload default approvers from the selected
+  Approval Type both from dashboard defaults and from category changes.
+- Fixed Approval Request Period layout so From and To render together in one
+  aligned row.
+- Fixed `approval.center.approver` access rules so request owners can manage
+  approver lines on their own requests, normal users can still read Approval
+  Type approver defaults, and approvers can write their own approval status.
+- Submitted approval requests now call Odoo's `message_notify()` for active
+  approver partners after scheduling review activities, so approvers receive
+  an inbox notification or email according to their Odoo notification setting
+  and outgoing mail configuration.
+- Review activities now set both `summary` and `note`, making the request visible
+  in the My Activities Summary column.
 - Hid target model/action fields from the normal request form. They remain only
   as technical execution plumbing for future module integrations.
 - Added security groups: User, Approver, Administrator.
 - Added access rules for requests, categories, approver lines, and audit rows.
 - Added list/form/search views, actions, menus, and review activity type.
+- Added Approval Type configuration UX fixes:
+  - horizontal Required/Optional/None radio controls;
+  - Archived search filter for inactive Approval Types;
+  - fixed column widths so Approval Type list headers are fully visible;
+  - smaller list icons and compact dashboard cards;
+  - scoped list-handle alignment styles.
+- Restored post-submit review activity completion on approve/refuse/cancel with
+  Odoo's `activity_feedback()` API.
+- Fixed the actual Calendar access failure observed while deleting a user:
+  `addons/calendar/models/res_users.py` deletes the removed user's
+  `calendar.user` memberships before deleting the `res.users` record. That
+  cleanup now runs with `sudo()` because the acting user may have permission to
+  delete the user but not permission to delete another user's Calendar
+  membership record.
 - Added database-free static tests.
 - Restored request search Group By filters using the core Odoo search-view
   pattern: plain `<group>` with filters carrying `domain="[]"` and
@@ -92,6 +126,16 @@ app-specific Odoo approvals such as Purchase, Expenses, and Time Off.
 - Focused static tests after Approval Type defaults and duplicate-approver
   checks.
   - Result: passed, 6 tests.
+- Focused static tests after Approval Type UI fixes, approver dropdown
+  filtering, restored activity feedback, and Calendar user-deletion cleanup.
+  - Result: passed, 10 tests.
+- Focused static tests after Approval Type driven request fields and default
+  approver loading.
+  - Result: passed, 11 tests.
+- XML parse after follow-up Approval Center changes.
+  - Result: passed.
+- Python compile after follow-up Approval Center changes.
+  - Result: passed.
 - Odoo CLI smoke check with `/usr/bin/python3 odoo-bin --help`.
   - Result: blocked by missing local dependency `passlib`.
 
@@ -102,6 +146,9 @@ app-specific Odoo approvals such as Purchase, Expenses, and Time Off.
   PostgreSQL database.
 - Generic action execution must stay conservative to avoid bypassing target
   module business rules.
+- Calendar user deletion changes a core Odoo addon override. It is intentionally
+  narrow, but still needs database-backed validation with a non-admin internal
+  user that has user-management rights.
 
 ## Rollback Strategy
 
@@ -112,5 +159,7 @@ app-specific Odoo approvals such as Purchase, Expenses, and Time Off.
 
 ## Completion Status
 
-Completed as a foundation module with documented limitations. Next recommended
-step is database-backed module installation and integration tests.
+Completed as a foundation module with follow-up UX and permission fixes
+recorded. Next recommended step is database-backed module installation and
+integration tests, especially around Calendar-installed environments and
+review activity lifecycle behavior.

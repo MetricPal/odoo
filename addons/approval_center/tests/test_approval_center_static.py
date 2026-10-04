@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 
 
 MODULE = Path(__file__).resolve().parents[1]
+ROOT = MODULE.parents[1]
 
 
 class TestApprovalCenterStatic(unittest.TestCase):
@@ -39,6 +40,12 @@ class TestApprovalCenterStatic(unittest.TestCase):
             'approval_center.group_approval_center_approver',
             'approval_center.group_approval_center_manager',
         }, groups)
+        rows_by_id = {row['id']: row for row in rows}
+        self.assertEqual(rows_by_id['access_approval_center_approver_user']['operation'], 'r')
+        self.assertEqual(rows_by_id['access_approval_center_approver_request_user']['operation'], 'cud')
+        self.assertIn("request_id.requester_id", rows_by_id['access_approval_center_approver_request_user']['domain'])
+        self.assertEqual(rows_by_id['access_approval_center_approver_approver']['operation'], 'ru')
+        self.assertIn("user_id", rows_by_id['access_approval_center_approver_approver']['domain'])
 
     def test_views_expose_approval_type_dashboard_and_requested_views(self):
         root = ET.parse(MODULE / 'views/approval_center_views.xml').getroot()
@@ -82,10 +89,28 @@ class TestApprovalCenterStatic(unittest.TestCase):
         request_form_xml = ET.tostring(request_form, encoding='unicode')
         self.assertNotIn('name="target_model"', request_form_xml)
         self.assertNotIn('name="target_res_id"', request_form_xml)
-        self.assertNotIn('name="amount"', request_form_xml)
-        self.assertNotIn('name="quantity"', request_form_xml)
-        self.assertNotIn('name="reference"', request_form_xml)
-        self.assertNotIn('name="payment"', request_form_xml)
+        for field_name in [
+            'document_ids',
+            'partner_id',
+            'date',
+            'date_start',
+            'date_end',
+            'item',
+            'quantity',
+            'amount',
+            'reference',
+            'payment',
+            'location',
+        ]:
+            self.assertIn(f'name="{field_name}"', request_form_xml)
+        self.assertIn("invisible=\"not policy_id or has_document == 'no'\"", request_form_xml)
+        self.assertIn("required=\"has_document == 'required'\"", request_form_xml)
+        self.assertIn("invisible=\"not policy_id or has_location == 'no'\"", request_form_xml)
+        self.assertIn("required=\"has_location == 'required'\"", request_form_xml)
+        self.assertIn('class="text-muted me-1">From:', request_form_xml)
+        self.assertIn('class="text-muted ms-3 me-1">to:', request_form_xml)
+        self.assertIn('name="date_start" class="oe_inline"', request_form_xml)
+        self.assertIn('name="date_end" class="oe_inline"', request_form_xml)
         self.assertIn('statusbar_visible="to_submit,submitted,approved,refused"', request_form_xml)
         type_kanban = next(
             record for record in root.findall('record')
@@ -132,6 +157,56 @@ class TestApprovalCenterStatic(unittest.TestCase):
         self.assertIn('_compute_selected_approver_user_ids', policy_source)
         self.assertIn('selected_approver_user_ids', request_source)
         self.assertIn('_compute_selected_approver_user_ids', request_source)
+        self.assertIn('def default_get', request_source)
+        self.assertIn('_get_approval_type_approver_commands', request_source)
+
+    def test_request_model_has_policy_driven_optional_fields(self):
+        request_source = (MODULE / 'models/approval_center_request.py').read_text()
+
+        for field_name in [
+            'has_document',
+            'has_partner',
+            'has_date',
+            'has_period',
+            'has_items',
+            'has_quantity',
+            'has_amount',
+            'has_reference',
+            'has_payment',
+            'has_location',
+            'document_ids',
+            'partner_id',
+            'date',
+            'item',
+            'quantity',
+            'amount',
+            'reference',
+            'payment',
+            'location',
+        ]:
+            self.assertIn(field_name, request_source)
+        self.assertIn('_check_required_fields', request_source)
+
+    def test_review_actions_complete_mail_activities_after_submission(self):
+        source = (MODULE / 'models/approval_center_request.py').read_text()
+
+        self.assertIn('activity_schedule', source)
+        self.assertIn("summary=_('Review approval request: %s') % self.name", source)
+        self.assertIn("note=_('Review approval request: %s') % self.name", source)
+        self.assertIn('_notify_approvers', source)
+        self.assertIn('message_notify(', source)
+        self.assertIn('partner_ids=partner_ids', source)
+        self.assertIn('mail_notify_force_send=True', source)
+        self.assertIn('force_send=True', source)
+        self.assertNotIn('_clear_review_activities', source)
+        self.assertNotIn("self.env['mail.activity']", source)
+        self.assertNotIn('activity_unlink(', source)
+        self.assertEqual(source.count("activity_feedback(['approval_center.mail_act_approval_review'])"), 3)
+
+    def test_calendar_user_unlink_uses_sudo_when_deleting_users(self):
+        source = (ROOT / 'addons/calendar/models/res_users.py').read_text()
+
+        self.assertIn('self.calendar_user_ids.sudo().unlink()', source)
 
     def test_icon_is_custom_svg(self):
         icon = (MODULE / 'static/description/icon.svg').read_text()

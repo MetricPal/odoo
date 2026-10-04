@@ -74,6 +74,12 @@ Verified against the Odoo 20 Community source in this repository before adapting
 - SQL constraints use `models.Constraint`.
 - OAuth readiness is represented by an enabled `auth.oauth.provider` linked through `res.users.oauth_provider_id` with a non-empty `oauth_uid` (`addons/auth_oauth`).
 - Active outbound servers are `ir.mail_server` records with `active=True` (`odoo/addons/base/models/ir_mail_server.py`).
+- Odoo Calendar extends `res.users.unlink()` in `addons/calendar/models/res_users.py`
+  and removes related `calendar.user` membership records before deleting the
+  user. `calendar.user` delete access is limited by record rules to own
+  memberships or owned calendars (`addons/calendar/security/ir.access.csv`).
+  Therefore a user who can delete another `res.users` record may still fail on
+  Calendar cleanup unless that cleanup uses elevated access.
 
 ## Adaptation decisions
 
@@ -257,12 +263,22 @@ Verified against the Odoo 20 Community source in this repository before adapting
   Types are managed from Configuration and define icon, description, request
   field rules (`required`, `optional`, `none`), default approvers, optional
   employee manager approval, approver sequence, and `approval_minimum`
-  defaulting to 1. Requests copy the configured approvers on submit and count
-  approvals against the type minimum. Target model/action fields are kept as
-  hidden technical execution plumbing for integrations, not as requester-facing
-  fields. Approver lines enforce uniqueness per approval type and per approval
-  request. Inactive Approval Types follow Odoo archive behavior and remain
-  recoverable from Configuration by using the Archived search filter.
+  defaulting to 1. Requests expose only fields whose type rule is `required` or
+  `optional`; rules set to `none` stay hidden. Configured approvers are copied
+  when a request opens from an Approval Type dashboard card, when the category
+  changes, and again before submit if the request still has no approvers.
+  Requests count approvals against the type minimum. Target model/action fields
+  are kept as hidden technical execution plumbing for integrations, not as
+  requester-facing fields. Approver lines enforce uniqueness per approval type
+  and per approval request. Approval Type approver configuration is
+  administrator-controlled; request owners may manage approver lines on their
+  own request records, and approvers may update their own approver line status.
+  On submit, requests schedule review activities with a visible summary and
+  explicitly notify active approver partners through Odoo's `message_notify()`
+  path; delivery as inbox or email follows each user's Odoo notification
+  preference and the configured outgoing mail server.
+  Inactive Approval Types follow Odoo archive behavior and remain recoverable
+  from Configuration by using the Archived search filter.
 - The default Approval Types seeded by the module are Business Trip, Borrow
   Items, General Approval, Contract Approval, Payment Application, Car Rental
   Application, Job Referral Award, and Procurement.

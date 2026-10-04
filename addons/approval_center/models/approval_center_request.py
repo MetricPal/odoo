@@ -25,6 +25,16 @@ class ApprovalCenterRequest(models.Model):
     approval_minimum = fields.Integer(related='policy_id.approval_minimum', readonly=True)
     approver_sequence = fields.Boolean(related='policy_id.approver_sequence', readonly=True)
     action_name = fields.Char(related='policy_id.action_name', store=True, readonly=True)
+    has_document = fields.Selection(related='policy_id.has_document', readonly=True)
+    has_partner = fields.Selection(related='policy_id.has_partner', readonly=True)
+    has_date = fields.Selection(related='policy_id.has_date', readonly=True)
+    has_period = fields.Selection(related='policy_id.has_period', readonly=True)
+    has_items = fields.Selection(related='policy_id.has_items', readonly=True)
+    has_quantity = fields.Selection(related='policy_id.has_quantity', readonly=True)
+    has_amount = fields.Selection(related='policy_id.has_amount', readonly=True)
+    has_reference = fields.Selection(related='policy_id.has_reference', readonly=True)
+    has_payment = fields.Selection(related='policy_id.has_payment', readonly=True)
+    has_location = fields.Selection(related='policy_id.has_location', readonly=True)
     target_model = fields.Char(tracking=True)
     target_res_id = fields.Integer(string='Target Record ID', tracking=True)
     requester_id = fields.Many2one(
@@ -55,6 +65,16 @@ class ApprovalCenterRequest(models.Model):
     )
     date_start = fields.Datetime(string='From')
     date_end = fields.Datetime(string='To')
+    date = fields.Date()
+    partner_id = fields.Many2one('res.partner', string='Contact')
+    document_ids = fields.Many2many('ir.attachment', string='Documents')
+    item = fields.Char(string='Items')
+    quantity = fields.Float()
+    currency_id = fields.Many2one(related='company_id.currency_id', readonly=True)
+    amount = fields.Monetary(currency_field='currency_id')
+    reference = fields.Char()
+    payment = fields.Char()
+    location = fields.Char()
     reason = fields.Text(string='Description')
     approved_at = fields.Datetime(readonly=True)
     executed_at = fields.Datetime(readonly=True)
@@ -62,6 +82,18 @@ class ApprovalCenterRequest(models.Model):
     failure_reason = fields.Text(readonly=True)
     audit_ids = fields.One2many('approval.center.audit', 'request_id', readonly=True)
     audit_count = fields.Integer(compute='_compute_audit_count')
+
+    @api.model
+    def default_get(self, fields_list):
+        values = super().default_get(fields_list)
+        policy_id = values.get('policy_id') or self.env.context.get('default_policy_id')
+        policy = self.env['approval.center.policy'].browse(policy_id).exists()
+        if policy:
+            requester = self.env['res.users'].browse(values.get('requester_id')).exists() or self.env.user
+            if policy.model:
+                values['target_model'] = policy.model
+            values['approver_ids'] = self._get_approval_type_approver_commands(policy, requester)
+        return values
 
     @api.depends('audit_ids')
     def _compute_audit_count(self):
@@ -84,6 +116,7 @@ class ApprovalCenterRequest(models.Model):
         for request in self:
             if request.policy_id and request.policy_id.model:
                 request.target_model = request.policy_id.model
+            request.approver_ids = [(5, 0, 0)] + request._get_policy_approver_commands()
 
     def action_submit(self):
         for request in self:
@@ -92,6 +125,7 @@ class ApprovalCenterRequest(models.Model):
             request._prepare_request_approvers()
             if not request.approver_ids:
                 raise UserError(_('This category has no approvers. Ask an Approval Center manager to configure the category.'))
+            request._check_required_fields()
             request._check_policy_matches_target()
             request.write({
                 'state': 'submitted',
@@ -99,6 +133,7 @@ class ApprovalCenterRequest(models.Model):
             })
             request._audit('submitted', _('Approval request submitted.'))
             request._schedule_review_activity()
+            request._notify_approvers()
 
     def action_approve(self):
         for request in self:
@@ -150,7 +185,7 @@ class ApprovalCenterRequest(models.Model):
                 'approver_id': self.env.user.id,
                 'refused_at': fields.Datetime.now(),
             })
-            request.activity_unlink(['approval_center.mail_act_approval_review'])
+            request.activity_feedback(['approval_center.mail_act_approval_review'])
             request._audit('refused', _('Approval request refused.'))
 
     def action_reject(self):
@@ -163,7 +198,7 @@ class ApprovalCenterRequest(models.Model):
             if request.requester_id != self.env.user and not self.env.user.has_group('approval_center.group_approval_center_manager'):
                 raise AccessError(_('Only the requester or an Approval Center manager can cancel this request.'))
             request.write({'state': 'to_submit'})
-            request.activity_unlink(['approval_center.mail_act_approval_review'])
+            request.activity_feedback(['approval_center.mail_act_approval_review'])
             request._audit('cancelled', _('Approval request cancelled.'))
 
     def action_execute(self):
@@ -243,8 +278,21 @@ class ApprovalCenterRequest(models.Model):
         self.ensure_one()
         if self.approver_ids:
             return
+        commands = self._get_policy_approver_commands()
+        if len(commands) < self.approval_minimum:
+            raise UserError(_('This request has fewer approvers than the category minimum approval.'))
+        self.write({'approver_ids': commands})
+
+    def _get_policy_approver_commands(self):
+        self.ensure_one()
+        if not self.policy_id:
+            return []
+        return self._get_approval_type_approver_commands(self.policy_id, self.requester_id)
+
+    @api.model
+    def _get_approval_type_approver_commands(self, policy, requester):
         commands = []
-        manager = self.requester_id.employee_id.parent_id.user_id if self.policy_id.manager_approval else False
+        manager = requester.employee_id.parent_id.user_id if policy.manager_approval else False
         if manager:
             commands.append((0, 0, {
                 'sequence': 0,
@@ -252,7 +300,7 @@ class ApprovalCenterRequest(models.Model):
                 'required': True,
                 'status': 'new',
             }))
-        for approver in self.policy_id.approver_ids:
+        for approver in policy.approver_ids:
             if manager and approver.user_id == manager:
                 continue
             commands.append((0, 0, {
@@ -261,9 +309,26 @@ class ApprovalCenterRequest(models.Model):
                 'required': approver.required,
                 'status': 'new',
             }))
-        if len(commands) < self.approval_minimum:
-            raise UserError(_('This request has fewer approvers than the category minimum approval.'))
-        self.write({'approver_ids': commands})
+        return commands
+
+    def _check_required_fields(self):
+        self.ensure_one()
+        required_fields = [
+            ('has_document', 'document_ids', _('Document')),
+            ('has_partner', 'partner_id', _('Contact')),
+            ('has_date', 'date', _('Date')),
+            ('has_items', 'item', _('Items')),
+            ('has_quantity', 'quantity', _('Quantity')),
+            ('has_amount', 'amount', _('Amount')),
+            ('has_reference', 'reference', _('Reference')),
+            ('has_payment', 'payment', _('Payment')),
+            ('has_location', 'location', _('Location')),
+        ]
+        missing = [label for option_field, value_field, label in required_fields if self[option_field] == 'required' and not self[value_field]]
+        if self.has_period == 'required' and (not self.date_start or not self.date_end):
+            missing.append(_('Period'))
+        if missing:
+            raise UserError(_('Please complete the required fields: %s') % ', '.join(missing))
 
     def _schedule_review_activity(self):
         self.ensure_one()
@@ -271,8 +336,30 @@ class ApprovalCenterRequest(models.Model):
             self.activity_schedule(
                 'approval_center.mail_act_approval_review',
                 user_id=approver.user_id.id,
+                summary=_('Review approval request: %s') % self.name,
                 note=_('Review approval request: %s') % self.name,
             )
+
+    def _notify_approvers(self):
+        self.ensure_one()
+        approvers = self.approver_ids.filtered(lambda line: line.user_id.active and line.user_id.partner_id)
+        partner_ids = approvers.user_id.partner_id.ids
+        if not partner_ids:
+            return False
+        self.with_context(mail_notify_force_send=True).message_notify(
+            partner_ids=partner_ids,
+            subject=_('Approval request submitted: %s') % self.name,
+            body=_(
+                '%(requester)s submitted approval request "%(request)s" in %(category)s.',
+                requester=self.requester_id.display_name,
+                request=self.name,
+                category=self.policy_id.display_name,
+            ),
+            model=self._name,
+            res_id=self.id,
+            force_send=True,
+        )
+        return True
 
     def _audit(self, event, message, result=False):
         self.ensure_one()

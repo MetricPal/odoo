@@ -6,7 +6,8 @@ access_approval_center_policy_user,approval.center.policy user,approval.center.p
 access_approval_center_policy_approver,approval.center.policy approver,approval.center.policy,approval_center.group_approval_center_approver,r,
 access_approval_center_policy_manager,approval.center.policy manager,approval.center.policy,approval_center.group_approval_center_manager,crud,
 access_approval_center_approver_user,approval.center.approver user,approval.center.approver,approval_center.group_approval_center_user,r,
-access_approval_center_approver_approver,approval.center.approver approver,approval.center.approver,approval_center.group_approval_center_approver,r,"[('user_id', '=', user.id)]"
+access_approval_center_approver_request_user,approval.center.approver request user,approval.center.approver,approval_center.group_approval_center_user,cud,"[('request_id.requester_id', '=', user.id)]"
+access_approval_center_approver_approver,approval.center.approver approver,approval.center.approver,approval_center.group_approval_center_approver,ru,"[('user_id', '=', user.id)]"
 access_approval_center_approver_manager,approval.center.approver manager,approval.center.approver,approval_center.group_approval_center_manager,crud,
 access_approval_center_audit_user,approval.center.audit user,approval.center.audit,approval_center.group_approval_center_user,r,"[('request_id.requester_id', '=', user.id)]"
 access_approval_center_audit_approver,approval.center.audit approver,approval.center.audit,approval_center.group_approval_center_approver,r,"[('request_id.approver_ids.user_id', '=', user.id)]"

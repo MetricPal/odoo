@@ -20,6 +20,24 @@ Format:
   filter in the Approval Types configuration list.
 - Change: Filtered already-selected approvers out of the approver dropdown on
   Approval Type and Approval Request forms.
+- Change: Approval Request forms now materialize Approval Type configuration:
+  configured approvers load when the request opens or the category changes, and
+  request fields appear only when the type marks them required or optional.
+- Fix: Approval Request Period now renders From and To on one aligned row so
+  later fields such as Location do not slip into the period block.
+- Fix: Approval Request users can now create/update/delete approver lines on
+  their own requests, while Approval Type approver configuration remains
+  administrator-controlled. Approvers can update their own approver line status.
+- Fix: Submitted approval requests now notify approvers through Odoo's
+  notification engine in addition to scheduling review activities.
+- Fix: Review activities now set a visible Summary so the My Activities list
+  shows the approval request prompt instead of an empty summary column.
+- Fix: Restored Approval Center review activity completion with
+  `activity_feedback()` on approve/refuse/cancel.
+- Fix: User deletion with Calendar installed now removes the deleted user's
+  `calendar.user` memberships with `sudo()`, because Odoo Calendar's
+  `res.users.unlink()` cleanup was failing for users allowed to delete
+  `res.users` but not allowed to delete another user's calendar membership.
 - Reason: Match the researched Odoo Approvals user model and keep target
   model/action details out of the requester experience.
 - Affected areas: `approval_center` models, views, access rules, tests, and Odoo

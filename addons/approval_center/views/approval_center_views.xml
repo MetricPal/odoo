@@ -82,25 +82,42 @@
                     </div>
                     <group>
                         <group>
+                            <field name="has_document" invisible="1"/>
+                            <field name="has_partner" invisible="1"/>
+                            <field name="has_date" invisible="1"/>
+                            <field name="has_period" invisible="1"/>
+                            <field name="has_items" invisible="1"/>
+                            <field name="has_quantity" invisible="1"/>
+                            <field name="has_amount" invisible="1"/>
+                            <field name="has_reference" invisible="1"/>
+                            <field name="has_payment" invisible="1"/>
+                            <field name="has_location" invisible="1"/>
                             <field name="requester_id" widget="many2one_avatar_user"/>
                             <field name="policy_id"/>
-                            <label for="date_start" string="Period"/>
-                            <div class="o_row">
-                                <span>From:</span>
-                                <field name="date_start"/>
+                            <field name="partner_id" invisible="not policy_id or has_partner == 'no'" required="has_partner == 'required'"/>
+                            <field name="date" invisible="not policy_id or has_date == 'no'" required="has_date == 'required'"/>
+                            <label for="date_start" string="Period" invisible="not policy_id or has_period == 'no'"/>
+                            <div class="o_row" invisible="not policy_id or has_period == 'no'">
+                                <span class="text-muted me-1">From:</span>
+                                <field name="date_start" class="oe_inline" required="has_period == 'required'"/>
+                                <span class="text-muted ms-3 me-1">to:</span>
+                                <field name="date_end" class="oe_inline" required="has_period == 'required'"/>
                             </div>
-                            <div class="o_row">
-                                <span>to:</span>
-                                <field name="date_end"/>
-                            </div>
+                            <field name="location" invisible="not policy_id or has_location == 'no'" required="has_location == 'required'"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
                             <field name="approval_minimum"/>
+                            <field name="item" invisible="not policy_id or has_items == 'no'" required="has_items == 'required'"/>
+                            <field name="quantity" invisible="not policy_id or has_quantity == 'no'" required="has_quantity == 'required'"/>
+                            <field name="amount" invisible="not policy_id or has_amount == 'no'" required="has_amount == 'required'"/>
+                            <field name="reference" invisible="not policy_id or has_reference == 'no'" required="has_reference == 'required'"/>
+                            <field name="payment" invisible="not policy_id or has_payment == 'no'" required="has_payment == 'required'"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Description">
+                            <field name="document_ids" widget="many2many_binary" invisible="not policy_id or has_document == 'no'" required="has_document == 'required'"/>
                             <field name="reason" placeholder="Describe the request."/>
                         </page>
                         <page string="Approver(s)">
@@ -367,12 +384,21 @@
                         <p><strong>Category:</strong> <span t-field="doc.policy_id"/></p>
                         <p><strong>Request Owner:</strong> <span t-field="doc.requester_id"/></p>
                         <p><strong>Company:</strong> <span t-field="doc.company_id"/></p>
-                        <p>
+                        <p t-if="doc.partner_id"><strong>Contact:</strong> <span t-field="doc.partner_id"/></p>
+                        <p t-if="doc.date"><strong>Date:</strong> <span t-field="doc.date"/></p>
+                        <p t-if="doc.date_start or doc.date_end">
                             <strong>Period:</strong>
                             <span t-field="doc.date_start"/>
                             <span> - </span>
                             <span t-field="doc.date_end"/>
                         </p>
+                        <p t-if="doc.location"><strong>Location:</strong> <span t-field="doc.location"/></p>
+                        <p t-if="doc.item"><strong>Items:</strong> <span t-field="doc.item"/></p>
+                        <p t-if="doc.quantity"><strong>Quantity:</strong> <span t-field="doc.quantity"/></p>
+                        <p t-if="doc.amount"><strong>Amount:</strong> <span t-field="doc.amount"/></p>
+                        <p t-if="doc.reference"><strong>Reference:</strong> <span t-field="doc.reference"/></p>
+                        <p t-if="doc.payment"><strong>Payment:</strong> <span t-field="doc.payment"/></p>
+                        <p t-if="doc.document_ids"><strong>Documents:</strong> <span t-out="', '.join(doc.document_ids.mapped('name'))"/></p>
                         <p><strong>Minimum Approval:</strong> <span t-field="doc.approval_minimum"/></p>
                         <h3>Description</h3>
                         <p t-field="doc.reason"/>
