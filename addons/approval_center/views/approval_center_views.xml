@@ -13,6 +13,8 @@
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="approval_minimum"/>
                 <field name="state" widget="label_selection"/>
+                <field name="create_date" string="Created On" optional="hide"/>
+                <field name="write_date" string="Updated On" optional="hide"/>
             </list>
         </field>
     </record>
@@ -29,6 +31,9 @@
                 <field name="date_end"/>
                 <field name="approval_minimum"/>
                 <field name="approved_count"/>
+                <field name="state"/>
+                <field name="create_date"/>
+                <field name="write_date"/>
                 <templates>
                     <t t-name="card">
                         <div class="o_kanban_record">
@@ -43,11 +48,19 @@
                                 <span> - </span>
                                 <field name="date_end"/>
                             </div>
-                            <div class="mt-2">
-                                <span>Approvals: </span>
-                                <field name="approved_count"/>
-                                <span>/</span>
-                                <field name="approval_minimum"/>
+                            <div class="d-flex gap-3 mt-2 text-muted small justify-content-between">
+                                <div class="mt-2">
+                                    <span>Approvals: </span>
+                                    <field name="approved_count"/>
+                                    <span>/</span>
+                                    <field name="approval_minimum"/>
+                                </div>
+                                <div class="mt-2 text-muted" t-if="record.state.raw_value == 'submitted'">
+                                    <field name="create_date"/>
+                                </div>
+                                <div class="mt-2 text-muted" t-if="record.state.raw_value != 'submitted'">
+                                    <field name="write_date"/>
+                                </div>
                             </div>
                         </div>
                     </t>
@@ -107,6 +120,7 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
+                            <field name="create_date" string="Created On" readonly="1"/>
                             <field name="approval_minimum"/>
                             <field name="item" invisible="not policy_id or has_items == 'no'" required="has_items == 'required'"/>
                             <field name="quantity" invisible="not policy_id or has_quantity == 'no'" required="has_quantity == 'required'"/>
@@ -128,6 +142,7 @@
                                     <field name="user_id" string="Approver" widget="many2one_avatar_user" domain="[('id', 'not in', parent.selected_approver_user_ids)]"/>
                                     <field name="required"/>
                                     <field name="status" readonly="1" widget="label_selection"/>
+                                    <field name="write_date" string="Updated On" readonly="1"/>
                                 </list>
                             </field>
                         </page>
@@ -210,6 +225,8 @@
                 <field name="manager_approval" width="170px"/>
                 <field name="approver_sequence" width="190px"/>
                 <field name="company_id" groups="base.group_multi_company"/>
+                <field name="create_date" string="Created On" optional="hide"/>
+                <field name="write_date" string="Updated On" optional="hide"/>
             </list>
         </field>
     </record>
@@ -399,6 +416,7 @@
                         <p t-if="doc.reference"><strong>Reference:</strong> <span t-field="doc.reference"/></p>
                         <p t-if="doc.payment"><strong>Payment:</strong> <span t-field="doc.payment"/></p>
                         <p t-if="doc.document_ids"><strong>Documents:</strong> <span t-out="', '.join(doc.document_ids.mapped('name'))"/></p>
+                        <p><strong>Created On:</strong> <span t-field="doc.create_date"/></p>
                         <p><strong>Minimum Approval:</strong> <span t-field="doc.approval_minimum"/></p>
                         <h3>Description</h3>
                         <p t-field="doc.reason"/>
@@ -409,6 +427,7 @@
                                     <th>Approver</th>
                                     <th>Required</th>
                                     <th>Status</th>
+                                    <th>Updated On</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -416,6 +435,7 @@
                                     <td><span t-field="approver.user_id"/></td>
                                     <td><span t-field="approver.required"/></td>
                                     <td><span t-field="approver.status"/></td>
+                                    <td><span t-field="approver.write_date"/></td>
                                 </tr>
                             </tbody>
                         </table>

@@ -202,6 +202,10 @@ Verified against the Odoo 20 Community source in this repository before adapting
 - This Odoo 20 Community source tree does not include a standalone `approvals`
   addon. Approval behavior is implemented inside individual applications as
   model-specific state machines, groups, buttons, activities, and chatter.
+- Odoo 20 models inherit the standard ORM audit fields `create_date` and
+  `write_date`; approval center approver lines can expose these readonly fields
+  in XML list/report views without adding custom columns to
+  `approval.center.approver`.
 - Purchase approval is implemented on `purchase.order`. Company settings
   `po_double_validation` and `po_double_validation_amount` control whether
   orders above the threshold move from RFQ/RFQ Sent to `to approve` instead of
