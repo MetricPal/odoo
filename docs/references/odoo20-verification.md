@@ -165,6 +165,19 @@ Verified against the Odoo 20 Community source in this repository before adapting
   single `Turn complexity into clarity` title, while reset-password removes
   OAuth entirely and renders its single reset heading plus explanatory subtitle
   before the form.
+- Authentication pages verified in the local Odoo 20 source are `/web/login`
+  (`web.login`), `/web/signup` (`auth_signup.signup`), `/web/reset_password`
+  (`auth_signup.reset_password`), `/web/login_successful`
+  (`web.login_successful`), and `/web/login/totp`
+  (`auth_totp.auth_totp_form`). Magic-link routes under `/auth/magic-login`
+  consume tokens and redirect/authenticate; they are not standalone pages.
+- The standalone authentication layout is the shared place for global auth
+  chrome. Branding replaces Odoo's database-manager/powered-by footer there with
+  the company name, fixed product-year text `© 2026 .`, and the Website
+  application's standard `/privacy` link. The footer is part of a full-height
+  flex layout and uses `mt-auto` so it stays at the bottom of the auth viewport
+  when content is short, while remaining in normal document flow on shorter
+  screens.
 
 ## Branding navigation
 

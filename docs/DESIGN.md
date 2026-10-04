@@ -16,6 +16,19 @@ Review → Understand → Approve/Reject → Done.
 - Approval Center highly accessible
 - AI Workstream as a central work surface
 
+## Authentication
+
+- Authentication pages use the company logo, concise page-owned title, and
+  page-owned subtitle/message. The shared authentication shell should not own
+  page-specific headings.
+- Global authentication footer content belongs in the shared standalone auth
+  layout and stays at the bottom of the viewport when the page content is short.
+  Use the company name, `© 2026 .`, and a Privacy link to `/privacy`.
+- Reset-password states are distinct: the email-entry form says
+  `Reset your password`, the token/password-entry form says
+  `Set your password`, and the sent-instructions state says `Check your email`
+  with the server message as subtitle.
+
 ## Mobile
 
 - Mobile-first layout
