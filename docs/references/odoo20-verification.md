@@ -577,3 +577,48 @@ verify real mailbox delivery, TLS/authentication, spam handling, or operator
 acknowledgement. No external email, production configuration or live policy was
 changed. Ruff and whitespace checks passed. This increment changes tests/docs
 only; runtime behavior and module version are unchanged.
+
+## Native uninstall and database-scoped readiness — 2026-10-07
+
+Verified current `ir.module.module.button_immediate_uninstall`, `button_uninstall`
+and `module_uninstall`, plus `odoo/modules/loading.py` hook/uninstall order.
+Immediate uninstall commits and rebuilds the registry; it must be rehearsed on a
+separate disposable database, not inside an ordinary TransactionCase. Core removal
+deletes owned tables and columns; ORM record restrictions are not retention guards.
+
+Actual native lifecycle evidence on synthetic copies:
+- `omni_uninstall_20261007`: Telegram removal retained unknown command 48, account
+  56, synthetic audit event, and unrelated approval 33. Core removal deleted Omni
+  command/audit tables; generic approval 33 remained and draft 34 could be created.
+  Logs: `/tmp/omni-uninstall-telegram.log`, `/tmp/omni-uninstall-core.log`,
+  `/tmp/omni-uninstall-final.log`.
+- `omni_adapter_uninstall_20261007`: before fix, adapter_ready remained True after
+  native Telegram removal in the same process. After fix, native install/uninstall
+  gave True/False, while the global Python factory remained loaded. Log:
+  `/tmp/omni-adapter-lifecycle-fixed.log`.
+- Same process with both the installed regression DB and the uninstalled lifecycle
+  DB: catalog readiness and `installed_adapters(env)` correctly differed. Log:
+  `/tmp/omni-adapter-two-databases.log`.
+
+The trusted registry now records owning addons; readiness filters by installed or
+upgrading module state in the current database. It never unregisters a factory
+needed by another database. Existing transport lookup remains process-local and
+existing credential/authorization guards remain mandatory. Readiness is neither
+provider health nor permission to send.
+
+Two `omni_lifecycle` tests passed (state transitions, missing addon, persistent
+loaded factory). Full isolated channel/Telegram regression passed **117 tests,
+zero failures/errors**, with the command below. SMTP integration is loopback-only;
+no external mail/provider request, production configuration or live data changed.
+
+```sh
+PYTHONPATH=/tmp/omni-settings-deps /home/moshkou/workspace/odoo/odoo-venv/bin/python odoo-bin server \
+  -c odoo.conf -d omni_settings_20261007 --data-dir=/tmp/omni-settings-fresh-data \
+  -u omni_channel,omni_telegram --test-enable \
+  --test-tags=/omni_channel,/omni_telegram,-omni_capacity --stop-after-init \
+  --http-port=8083 --max-cron-threads=0 --logfile=/tmp/omni-lifecycle-regression.log
+```
+
+Ruff on both addons and `git diff --check` passed. Core version 20.0.1.4.1 and
+Telegram 20.0.1.0.1. Actual active-webhook retirement and retention approval for
+live core decommissioning remain operational gates, not claimed by this rehearsal.

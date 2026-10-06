@@ -1,6 +1,6 @@
 # Omni-Channel Telegram sandbox
 
-Optional Odoo 20 Community addon for supervised private-text intake and approved replies. Version 20.0.1.0.0. Requires `omni_channel` 20.0.1.3.1 from this checkout.
+Optional Odoo 20 Community addon for supervised private-text intake and approved replies. Version 20.0.1.0.1. Requires `omni_channel` 20.0.1.4.1 from this checkout.
 
 Code and synthetic-provider tests are implemented. **Live sandbox certification and production release remain pending.** Installing this addon does not register a webhook, enable any cron, authorize an account or send a message.
 
@@ -67,3 +67,13 @@ See the [implementation report](../../docs/exec-plans/active/odoo_omnichannel_de
 Use Odoo's restore/duplicate option with `neutralize_database=True` before starting workers or exposing ingress. Odoo loads each installed module's `data/neutralize.sql`: Omni disables dispatch and enabled endpoints, pauses active intake policies and disables its schedulers; Telegram revokes sandbox authorization. History, approvals, attempts and uncertain outcomes remain intact for reconciliation. Repeating these hooks is safe.
 
 A raw PostgreSQL restore and Odoo's default `neutralize_database=False` do **not** provide this isolation. Restore into a network-isolated environment with cron workers and ingress stopped; explicitly neutralize before bringing it online. Do not inject provider secrets into the restored process. Compare accepted provider IDs and pending/uncertain commands against the source and provider evidence before any separately approved reactivation. A backup cannot undo a message already accepted externally. Neutralization alone is not a measured backup/restore rehearsal or authorization to resume sending.
+
+
+## Adapter removal
+
+Follow the core [decommissioning runbook](../omni_channel/README.md#adapter-lifecycle-and-decommissioning).
+Pause/revoke first and separately review external webhook registration, pending
+emails and uncertain sends. Adapter uninstall preserves core command/audit records
+but removes Telegram-specific fields. Core uninstall deletes Omni history.
+The adapter's readiness now follows this database's installation state even when
+another database in the same process still has Telegram installed.

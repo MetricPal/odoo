@@ -53,8 +53,9 @@ class OmniChannelType(models.Model):
     _code_unique = models.Constraint('UNIQUE(code)', 'Channel codes must be unique.')
 
     def _compute_adapter_ready(self):
+        available = installed_adapters(self.env)
         for record in self:
-            record.adapter_ready = record.code in installed_adapters()
+            record.adapter_ready = record.code in available
 
 
 class OmniScope(models.AbstractModel):
@@ -147,6 +148,7 @@ class OmniChannel(models.Model):
         'channel_type_id',
     )
     def _compute_summary(self):
+        available = installed_adapters(self.env)
         for channel in self:
             selected = channel.sender_ids.filtered('is_selected')[:1]
             channel.selected_sender_id = selected
@@ -154,7 +156,7 @@ class OmniChannel(models.Model):
             channel.endpoint_count = len(channel.endpoint_ids)
             channel.readiness = (
                 'unavailable'
-                if channel.channel_type_id.code not in installed_adapters()
+                if channel.channel_type_id.code not in available
                 else 'unconfigured'
                 if not selected
                 else 'ready'

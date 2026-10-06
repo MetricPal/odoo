@@ -55,7 +55,7 @@ Telegram's native HTML module description was verified through Odoo's `descripti
 | Restore isolation | Hooks and actual local backup/restore passed | Durable off-host backup schedule, retention, production-volume recovery/RPO evidence |
 | Capacity and transport | Ten-minute local ingress, backlog and socket deadline checks passed | Real bounded commits, concurrent workers, TLS/proxy and provider quota on chosen staging host |
 | Operations | Restricted collector and incident runbook implemented/tested | Named primary/backup operators, actual alert destination, approved schedule, delivery/acknowledgement test |
-| Security and UI | Clean-install regression and targeted mobile/focus checks passed | Final deployment review, manual assistive-technology review; uninstall rehearsal not performed |
+| Security and UI | Clean-install regression and targeted mobile/focus checks passed | Final deployment review, manual assistive-technology review; destructive core teardown needs retained backup/retention approval |
 | Production activation | **Not performed** | Actual server/domain, credential provisioning, adopted policies and explicit reviewed activation approval |
 
 The user requested Telegram completion and a stop before the next provider. Local implementation/evidence is committed in separate steps. Telegram remains a supervised private-text sandbox; production release is not certified. The stable server/domain, operator identities and shared alert mailbox have not been supplied or provisioned. Do not purchase infrastructure, change the existing webhook, send another message or activate recurring dispatch based on this report. No next-provider work has started.
@@ -79,3 +79,25 @@ rejection becomes `exception`, stays visible, and does not cause repeat queueing
 on unchanged counters. All 10 alert tests passed on the disposable database.
 No external mailbox was contacted. Actual configured-server TLS/authentication,
 mailbox receipt and operator acknowledgement remain production gates.
+
+
+## Uninstall lifecycle rehearsal — 2026-10-07
+
+Source before fix: `fd372623db03`. Disposable `omni_uninstall_20261007` was cloned
+from the synthetic regression database, then seeded with an inactive Telegram
+account/channel, one unknown command, an audit event and an unrelated generic
+approval. Native `button_immediate_uninstall()` removed Telegram successfully.
+The command remained unknown, account/audit and generic approval survived, and
+adapter readiness was false after restart. Native core uninstall also completed;
+`omni_command` and `omni_audit_event` tables were removed. The unrelated approval
+survived and a new generic draft was created after removal. No external transport
+or live configuration was involved. This characterizes destructive teardown; it
+does not certify complete retention of Omni-linked approvals after core removal.
+
+A second copy, `omni_adapter_uninstall_20261007`, reproduced readiness incorrectly
+remaining true immediately after Telegram uninstall in the same process. The fix
+registers adapter ownership and filters UI readiness by current-database module
+state. Native install/uninstall then passed without restarting: ready after
+installation, unavailable after removal, process factory retained. Two databases
+in one process were also checked: installed stays ready, uninstalled stays unavailable.
+See core decommissioning guidance; an actual active-webhook retirement was not tested.

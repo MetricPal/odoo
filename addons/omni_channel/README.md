@@ -2,7 +2,7 @@
 
 Odoo 20 Community foundation for company- and purpose-scoped communication.
 
-## Available in 20.0.1.4.0
+## Available in 20.0.1.4.1
 
 - Native channel kanban/list/forms and a deliberate app icon.
 - Twelve channel catalog entries, explicitly marked unavailable without an installed adapter.
@@ -147,3 +147,32 @@ selection and MIME delivery are exercised for alert/recovery success and explici
 SMTP rejection. Test fixtures never forward mail; no real mailbox or credentials
 are used. Run with `--test-tags=omni_operations` on a disposable database. This
 verifies queue-to-SMTP behavior, not real inbox receipt or operator acknowledgement.
+
+
+## Adapter lifecycle and decommissioning
+
+Catalog and channel readiness use the owning addon's installation state in the
+current database, as well as the loaded Python factory. Removing an adapter
+immediately makes it unavailable in that database without globally unregistering
+it for other databases. Adapter authors must register the owning module with
+`register_adapter(code, factory, module="addon_name")`. The no-argument
+`installed_adapters()` remains a process-level diagnostic; database/UI callers
+must pass `env`. Readiness is not a grant to send or certification of provider health.
+
+Uninstall is not pause. For operational retirement, first pause alerts/dispatch
+and intake under their approved controls; review already queued Odoo email,
+in-flight/unknown sends, retention/legal holds, and externally registered webhooks.
+Uninstall does not unregister a provider webhook or recall a message. Archive or
+pause when history must remain available in Odoo.
+
+An inactive, synthetic Telegram adapter uninstall rehearsal preserved core
+commands, account records and audit events plus unrelated Approval Center
+requests. Telegram-specific fields are removed with the adapter; back up evidence
+before teardown. No active external webhook teardown was exercised.
+
+**Uninstalling Omni-Channel core deletes its tables, including command and audit
+history.** Native record-level restrictions are not an uninstall retention guard.
+Use a separately reviewed destructive decommissioning procedure with retained
+backup/export and retention approval. Generic Approval Center requests survived
+our rehearsal and new generic drafts remained creatable, but this is not evidence
+that Omni-linked approval history remains complete after core removal.

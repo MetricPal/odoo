@@ -1,4 +1,5 @@
 from . import (
+    test_adapter_lifecycle,
     test_commands,
     test_concurrency,
     test_deployment,

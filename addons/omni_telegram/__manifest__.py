@@ -1,6 +1,6 @@
 {
     "name": "Omni-Channel Telegram",
-    "version": "20.0.1.0.0",
+    "version": "20.0.1.0.1",
     "summary": "Review and authorize Telegram private-text sandbox conversations and replies",
     "category": "Productivity",
     "author": "metric.io",

@@ -281,7 +281,7 @@ class TestOmniFoundation(TransactionCase):
         ])
         self.assertEqual(len(catalog), 12)
         for channel_type in catalog:
-            self.assertEqual(channel_type.adapter_ready, channel_type.code in installed_adapters())
+            self.assertEqual(channel_type.adapter_ready, channel_type.code in installed_adapters(self.env))
         for key in (
             'channel_kanban',
             'channel_form',

@@ -11,6 +11,14 @@ Format:
 
 ## 2026-10-07
 
+- Fixed catalog/channel readiness remaining available after adapter uninstall in
+  the same process. Provider registration now identifies its owning addon and UI
+  readiness checks the current database's installed modules. Core 20.0.1.4.1;
+  Telegram 20.0.1.0.1. Shared factories are retained for other databases.
+- Rehearsed native Telegram and core removal on disposable synthetic databases.
+  Adapter removal preserves core evidence; core removal deletes Omni tables.
+  Documented destructive teardown limits and verified unrelated approval drafts.
+
 - Added loopback SMTP integration tests for native alert/recovery delivery and
   explicit delivery rejection. Validated recipient/MIME content, delivery status
   and no duplicate queueing after failure. No runtime or live mail setup changed.
