@@ -1,0 +1,486 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo>
+  <record id="channel_kanban" model="ir.ui.view">
+    <field name="name">channel_kanban</field>
+    <field name="model">omni.channel</field>
+    <field name="arch" type="xml">
+      <kanban class="o_omni_channels">
+        <field name="readiness"/>
+        <field name="selected_sender_id"/>
+        <templates>
+          <t t-name="card">
+            <div class="o_omni_channel_card">
+              <div class="o_omni_eyebrow"><field name="channel_type_id"/> · <field name="purpose_id"/></div>
+              <h3 class="mt-2 mb-3">
+                <field name="name"/>
+              </h3>
+              <div class="mb-3">
+                <field name="readiness" widget="label_selection"/>
+              </div>
+              <div class="o_omni_sender">
+                <span class="text-muted small">RUNTIME SENDER</span>
+                <div t-if="record.selected_sender_id.raw_value">
+                  <field name="selected_sender_id"/>
+                </div>
+                <div t-else="" class="text-muted">No sender selected</div>
+              </div>
+              <div class="d-flex gap-4 mt-3">
+                <div><strong><field name="sender_count"/></strong> configured senders</div>
+                <div><strong><field name="endpoint_count"/></strong> inbound endpoints</div>
+              </div>
+              <div class="text-muted small mt-3">
+                <field name="company_id"/>
+              </div>
+            </div>
+          </t>
+        </templates>
+      </kanban>
+    </field>
+  </record>
+  <record id="channel_list" model="ir.ui.view">
+    <field name="name">channel_list</field>
+    <field name="model">omni.channel</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="purpose_id"/>
+        <field name="channel_type_id"/>
+        <field name="selected_sender_id"/>
+        <field name="readiness" widget="label_selection"/>
+        <field name="sender_count"/>
+        <field name="endpoint_count"/>
+        <field name="company_id"/>
+      </list>
+    </field>
+  </record>
+  <record id="channel_search" model="ir.ui.view">
+    <field name="name">channel_search</field>
+    <field name="model">omni.channel</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="purpose_id"/>
+        <field name="channel_type_id"/>
+        <filter name="archived" string="Archived" domain="[('active','=',False)]"/>
+        <group>
+          <filter name="by_purpose" string="Purpose" context="{'group_by':'purpose_id'}"/>
+          <filter name="by_type" string="Channel" context="{'group_by':'channel_type_id'}"/>
+          <filter name="by_company" string="Company" context="{'group_by':'company_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="channel_form" model="ir.ui.view">
+    <field name="name">channel_form</field>
+    <field name="model">omni.channel</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_select_sender" type="object" string="Select runtime sender" class="oe_highlight" groups="omni_channel.group_omni_manager"/>
+        </header>
+        <sheet>
+          <div class="oe_title">
+            <label for="name"/>
+            <h1>
+              <field name="name" placeholder="Marketing / Telegram"/>
+            </h1>
+          </div>
+          <group>
+            <group>
+              <field name="purpose_id"/>
+              <field name="channel_type_id"/>
+              <field name="company_id"/>
+            </group>
+            <group>
+              <field name="readiness"/>
+              <field name="selected_sender_id"/>
+              <field name="active"/>
+              <field name="approval_type_id"/>
+              <field name="generation" groups="base.group_no_one"/>
+            </group>
+          </group>
+          <div class="alert alert-info" role="status">One runtime sender. Multiple inbound endpoints. Configure your connections, then open a sender to check and activate it. Intake is not enabled by configuration alone.</div>
+          <notebook>
+            <page string="Outbound senders">
+              <field name="sender_ids" context="{'default_channel_id': id}" readonly="not id">
+                <list>
+                  <field name="name"/>
+                  <field name="account_id"/>
+                  <field name="external_key"/>
+                  <field name="is_selected"/>
+                  <field name="health"/>
+                  <field name="health_checked_at"/>
+                </list>
+              </field>
+            </page>
+            <page string="Inbound endpoints">
+              <field name="endpoint_ids" context="{'default_channel_id': id}" readonly="not id">
+                <list>
+                  <field name="name"/>
+                  <field name="account_id"/>
+                  <field name="external_key"/>
+                  <field name="state"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_channels" model="ir.actions.act_window">
+    <field name="name">Channels</field>
+    <field name="res_model">omni.channel</field>
+    <field name="view_mode">kanban,list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Build your communication workspace. Add a channel for a company and purpose.</p>
+    </field>
+  </record>
+  <record id="omni_account_list" model="ir.ui.view">
+    <field name="name">omni_account_list</field>
+    <field name="model">omni.account</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="channel_type_id"/>
+        <field name="external_account_key"/>
+        <field name="namespace"/>
+        <field name="purpose_id"/>
+        <field name="company_id"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+  <record id="omni_account_form" model="ir.ui.view">
+    <field name="name">omni_account_form</field>
+    <field name="model">omni.account</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <group>
+            <field name="name"/>
+            <field name="channel_type_id"/>
+            <field name="external_account_key"/>
+            <field name="namespace"/>
+            <field name="purpose_id"/>
+            <field name="company_id"/>
+            <field name="active"/>
+            <field name="credential_reference" groups="omni_channel.group_omni_manager" placeholder="OMNI_SECRET_MARKETING_BOT"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_omni_account" model="ir.actions.act_window">
+    <field name="name">Connections</field>
+    <field name="res_model">omni.account</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Connections</p>
+    </field>
+  </record>
+  <record id="omni_outbound_sender_list" model="ir.ui.view">
+    <field name="name">omni_outbound_sender_list</field>
+    <field name="model">omni.outbound.sender</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="channel_id"/>
+        <field name="account_id"/>
+        <field name="external_key"/>
+        <field name="is_selected"/>
+        <field name="health"/>
+        <field name="health_checked_at"/>
+      </list>
+    </field>
+  </record>
+  <record id="omni_outbound_sender_form" model="ir.ui.view">
+    <field name="name">omni_outbound_sender_form</field>
+    <field name="model">omni.outbound.sender</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_check_health" type="object" string="Check health" groups="omni_channel.group_omni_manager"/>
+          <button name="action_deactivate" type="object" string="Deactivate" invisible="not is_selected" groups="omni_channel.group_omni_manager" confirm="Disable this channel's runtime sender?"/>
+        </header>
+        <sheet>
+          <group>
+            <field name="name"/>
+            <field name="channel_id"/>
+            <field name="account_id" domain="[('purpose_id', '=', purpose_id), ('company_id', '=', company_id), ('channel_type_id', '=', channel_type_id)]"/>
+            <field name="external_key"/>
+            <field name="is_selected"/>
+            <field name="health"/>
+            <field name="health_checked_at"/>
+            <field name="company_id" invisible="1"/>
+            <field name="purpose_id" invisible="1"/>
+            <field name="channel_type_id" invisible="1"/>
+            <field name="active"/>
+            <field name="health_message"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_omni_outbound_sender" model="ir.actions.act_window">
+    <field name="name">Outbound Senders</field>
+    <field name="res_model">omni.outbound.sender</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Outbound Senders</p>
+    </field>
+  </record>
+  <record id="omni_inbound_endpoint_list" model="ir.ui.view">
+    <field name="name">omni_inbound_endpoint_list</field>
+    <field name="model">omni.inbound.endpoint</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="channel_id"/>
+        <field name="account_id"/>
+        <field name="external_key"/>
+        <field name="state"/>
+      </list>
+    </field>
+  </record>
+  <record id="omni_inbound_endpoint_form" model="ir.ui.view">
+    <field name="name">omni_inbound_endpoint_form</field>
+    <field name="model">omni.inbound.endpoint</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <group>
+            <field name="name"/>
+            <field name="channel_id"/>
+            <field name="account_id" domain="[('purpose_id', '=', purpose_id), ('company_id', '=', company_id), ('channel_type_id', '=', channel_type_id)]"/>
+            <field name="external_key"/>
+            <field name="state"/>
+            <field name="company_id" invisible="1"/>
+            <field name="purpose_id" invisible="1"/>
+            <field name="channel_type_id" invisible="1"/>
+            <field name="active"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_omni_inbound_endpoint" model="ir.actions.act_window">
+    <field name="name">Inbound Endpoints</field>
+    <field name="res_model">omni.inbound.endpoint</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Inbound Endpoints</p>
+    </field>
+  </record>
+  <record id="omni_purpose_list" model="ir.ui.view">
+    <field name="name">omni_purpose_list</field>
+    <field name="model">omni.purpose</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="code"/>
+        <field name="user_ids"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+  <record id="omni_purpose_form" model="ir.ui.view">
+    <field name="name">omni_purpose_form</field>
+    <field name="model">omni.purpose</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <group>
+            <field name="name"/>
+            <field name="code"/>
+            <field name="user_ids" widget="many2many_tags"/>
+            <field name="active"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_omni_purpose" model="ir.actions.act_window">
+    <field name="name">Communication Teams</field>
+    <field name="res_model">omni.purpose</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Communication Teams</p>
+    </field>
+  </record>
+  <record id="omni_channel_type_list" model="ir.ui.view">
+    <field name="name">omni_channel_type_list</field>
+    <field name="model">omni.channel.type</field>
+    <field name="arch" type="xml">
+      <list create="false" edit="false" delete="false">
+        <field name="name"/>
+        <field name="adapter_ready"/>
+      </list>
+    </field>
+  </record>
+  <record id="omni_channel_type_form" model="ir.ui.view">
+    <field name="name">omni_channel_type_form</field>
+    <field name="model">omni.channel.type</field>
+    <field name="arch" type="xml">
+      <form create="false" edit="false" delete="false">
+        <sheet>
+          <group>
+            <field name="name"/>
+            <field name="adapter_ready"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_omni_channel_type" model="ir.actions.act_window">
+    <field name="name">Channel Catalog</field>
+    <field name="res_model">omni.channel.type</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Channel Catalog</p>
+    </field>
+  </record>
+  <record id="omni_audit_event_list" model="ir.ui.view">
+    <field name="name">omni_audit_event_list</field>
+    <field name="model">omni.audit.event</field>
+    <field name="arch" type="xml">
+      <list create="false" edit="false" delete="false">
+        <field name="create_date"/>
+        <field name="actor_id"/>
+        <field name="event"/>
+        <field name="resource"/>
+        <field name="detail"/>
+        <field name="purpose_id"/>
+        <field name="company_id"/>
+      </list>
+    </field>
+  </record>
+  <record id="omni_audit_event_form" model="ir.ui.view">
+    <field name="name">omni_audit_event_form</field>
+    <field name="model">omni.audit.event</field>
+    <field name="arch" type="xml">
+      <form create="false" edit="false" delete="false">
+        <sheet>
+          <group>
+            <field name="create_date"/>
+            <field name="actor_id"/>
+            <field name="event"/>
+            <field name="resource"/>
+            <field name="detail"/>
+            <field name="purpose_id"/>
+            <field name="company_id"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_omni_audit_event" model="ir.actions.act_window">
+    <field name="name">Audit</field>
+    <field name="res_model">omni.audit.event</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Audit</p>
+    </field>
+  </record>
+  <menuitem id="menu_omni_root" name="Omni-Channel" sequence="25" web_icon="omni_channel,static/description/icon.svg" action="action_channels" groups="group_omni_user"/>
+  <menuitem id="menu_channels" name="Channels" parent="menu_omni_root" action="action_channels" sequence="10"/>
+  <menuitem id="menu_senders" name="Outbound Senders" parent="menu_omni_root" action="action_omni_outbound_sender" sequence="20"/>
+  <menuitem id="menu_endpoints" name="Inbound Endpoints" parent="menu_omni_root" action="action_omni_inbound_endpoint" sequence="30"/>
+  <menuitem id="menu_audit" name="Audit" parent="menu_omni_root" action="action_omni_audit_event" sequence="40"/>
+  <menuitem id="menu_configuration" name="Configuration" parent="menu_omni_root" sequence="90" groups="group_omni_manager"/>
+  <menuitem id="menu_accounts" name="Connections" parent="menu_configuration" action="action_omni_account" sequence="10"/>
+  <menuitem id="menu_purposes" name="Communication Teams" parent="menu_configuration" action="action_omni_purpose" sequence="20" groups="base.group_system"/>
+  <menuitem id="menu_catalog" name="Channel Catalog" parent="menu_configuration" action="action_omni_channel_type" sequence="30"/>
+  <record id="command_list" model="ir.ui.view">
+    <field name="name">omni.command.list</field>
+    <field name="model">omni.command</field>
+    <field name="arch" type="xml">
+      <list decoration-warning="state == 'held'" decoration-success="state == 'approved'">
+        <field name="name"/>
+        <field name="channel_id"/>
+        <field name="recipient"/>
+        <field name="requester_id"/>
+        <field name="state" widget="label_selection"/>
+        <field name="expires_at"/>
+      </list>
+    </field>
+  </record>
+  <record id="command_form" model="ir.ui.view">
+    <field name="name">omni.command.form</field>
+    <field name="model">omni.command</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_submit" type="object" string="Submit for approval" class="oe_highlight" invisible="state != 'draft'"/>
+          <button name="action_view_approval" type="object" string="Review request" invisible="not approval_request_id"/>
+          <button name="action_enqueue_approved" type="object" string="Queue approved message" invisible="state != 'approved'"/>
+          <button name="action_cancel" type="object" string="Cancel" invisible="state == 'cancelled'" confirm="Cancel this prepared message?"/>
+          <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,queued"/>
+        </header>
+        <sheet>
+          <div class="alert alert-info" role="status">Preparation and approval workspace. Provider dispatch is not enabled in this foundation release; queued messages are not sent.</div>
+          <group>
+            <field name="name" readonly="state != 'draft'"/>
+            <field name="channel_id" readonly="state != 'draft'"/>
+            <field name="recipient" readonly="state != 'draft'"/>
+            <field name="sender_id"/>
+            <field name="requester_id"/>
+            <field name="expires_at"/>
+            <field name="approval_request_id" readonly="1"/>
+            <field name="held_reason" invisible="not held_reason"/>
+          </group>
+          <group>
+            <field name="body" readonly="state != 'draft'" placeholder="Prepare your message…"/>
+            <field name="reason" readonly="state != 'draft'" placeholder="Explain why this message should be sent."/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_commands" model="ir.actions.act_window">
+    <field name="name">Prepared Messages</field>
+    <field name="res_model">omni.command</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Prepare a message for human review.</p>
+      <p>Content and sender identity are frozen when you submit.</p>
+    </field>
+  </record>
+  <menuitem id="menu_commands" name="Prepared Messages" parent="menu_omni_root" action="action_commands" sequence="5"/>
+  <record id="approval_omni_content" model="ir.ui.view">
+    <field name="name">approval.omni.content</field>
+    <field name="model">approval.center.request</field>
+    <field name="inherit_id" ref="approval_center.approval_center_request_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <group string="Communication review" invisible="not omni_command_id">
+          <field name="omni_command_id"/>
+          <field name="omni_sender_id"/>
+            <field name="omni_sender_key"/>
+            <field name="omni_expires_at"/>
+          <field name="omni_recipient"/>
+          <field name="omni_body"/>
+          <button name="action_execute" type="object" string="Queue approved message" invisible="state != 'approved'"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+  <record id="sender_selection_form" model="ir.ui.view">
+    <field name="name">omni.sender.selection.form</field>
+    <field name="model">omni.sender.selection</field>
+    <field name="arch" type="xml">
+      <form string="Select runtime sender">
+        <group>
+          <field name="channel_id"/>
+          <field name="expected_generation" invisible="1"/>
+          <field name="sender_id" widget="radio" domain="[('channel_id', '=', channel_id), ('active', '=', True)]"/>
+        </group>
+        <p>The provider identity will be verified before switching. Failed checks preserve the current sender. Pending messages will require a fresh review after a switch.</p>
+        <footer>
+          <button name="action_confirm" type="object" string="Check &amp; Activate" class="btn-primary"/>
+          <button string="Cancel" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo noupdate="1">
+  <record id="channel_type_whatsapp" model="omni.channel.type">
+    <field name="name">WhatsApp Business</field>
+    <field name="code">whatsapp</field>
+    <field name="sequence">1</field>
+  </record>
+  <record id="channel_type_telegram" model="omni.channel.type">
+    <field name="name">Telegram</field>
+    <field name="code">telegram</field>
+    <field name="sequence">2</field>
+  </record>
+  <record id="channel_type_slack" model="omni.channel.type">
+    <field name="name">Slack</field>
+    <field name="code">slack</field>
+    <field name="sequence">3</field>
+  </record>
+  <record id="channel_type_discord" model="omni.channel.type">
+    <field name="name">Discord</field>
+    <field name="code">discord</field>
+    <field name="sequence">4</field>
+  </record>
+  <record id="channel_type_linkedin" model="omni.channel.type">
+    <field name="name">LinkedIn</field>
+    <field name="code">linkedin</field>
+    <field name="sequence">5</field>
+  </record>
+  <record id="channel_type_facebook" model="omni.channel.type">
+    <field name="name">Facebook</field>
+    <field name="code">facebook</field>
+    <field name="sequence">6</field>
+  </record>
+  <record id="channel_type_instagram" model="omni.channel.type">
+    <field name="name">Instagram</field>
+    <field name="code">instagram</field>
+    <field name="sequence">7</field>
+  </record>
+  <record id="channel_type_x" model="omni.channel.type">
+    <field name="name">X</field>
+    <field name="code">x</field>
+    <field name="sequence">8</field>
+  </record>
+  <record id="channel_type_tiktok" model="omni.channel.type">
+    <field name="name">TikTok</field>
+    <field name="code">tiktok</field>
+    <field name="sequence">9</field>
+  </record>
+  <record id="channel_type_youtube" model="omni.channel.type">
+    <field name="name">YouTube</field>
+    <field name="code">youtube</field>
+    <field name="sequence">10</field>
+  </record>
+  <record id="channel_type_threads" model="omni.channel.type">
+    <field name="name">Threads</field>
+    <field name="code">threads</field>
+    <field name="sequence">11</field>
+  </record>
+  <record id="channel_type_pinterest" model="omni.channel.type">
+    <field name="name">Pinterest</field>
+    <field name="code">pinterest</field>
+    <field name="sequence">12</field>
+  </record>
+  <record id="purpose_marketing" model="omni.purpose">
+    <field name="name">Marketing</field>
+    <field name="code">marketing</field>
+  </record>
+  <record id="purpose_sales" model="omni.purpose">
+    <field name="name">Sales</field>
+    <field name="code">sales</field>
+  </record>
+  <record id="purpose_recruitment" model="omni.purpose">
+    <field name="name">Recruitment</field>
+    <field name="code">recruitment</field>
+  </record>
+  <record id="purpose_hr" model="omni.purpose">
+    <field name="name">Human Resources</field>
+    <field name="code">hr</field>
+  </record>
+</odoo>

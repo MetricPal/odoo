@@ -1,6 +1,6 @@
 # Omni-Channel implementation plan
 
-Revised: 2026-10-05. Status: ready to begin foundation implementation; not implemented or production-certified.
+Revised: 2026-10-06. Status: configuration foundation and governed preparation implemented; transport and production certification pending. See [implementation status](15-implementation-status.md).
 
 ## Purpose
 

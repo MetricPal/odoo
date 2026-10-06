@@ -410,3 +410,22 @@ Source inspected at `dbce1c66c4d1f9779f55d82657e8214d2c09654b`.
 
 This is source/planning evidence only. No Omni code, module installation,
 production database changes or live provider tests were performed in this pass.
+
+## Omni-Channel foundation implementation — 2026-10-06
+
+- `addons/omni_channel` installs and upgrades on the isolated
+  `omni_build_20261006` database. No existing ERP database was upgraded.
+- Required stored related company/purpose fields on sender/endpoint models
+  need `precompute=True` (and no inherited default on related company) to satisfy
+  INSERT-time NOT NULL constraints in this source revision.
+- Verified partial `models.UniqueIndex` enforcement with independent PostgreSQL
+  transactions: a competing selected-sender update waits, then fails uniquely.
+- Odoo 20 relation-domain traversal on approval lines needs an explicit
+  `request_id = False` branch to preserve policy approver visibility. The new
+  Omni restrictions cover linked requests while ordinary Approval Center
+  submit/approve/execute remains tested.
+- Native Many2one `widget="radio"` renders the runtime-sender choice. Headless
+  Chrome verifies the channel kanban, form action and dialog. Action dictionaries
+  require an explicit name for a meaningful dialog title.
+- Full verification and outstanding transport/inbox work are tracked in the
+  [implementation report](../exec-plans/active/odoo_omnichannel_design_v2/15-implementation-status.md).

@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo>
+  <record id="privilege_omni" model="res.groups.privilege">
+    <field name="name">Omni-Channel</field>
+    <field name="category_id" ref="base.module_category_productivity"/>
+  </record>
+  <record id="group_omni_user" model="res.groups">
+    <field name="name">Operator</field>
+    <field name="privilege_id" ref="privilege_omni"/>
+    <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('approval_center.group_approval_center_user'))]"/>
+  </record>
+  <record id="group_omni_manager" model="res.groups">
+    <field name="name">Administrator</field>
+    <field name="privilege_id" ref="privilege_omni"/>
+    <field name="implied_ids" eval="[(4, ref('group_omni_user'))]"/>
+  </record>
+  <record id="scope_channel" model="ir.access">
+    <field name="name">Omni channel company and purpose</field>
+    <field name="model_id" ref="model_omni_channel"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids), ('purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <record id="scope_account" model="ir.access">
+    <field name="name">Omni account company and purpose</field>
+    <field name="model_id" ref="model_omni_account"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids), ('purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <record id="scope_outbound_sender" model="ir.access">
+    <field name="name">Omni outbound.sender company and purpose</field>
+    <field name="model_id" ref="model_omni_outbound_sender"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids), ('purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <record id="scope_inbound_endpoint" model="ir.access">
+    <field name="name">Omni inbound.endpoint company and purpose</field>
+    <field name="model_id" ref="model_omni_inbound_endpoint"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids), ('purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <record id="scope_audit_event" model="ir.access">
+    <field name="name">Omni audit.event company and purpose</field>
+    <field name="model_id" ref="model_omni_audit_event"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids), ('purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <record id="scope_command" model="ir.access">
+    <field name="name">Omni command company and purpose</field>
+    <field name="model_id" ref="model_omni_command"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids), ('purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <record id="scope_approval_request" model="ir.access">
+    <field name="name">Omni linked approval isolation</field>
+    <field name="model_id" ref="approval_center.model_approval_center_request"/>
+    <field name="operation">crud</field>
+    <field name="domain">['|', ('omni_command_id', '=', False), '&amp;', ('company_id', 'in', company_ids), ('omni_purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <record id="scope_approval_approver" model="ir.access">
+    <field name="name">Omni linked approval isolation</field>
+    <field name="model_id" ref="approval_center.model_approval_center_approver"/>
+    <field name="operation">crud</field>
+    <field name="domain">['|', ('request_id', '=', False), '|', ('request_id.omni_command_id', '=', False), '&amp;', ('request_id.company_id', 'in', company_ids), ('request_id.omni_purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <record id="scope_approval_audit" model="ir.access">
+    <field name="name">Omni linked approval isolation</field>
+    <field name="model_id" ref="approval_center.model_approval_center_audit"/>
+    <field name="operation">crud</field>
+    <field name="domain">['|', ('request_id', '=', False), '|', ('request_id.omni_command_id', '=', False), '&amp;', ('request_id.company_id', 'in', company_ids), ('request_id.omni_purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+</odoo>
