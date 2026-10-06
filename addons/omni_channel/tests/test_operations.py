@@ -1,9 +1,14 @@
+import smtplib
+from contextlib import contextmanager
+from email import policy
+from email.parser import BytesParser
 from unittest.mock import patch
 
 from odoo import fields
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import HttpCase, TransactionCase, new_test_user, tagged
 
+from .smtp_sink import smtp_sink
 from odoo.addons.omni_channel.models.command import internal
 
 
@@ -41,6 +46,74 @@ class TestOperationsAlerts(TransactionCase):
         # Any direct transport call is a test failure; only queue creation is allowed.
         with patch.object(type(self.env['mail.mail']), 'send', side_effect=AssertionError('Unexpected send')):
             self.channel._collect_operations_alert()
+
+    @contextmanager
+    def _local_mail_transport(self, *, reject=False):
+        # Only disposable fixture servers are modified, within test rollback.
+        servers = self.env['ir.mail_server']
+        servers.search([]).write({'active': False})
+        with smtp_sink(reject=reject) as sink:
+            host, port = sink.server_address
+            servers.create({
+                'name': 'Loopback alert test', 'smtp_host': host, 'smtp_port': port,
+                'smtp_encryption': 'none', 'smtp_user': False, 'smtp_pass': False,
+                'owner_user_id': False, 'from_filter': self.admin.email, 'sequence': 1,
+            })
+            original_smtp = smtplib.SMTP
+
+            def loopback_only(host, port, *args, **kwargs):
+                self.assertEqual((host, port), sink.server_address, 'Unexpected SMTP destination')
+                kwargs['timeout'] = 3
+                return original_smtp(host, port, *args, **kwargs)
+
+            # Native Odoo suppresses sends in tests. Permit only this strictly
+            # bounded loopback connection; SMTP_SSL must never be attempted.
+            with patch.object(type(servers), '_disable_send', return_value=False), \
+                    patch.object(smtplib, 'SMTP', side_effect=loopback_only), \
+                    patch.object(smtplib, 'SMTP_SSL', side_effect=AssertionError('Unexpected TLS transport')):
+                yield sink
+
+    def test_native_smtp_delivery_and_recovery(self):
+        self._enable()
+        internal(self.channel).write({'failure_count': 5})
+        self._run()
+        mail = self.channel.alerts_last_mail_id
+        with self._local_mail_transport() as sink:
+            mail.send(raise_exception=True)
+            self.assertEqual(mail.state, 'sent')
+            self.assertEqual(self.channel.alerts_mail_state, 'sent')
+            self.assertEqual(len(sink.messages), 1)
+            parsed = BytesParser(policy=policy.default).parsebytes(sink.messages[0])
+            self.assertIn(self.operator.email, parsed['To'])
+            self.assertIn('critical', parsed['Subject'])
+            self.assertIn('open_circuit_breakers', parsed.get_body(preferencelist=('html',)).get_content())
+            self.assertEqual(sink.recipients, [f'rcpt TO:<{self.operator.email}>'])
+            self._run()
+            self.assertEqual(self.channel.alerts_last_mail_id, mail)
+            self.assertEqual(len(sink.messages), 1)
+            internal(self.channel).write({'failure_count': 0})
+            self._run()
+            recovery = self.channel.alerts_last_mail_id
+            recovery.send(raise_exception=True)
+            self.assertEqual(recovery.state, 'sent')
+            self.assertEqual(len(sink.messages), 2)
+            parsed = BytesParser(policy=policy.default).parsebytes(sink.messages[1])
+            self.assertIn('ok', parsed['Subject'])
+
+    def test_native_smtp_rejection_is_visible_without_duplicate(self):
+        self._enable()
+        internal(self.channel).write({'failure_count': 5})
+        self._run()
+        mail = self.channel.alerts_last_mail_id
+        with self._local_mail_transport(reject=True) as sink:
+            mail.send()
+            self.assertEqual(mail.state, 'exception')
+            self.assertEqual(self.channel.alerts_mail_state, 'exception')
+            self.assertTrue(mail.failure_reason)
+            self.assertFalse(sink.messages)
+            self._run()
+            self.assertEqual(self.channel.alerts_last_mail_id, mail)
+            self.assertEqual(len(sink.recipients), 1)
 
     def test_disabled_defaults_and_guarded_activation(self):
         self.assertFalse(self.channel.alerts_enabled)

@@ -542,3 +542,38 @@ and a SHA256 of addresses/scope/interval. The eight targeted tests were rerun
 for that final audit change; log `/tmp/omni-operations-final.log`.
 Ruff and whitespace checks passed. No live policies, scheduler, SMTP credentials,
 main database or provider registrations were changed.
+
+## Native operations SMTP pipeline — 2026-10-07
+
+Source verified at `5a4c70b59d41`: `mail.mail.send(auto_commit=False)` groups queued
+mail through `_split_by_mail_configuration`, connects with `ir.mail_server`, and
+records native sent/exception state. Native test mode normally short-circuits
+transport via `_disable_send`; the new fixture temporarily enables it only with
+an exact `(127.0.0.1, ephemeral-port)` SMTP connection guard and rejects SSL or
+any other destination. The in-memory SMTP sink never forwards mail. Authentication
+and TLS are deliberately absent in this loopback fixture.
+
+Two new tests exercise actual SMTP sockets through unmodified native queue/server
+selection and message generation: accepted alert plus recovery; and a deliberate
+451 DATA rejection with retained failure state and no duplicate on collection.
+Assertions inspect the captured MIME subject/body/recipient, native `sent` and
+`exception` states, and the channel's related delivery status. No mail server is
+pinned on the mail record. Fixture mail-server changes and queue rows roll back;
+`auto_commit` is not enabled.
+
+All **10 `omni_operations` tests passed, zero failures/errors** on disposable
+`omni_settings_20261007`; log `/tmp/omni-alert-smtp.log`. Expected rejection logs
+are asserted failure-path evidence, not suite failures. Command:
+
+```sh
+PYTHONPATH=/tmp/omni-settings-deps /home/moshkou/workspace/odoo/odoo-venv/bin/python odoo-bin server \
+  -c odoo.conf -d omni_settings_20261007 --data-dir=/tmp/omni-settings-fresh-data \
+  -u omni_channel --test-enable --test-tags=omni_operations --stop-after-init \
+  --http-port=8083 --max-cron-threads=0 --logfile=/tmp/omni-alert-smtp.log
+```
+
+This verifies SMTP acceptance and explicit rejection on loopback. It does not
+verify real mailbox delivery, TLS/authentication, spam handling, or operator
+acknowledgement. No external email, production configuration or live policy was
+changed. Ruff and whitespace checks passed. This increment changes tests/docs
+only; runtime behavior and module version are unchanged.

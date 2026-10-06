@@ -11,6 +11,10 @@ Format:
 
 ## 2026-10-07
 
+- Added loopback SMTP integration tests for native alert/recovery delivery and
+  explicit delivery rejection. Validated recipient/MIME content, delivery status
+  and no duplicate queueing after failure. No runtime or live mail setup changed.
+
 - Added shared, disabled-by-default operations email policies per channel.
   System administrators explicitly authorize recipients and monitoring; changed
   aggregate counters and recovery use Odoo's existing mail queue. Scope and

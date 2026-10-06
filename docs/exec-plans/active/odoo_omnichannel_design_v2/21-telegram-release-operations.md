@@ -70,3 +70,12 @@ remain separate from scope-filtered alerts. Runtime recipient/admin revocation,
 change deduplication, recovery, pause and restore isolation are tested. Actual
 mail delivery/acknowledgement and independent monitoring of Odoo outages remain
 production gates; configured SMTP transport alone does not satisfy them.
+
+## Alert mail pipeline evidence — 2026-10-07
+
+The native Odoo queue-to-SMTP path now has loopback integration evidence:
+alerts and recovery reach an in-memory SMTP sink and become `sent`; a 451 DATA
+rejection becomes `exception`, stays visible, and does not cause repeat queueing
+on unchanged counters. All 10 alert tests passed on the disposable database.
+No external mailbox was contacted. Actual configured-server TLS/authentication,
+mailbox receipt and operator acknowledgement remain production gates.

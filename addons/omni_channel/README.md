@@ -141,3 +141,9 @@ external process/queue monitoring and test actual delivery/acknowledgement under
 separate deployment approval before claiming production readiness. The existing
 restricted Telegram shell collector remains a read-only all-company diagnostic;
 its output must not be forwarded as a company-scoped email.
+
+Alert verification includes a loopback-only SMTP sink: native Odoo server
+selection and MIME delivery are exercised for alert/recovery success and explicit
+SMTP rejection. Test fixtures never forward mail; no real mailbox or credentials
+are used. Run with `--test-tags=omni_operations` on a disposable database. This
+verifies queue-to-SMTP behavior, not real inbox receipt or operator acknowledgement.
