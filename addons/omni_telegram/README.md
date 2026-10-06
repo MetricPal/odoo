@@ -61,3 +61,9 @@ python odoo-bin server -c odoo.conf -d YOUR_DISPOSABLE_TEST_DB \
 Use `-u omni_channel,omni_telegram` for an existing test installation. Chrome and `websocket-client` are required for browser checks. Tests cover provider contract/error mapping, secret isolation, HTTP resource guards, actual webhook routing, governance and browser confirmation. All provider calls are mocked; fixture data is synthetic and does not establish live compatibility.
 
 See the [implementation report](../../docs/exec-plans/active/odoo_omnichannel_design_v2/18-telegram-sandbox-implementation-status.md). Groups, attachments, bulk, delivery receipts, business bridges, AI processing, automatic registration and production certification remain outside this slice.
+
+## Restored and copied databases
+
+Use Odoo's restore/duplicate option with `neutralize_database=True` before starting workers or exposing ingress. Odoo loads each installed module's `data/neutralize.sql`: Omni disables dispatch and enabled endpoints, pauses active intake policies and disables its schedulers; Telegram revokes sandbox authorization. History, approvals, attempts and uncertain outcomes remain intact for reconciliation. Repeating these hooks is safe.
+
+A raw PostgreSQL restore and Odoo's default `neutralize_database=False` do **not** provide this isolation. Restore into a network-isolated environment with cron workers and ingress stopped; explicitly neutralize before bringing it online. Do not inject provider secrets into the restored process. Compare accepted provider IDs and pending/uncertain commands against the source and provider evidence before any separately approved reactivation. A backup cannot undo a message already accepted externally. Neutralization alone is not a measured backup/restore rehearsal or authorization to resume sending.

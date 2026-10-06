@@ -63,3 +63,7 @@ Inbound Policies show the exact ingestion and retention scope before activation.
 Use Blocked Identities to review the exact identity, team/company scope, reason and expiry before confirming. A blank team means Company-wide and requires a system administrator. Unblocking does not replay old messages or grant consent. Intake Events is an administrator-only recovery view; retry is available only for recoverable retained content under the original policy.
 
 Deployment must bind the database by host, enforce HTTPS and proxy limits, and configure a certified adapter and explicitly approved cron operation. Telegram sandbox integration is available in the separate optional addon; it remains disabled until explicit deployment and account authorization. Refresh is manual; groups, attachments and delivery receipts are not yet supported.
+
+## Restore isolation
+
+The native Odoo `data/neutralize.sql` hook disables dispatch, enabled inbound endpoints and Omni schedulers, and pauses active intake policies. It preserves command/approval/attempt history for reconciliation. Invoke Odoo restore/duplicate with `neutralize_database=True` before exposing the copy; default or raw PostgreSQL restores do not invoke this protection. Keep ingress, workers and provider networking isolated until neutralization and reconciliation are complete. Adapter-specific authorization is neutralized by each installed adapter; the Telegram addon supplies its own hook.

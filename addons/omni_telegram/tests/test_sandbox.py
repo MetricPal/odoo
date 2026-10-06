@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 from odoo.exceptions import AccessError, UserError
+from odoo.modules.neutralize import get_neutralization_queries
 from odoo.tests import tagged
 
 from .test_provider import BOT, REFERENCE, SECRET, FakeHTTP, environment, fixture
@@ -206,3 +207,30 @@ class TestTelegramSandbox(TestOmniCommands):
             command.action_submit()
         self.assertEqual(command.state, 'draft')
         self.assertFalse(command.approval_request_id)
+
+    def test_neutralized_copy_stops_intake_and_dispatch_preserving_history(self):
+        command = self._reply()
+        original = (command.state, command.body, command.approval_request_id.id)
+        crons = self.env['ir.cron'].browse([
+            self.env.ref('omni_channel.' + name).id
+            for name in ['cron_dispatch', 'cron_inbox', 'cron_inbox_retention']
+        ])
+        crons.active = True
+        self.env.flush_all()
+        queries = list(get_neutralization_queries(['omni_channel', 'omni_telegram']))
+        self.assertEqual(len(queries), 2)
+        for _ in range(2):  # Repeated neutralization remains safe.
+            for query in queries:
+                self.env.cr.execute(query)
+        self.env.invalidate_all()
+        self.assertFalse(self.channel.dispatch_enabled)
+        self.assertFalse(self.account.telegram_sandbox_authorized)
+        self.assertEqual(self.endpoint.state, 'disabled')
+        self.assertEqual(self.intake.state, 'paused')
+        self.assertFalse(any(crons.mapped('active')))
+        self.assertEqual((command.state, command.body, command.approval_request_id.id), original)
+        self.assertFalse(self.endpoint._allowed())
+        with self.assertRaises(IngressRejected):
+            self._conversation()
+        self.assertFalse(self.env['omni.command']._claim_next())
+        self.assertFalse(any(method == 'sendMessage' for method, _ in self.http.calls))
