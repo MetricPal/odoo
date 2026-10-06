@@ -173,7 +173,7 @@
     <field name="res_model">omni.blocked.identity</field>
     <field name="view_mode">list,form</field>
   </record>
-  <menuitem id="menu_blocks" name="Blocked Identities" parent="menu_omni_root" action="action_blocks" sequence="40"/>
+  <menuitem id="menu_blocks" name="Blocked Identities" parent="menu_monitoring" action="action_blocks" sequence="30"/>
   <record id="policy_list" model="ir.ui.view">
     <field name="name">omni.inbound.policy.list</field>
     <field name="model">omni.inbound.policy</field>
@@ -266,7 +266,7 @@
     <field name="res_model">omni.webhook.event</field>
     <field name="view_mode">list,form</field>
   </record>
-  <menuitem id="menu_events" name="Intake Events" parent="menu_omni_root" action="action_events" groups="omni_channel.group_omni_manager" sequence="45"/>
+  <menuitem id="menu_events" name="Intake Events" parent="menu_monitoring" action="action_events" groups="omni_channel.group_omni_manager" sequence="20"/>
   <record id="endpoint_inbox_form" model="ir.ui.view">
     <field name="name">omni.inbound.endpoint.intake.form</field>
     <field name="model">omni.inbound.endpoint</field>

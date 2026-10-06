@@ -6,7 +6,7 @@ from datetime import timedelta
 from markupsafe import Markup, escape
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
 from odoo.tools import email_normalize
 
 from .command import digest, internal, is_internal
@@ -31,13 +31,33 @@ class OmniOperations(models.Model):
     def _check_operators(self):
         for channel in self:
             if channel.primary_operator_id and channel.primary_operator_id == channel.backup_operator_id:
-                raise ValidationError(_('Primary and backup operators must be different users.'))
+                raise ValidationError(_('Choose a different user for Backup operator.'))
             for user in channel.primary_operator_id | channel.backup_operator_id:
-                if (not user.active or user.share
-                        or channel.company_id not in user.company_ids
-                        or user not in channel.purpose_id.user_ids
-                        or not user.has_group('omni_channel.group_omni_user')):
-                    raise ValidationError(_('Operators must be active internal users with access to this company and communication team.'))
+                channel._check_operator_access(user)
+
+    def _check_operator_access(self, user):
+        self.ensure_one()
+        action = {
+            'type': 'ir.actions.act_window', 'res_model': 'res.users',
+            'res_id': user.id, 'views': [(False, 'form')], 'target': 'new',
+            'context': {'active_test': False},
+        }
+        button = _('Open user settings')
+        if not user.active:
+            message = _('Unarchive %(user)s in user settings, then select them again.', user=user.name)
+        elif user.share:
+            message = _('Choose an internal user. %(user)s is a portal or public user.', user=user.name)
+        elif self.company_id not in user.company_ids:
+            message = _('Add %(company)s to %(user)s → Allowed Companies.', company=self.company_id.name, user=user.name)
+        elif not user.has_group('omni_channel.group_omni_user'):
+            message = _('Set %(user)s → Access Rights → Omni-Channel to Operator or Administrator.', user=user.name)
+        elif user not in self.purpose_id.user_ids:
+            message = _('Add %(user)s to %(team)s → Authorized team.', user=user.name, team=self.purpose_id.name)
+            action.update({'res_model': 'omni.purpose', 'res_id': self.purpose_id.id})
+            button = _('Open communication team')
+        else:
+            return
+        raise RedirectWarning(message, action, button)
 
     def _audit_operators(self):
         for channel in self:

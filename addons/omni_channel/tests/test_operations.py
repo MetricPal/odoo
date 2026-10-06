@@ -5,7 +5,7 @@ from email.parser import BytesParser
 from unittest.mock import patch
 
 from odoo import fields
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
 from odoo.tests import HttpCase, TransactionCase, new_test_user, tagged
 
 from .smtp_sink import smtp_sink
@@ -70,12 +70,12 @@ class TestOperationsAlerts(TransactionCase):
             channel.write({'primary_operator_id': self.operator.id, 'backup_operator_id': self.operator.id})
         outsider = new_test_user(self.env, login='operator_outsider', groups='omni_channel.group_omni_user')
         for user in (outsider, self.env.ref('base.public_user')):
-            with self.assertRaises(ValidationError), self.cr.savepoint():
+            with self.assertRaises(RedirectWarning), self.cr.savepoint():
                 channel.write({'primary_operator_id': user.id})
-        with self.assertRaises(ValidationError), self.cr.savepoint():
+        with self.assertRaises(RedirectWarning), self.cr.savepoint():
             self.operator.active = False
             channel.write({'primary_operator_id': self.operator.id})
-        with self.assertRaises(ValidationError), self.cr.savepoint():
+        with self.assertRaises(RedirectWarning), self.cr.savepoint():
             self.operator.group_ids = [fields.Command.clear()]
             channel.write({'primary_operator_id': self.operator.id})
         channel.write({'primary_operator_id': self.operator.id})
@@ -83,11 +83,40 @@ class TestOperationsAlerts(TransactionCase):
             'name': 'Other operators', 'code': 'other_operators',
             'user_ids': [fields.Command.set(self.admin.ids)],
         })
-        with self.assertRaises(ValidationError), self.cr.savepoint():
+        with self.assertRaises(RedirectWarning), self.cr.savepoint():
             channel.write({'purpose_id': other_purpose.id})
         other_company = self.env['res.company'].create({'name': 'Other operators company'})
-        with self.assertRaises(ValidationError), self.cr.savepoint():
+        with self.assertRaises(RedirectWarning), self.cr.savepoint():
             channel.sudo().write({'company_id': other_company.id})
+
+    def test_operator_errors_link_to_exact_record(self):
+        outsider = new_test_user(self.env, login='operator_fix', groups='omni_channel.group_omni_user')
+        with self.assertRaises(RedirectWarning) as caught, self.cr.savepoint():
+            self.channel.with_user(self.admin).write({'primary_operator_id': outsider.id})
+        message, action, button, _context = caught.exception.args
+        self.assertIn(self.purpose.name, message)
+        self.assertIn('Authorized team', message)
+        self.assertEqual((action['res_model'], action['res_id']), ('omni.purpose', self.purpose.id))
+        self.assertEqual(action['target'], 'new')
+        self.assertEqual(button, 'Open communication team')
+        with self.assertRaises(RedirectWarning) as caught, self.cr.savepoint():
+            outsider.group_ids = [fields.Command.set(self.env.ref('base.group_user').ids)]
+            self.channel.with_user(self.admin).write({'primary_operator_id': outsider.id})
+        message, action, button, _context = caught.exception.args
+        self.assertIn('Omni-Channel to Operator or Administrator', message)
+        self.assertEqual((action['res_model'], action['res_id']), ('res.users', outsider.id))
+        self.assertEqual(button, 'Open user settings')
+
+    def test_grouped_navigation_preserves_actions(self):
+        root = self.env.ref('omni_channel.menu_omni_root')
+        self.assertEqual(root.child_id.sorted('sequence').mapped('name'),
+                         ['Inbox', 'Messages', 'Channels', 'Monitoring', 'Configuration'])
+        for name in ('menu_channels', 'menu_senders', 'menu_endpoints'):
+            self.assertEqual(self.env.ref(f'omni_channel.{name}').parent_id,
+                             self.env.ref('omni_channel.menu_channel_setup'))
+        for name in ('menu_attempts', 'menu_events', 'menu_blocks', 'menu_audit'):
+            self.assertEqual(self.env.ref(f'omni_channel.{name}').parent_id,
+                             self.env.ref('omni_channel.menu_monitoring'))
 
     def test_operator_create_copy_and_other_provider(self):
         values = {
@@ -301,6 +330,59 @@ class TestOperationsAlerts(TransactionCase):
 
 @tagged('post_install', '-at_install', 'omni_operations')
 class TestOperationsAlertsUI(HttpCase):
+    def test_operator_error_opens_team_settings(self):
+        admin = new_test_user(
+            self.env, login='operator_fix_admin',
+            groups='base.group_system,omni_channel.group_omni_manager',
+        )
+        new_test_user(self.env, login='operator_fix_ui', name='Operator Needs Team',
+                      groups='omni_channel.group_omni_user')
+        purpose = self.env['omni.purpose'].create({
+            'name': 'Exact operator team', 'code': 'operator_fix_ui',
+            'user_ids': [fields.Command.set(admin.ids)],
+        })
+        channel = self.env['omni.channel'].create({
+            'name': 'Operator fix UI', 'purpose_id': purpose.id,
+            'channel_type_id': self.env.ref('omni_channel.channel_type_telegram').id,
+        })
+        self.browser_js(
+            f'/odoo/action-omni_channel.action_channels/{channel.id}',
+            """
+            (async () => {
+                async function waitFor(find) {
+                    for (let i = 0; i < 100; i++) {
+                        const el = find();
+                        if (el) return el;
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    throw new Error('Missing expected operator correction UI');
+                }
+                (await waitFor(() => [...document.querySelectorAll('.o_notebook .nav-link')]
+                    .find(el => el.textContent.includes('Operations alerts')))).click();
+                const input = await waitFor(() => document.querySelector('[name="primary_operator_id"] input'));
+                input.value = 'Operator Needs Team';
+                input.dispatchEvent(new Event('input', {bubbles: true}));
+                (await waitFor(() => [...document.querySelectorAll('.o-autocomplete--dropdown-item')]
+                    .find(el => el.textContent.includes('Operator Needs Team')))).click();
+                (await waitFor(() => document.querySelector('.o_form_button_save'))).click();
+                const error = await waitFor(() => document.querySelector('.o_error_dialog'));
+                if (!error.textContent.includes('Exact operator team') || !error.textContent.includes('Authorized team')) {
+                    throw new Error('Missing precise correction instruction');
+                }
+                [...error.querySelectorAll('button')].find(el => el.textContent.includes('Open communication team')).click();
+                const team = await waitFor(() => document.querySelector('.modal [name="user_ids"]'));
+                const name = team.closest('.modal').querySelector('[name="name"] input');
+                if (!name || name.value !== 'Exact operator team') throw new Error('Wrong team opened');
+                team.closest('.modal').querySelector('.modal-header .btn-close').click();
+                await waitFor(() => !document.querySelector('.modal'));
+                (await waitFor(() => document.querySelector('.o_form_button_cancel'))).click();
+                await waitFor(() => document.querySelector('.o_form_status_indicator_buttons.invisible'));
+                console.log('test successful');
+            })().catch(error => console.error(error));
+            """, login=admin.login,
+        )
+        self.assertFalse(channel.primary_operator_id)
+
     def test_activation_requires_visible_confirmation(self):
         admin = new_test_user(
             self.env, login='alerts_ui', email='admin@example.com',

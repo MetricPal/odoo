@@ -65,6 +65,12 @@ The user requested Telegram completion and a stop before the next provider. Loca
 
 ### Manage operators and recipients in the app
 
+The top menu is grouped into Inbox, Messages, Channels, Monitoring and
+Configuration. Channels contains Channels, Outbound Senders and Inbound
+Endpoints; Monitoring contains Dispatch Attempts, Intake Events, Blocked
+Identities and Audit. Configuration keeps team, connection and policy settings.
+Existing user restrictions still apply to each destination.
+
 With System Administrator and Omni Administrator access, open Omni-Channel,
 open the channel and select **Operations alerts**. Set **Primary operator** and
 **Backup operator**, then save. Both are optional while preparing deployment;
@@ -73,6 +79,11 @@ to the channel's company and communication team. Manage team membership through
 Configuration → Communication Teams and user access through normal Odoo user
 settings. Assignment records responsibility; it does not grant permissions.
 This shared configuration applies to every channel provider.
+
+When an operator is ineligible, the error names the specific correction and
+offers **Open user settings** or **Open communication team**, opening the exact
+record in a dialog. Fix the setting, then retry saving the channel. Selecting
+the same person twice asks you to choose a different backup operator.
 
 Select **Alert recipients** separately. Operators are not automatically subscribed.
 Save the recipients, then use **Enable email alerts** and review its confirmation

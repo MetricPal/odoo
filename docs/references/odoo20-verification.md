@@ -672,6 +672,33 @@ version bump, main database update, live alert activation or external email.
 
 ## Channel operator assignments (2026-10-07)
 
+Navigation/correction follow-up: verified `RedirectWarning` in
+`odoo/exceptions.py`, `RedirectWarningDialog` in the native web error handlers,
+and `FormErrorDialog`/`FormController` redirect handling. Native warnings accept
+an action dictionary; use a form action with exact `res_id` and `target='new'`
+to open correction settings in a dialog without custom error HTML or JavaScript.
+The action still uses normal record access. Group menu entries using native
+`ir.ui.menu.parent_id`; retain leaf actions and restrictions.
+
+Navigation follow-up verification: all 16 focused operations tests passed,
+including the browser flow selecting an invalid operator, reading the specific
+instruction, opening the exact team in a dialog and discarding the unsaved
+channel draft. The preceding 126-test regression run passed the other 125 tests;
+its one failure was the new browser cleanup assertion, corrected to use Odoo's
+native saved-form indicator before the passing targeted rerun. No production
+code changed after that full run. Ruff and whitespace checks passed. Logs:
+`/tmp/omni-navigation-regression.log`, `/tmp/omni-navigation-final-tests.log`.
+
+Local `odoo20` upgraded to 20.0.1.5.1 after a private native database/filestore
+backup at `/tmp/omni-deployment-20261007/odoo20-before-navigation.zip`.
+Ten business/access/mail table fingerprints and seven Omni configuration
+fingerprints matched the pre-upgrade baseline. Installed menu/version verified.
+The native SIGHUP reload stalled under the VS Code debugger. With no active
+database transactions, the identified stalled app process was stopped and Odoo
+was recovered outside the debugger with the same `--config=odoo.conf` settings.
+`/web/health` returned HTTP 200. The former debug session ended; local service
+output is private at `/tmp/omni-deployment-20261007/local-odoo-recovery.log`.
+
 Verified local Odoo 20 `odoo/orm/models.py`: `_check_field_access` enforces
 field `groups` on writes; `_validate_fields` runs declared constraints for
 changed fields. Use native restricted Many2one fields and constraints covering

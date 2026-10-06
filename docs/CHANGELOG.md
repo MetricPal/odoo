@@ -11,6 +11,12 @@ Format:
 
 ## 2026-10-07
 
+- Grouped Omni navigation into Inbox, Messages, Channels, Monitoring and
+  Configuration. Replaced generic operator validation with short, specific
+  instructions and native buttons opening the exact user or communication team
+  in a dialog. Existing access boundaries and actions are preserved. Core
+  version 20.0.1.5.1.
+
 - Added system-administrator-managed primary and backup operators to every
   channel's Operations alerts tab, alongside existing alert recipients. Validates
   distinct active internal users against company, communication team and Omni

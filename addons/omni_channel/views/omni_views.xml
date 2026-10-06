@@ -383,10 +383,12 @@
     </field>
   </record>
   <menuitem id="menu_omni_root" name="Omni-Channel" sequence="25" web_icon="omni_channel,static/description/icon.svg" action="action_channels" groups="group_omni_user"/>
-  <menuitem id="menu_channels" name="Channels" parent="menu_omni_root" action="action_channels" sequence="10"/>
-  <menuitem id="menu_senders" name="Outbound Senders" parent="menu_omni_root" action="action_omni_outbound_sender" sequence="20"/>
-  <menuitem id="menu_endpoints" name="Inbound Endpoints" parent="menu_omni_root" action="action_omni_inbound_endpoint" sequence="30"/>
-  <menuitem id="menu_audit" name="Audit" parent="menu_omni_root" action="action_omni_audit_event" sequence="40"/>
+  <menuitem id="menu_channel_setup" name="Channels" parent="menu_omni_root" sequence="10"/>
+  <menuitem id="menu_monitoring" name="Monitoring" parent="menu_omni_root" sequence="40"/>
+  <menuitem id="menu_channels" name="Channels" parent="menu_channel_setup" action="action_channels" sequence="10"/>
+  <menuitem id="menu_senders" name="Outbound Senders" parent="menu_channel_setup" action="action_omni_outbound_sender" sequence="20"/>
+  <menuitem id="menu_endpoints" name="Inbound Endpoints" parent="menu_channel_setup" action="action_omni_inbound_endpoint" sequence="30"/>
+  <menuitem id="menu_audit" name="Audit" parent="menu_monitoring" action="action_omni_audit_event" sequence="40"/>
   <menuitem id="menu_configuration" name="Configuration" parent="menu_omni_root" sequence="90" groups="group_omni_manager"/>
   <menuitem id="menu_accounts" name="Connections" parent="menu_configuration" action="action_omni_account" sequence="10"/>
   <menuitem id="menu_purposes" name="Communication Teams" parent="menu_configuration" action="action_omni_purpose" sequence="20" groups="base.group_system"/>
@@ -446,7 +448,7 @@
       <p>Content and sender identity are frozen when you submit.</p>
     </field>
   </record>
-  <menuitem id="menu_commands" name="Prepared Messages" parent="menu_omni_root" action="action_commands" sequence="5"/>
+  <menuitem id="menu_commands" name="Messages" parent="menu_omni_root" action="action_commands" sequence="5"/>
   <record id="approval_omni_content" model="ir.ui.view">
     <field name="name">approval.omni.content</field>
     <field name="model">approval.center.request</field>
