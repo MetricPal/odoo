@@ -56,3 +56,42 @@ class TestTelegramHTTP(HttpCase, TestTelegramSandbox):
             )
         self.assertFalse(self.account.telegram_sandbox_authorized)
         self.assertFalse(self.http.calls)
+
+    def test_mobile_confirmation_controls_are_named_and_focusable(self):
+        self.browser_size = '390x844'
+        self.browser_js(
+            f'/odoo/action-omni_channel.action_omni_account/{self.account.id}',
+            """
+            (async () => {
+                let button;
+                for (let i = 0; i < 100; i++) {
+                    button = document.querySelector('button[name="action_authorize_telegram_sandbox"]');
+                    if (button) break;
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                if (!button) throw new Error('Missing authorization action');
+                if (!(button.textContent.trim() || button.getAttribute('aria-label'))) throw new Error('Unnamed action');
+                button.focus();
+                if (document.activeElement !== button) throw new Error('Action cannot receive focus');
+                button.click();
+                let dialog;
+                for (let i = 0; i < 100; i++) {
+                    dialog = document.querySelector('[role="dialog"]');
+                    if (dialog) break;
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                if (!dialog || !dialog.textContent.includes('Each reply still requires')) throw new Error('Missing accessible approval explanation');
+                const controls = [...dialog.querySelectorAll('button')].filter(b => b.getBoundingClientRect().width);
+                if (!controls.length || controls.some(b => !(b.textContent.trim() || b.getAttribute('aria-label') || b.title))) throw new Error('Unnamed dialog control');
+                for (const control of controls) {
+                    control.focus();
+                    if (document.activeElement !== control) throw new Error('Dialog control cannot receive focus');
+                }
+                const rect = dialog.getBoundingClientRect();
+                if (rect.left < -1 || rect.right > innerWidth + 1) throw new Error('Dialog exceeds mobile viewport');
+                console.log('test successful');
+            })().catch(error => console.error(error));
+            """, ready='odoo.isReady === true', login='omni_manager', timeout=60,
+        )
+        self.assertFalse(self.account.telegram_sandbox_authorized)
+        self.assertFalse(self.http.calls)

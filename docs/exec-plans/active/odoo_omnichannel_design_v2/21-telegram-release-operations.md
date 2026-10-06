@@ -30,3 +30,22 @@ A real local socket-pair HTTP parser fault test with trickled headers terminated
 ## Operations readiness
 
 A restricted read-only collector is available at `addons/omni_telegram/tools/operations_status.py`. See the tools runbook for counters, severity mapping, operator response and recommended supervisor contract. ORM tests verify access denial to ordinary users, content-free output, no health/provider calls and critical reporting of unknown outcomes. Scheduling, mailbox routing, alert delivery/acknowledgement and named operator assignment remain pending deployment details. A recommendation is not an activated policy.
+
+## Security and interface regression
+
+Fresh install on disposable `omni_release_checks_20261006`, with no real provider transport, passed **103 tests, zero failures/errors**, using `-i omni_channel,omni_telegram --test-enable --test-tags=/omni_channel,/omni_telegram,-omni_capacity --stop-after-init --http-port=8081 --max-cron-threads=0`; log `/tmp/omni-release-checks.log`. Coverage includes company/purpose access, forbidden public/portal paths, immutable approvals, independent approvers, concurrent claims, crash/unknown fencing, retention/legal hold and native browser checks. The new 390×844 confirmation check verifies control names/focus and viewport fit; full screen-reader/manual keyboard navigation certification remains outside this automated check. Eleven Approval Center static checks and all eight standalone sandbox/deadline tests also passed.
+
+
+Telegram's native HTML module description was verified through Odoo's `description_html` computation on the isolated restored database, removing the Markdown-as-RST fallback warnings. The desktop authorization screenshot was visually reviewed; its text preserves separate consent and per-message approval. No live sandbox dispatch or scheduler was activated during these release checks.
+
+## Release decision: supervised sandbox only
+
+| Step | Result | Remaining production gate |
+|---|---|---|
+| Restore isolation | Hooks and actual local backup/restore passed | Durable off-host backup schedule, retention, production-volume recovery/RPO evidence |
+| Capacity and transport | Ten-minute local ingress, backlog and socket deadline checks passed | Real bounded commits, concurrent workers, TLS/proxy and provider quota on chosen staging host |
+| Operations | Restricted collector and incident runbook implemented/tested | Named primary/backup operators, actual alert destination, approved schedule, delivery/acknowledgement test |
+| Security and UI | Clean-install regression and targeted mobile/focus checks passed | Final deployment review, manual assistive-technology review; uninstall rehearsal not performed |
+| Production activation | **Not performed** | Actual server/domain, credential provisioning, adopted policies and explicit reviewed activation approval |
+
+The user requested Telegram completion and a stop before the next provider. Local implementation/evidence is committed in separate steps. Telegram remains a supervised private-text sandbox; production release is not certified. The stable server/domain, operator identities and shared alert mailbox have not been supplied or provisioned. Do not purchase infrastructure, change the existing webhook, send another message or activate recurring dispatch based on this report. No next-provider work has started.
