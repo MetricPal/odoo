@@ -1,7 +1,11 @@
 # Active Execution Plans
 
-Put active plans here. Each plan should be independently understandable and linked to relevant product/architecture documentation.
+Plans are scoped milestones, not permission to activate external effects.
 
-- [Omni-Channel](odoo_omnichannel_design_v2/README.md): revised 2026-10-05;
-  configuration foundation and governed preparation implemented;
-  transport, inbox and live-provider verification remain pending. See its implementation status report.
+- [Omni deployment validation](2026-10-07-omni-deployment-validation.md): current
+  work, proceeding one milestone at a time: installation, named governance,
+  real alert-delivery evidence, then deployment-specific release gates.
+- [Omni-Channel roadmap](odoo_omnichannel_design_v2/README.md): core configuration,
+  approvals, transport worker, inbox, Telegram sandbox and operations alerts are
+  implemented. Production activation remains gated. After rollout, P4 covers
+  media/business bridges; P5 adds providers and bulk messaging.

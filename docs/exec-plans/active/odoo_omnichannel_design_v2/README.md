@@ -1,6 +1,6 @@
 # Omni-Channel implementation plan
 
-Revised: 2026-10-06. Status: configuration, governed preparation, transport-neutral worker and supervised private-text inbox implemented; optional Telegram sandbox adapter implemented; live-provider certification and production release pending. See [Telegram implementation status](18-telegram-sandbox-implementation-status.md), the [live certification evidence sheet](19-telegram-live-certification.md), the [first reply review](20-first-sandbox-reply-review.md), and [release operations](21-telegram-release-operations.md).
+Revised: 2026-10-07. Status: configuration, governed preparation, transport-neutral worker and supervised private-text inbox implemented; optional Telegram sandbox adapter implemented; live-provider certification and production release pending. See [Telegram implementation status](18-telegram-sandbox-implementation-status.md), the [live certification evidence sheet](19-telegram-live-certification.md), the [first reply review](20-first-sandbox-reply-review.md), and [release operations](21-telegram-release-operations.md).
 
 ## Purpose
 
@@ -33,6 +33,15 @@ The images in [design](design/) remain visual references, not behavioral authori
 
 Foundation: core models, governance, mock adapter, safe ingestion, transactional dispatch, blocklist, operations UI and database/security/concurrency tests.
 First live slice: Telegram Bot API private text messages, one bot endpoint per account, human-approved outbound; no groups, media, bulk or social publishing in this slice.
-Subsequent releases: WhatsApp/Slack/Discord, attachments, business bridges, bulk, social, then optional AI moderation. All twelve channel types remain discoverable as catalog entries, visibly unavailable until their adapter is installed and verified.
+Subsequent phases follow file 07: P4 attachments and business bridges; P5 WhatsApp/Slack/Discord and bulk; P6 social; P7 optional AI moderation. All twelve channel types remain discoverable as catalog entries, visibly unavailable until their adapter is installed and verified.
 
 No live credentials, webhooks, database configuration, subscriptions or external messages are created by this planning work. Deployment prerequisites do not block foundation coding; they do block live release. See the explicit gates in file 12.
+
+
+## Current next milestone
+
+Follow [sequential deployment validation](../2026-10-07-omni-deployment-validation.md).
+Operations alerts and local SMTP/concurrency/lifecycle checks support the P3
+T25/T27 gates; they do not represent new product phases. Production readiness
+requires environment-specific evidence and human-authorized activation. Each
+milestone records its outcome and is committed before the next begins.
