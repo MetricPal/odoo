@@ -510,3 +510,35 @@ Ruff on `addons/omni_channel` and `git diff --check` also passed.
 Shared-provider verification: all four `omni_deployment` tests passed after adding
 an endpoint URL check for every catalog provider (12 types). No provider transport
 was enabled. Log: `/tmp/omni-shared-domain.log`.
+
+
+## Operations alerts through native mail — 2026-10-07
+
+Verified `addons/mail/models/mail_mail.py:create`: persists outgoing queue rows;
+it does not send mail. Native mail server selection/FROM handling remains in
+Odoo. `mail.mail.state` exposes outgoing/sent/exception/cancel status; keeping
+`auto_delete=False` retains delivery evidence. Author is the approving internal
+administrator; no SMTP credentials or guessed recipients enter the policy.
+
+Verified `res.users` current group APIs and the core company/purpose scope rules.
+Activation requires both system Settings and Omni configuration authority.
+Private cron collection rechecks the author and recipients, freezes addresses,
+uses a channel row lock, and writes the queue entry and counter snapshot in the
+same transaction. `ir.cron._commit_progress` commits per channel only when called
+in a real cron-progress context; tests do not silently commit their transactions.
+Native `neutralize_database` loads the updated SQL hook. The test must flush ORM
+state before invoking raw SQL; otherwise a later flush can overwrite its effects.
+
+Eight targeted `omni_operations` tests passed, including actual Chrome confirmation
+without confirming activation, restored-database disablement, permission denial,
+content-free emails, scope isolation, revocation, deduplication and recovery.
+Log: `/tmp/omni-operations-targeted-2.log`. No real email or provider request was sent.
+
+Combined channel/Telegram regression passed **113 tests, zero failures/errors**,
+with `-u omni_channel,omni_telegram --test-tags=/omni_channel,/omni_telegram,-omni_capacity`
+on the same isolated database; log `/tmp/omni-operations-regression.log`.
+Final authorization audit records bind the approving actor, recipient user IDs,
+and a SHA256 of addresses/scope/interval. The eight targeted tests were rerun
+for that final audit change; log `/tmp/omni-operations-final.log`.
+Ruff and whitespace checks passed. No live policies, scheduler, SMTP credentials,
+main database or provider registrations were changed.

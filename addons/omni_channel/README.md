@@ -2,7 +2,7 @@
 
 Odoo 20 Community foundation for company- and purpose-scoped communication.
 
-## Available in 20.0.1.3.2
+## Available in 20.0.1.4.0
 
 - Native channel kanban/list/forms and a deliberate app icon.
 - Twelve channel catalog entries, explicitly marked unavailable without an installed adapter.
@@ -99,3 +99,45 @@ endpoint route. Do not add provider-specific server/domain settings or URL
 previews. This is a shared addressing convention, not evidence that a catalog
 provider is implemented or permission to register its webhook. Existing backend
 subdomains are preserved; provider authentication and activation remain separate.
+
+## Operations email alerts (20.0.1.4.0)
+
+Open a channel's **Operations alerts** tab as a system administrator who also
+has Omni configuration access to its company and purpose. Choose internal team
+members with valid email addresses, then confirm **Enable email alerts**. This
+is an explicit automation policy: it enables the shared one-minute scheduler and
+permits emails on counter changes and recovery. Installation alone enables
+neither the policy nor its cron. No alert recipient or SMTP credentials are
+seeded. Mail uses the administrator as author and native `mail.mail` routing,
+including existing outgoing-server selection and FROM handling.
+
+The policy monitors only that channel's unknown sends, expired leases, aged
+queues/inbox, dead letters, unresolved events, breaker flag and unhealthy selected
+senders. Emails contain aggregate counts, not message bodies or customer IDs.
+The initial healthy baseline and unchanged counters produce no mail. A changed
+nonzero state queues an alert; return to zero queues recovery. Counter changes
+within the same severity also notify. This is count-based monitoring, not an
+incident-ID tracker; replacement incidents with identical counts do not notify.
+
+Recipients must retain company membership, purpose-team membership, internal
+operator access and the approved email addresses. The authorizing administrator
+must retain access too. Invalid policies automatically pause before queueing.
+Pause before editing recipients; re-enabling records fresh authorization.
+Channel row locking and atomic mail/fingerprint writes prevent concurrent
+collectors from queueing the same observed change. Batches process up to 100
+channels, oldest collection first; real cron execution commits progress per
+channel and respects the native cron time budget. For larger deployments,
+collection can lag the one-minute interval.
+
+**Pause email alerts** stops new queue entries. Already queued emails retain
+approval for delivery by Odoo; inspect/cancel them separately if needed. The last
+mail and its native delivery state are visible in the tab; failed mail is kept,
+not recreated on every collection. Native mail administration owns retry and
+cancellation. Audit records track enable, pause, revocation and queue actions.
+Neutralized restores disable policies and the cron.
+
+This does not monitor Odoo's own availability or prove mail delivery. Configure
+external process/queue monitoring and test actual delivery/acknowledgement under
+separate deployment approval before claiming production readiness. The existing
+restricted Telegram shell collector remains a read-only all-company diagnostic;
+its output must not be forwarded as a company-scoped email.

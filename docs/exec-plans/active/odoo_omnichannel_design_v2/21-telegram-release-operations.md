@@ -15,8 +15,10 @@ Omni derives its HTTPS ingress hostname as `channels.[web.base.url hostname]`,
 with no manual server/domain fields or URL preview. Endpoint
 `_get_webhook_url()` supplies the registration URL; localhost/IP backends return
 no public URL. DNS/TLS and provider registration remain separate deployment
-steps. Reuse the existing Odoo mail transport for future alerts; recipient
-routing and scheduling remain unimplemented.
+steps. Reuse the existing Odoo mail transport for future alerts; per-channel recipient
+routing and a disabled-by-default monitoring cron are now implemented in core
+`20.0.1.4.0`. Actual activation, delivery and acknowledgement remain deployment
+gates. See the core addon operations-alert runbook.
 
 Dedicated Linux host; separate staging/production databases and processes; stable `channels.<backend-domain>` hostname; named Cloudflare Tunnel and hardened webhook-only proxy; no public database manager or broad UI routes on the webhook hostname. A technical operator and backup operator own recovery and credentials; a distinct business approver authorizes messages. Administrator alerts should use a shared operations mailbox through an independently configured delivery path. Actual host/domain, named people, mailbox, retention and production activation require owner decisions.
 
@@ -57,3 +59,14 @@ Telegram's native HTML module description was verified through Odoo's `descripti
 | Production activation | **Not performed** | Actual server/domain, credential provisioning, adopted policies and explicit reviewed activation approval |
 
 The user requested Telegram completion and a stop before the next provider. Local implementation/evidence is committed in separate steps. Telegram remains a supervised private-text sandbox; production release is not certified. The stable server/domain, operator identities and shared alert mailbox have not been supplied or provisioned. Do not purchase infrastructure, change the existing webhook, send another message or activate recurring dispatch based on this report. No next-provider work has started.
+
+
+## Shared Odoo mail alert implementation — 2026-10-07
+
+Per-channel email policies now reuse native Odoo mail routing. The administrator
+confirms automatic monitoring and delivery to authorized team members; no live
+policy or scheduler was enabled during development. Read-only global diagnostics
+remain separate from scope-filtered alerts. Runtime recipient/admin revocation,
+change deduplication, recovery, pause and restore isolation are tested. Actual
+mail delivery/acknowledgement and independent monitoring of Odoo outages remain
+production gates; configured SMTP transport alone does not satisfy them.

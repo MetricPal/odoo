@@ -7,6 +7,7 @@ from . import (
     test_inbox,
     test_inbox_http,
     test_inbox_transactions,
+    test_operations,
     test_ui,
     test_worker_transactions,
 )

@@ -11,6 +11,13 @@ Format:
 
 ## 2026-10-07
 
+- Added shared, disabled-by-default operations email policies per channel.
+  System administrators explicitly authorize recipients and monitoring; changed
+  aggregate counters and recovery use Odoo's existing mail queue. Scope and
+  recipient access are rechecked, unchanged states are quiet, native delivery
+  failures remain inspectable, and neutralized restores disable alerts.
+  Upgrade `omni_channel` to `20.0.1.4.0`; no live policy is enabled by this upgrade.
+
 - Omni-Channel derives webhook URLs from backend `web.base.url`, using
   `channels.[configured hostname]` and the endpoint route key. Removed the draft
   manual server/domain settings and preview. Local-only backends yield no public
