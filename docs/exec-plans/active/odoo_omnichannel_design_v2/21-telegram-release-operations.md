@@ -26,3 +26,7 @@ Hardware: Intel Core i5-8400, six logical CPUs, x86_64, approximately 15.4 GiB R
 The endpoint correctly enforces 600 events/minute. An initial test run was stopped to correct its burst fixture: the 1,000-event drain case must seed an already admitted backlog, not disable or exceed admission protection. The corrected full run passed; no production rate limit changed.
 
 A real local socket-pair HTTP parser fault test with trickled headers terminated in **20.022 seconds**, within the 25-second transport budget. All eight standalone tools tests passed. No Telegram API call or external message occurred. This measures local timeout enforcement, not real DNS/TLS/provider availability.
+
+## Operations readiness
+
+A restricted read-only collector is available at `addons/omni_telegram/tools/operations_status.py`. See the tools runbook for counters, severity mapping, operator response and recommended supervisor contract. ORM tests verify access denial to ordinary users, content-free output, no health/provider calls and critical reporting of unknown outcomes. Scheduling, mailbox routing, alert delivery/acknowledgement and named operator assignment remain pending deployment details. A recommendation is not an activated policy.

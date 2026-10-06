@@ -11,6 +11,7 @@ from odoo.addons.omni_channel.providers.inbound import IngressRejected
 from odoo.addons.omni_channel.tests.test_commands import TestOmniCommands
 from odoo.addons.omni_telegram.providers.secrets import resolve
 from odoo.addons.omni_telegram.providers.telegram import TelegramAdapter
+from odoo.addons.omni_telegram.tools.operations_status import collect
 
 
 @tagged("post_install", "-at_install")
@@ -234,3 +235,21 @@ class TestTelegramSandbox(TestOmniCommands):
             self._conversation()
         self.assertFalse(self.env['omni.command']._claim_next())
         self.assertFalse(any(method == 'sendMessage' for method, _ in self.http.calls))
+
+    def test_operations_snapshot_is_restricted_and_content_free(self):
+        command = self._reply()
+        with self.assertRaises(AccessError):
+            collect(self.env(user=self.operator))
+        before = len(self.http.calls)
+        result = collect(self.env)
+        self.assertEqual(result['schema_version'], 1)
+        self.assertEqual(result['counts']['unknown_outcomes'], 0)
+        self.assertNotIn(command.body, json.dumps(result))
+        self.assertNotIn(SECRET, json.dumps(result))
+        self.assertEqual(len(self.http.calls), before)
+        claim = self.env['omni.command']._claim_next()
+        self.http.send_result = TimeoutError('synthetic timeout')
+        command._finish_attempt(claim, dispatch_claim(claim))
+        result = collect(self.env)
+        self.assertEqual(result['severity'], 'critical')
+        self.assertEqual(result['counts']['unknown_outcomes'], 1)
