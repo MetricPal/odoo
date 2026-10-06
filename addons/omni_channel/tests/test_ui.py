@@ -4,6 +4,8 @@ from odoo import fields
 from odoo.tests import HttpCase, new_test_user, tagged
 from odoo.tests.common import ChromeBrowser
 
+from odoo.addons.omni_channel.models.command import internal
+
 
 @tagged('post_install', '-at_install')
 class TestOmniUI(HttpCase):
@@ -86,3 +88,34 @@ class TestOmniUI(HttpCase):
                 login='omni_ui',
                 timeout=60,
             )
+
+    def test_unknown_outcome_opens_evidence_reconciliation(self):
+        command = internal(self.env['omni.command'].with_user(self.manager)).create({
+            'name': 'Verify customer reply', 'channel_id': self.channel.id,
+            'recipient': '12345', 'body': 'Thank you for contacting us.',
+            'reason': 'Reply to the customer', 'state': 'unknown',
+            'held_reason': 'Sending again could duplicate an accepted message.',
+        })
+        self.browser_js(
+            f'/odoo/action-omni_channel.action_commands/{command.id}',
+            """
+            (async () => {
+                async function waitFor(selector) {
+                    for (let i = 0; i < 100; i++) {
+                        const el = document.querySelector(selector);
+                        if (el) return el;
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    throw new Error('Missing UI element: ' + selector);
+                }
+                (await waitFor('button[name="action_open_reconciliation"]')).click();
+                await waitFor('.modal [name="evidence"]');
+                const modal = document.querySelector('.modal');
+                if (!modal.textContent.includes('This action never resends')) throw new Error('Missing reconciliation explanation');
+                if (!modal.querySelector('button[name="action_confirm"]')) throw new Error('Missing explicit confirmation');
+                if (document.querySelector('button[name="action_cancel"]')) throw new Error('Unknown sends must not offer cancellation');
+                console.log('test successful');
+            })().catch(error => console.error(error));
+            """,
+            ready='odoo.isReady === true', login='omni_ui', timeout=60,
+        )

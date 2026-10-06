@@ -13,3 +13,7 @@ access_audit_event_user,Omni audit.event read,model_omni_audit_event,group_omni_
 access_purpose_system,Omni team administration,model_omni_purpose,base.group_system,crud
 access_command_user,Omni prepared messages,model_omni_command,group_omni_user,crud
 access_sender_selection,Omni sender selection,model_omni_sender_selection,group_omni_manager,crud
+access_consent_user,Omni recipient evidence read,model_omni_consent,group_omni_user,r
+access_consent_manager,Omni recipient evidence manage,model_omni_consent,group_omni_manager,crud
+access_attempt_user,Omni dispatch evidence read,model_omni_attempt,group_omni_user,r
+access_reconciliation_manager,Omni reconciliation,model_omni_reconciliation,group_omni_manager,crud

@@ -1,0 +1,160 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="channel_dispatch_form" model="ir.ui.view">
+    <field name="name">omni.channel.dispatch.form</field>
+    <field name="model">omni.channel</field>
+    <field name="inherit_id" ref="channel_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header" position="inside">
+        <button name="action_pause_dispatch" type="object" string="Pause dispatch" groups="omni_channel.group_omni_manager" invisible="not dispatch_enabled" confirm="Stop new dispatch claims? In-flight requests may still complete."/>
+      </xpath>
+      <xpath expr="//notebook" position="inside">
+        <page string="Dispatch controls">
+          <group>
+            <field name="dispatch_enabled"/>
+            <field name="dispatch_interval_seconds"/>
+            <field name="next_dispatch_at"/>
+            <field name="circuit_until"/>
+            <field name="failure_count"/>
+          </group>
+          <p>Outbound sending is not available in this release. An unknown outcome holds this channel until an administrator records verification evidence.</p>
+        </page>
+      </xpath>
+    </field>
+  </record>
+  <record id="command_dispatch_form" model="ir.ui.view">
+    <field name="name">omni.command.dispatch.form</field>
+    <field name="model">omni.command</field>
+    <field name="inherit_id" ref="command_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header" position="inside">
+        <button name="action_open_reconciliation" type="object" string="Reconcile outcome" groups="omni_channel.group_omni_manager" invisible="state != 'unknown'"/>
+      </xpath>
+      <xpath expr="//button[@name='action_cancel']" position="attributes">
+        <attribute name="invisible">state in ('cancelled', 'dispatching', 'unknown', 'accepted')</attribute>
+      </xpath>
+      <xpath expr="//sheet" position="inside">
+        <group string="Dispatch outcome">
+          <field name="provider_message_key"/>
+          <field name="attempt_count"/>
+          <field name="next_attempt_at"/>
+          <field name="lease_expires_at"/>
+          <field name="reconciliation_evidence" invisible="not reconciliation_evidence"/>
+        </group>
+        <field name="attempt_ids">
+          <list create="false" edit="false" delete="false">
+            <field name="number"/>
+            <field name="started_at"/>
+            <field name="ended_at"/>
+            <field name="outcome"/>
+            <field name="reason_code"/>
+            <field name="provider_message_key"/>
+          </list>
+        </field>
+      </xpath>
+    </field>
+  </record>
+  <record id="consent_list" model="ir.ui.view">
+    <field name="name">omni.consent.list</field>
+    <field name="model">omni.consent</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="channel_id"/>
+        <field name="namespace"/>
+        <field name="recipient"/>
+        <field name="state"/>
+        <field name="expires_at"/>
+        <field name="confirmed_by"/>
+      </list>
+    </field>
+  </record>
+  <record id="consent_form" model="ir.ui.view">
+    <field name="name">omni.consent.form</field>
+    <field name="model">omni.consent</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_confirm" type="object" string="Confirm authorization evidence" class="oe_highlight" groups="omni_channel.group_omni_manager" invisible="state != 'draft'" confirm="Confirm that this evidence authorizes this recipient for this channel until the stated expiry?"/>
+          <button name="action_revoke" type="object" string="Revoke" groups="omni_channel.group_omni_manager" invisible="state != 'confirmed'" confirm="Withdraw recipient authorization? Unclaimed work will be held; in-flight sends may still complete."/>
+          <field name="state" widget="statusbar"/>
+        </header>
+        <sheet>
+          <group>
+            <field name="channel_id" readonly="state != 'draft'"/>
+            <field name="namespace" readonly="state != 'draft'"/>
+            <field name="recipient" readonly="state != 'draft'"/>
+            <field name="expires_at" readonly="state != 'draft'"/>
+            <field name="evidence" readonly="state != 'draft'"/>
+            <field name="confirmed_by"/>
+            <field name="confirmed_at"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_consent" model="ir.actions.act_window">
+    <field name="name">Recipient Authorization</field>
+    <field name="res_model">omni.consent</field>
+    <field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_consent" name="Recipient Authorization" parent="menu_configuration" action="action_consent" sequence="40"/>
+  <record id="attempt_list" model="ir.ui.view">
+    <field name="name">omni.attempt.list</field>
+    <field name="model">omni.attempt</field>
+    <field name="arch" type="xml">
+      <list create="false" edit="false" delete="false">
+        <field name="command_id"/>
+        <field name="number"/>
+        <field name="started_at"/>
+        <field name="ended_at"/>
+        <field name="outcome"/>
+        <field name="reason_code"/>
+        <field name="provider_message_key"/>
+      </list>
+    </field>
+  </record>
+  <record id="attempt_form" model="ir.ui.view">
+    <field name="name">omni.attempt.form</field>
+    <field name="model">omni.attempt</field>
+    <field name="arch" type="xml">
+      <form create="false" edit="false" delete="false">
+        <sheet>
+          <group>
+            <field name="command_id"/>
+            <field name="number"/>
+            <field name="started_at"/>
+            <field name="ended_at"/>
+            <field name="outcome"/>
+            <field name="reason_code"/>
+            <field name="provider_message_key"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_attempts" model="ir.actions.act_window">
+    <field name="name">Dispatch Attempts</field>
+    <field name="res_model">omni.attempt</field>
+    <field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_attempts" name="Dispatch Attempts" parent="menu_omni_root" action="action_attempts" sequence="35"/>
+  <record id="reconciliation_form" model="ir.ui.view">
+    <field name="name">omni.reconciliation.form</field>
+    <field name="model">omni.reconciliation</field>
+    <field name="arch" type="xml">
+      <form string="Reconcile unknown outcome">
+        <group>
+          <field name="command_id"/>
+          <field name="outcome"/>
+          <field name="provider_message_key" invisible="outcome != 'accepted'" required="outcome == 'accepted'"/>
+          <field name="evidence"/>
+        </group>
+        <p>Record verified provider evidence. This action never resends. A replacement requires a new message and approval. The original uncertain attempt remains in the audit history.</p>
+        <footer>
+          <button name="action_confirm" type="object" string="Record verified outcome" class="btn-primary"/>
+          <button string="Cancel" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

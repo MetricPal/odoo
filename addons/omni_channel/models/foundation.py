@@ -449,6 +449,7 @@ class OmniSender(models.Model):
             )
         for channel in self.channel_id.sorted('id'):
             channel._lock()
+        channel._check_sender_change_allowed()
         self.invalidate_recordset()
         if 'active' in vals and not vals['active'] and self.filtered('is_selected'):
             raise UserError(_('Deactivate the runtime sender before archiving it.'))
@@ -457,6 +458,7 @@ class OmniSender(models.Model):
     def unlink(self):
         for channel in self.channel_id.sorted('id'):
             channel._lock()
+        channel._check_sender_change_allowed()
         self.invalidate_recordset()
         if self.filtered('is_selected'):
             raise UserError(_('Deactivate the runtime sender before removing it.'))
@@ -526,6 +528,7 @@ class OmniSender(models.Model):
         self._require_manager()
         channel = self.channel_id
         channel._lock()
+        channel._check_sender_change_allowed()
         self.invalidate_recordset()
         if channel.generation != expected_generation:
             raise UserError(
@@ -562,6 +565,7 @@ class OmniSender(models.Model):
         self.ensure_one()
         self._require_manager()
         self.channel_id._lock()
+        self.channel_id._check_sender_change_allowed()
         self.invalidate_recordset()
         if self.is_selected:
             super().write({'is_selected': False})

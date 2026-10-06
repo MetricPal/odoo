@@ -1,4 +1,6 @@
-# Implementation status — 2026-10-06
+# Foundation implementation status — 2026-10-06
+
+Historical foundation report. The subsequent worker increment is documented in [worker implementation status](16-worker-implementation-status.md).
 
 Addon: `addons/omni_channel`, version `20.0.1.0.0`.
 Status: configuration foundation and governed message preparation implemented. This is not a production messaging release, and P1/P2/P3 are not complete.

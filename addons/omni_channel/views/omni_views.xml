@@ -418,7 +418,7 @@
           <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,queued"/>
         </header>
         <sheet>
-          <div class="alert alert-info" role="status">Preparation and approval workspace. Provider dispatch is not enabled in this foundation release; queued messages are not sent.</div>
+          <div class="alert alert-info" role="status">Queued messages need an enabled channel, verified provider and current recipient authorization. This installation ships with dispatch disabled.</div>
           <group>
             <field name="name" readonly="state != 'draft'"/>
             <field name="channel_id" readonly="state != 'draft'"/>

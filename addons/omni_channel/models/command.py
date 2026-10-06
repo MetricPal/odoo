@@ -377,13 +377,13 @@ class OmniCommand(models.Model):
             set(approved.user_id.ids),
         ):
             raise AccessError(_('The required approval evidence is missing.'))
-        # Queue only: foundation release intentionally has no external dispatcher.
+        # Enqueue only: provider I/O belongs exclusively to the isolated worker.
         internal(self).write({'state': 'queued'})
         internal(request.sudo()).write({'executed_at': fields.Datetime.now()})
         self._audit(
             'message.queued',
             _(
-                'Approved message queued. Provider dispatch is not enabled in this release.',
+                'Approved message queued. Dispatch requires an enabled channel and current recipient authorization.',
             ),
         )
         return True

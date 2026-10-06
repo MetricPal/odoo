@@ -68,4 +68,16 @@
     <field name="operation">crud</field>
     <field name="domain">['|', ('request_id', '=', False), '|', ('request_id.omni_command_id', '=', False), '&amp;', ('request_id.company_id', 'in', company_ids), ('request_id.omni_purpose_id.user_ids', 'in', [user.id])]</field>
   </record>
+  <record id="scope_consent" model="ir.access">
+    <field name="name">Omni consent company and purpose</field>
+    <field name="model_id" ref="model_omni_consent"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids), ('purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <record id="scope_attempt" model="ir.access">
+    <field name="name">Omni attempt company and purpose</field>
+    <field name="model_id" ref="model_omni_attempt"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids), ('purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
 </odoo>

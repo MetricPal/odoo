@@ -1,6 +1,6 @@
 {
     'name': 'Omni-Channel',
-    'version': '20.0.1.0.0',
+    'version': '20.0.1.1.0',
     'summary': 'Manage communication channels, sender readiness and ownership in one governed workspace',
     'category': 'Productivity',
     'author': 'metric.io',
@@ -10,7 +10,9 @@
         'security/omni_security.xml',
         'security/ir.access.csv',
         'data/catalog.xml',
+        'data/dispatch_cron.xml',
         'views/omni_views.xml',
+        'views/dispatch_views.xml',
     ],
     'assets': {'web.assets_backend': ['omni_channel/static/src/scss/omni.scss']},
     'icon': '/omni_channel/static/description/icon.svg',
