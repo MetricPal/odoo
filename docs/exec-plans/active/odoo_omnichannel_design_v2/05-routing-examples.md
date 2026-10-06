@@ -1,72 +1,29 @@
-# Routing Examples
+# Routing and failure examples
 
-## Marketing with many WhatsApp inbound numbers
+## Several inbound endpoints, one selected sender
 
-```text
-Marketing
-└── WhatsApp
-    ├── OUTBOUND: Marketing WhatsApp
-    │
-    └── INBOUND
-        ├── +60111111111 -> Marketing
-        ├── +60122222222 -> Marketing
-        ├── +60133333333 -> Marketing
-        └── +60144444444 -> Marketing
-```
+Company A / Marketing / WhatsApp has inbound numbers A and B; outbound configurations A and B; selected sender A. Both endpoints route to Marketing. A message to B is visible, but an in-thread reply is blocked unless adapter validation proves selected sender A is compatible. The system never secretly sends as B. Explicit new outreach from A is a separate approved command when allowed.
 
-## Sales uses a different inbound number
+## Company isolation
 
-```text
-Sales
-└── WhatsApp
-    ├── OUTBOUND: Sales WhatsApp
-    └── INBOUND
-        └── +60155555555 -> Sales
-```
+Company A Sales and Company B Sales have different channels. A physical bot/number cannot be claimed by both. Adding a second credential record for the same external endpoint does not bypass uniqueness. A user selecting both companies still needs the relevant purpose membership and record access.
 
-The same endpoint cannot be attached to both Marketing and Sales.
+## Blocklist order
 
-## Telegram
+Verified bot event -> resolve bot endpoint to Company A/Recruitment -> normalize external identity -> check company-wide block then Recruitment block -> persist allowed event -> asynchronous conversation handling. A Recruitment-only block does not affect Sales. Company-wide means all purposes in Company A, never all tenants or companies.
 
-```text
-Marketing
-└── Telegram
-    ├── OUTBOUND: Marketing Telegram
-    └── INBOUND
-        ├── Marketing Bot A
-        ├── Marketing Bot B
-        └── Marketing Group/Channel endpoint(s)
-```
+## Unknown and reassigned endpoints
 
-## Social
+An authenticated event for an unconfigured endpoint enters restricted quarantine, with no contact/lead/notification creation. Reassignment disables intake, drains or explicitly quarantines pending old-version events, holds outgoing work, then increments ownership version with human confirmation. Old conversations remain with their original purpose. Reactivation admits only new-version events; ambiguous late events remain quarantined.
 
-```text
-Marketing
-├── LinkedIn
-│   ├── OUTBOUND: 1
-│   └── INBOUND: N
-├── Instagram
-│   ├── OUTBOUND: 1
-│   └── INBOUND: N
-├── Facebook
-│   ├── OUTBOUND: 1
-│   └── INBOUND: N
-├── X
-│   ├── OUTBOUND: 1
-│   └── INBOUND: N
-└── TikTok
-    ├── OUTBOUND: 1
-    └── INBOUND: N
-```
+## Approval and sender switch
 
-## Email and SMS
+Command C approved for sender A at channel generation 5. Admin switches to B, generation 6. C becomes held, not rewritten. User clones C with B and submits a new request. Switching back to A does not resurrect generation-5 commands.
 
-These are intentionally omitted from the above Omni tree because Odoo owns them natively.
+## Uncertain provider outcome
 
-```text
-Marketing
-├── Odoo Email Marketing
-└── Odoo SMS Marketing
-```
+Provider accepts C, worker loses response. Mark C `unknown`; do not retry a non-idempotent send. Reconcile from provider evidence if available. An operator can mark a verified success or explicitly create a replacement command acknowledging possible duplication; replacement requires fresh approval. Never label uncertainty as a definite failure.
 
-If a unified reporting/inbox layer is needed later, use integration adapters rather than duplicate senders.
+## Email/SMS
+
+Native Odoo engines remain authoritative. Future unified activity bridges correlate native IDs and statuses without scheduling a second send.

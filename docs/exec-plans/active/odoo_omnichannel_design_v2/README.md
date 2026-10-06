@@ -1,60 +1,38 @@
-# Odoo Omni-Channel Architecture
+# Omni-Channel implementation plan
 
-## Scope
+Revised: 2026-10-05. Status: ready to begin foundation implementation; not implemented or production-certified.
 
-This package defines a reusable Omni-Channel core for an Odoo Community-based platform.
+## Purpose
 
-The Omni-Channel layer covers external messaging and social platforms while integrating with Odoo business modules such as Marketing, Sales, Recruitment, HR, and future custom modules.
+Build a reusable Odoo 20 Community communication layer for Marketing, Sales, Recruitment and HR. Business applications own business records; Omni owns transport, communication records and routing. Email and SMS keep their native Odoo sending engines. No Enterprise dependency is assumed.
 
-### Explicit boundary: Email and SMS
+## Canonical architecture
 
-Odoo already has native Email Marketing and SMS Marketing capabilities. Therefore this Omni-Channel design does **not** create a second Email Marketing or SMS Marketing engine.
+For each company + business purpose + channel type, configure at most one logical channel. That channel contains 0..N configured outbound senders, at most one active sender, and 0..N inbound endpoints. Every physical inbound endpoint has one owner. An inactive sender can never be used to reply. Incompatible replies remain blocked; the UI explains the sender limitation.
 
-- Email marketing remains managed by Odoo's native Email Marketing / mail infrastructure.
-- SMS marketing remains managed by Odoo's native SMS Marketing infrastructure.
-- Omni-Channel may expose integration hooks or unified activity/conversation views later, but it does not duplicate their campaign/sending engines.
+Humans approve external side effects. Approved commands are immutable and queued durably. Sender changes never silently rewrite an approved command. Inbound ingestion runs only under an explicitly activated processing policy, with no implicit permission to create CRM/HR records or send replies.
 
-Odoo's current documentation confirms dedicated Email Marketing, SMS Marketing, and Social Marketing applications. The custom Omni-Channel is therefore focused on the cross-channel capabilities and routing rules not intended to be duplicated inside those native apps.
+## Reading order and authority
 
-## Core rule
+Project contracts in `docs/` and AGENTS.md govern this package. The following files replace the earlier draft wording; there is no implicit last-section-wins interpretation:
 
-For every `Business Module + Channel Type` combination:
+1. [Core rules](02-core-rules.md): normative invariants.
+2. [Data model](03-data-model.md): entity ownership, keys and lifecycle.
+3. [Odoo integration](04-odoo-integration.md): verified extension points and dependencies.
+4. [Implementation specification](08-codex-implementation-spec.md): service and transaction contracts.
+5. [Security and operations](11-security-and-operations.md): authorization, privacy, operating defaults.
+6. [Acceptance tests](12-acceptance-and-release.md): mandatory verification and release gates.
+7. [Research](13-research-and-provider-readiness.md): evidence, limits, provider readiness.
+8. [Gap register](14-gap-resolution-register.md): decisions and remaining external prerequisites.
+9. [Phases](07-implementation-phases.md), [UX](09-ui-wireframes.md), [coding brief](10-codex-prompt.md).
+10. [Catalog](01-channel-catalog.md), [capabilities](06-capability-matrix.md), [examples](05-routing-examples.md).
 
-- exactly **one logical Outbound Channel**;
-- **one or many Inbound Endpoints**;
-- each Inbound Endpoint belongs to exactly **one Business Purpose / Module**.
+The images in [design](design/) remain visual references, not behavioral authority. Updated UX requirements override conflicting controls in those references.
 
-Example:
+## Scope and readiness
 
-```text
-Marketing
-  WhatsApp
-    Outbound: 1
-    Inbound: N
+Foundation: core models, governance, mock adapter, safe ingestion, transactional dispatch, blocklist, operations UI and database/security/concurrency tests.
+First live slice: Telegram Bot API private text messages, one bot endpoint per account, human-approved outbound; no groups, media, bulk or social publishing in this slice.
+Subsequent releases: WhatsApp/Slack/Discord, attachments, business bridges, bulk, social, then optional AI moderation. All twelve channel types remain discoverable as catalog entries, visibly unavailable until their adapter is installed and verified.
 
-  Telegram
-    Outbound: 1
-    Inbound: N
-
-  LinkedIn
-    Outbound: 1
-    Inbound: N
-```
-
-## Design principle
-
-**One outbound logical channel, many inbound endpoints.**
-
-The outbound object represents the business module's logical sender for a provider. Inbound endpoints represent the actual addresses/accounts/numbers/bots/pages through which messages or events enter the system.
-
-## Outbound Sender Pool Clarification
-
-Outbound is **multiple in configuration, single in runtime**:
-
-`Module + Channel -> Outbound Sender Configurations (N) -> Active Sender (0..1)`
-
-The active sender is selected with a radio-button-style UI and must pass a real provider health check before activation. No automatic failover is allowed.
-
-
-# Design
-Design mock screens are stored in [`design/`](design/).
+No live credentials, webhooks, database configuration, subscriptions or external messages are created by this planning work. Deployment prerequisites do not block foundation coding; they do block live release. See the explicit gates in file 12.

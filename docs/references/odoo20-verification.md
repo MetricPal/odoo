@@ -376,3 +376,37 @@ Verified against the Odoo 20 Community source in this repository before adapting
   caret class so expanded-state and reduced-motion behavior are preserved.
 - Template regression tests cover native icon names, filled-star state and
   decorative accessibility attributes; dashboard HOOT selectors use native markup.
+
+## Omni-Channel planning verification — 2026-10-05
+
+Source inspected at `dbce1c66c4d1f9779f55d82657e8214d2c09654b`.
+
+- Verified `ir.access` in `odoo/addons/base/models/ir_access.py`: grouped grants
+  and group-less restrictions; operation/domain fields and company_ids domain
+  context. Omni must not introduce legacy ir.model.access CSV assumptions.
+- Verified `check_access` / `has_access` in `odoo/orm/models.py` and partial
+  `UniqueIndex` support in `odoo/orm/table_objects.py`. Selected sender needs a
+  partial unique index plus transactional activation protection.
+- Verified `_trigger` and `_commit_progress` in
+  `odoo/addons/base/models/ir_cron.py`. The latter commits; external dispatch
+  therefore needs explicit worker transaction boundaries and uncertainty handling.
+- Inspected HTTP verification in `addons/payment_stripe/controllers/main.py`;
+  use original request bytes and protocol-specific verification, not copied
+  payload logging. Inspected bus notification guidance in
+  `addons/bus/models/bus.py`: prefer authorized listener surfaces.
+- Inspected existing Approval Center execution, audit and access files. Omni
+  needs immutable command/policy snapshots, exact target/action restrictions,
+  company/purpose isolation, one-shot enqueue and persistent worker failure
+  evidence. Existing generic action dispatch is not evidence those guarantees
+  already exist. Changes should be scoped to Omni-linked approvals and tested
+  against existing Approval Center behavior.
+- `addons/social_media/__manifest__.py` is company social configuration, not a
+  verified Community social publishing engine. Core must not assume Enterprise
+  Social Marketing models exist.
+- Official Odoo 20 ORM/index pages were available; the actions page could not
+  be retrieved twice. Cron behavior was verified from this checkout, not older
+  documentation. Provider and reliability sources, limitations and release gates
+  are recorded in the [Omni research dossier](../exec-plans/active/odoo_omnichannel_design_v2/13-research-and-provider-readiness.md).
+
+This is source/planning evidence only. No Omni code, module installation,
+production database changes or live provider tests were performed in this pass.
