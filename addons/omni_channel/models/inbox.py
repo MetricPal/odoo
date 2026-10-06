@@ -13,6 +13,7 @@ from odoo import SUPERUSER_ID, _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 from .command import digest, internal, is_internal
+from .deployment import channel_origin
 from .dispatch import OmniDispatchCommand
 from .foundation import protected_input
 from odoo.addons.omni_channel.providers.base import get_adapter
@@ -201,6 +202,12 @@ class InboundPolicy(models.Model):
 
 class InboundEndpoint(models.Model):
     _inherit = "omni.inbound.endpoint"
+
+    def _get_webhook_url(self):
+        """Backend-only registration input; deriving a URL never registers it."""
+        self.ensure_one()
+        origin = channel_origin(self.get_base_url())
+        return f"{origin}/omni/inbound/{self.route_key}" if origin else False
 
     state = fields.Selection(
         selection_add=[("enabled", "Enabled"), ("disabled", "Disabled")],

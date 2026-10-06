@@ -2,7 +2,7 @@
 
 Odoo 20 Community foundation for company- and purpose-scoped communication.
 
-## Available in 20.0.1.3.1
+## Available in 20.0.1.3.2
 
 - Native channel kanban/list/forms and a deliberate app icon.
 - Twelve channel catalog entries, explicitly marked unavailable without an installed adapter.
@@ -67,3 +67,35 @@ Deployment must bind the database by host, enforce HTTPS and proxy limits, and c
 ## Restore isolation
 
 The native Odoo `data/neutralize.sql` hook disables dispatch, enabled inbound endpoints and Omni schedulers, and pauses active intake policies. It preserves command/approval/attempt history for reconciliation. Invoke Odoo restore/duplicate with `neutralize_database=True` before exposing the copy; default or raw PostgreSQL restores do not invoke this protection. Keep ingress, workers and provider networking isolated until neutralization and reconciliation are complete. Adapter-specific authorization is neutralized by each installed adapter; the Telegram addon supplies its own hook.
+
+## Backend-derived webhook address
+
+No server, domain or URL-preview settings are entered in Omni-Channel.
+The endpoint's private `_get_webhook_url()` helper reads Odoo's backend
+`web.base.url` through the native `get_base_url()` API. For
+`https://example.com`, it returns
+`https://channels.example.com/omni/inbound/<route_key>`.
+An existing `channels.` prefix is retained, and ports and paths are discarded.
+The configured hostname is preserved, including any tenant subdomain:
+`erp.example.com` becomes `channels.erp.example.com`. No parent domain is guessed.
+The existing Odoo deployment determines the server; no duplicate server address
+is stored. Localhost, IP addresses, malformed URLs and local-only domains yield
+no public webhook URL. There is no fallback to the incoming request Host header.
+
+This helper provides the URL for a separately approved provider registration;
+it does not register a webhook, provision DNS/TLS, move existing registrations,
+or activate messaging. DNS and HTTPS for the derived hostname must be available
+on the deployment. Upgrade `omni_channel` to `20.0.1.3.2`; this also removes the
+superseded manual settings view from installations that loaded the draft.
+
+Operations alerts may reuse Odoo's existing outgoing mail transport. Its SMTP
+account is a sending identity, not an automatically selected alert recipient.
+
+## Shared ingress convention
+
+All current and future provider adapters must reuse the core endpoint
+`_get_webhook_url()` helper: HTTPS at `channels.[backend hostname]` plus the
+endpoint route. Do not add provider-specific server/domain settings or URL
+previews. This is a shared addressing convention, not evidence that a catalog
+provider is implemented or permission to register its webhook. Existing backend
+subdomains are preserved; provider authentication and activation remain separate.

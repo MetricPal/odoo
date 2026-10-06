@@ -9,6 +9,15 @@ Format:
 - affected areas
 - migration/compatibility notes
 
+## 2026-10-07
+
+- Omni-Channel derives webhook URLs from backend `web.base.url`, using
+  `channels.[configured hostname]` and the endpoint route key. Removed the draft
+  manual server/domain settings and preview. Local-only backends yield no public
+  URL. No infrastructure or provider registration changes are executed.
+- Existing Odoo outgoing mail remains the transport for future operations
+  alerts; the SMTP account does not identify an alert recipient.
+
 ## 2026-10-04
 
 - Change: Reworked `approval_center` from an action-first prototype into an

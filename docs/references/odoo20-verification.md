@@ -475,3 +475,38 @@ Verification: targeted neutralization test passed, followed by **20 Telegram tes
 The operations collector runs only in a trusted superuser Odoo shell; there is no public RPC/controller or scheduled execution. Verified current ORM state fields in `models/dispatch.py`, `models/inbox.py` and `models/foundation.py`. It returns counts, never bodies, recipients or credentials, and does not call providers. Actual ORM regression verifies non-superuser denial and a timed-out send raising an unknown-outcome critical indicator.
 
 Odoo 20 `odoo/addons/base/models/ir_module.py:_get_desc` reads `static/description/index.html` before falling back to reStructuredText rendering. Telegram's Markdown fallback produced misleading rendering diagnostics; an explicit HTML module description avoids them and accurately states sandbox-only capabilities. `HttpCase.browser_size` is read by Chrome initialization; a 390×844 test verifies named/focusable authorization and dialog controls, visible approval explanation and dialog viewport fit. This is targeted mobile/focus coverage, not a full assistive-technology accessibility audit.
+## Backend-derived channel URL — 2026-10-07
+
+Verified `odoo/orm/models.py:get_base_url()` in checkout based on
+`b49e1e4c97e2`: reads backend `web.base.url` through restricted configuration
+access. The private endpoint helper uses this API, never the request Host header.
+`channels.` prefixes the configured hostname, retaining existing subdomains and
+not guessing registrable domains. An existing `channels.` prefix is not repeated.
+Public URLs use HTTPS; localhost/IP/local-only or malformed backends yield False.
+
+The superseded draft res.config.settings fields, view and menu were removed.
+The server is already determined by deployment; deriving an address performs no
+network requests, config writes, webhook registration or intake activation.
+
+Mail source inspection verified `ir.mail_server` transport fields: SMTP username
+identifies the sending account, not an operations-alert recipient. The main
+`odoo20` database was inspected read-only and was not modified.
+
+Verification: upgrade from the draft settings on disposable
+`omni_settings_20261007` passed all three `omni_deployment` tests, zero
+failures/errors. Tests cover domain derivation, local/invalid URL rejection,
+backend changes reflected immediately in endpoint URLs, unchanged endpoint state,
+and removal of manual settings fields/menu. Log: `/tmp/omni-deployment-derived.log`.
+
+```sh
+PYTHONPATH=/tmp/omni-settings-deps /home/moshkou/workspace/odoo/odoo-venv/bin/python odoo-bin server \
+  -c odoo.conf -d omni_settings_20261007 --data-dir=/tmp/omni-settings-fresh-data \
+  -u omni_channel --test-enable --test-tags=omni_deployment --stop-after-init \
+  --http-port=8083 --max-cron-threads=0 --logfile=/tmp/omni-deployment-derived.log
+```
+
+Ruff on `addons/omni_channel` and `git diff --check` also passed.
+
+Shared-provider verification: all four `omni_deployment` tests passed after adding
+an endpoint URL check for every catalog provider (12 types). No provider transport
+was enabled. Log: `/tmp/omni-shared-domain.log`.

@@ -42,3 +42,12 @@ At-least-once ingestion with deduplication; durable commands before any external
 ## Change control
 
 Reassignment, credential identity changes, capability grants and policy changes are auditable and versioned. Old business records are never silently moved between purposes/companies. Cross-company endpoint transfer is not supported in the initial releases.
+
+## Shared ingress convention
+
+All current and future provider adapters must reuse the core endpoint
+`_get_webhook_url()` helper: HTTPS at `channels.[backend hostname]` plus the
+endpoint route. Do not add provider-specific server/domain settings or URL
+previews. This is a shared addressing convention, not evidence that a catalog
+provider is implemented or permission to register its webhook. Existing backend
+subdomains are preserved; provider authentication and activation remain separate.

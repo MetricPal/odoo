@@ -1,6 +1,7 @@
 from . import (
     test_commands,
     test_concurrency,
+    test_deployment,
     test_dispatch,
     test_foundation,
     test_inbox,

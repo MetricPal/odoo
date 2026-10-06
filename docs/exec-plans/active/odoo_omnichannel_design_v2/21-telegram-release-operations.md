@@ -10,7 +10,15 @@ This is a local small-database recovery rehearsal, not a production RTO guarante
 
 ## Recommended deployment (not provisioned)
 
-Dedicated Linux host; separate staging/production databases and processes; stable `hooks.<owned-domain>` hostname; named Cloudflare Tunnel and hardened webhook-only proxy; no public database manager or broad UI routes on the webhook hostname. A technical operator and backup operator own recovery and credentials; a distinct business approver authorizes messages. Administrator alerts should use a shared operations mailbox through an independently configured delivery path. Actual host/domain, named people, mailbox, retention and production activation require owner decisions.
+Update 2026-10-07: server ownership stays with the backend deployment.
+Omni derives its HTTPS ingress hostname as `channels.[web.base.url hostname]`,
+with no manual server/domain fields or URL preview. Endpoint
+`_get_webhook_url()` supplies the registration URL; localhost/IP backends return
+no public URL. DNS/TLS and provider registration remain separate deployment
+steps. Reuse the existing Odoo mail transport for future alerts; recipient
+routing and scheduling remain unimplemented.
+
+Dedicated Linux host; separate staging/production databases and processes; stable `channels.<backend-domain>` hostname; named Cloudflare Tunnel and hardened webhook-only proxy; no public database manager or broad UI routes on the webhook hostname. A technical operator and backup operator own recovery and credentials; a distinct business approver authorizes messages. Administrator alerts should use a shared operations mailbox through an independently configured delivery path. Actual host/domain, named people, mailbox, retention and production activation require owner decisions.
 
 The temporary Quick Tunnel is development infrastructure: https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/ . No infrastructure purchase, external alert or production activation is authorized by this recommendation alone.
 
