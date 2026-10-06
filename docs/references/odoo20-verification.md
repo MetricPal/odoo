@@ -452,3 +452,13 @@ Base revision: `68c72f776884`. The addon uses the existing Odoo 20 model/view/ac
 - Rechecked `omni_channel` company/channel locking and the 120-second committed claim lease. Health now snapshots configuration before bounded read-only I/O, then locks and rechecks version/configuration/generation before persisting health/selection. A test changes account configuration during preflight and proves selection is refused.
 - Installed the optional addon and upgraded inherited views on the isolated database. View selectors use stable field names rather than translated `string` attributes. Chrome exercised the native confirmation without approving it; screenshot inspection corrected a narrow paragraph layout.
 - Full combined verification: 96 tests, zero failures/errors. See [Telegram report](../exec-plans/active/odoo_omnichannel_design_v2/18-telegram-sandbox-implementation-status.md).
+
+## Uncached operator reply submission — 2026-10-06
+
+Live sandbox preparation exposed an access error when an ordinary operator submitted a Telegram reply with an empty ORM cache. `omni.inbound.endpoint._allowed()` read `policy.state` through that operator, while `omni.inbound.policy` is intentionally administrator-only. Earlier fixtures warmed the policy field through a privileged environment, hiding the missing access path.
+
+Verified current ORM field fetching/access behavior in `odoo/orm/fields.py` and `odoo/orm/models.py`, and the existing policy grant in `addons/omni_channel/security/ir.access.csv`. The private helper now reads only `policy.sudo().state` after validating endpoint ownership/binding and active channel/account/endpoint flags. Public action scope checks and policy model permissions remain unchanged. No operator access to policy records, retention settings or hash secrets was added.
+
+The added `TestTelegramSandbox.test_operator_can_submit_with_uncached_private_policy` reproduced the failure before the fix, then passed with explicit negative policy-read assertions. `test_uncached_paused_policy_still_blocks_operator_submission` verifies revocation still blocks submission. Full isolated regression: 98 tests passed with zero failures/errors in `omni_regression_20261006`, log `/tmp/omni-policy-regression-after.log`. The connected sandbox was not used for regression fixtures. Core version 20.0.1.3.1 was then upgraded on the local connected sandbox.
+
+Also verified `res.users._set_password` hashes explicitly assigned values in this checkout: passing False is not the same as omitting the field. The first approved setup attempt rolled back on that type error. The dedicated sandbox requester is created without setting a password, and SQL verifies its password column is NULL; no credential, invitation or email is generated.

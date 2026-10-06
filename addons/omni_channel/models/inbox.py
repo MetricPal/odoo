@@ -310,7 +310,9 @@ class InboundEndpoint(models.Model):
             and self.account_id.active
             and self.channel_id.active
             and policy == self.policy_id
-            and policy.state == "active"
+            # Policy records remain administrator-only. Read just the internal
+            # activation flag after validating the endpoint/policy binding.
+            and policy.sudo().state == "active"
         )
 
     def _receive(self, raw, headers):

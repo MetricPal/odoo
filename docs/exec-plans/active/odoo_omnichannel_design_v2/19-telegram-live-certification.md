@@ -2,7 +2,7 @@
 
 Prepared 2026-10-06 against commit `d91a299ca78a` — `feat(omni_telegram): add supervised private-text sandbox adapter`.
 
-Status: local sandbox and temporary HTTPS gateway running; bot connection pending rotated secret provisioning. This record does not certify Telegram connectivity, authorize an unspecified recipient, or mark production gates complete.
+Status: live inbound connection verified, real messages and edits received; first outbound reply pending explicit setup/send approval. This record does not certify Telegram connectivity, authorize an unspecified recipient, or mark production gates complete.
 
 ## Verified local baseline
 
@@ -65,7 +65,7 @@ Real transport timeout/failure injection requires a separately reviewed procedur
 
 Live sandbox certification can be marked complete only after the actual evidence above is recorded and reviewed. Production release additionally requires the operational, capacity, restore, alerting and UX gates in [acceptance and release](12-acceptance-and-release.md). This checklist does not waive any of them.
 
-Next action: provision the rotated token through the hidden-input helper, verify the bot identity, and populate a concrete setup/send review using the proposed test text before applying external changes. No additional provider implementation is needed to unblock this certification.
+Next action: review and approve the concrete [first sandbox reply proposal](20-first-sandbox-reply-review.md). Live inbound setup is complete; outbound permission/configuration changes have not executed. No additional provider implementation is needed to unblock this certification.
 
 ## Temporary HTTPS setup — 2026-10-06
 
@@ -98,3 +98,28 @@ The public HTTPS probe with the approved webhook header and synthetic invalid `{
 Registration is complete. This does not yet prove delivery/normalization of a real user message, the edit path, approved outbound reply, or overall live certification. The temporary tunnel must remain running for delivery. Inbox processing is invoked manually during certification while all schedulers remain disabled.
 
 Immediately after registration, the manual inbox pass found **two genuine inbound events**, both processed into **two messages in one private conversation**. The conversation identity matches the supplied test recipient. There are zero outbound commands. This closes initial real inbound delivery and normalization evidence, but does not by itself prove edits, duplicate replay, outbound approval or the remaining certification cases. Message bodies were not printed in tool output or copied into this report.
+
+## Next certification checks — 2026-10-06
+
+Configured-endpoint checks passed: duplicate input produced exactly one normalized effect; an incorrect secret was rejected; an unlisted private identity was ignored without a new identity or retained body. These were synthetic local protocol probes inside a rolled-back transaction. All synthetic event/message effects were removed; only the sanitized certification audit was committed. This does not claim observation of an actual Telegram retry.
+
+A real Telegram edit was processed into the existing conversation. At inspection there were three messages and four revisions, with one processed edit event. The user confirmed performing the edit. No original message bodies were included in the report.
+
+The proposed outbound preparation was blocked by automatic approval review because creation of an automation requester, permission assignment, approval policy configuration and submission were not explicitly covered by “go next”. No part of that rejected command ran. The complete [reviewable proposal](20-first-sandbox-reply-review.md) now specifies these sandbox-only changes, exact message, recipient consent, delegated approval recording, at most one send and immediate pause/revocation. Explicit approval has been requested. No outbound command, approval or consent was created by the rejected action, and dispatch remains disabled.
+
+## First approved outbound attempt — 2026-10-06
+
+The user explicitly approved the complete one-reply proposal. The setup initially rolled back on an unset-password type error, then on an uncached policy permission error. No message was sent by those failed setup transactions. The password field is now omitted and verified NULL for the automation requester. The internal policy-active flag check was fixed without changing policy ACLs; its regression first reproduced the failure, then the combined suite passed 98 tests in separate `omni_regression_20261006` (log `/tmp/omni-policy-regression-after.log`). Core 20.0.1.3.1 was applied to the connected local sandbox.
+
+Command 313 / approval 240 received the delegated, explicit human decision, with a distinct requester and approver and temporary recipient authorization. Its single worker attempt completed **failed / definitely_not_sent / invalid_recipient**, with no provider message key. Dispatch was paused and consent revoked immediately; no recurring scheduler or automatic retry was enabled. This is a failed outbound certification case, not a successful live send.
+
+A later read-only preflight found a valid frozen payload and accessible private recipient (getChat HTTP 200, exact ID match). The original safe result code cannot identify which recipient-validation stage failed; no specific network/provider cause is claimed. A fresh, unapproved replacement draft is available under [review 20](20-first-sandbox-reply-review.md), with per-method status diagnostics proposed for a separately authorized new attempt. The previous failed command remains immutable evidence.
+
+
+## Approved replacement result — 2026-10-06
+
+The user explicitly replied **approve** to replacement draft **314**. Fresh approval request **241** and temporary consent **143** were recorded through the existing scoped requester and distinct Administrator approver. The original failed command 313 and revoked consent 142 remain unchanged.
+
+The governed worker completed exactly **one attempt**, with command state and attempt outcome **accepted**, and provider message key `8541291475:44087589:4`. Safe method diagnostics recorded two getMe checks, one getChat check and exactly one sendMessage call, all HTTP 200 with `ok=true`. Telegram acceptance is verified; recipient observation/read status has not been verified.
+
+After the attempt, dispatch was paused, consent 143 revoked, and the dispatch scheduler confirmed inactive. No automatic retry occurred. The replacement has its own durable invocation marker. Credentials and arbitrary provider response content were excluded from diagnostics. This completes the approved live outbound acceptance check, not overall production certification.

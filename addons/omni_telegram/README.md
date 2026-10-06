@@ -1,6 +1,6 @@
 # Omni-Channel Telegram sandbox
 
-Optional Odoo 20 Community addon for supervised private-text intake and approved replies. Version 20.0.1.0.0. Requires `omni_channel` 20.0.1.3.0 from this checkout.
+Optional Odoo 20 Community addon for supervised private-text intake and approved replies. Version 20.0.1.0.0. Requires `omni_channel` 20.0.1.3.1 from this checkout.
 
 Code and synthetic-provider tests are implemented. **Live sandbox certification and production release remain pending.** Installing this addon does not register a webhook, enable any cron, authorize an account or send a message.
 

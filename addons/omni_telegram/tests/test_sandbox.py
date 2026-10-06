@@ -179,3 +179,30 @@ class TestTelegramSandbox(TestOmniCommands):
             self.account.with_user(self.manager).action_authorize_telegram_sandbox()
         self.assertFalse(self.account.telegram_sandbox_authorized)
         self.assertFalse(self.channel.dispatch_enabled)
+
+    def test_operator_can_submit_with_uncached_private_policy(self):
+        self._activate()
+        conversation = self._conversation()
+        action = conversation.action_prepare_reply()
+        command = self.env['omni.command'].browse(action['res_id']).with_user(self.operator)
+        command.body = 'One reviewed private reply.'
+        self.env.invalidate_all()
+        with self.assertRaises(AccessError):
+            self.intake.with_user(self.operator).read(['state'])
+        command.action_submit()
+        self.assertEqual(command.state, 'pending')
+        with self.assertRaises(AccessError):
+            self.intake.with_user(self.operator).read(['state'])
+
+    def test_uncached_paused_policy_still_blocks_operator_submission(self):
+        self._activate()
+        conversation = self._conversation()
+        action = conversation.action_prepare_reply()
+        command = self.env['omni.command'].browse(action['res_id']).with_user(self.operator)
+        command.body = 'This must not be submitted after policy pause.'
+        self.intake.with_user(self.manager).action_pause()
+        self.env.invalidate_all()
+        with self.assertRaises(UserError):
+            command.action_submit()
+        self.assertEqual(command.state, 'draft')
+        self.assertFalse(command.approval_request_id)
