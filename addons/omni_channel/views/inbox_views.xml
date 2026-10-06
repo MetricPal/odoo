@@ -1,0 +1,319 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="conversation_list" model="ir.ui.view">
+    <field name="name">omni.conversation.list</field>
+    <field name="model">omni.conversation</field>
+    <field name="arch" type="xml">
+      <list create="false" edit="false" delete="false" decoration-muted="state == 'closed'">
+        <field name="thread_key" string="Conversation"/>
+        <field name="channel_id"/>
+        <field name="identity_id"/>
+        <field name="assigned_user_id"/>
+        <field name="state" widget="badge"/>
+        <field name="last_message_at"/>
+      </list>
+    </field>
+  </record>
+  <record id="conversation_search" model="ir.ui.view">
+    <field name="name">omni.conversation.search</field>
+    <field name="model">omni.conversation</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="thread_key"/>
+        <field name="channel_id"/>
+        <field name="identity_id"/>
+        <filter name="needs_attention" string="Needs attention" domain="[('state', 'in', ['new','open'])]"/>
+        <filter name="mine" string="Assigned to me" domain="[('assigned_user_id','=',uid)]"/>
+        <filter name="unassigned" string="Unassigned" domain="[('assigned_user_id','=',False)]"/>
+        <group>
+          <filter name="by_channel" string="Channel" context="{'group_by':'channel_id'}"/>
+          <filter name="by_state" string="Status" context="{'group_by':'state'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="conversation_form" model="ir.ui.view">
+    <field name="name">omni.conversation.form</field>
+    <field name="model">omni.conversation</field>
+    <field name="arch" type="xml">
+      <form create="false" edit="false" delete="false">
+        <header>
+          <button name="action_prepare_reply" type="object" string="Prepare reply" class="oe_highlight" invisible="reply_blocked_reason"/>
+          <button name="action_link_contact" type="object" string="Link existing contact"/>
+          <button name="action_open_contact" type="object" string="Open contact" invisible="not contact_name"/>
+          <button name="action_assign_me" type="object" string="Assign to me"/>
+          <button name="action_wait" type="object" string="Mark waiting" invisible="state == 'waiting'"/>
+          <button name="action_close" type="object" string="Close" invisible="state == 'closed'"/>
+          <button name="action_reopen" type="object" string="Reopen" invisible="state != 'closed'"/>
+          <button name="action_open_block" type="object" string="Block identity"/>
+          <field name="state" widget="statusbar"/>
+        </header>
+        <sheet>
+          <div class="alert alert-warning" role="status" invisible="not reply_blocked_reason">
+            <field name="reply_blocked_reason" nolabel="1"/>
+          </div>
+          <div class="oe_title">
+            <h1>
+              <field name="thread_key" string="Conversation"/>
+            </h1>
+          </div>
+          <group>
+            <group>
+              <field name="channel_id"/>
+              <field name="identity_id"/>
+              <field name="contact_name"/>
+              <field name="endpoint_id"/>
+            </group>
+            <group>
+              <field name="assigned_user_id"/>
+              <field name="last_message_at"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Messages">
+              <field name="message_ids">
+                <list create="false" edit="false" delete="false">
+                  <field name="occurred_at"/>
+                  <field name="body"/>
+                  <field name="revision"/>
+                  <field name="redacted"/>
+                </list>
+              </field>
+            </page>
+            <page string="Prepared replies">
+              <p>Replies require a separate approval. Preparing or closing a conversation never sends a message.</p>
+              <field name="command_ids">
+                <list create="false" edit="false" delete="false">
+                  <field name="name"/>
+                  <field name="body"/>
+                  <field name="state"/>
+                  <field name="provider_message_key"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_inbox" model="ir.actions.act_window">
+    <field name="name">Inbox</field>
+    <field name="res_model">omni.conversation</field>
+    <field name="view_mode">list,form</field>
+    <field name="context">{'search_default_needs_attention': 1}</field>
+  </record>
+  <menuitem id="menu_inbox" name="Inbox" parent="menu_omni_root" action="action_inbox" sequence="1"/>
+  <record id="message_form" model="ir.ui.view">
+    <field name="name">omni.message.form</field>
+    <field name="model">omni.message</field>
+    <field name="arch" type="xml">
+      <form create="false" edit="false" delete="false">
+        <sheet>
+          <group>
+            <field name="conversation_id"/>
+            <field name="occurred_at"/>
+            <field name="external_key"/>
+            <field name="revision"/>
+            <field name="redacted"/>
+            <field name="body"/>
+          </group>
+          <field name="revision_ids">
+            <list create="false" edit="false" delete="false">
+              <field name="revision"/>
+              <field name="body"/>
+            </list>
+          </field>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="blocked_list" model="ir.ui.view">
+    <field name="name">omni.blocked.identity.list</field>
+    <field name="model">omni.blocked.identity</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="company_id"/>
+        <field name="purpose_id"/>
+        <field name="channel_type_id"/>
+        <field name="namespace"/>
+        <field name="external_key"/>
+        <field name="state"/>
+        <field name="expires_at"/>
+      </list>
+    </field>
+  </record>
+  <record id="blocked_form" model="ir.ui.view">
+    <field name="name">omni.blocked.identity.form</field>
+    <field name="model">omni.blocked.identity</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_block" type="object" string="Confirm block" class="oe_highlight" invisible="state != 'draft'" confirm="Block this identity in the displayed scope and remove pending content? This prevents new sends but cannot recall an in-flight send. An empty team means company-wide and requires a system administrator."/>
+          <button name="action_unblock" type="object" string="Unblock" invisible="state != 'blocked'" confirm="Remove this block? Previously blocked content will not replay. This does not grant recipient consent."/>
+          <field name="state" widget="statusbar"/>
+        </header>
+        <sheet>
+          <p>An empty team means Company-wide. Team blocks affect only that team. Confirm the exact identity and scope before blocking.</p>
+          <group>
+            <field name="company_id" readonly="state != 'draft'"/>
+            <field name="purpose_id" readonly="state != 'draft'"/>
+            <field name="channel_type_id" readonly="state != 'draft'"/>
+            <field name="namespace" readonly="state != 'draft'"/>
+            <field name="external_key" readonly="state != 'draft'"/>
+            <field name="reason" readonly="state != 'draft'"/>
+            <field name="expires_at" readonly="state != 'draft'"/>
+            <field name="actor_id"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_blocks" model="ir.actions.act_window">
+    <field name="name">Blocked Identities</field>
+    <field name="res_model">omni.blocked.identity</field>
+    <field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_blocks" name="Blocked Identities" parent="menu_omni_root" action="action_blocks" sequence="40"/>
+  <record id="policy_list" model="ir.ui.view">
+    <field name="name">omni.inbound.policy.list</field>
+    <field name="model">omni.inbound.policy</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="channel_id"/>
+        <field name="state"/>
+        <field name="legal_hold"/>
+        <field name="activated_by"/>
+      </list>
+    </field>
+  </record>
+  <record id="policy_form" model="ir.ui.view">
+    <field name="name">omni.inbound.policy.form</field>
+    <field name="model">omni.inbound.policy</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_activate" type="object" string="Activate policy" class="oe_highlight" invisible="state == 'active'" confirm="Authorize verified private text ingestion and automatic disposal at the displayed retention deadlines? This policy does not authorize contact creation, business-record changes, AI disclosure or replies."/>
+          <button name="action_pause" type="object" string="Pause intake" invisible="state != 'active'" confirm="Pause new intake and normalization? Approved retention continues unless a legal hold is applied."/>
+          <button name="action_toggle_legal_hold" type="object" string="Toggle retention hold" confirm="Change the retention hold? A hold prevents scheduled deletion; removing it permits disposal of expired content."/>
+          <field name="state" widget="statusbar"/>
+        </header>
+        <sheet>
+          <group>
+            <field name="name" readonly="state != 'draft'"/>
+            <field name="channel_id" readonly="state != 'draft'"/>
+            <field name="payload_days" readonly="state != 'draft'"/>
+            <field name="message_days" readonly="state != 'draft'"/>
+            <field name="blocked_days" readonly="state != 'draft'"/>
+            <field name="legal_hold"/>
+            <field name="activated_by"/>
+            <field name="activated_at"/>
+          </group>
+          <p>Private text only. No attachments, automatic contacts, AI analysis or outbound messages. Retention periods are measured in days from receipt. Activation requires a verified provider integration.</p>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_inbound_policies" model="ir.actions.act_window">
+    <field name="name">Inbound Policies</field>
+    <field name="res_model">omni.inbound.policy</field>
+    <field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_inbound_policies" name="Inbound Policies" parent="menu_configuration" action="action_inbound_policies" groups="omni_channel.group_omni_manager" sequence="50"/>
+  <record id="event_list" model="ir.ui.view">
+    <field name="name">omni.webhook.event.list</field>
+    <field name="model">omni.webhook.event</field>
+    <field name="arch" type="xml">
+      <list create="false" edit="false" delete="false">
+        <field name="create_date"/>
+        <field name="endpoint_id"/>
+        <field name="kind"/>
+        <field name="state"/>
+        <field name="reason_code"/>
+        <field name="attempts"/>
+        <field name="collision"/>
+      </list>
+    </field>
+  </record>
+  <record id="event_form" model="ir.ui.view">
+    <field name="name">omni.webhook.event.form</field>
+    <field name="model">omni.webhook.event</field>
+    <field name="arch" type="xml">
+      <form create="false" edit="false" delete="false">
+        <header>
+          <button name="action_replay" type="object" string="Retry normalization" invisible="state not in ('dead', 'unresolved') or collision" confirm="Retry this retained event under its original policy and ownership? This never restores blocked or expired content and never sends a reply."/>
+          <field name="state" widget="statusbar"/>
+        </header>
+        <sheet>
+          <group>
+            <field name="endpoint_id"/>
+            <field name="policy_id"/>
+            <field name="kind"/>
+            <field name="event_hash"/>
+            <field name="reason_code"/>
+            <field name="attempts"/>
+            <field name="next_attempt_at"/>
+            <field name="expires_at"/>
+            <field name="collision"/>
+            <field name="message_id"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_events" model="ir.actions.act_window">
+    <field name="name">Intake Events</field>
+    <field name="res_model">omni.webhook.event</field>
+    <field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_events" name="Intake Events" parent="menu_omni_root" action="action_events" groups="omni_channel.group_omni_manager" sequence="45"/>
+  <record id="endpoint_inbox_form" model="ir.ui.view">
+    <field name="name">omni.inbound.endpoint.intake.form</field>
+    <field name="model">omni.inbound.endpoint</field>
+    <field name="inherit_id" ref="omni_inbound_endpoint_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//form" position="inside">
+        <header>
+          <button name="action_enable" type="object" string="Verify and enable intake" groups="omni_channel.group_omni_manager" invisible="state == 'enabled'" confirm="Enable verified intake under the active processing policy? No external webhook registration or outbound send will occur."/>
+          <button name="action_disable" type="object" string="Disable intake" groups="omni_channel.group_omni_manager" invisible="state != 'enabled'" confirm="Disable new intake and queued normalization?"/>
+        </header>
+      </xpath>
+      <xpath expr="//sheet" position="inside">
+        <group groups="omni_channel.group_omni_manager">
+          <field name="policy_id"/>
+          <field name="ownership_version"/>
+          <field name="route_key"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+  <record id="command_conversation_form" model="ir.ui.view">
+    <field name="name">omni.command.conversation.form</field>
+    <field name="model">omni.command</field>
+    <field name="inherit_id" ref="command_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <group invisible="not conversation_id">
+          <field name="conversation_id"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+  <record id="contact_link_form" model="ir.ui.view">
+    <field name="name">omni.contact.link.form</field>
+    <field name="model">omni.contact.link</field>
+    <field name="arch" type="xml">
+      <form string="Link existing contact">
+        <group>
+          <field name="identity_id"/>
+          <field name="partner_id" options="{'no_create': True, 'no_create_edit': True}"/>
+        </group>
+        <p>Confirm that this external identity belongs to the selected contact. This does not create or merge contacts, grant access, or authorize messages.</p>
+        <footer>
+          <button name="action_confirm" type="object" string="Confirm contact link" class="btn-primary"/>
+          <button string="Cancel" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

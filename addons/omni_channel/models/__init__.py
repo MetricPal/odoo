@@ -2,3 +2,4 @@
 from . import foundation  # noqa: I001
 from . import command
 from . import dispatch
+from . import inbox

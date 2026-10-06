@@ -250,6 +250,9 @@ class OmniCommand(models.Model):
             ],
         }
 
+    def _extra_payload(self):
+        return {}
+
     def action_submit(self):
         self.ensure_one()
         self.check_access('write')
@@ -286,6 +289,7 @@ class OmniCommand(models.Model):
             'recipient': self.recipient,
             'body': self.body,
             'operation': 'message.send',
+            **self._extra_payload(),
         }
         request = internal(self.env['approval.center.request']).create(
             {

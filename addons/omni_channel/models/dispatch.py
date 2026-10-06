@@ -358,10 +358,27 @@ class OmniDispatchCommand(models.Model):
             raise AccessError(_("Only the isolated worker can claim dispatch work."))
         now = fields.Datetime.now()
         self.env.flush_all()
+        # Suppression changes lock the company before channels. Reserve the same
+        # boundary without waiting; this also serializes accidentally concurrent workers.
+        self.env.cr.execute("""
+            SELECT company.id FROM res_company company WHERE EXISTS (
+                SELECT 1 FROM omni_channel c JOIN omni_command cmd ON cmd.channel_id = c.id
+                WHERE c.company_id = company.id AND c.active AND c.dispatch_enabled
+                  AND cmd.state = 'queued'
+                  AND (cmd.next_attempt_at IS NULL OR cmd.next_attempt_at <= %s)
+                  AND (c.next_dispatch_at IS NULL OR c.next_dispatch_at <= %s)
+                  AND (c.circuit_until IS NULL OR c.circuit_until <= %s)
+                  AND NOT EXISTS (SELECT 1 FROM omni_command busy WHERE busy.channel_id = c.id
+                      AND busy.state IN ('dispatching', 'unknown')))
+            ORDER BY company.id LIMIT 1 FOR UPDATE SKIP LOCKED
+        """, [now, now, now])
+        company_row = self.env.cr.fetchone()
+        if not company_row:
+            return None
         self.env.cr.execute(
             """
             SELECT channel.id FROM omni_channel channel
-            WHERE channel.active AND channel.dispatch_enabled
+            WHERE channel.company_id = %s AND channel.active AND channel.dispatch_enabled
               AND (channel.next_dispatch_at IS NULL OR channel.next_dispatch_at <= %s)
               AND (channel.circuit_until IS NULL OR channel.circuit_until <= %s)
               AND NOT EXISTS (SELECT 1 FROM omni_command busy
@@ -372,7 +389,7 @@ class OmniDispatchCommand(models.Model):
             ORDER BY channel.next_dispatch_at NULLS FIRST, channel.id
             LIMIT 1 FOR UPDATE OF channel SKIP LOCKED
         """,
-            [now, now, now],
+            [company_row[0], now, now, now],
         )
         row = self.env.cr.fetchone()
         if not row:
@@ -568,17 +585,17 @@ class OmniDispatchCommand(models.Model):
         now = fields.Datetime.now()
         self.env.cr.execute(
             """
-            SELECT channel.id FROM omni_channel channel WHERE EXISTS (
-                SELECT 1 FROM omni_command cmd WHERE cmd.channel_id = channel.id
+            SELECT company.id FROM res_company company WHERE EXISTS (
+                SELECT 1 FROM omni_command cmd WHERE cmd.company_id = company.id
                 AND cmd.state = 'dispatching' AND cmd.lease_expires_at <= %s)
-            ORDER BY channel.id LIMIT %s FOR UPDATE OF channel SKIP LOCKED
+            ORDER BY company.id LIMIT %s FOR UPDATE OF company SKIP LOCKED
         """,
             [now, max(1, min(int(limit), 50))],
         )
-        channel_ids = [row[0] for row in self.env.cr.fetchall()]
+        company_ids = [row[0] for row in self.env.cr.fetchall()]
         commands = self.search(
             [
-                ("channel_id", "in", channel_ids),
+                ("company_id", "in", company_ids),
                 ("state", "=", "dispatching"),
                 ("lease_expires_at", "<=", now),
             ],

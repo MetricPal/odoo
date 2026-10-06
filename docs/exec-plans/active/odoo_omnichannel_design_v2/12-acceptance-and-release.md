@@ -1,6 +1,6 @@
 # Acceptance tests and release gates
 
-No implementation or tests have run yet: this file specifies required evidence. Use a disposable Odoo/PostgreSQL database and mocked network by default. Never run provider sends in ordinary CI. Real tests require explicitly authorized sandbox accounts/recipients.
+This file specifies required release evidence. Foundation, outbound worker and inbox tests have run; see [current implementation evidence](17-inbox-implementation-status.md) for actual coverage and remaining gates. Use a disposable Odoo/PostgreSQL database and mocked network by default. Never run provider sends in ordinary CI. Real tests require explicitly authorized sandbox accounts/recipients.
 
 ## Traceable test matrix
 

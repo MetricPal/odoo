@@ -429,3 +429,17 @@ production database changes or live provider tests were performed in this pass.
   require an explicit name for a meaningful dialog title.
 - Full verification and outstanding transport/inbox work are tracked in the
   [implementation report](../exec-plans/active/odoo_omnichannel_design_v2/15-implementation-status.md).
+
+## Omni-Channel inbox — 2026-10-06
+
+Base revision: `3fb2ca8b01c1`. Verified the current Odoo 20 checkout before implementing the inbox.
+
+- HTTP is a package here, not the older `odoo/http.py` layout. Verified route `max_content_length` handling in `odoo/http/dispatcher.py`, and `odoo/http/retrying.py` committing the transaction before returning a successful response. The endpoint uses `auth='public'`, protocol verification instead of CSRF, no saved session, and a server-bound endpoint; public users have no inbox ORM grants.
+- Verified `ir.access` operation selection in `odoo/addons/base/models/ir_access.py`: Read/Update is `ru`, not `rw`. Module-upgrade validation caught and corrected this during development. Company/team restrictions remain group-less CRUD domains with grouped grants.
+- Verified ORM environments/transactions in `odoo/orm/environments.py`, independent cursors and savepoints in `odoo/sql_db.py`, and native uniqueness objects in `odoo/orm/table_objects.py`. The event's account relation is required and precomputed so deduplication is enforced at INSERT, not only after a deferred compute.
+- PostgreSQL REPEATABLE READ behavior is tested with separate sessions: company row-version guard, concurrent unique-key insert and stale worker after a committed block. HTTP database retries are safe because intake has no external effects. Outbound transport still runs outside retryable transactions.
+- Inspected `addons/bus/models/bus.py` and its secure listener guidance. This increment sends no bus payloads and has manual refresh; no channel name or record ID is treated as permission to subscribe.
+- Native list/form/search views load during actual upgrade. HttpCase browser tests verify escaping, assignment and unavailable-reply explanation; no custom JavaScript transport/UI state machine was introduced.
+- Attempted official 20.0 and master HTTP documentation URLs on 2026-10-06; both fetches timed out. Older search results were not used as Odoo 20 authority. The local checkout and executed integration tests are the evidence for these API decisions.
+
+See `docs/exec-plans/active/odoo_omnichannel_design_v2/17-inbox-implementation-status.md` for exact test scope and known live-release limitations.

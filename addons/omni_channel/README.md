@@ -2,7 +2,7 @@
 
 Odoo 20 Community foundation for company- and purpose-scoped communication.
 
-## Available in 20.0.1.1.0
+## Available in 20.0.1.2.0
 
 - Native channel kanban/list/forms and a deliberate app icon.
 - Twelve channel catalog entries, explicitly marked unavailable without an installed adapter.
@@ -17,7 +17,7 @@ Odoo 20 Community foundation for company- and purpose-scoped communication.
 
 ## Operational boundary
 
-This is a foundation release with a transport-neutral outbound worker. Its cron and each channel ship disabled; there is no public enable action until live-provider gates are implemented. No production adapter, credential resolver, webhook controller or inbox processor is installed. Endpoint intake remains Not enabled. Queued means retained locally. Accepted means the provider acknowledged the send, not that the recipient received it. Automated tests use mocks only.
+This is a foundation release with a transport-neutral outbound worker. Its cron and each channel ship disabled; there is no public enable action until live-provider gates are implemented. Verified webhook handling and a private-text inbox processor are installed. No production adapter or credential resolver is included. Endpoint intake and the inbox/retention cron jobs default to disabled; activation requires a release-ready adapter and explicit processing policy. Queued means retained locally. Accepted means the provider acknowledged the send, not that the recipient received it. Automated tests use mocks only.
 
 The existing production database was not upgraded. Installation and tests used `omni_build_20261006` with data under `/tmp/omni-build-data`.
 
@@ -44,7 +44,7 @@ python odoo-bin server -c odoo.conf -d YOUR_DISPOSABLE_TEST_DB \
 
 Use `-u omni_channel` for the upgrade path. Browser tests require Chrome and `websocket-client`; a skipped browser test is not a pass. Concurrency and crash tests deliberately use independent PostgreSQL transactions and remove their committed fixtures. Other fixtures roll back. Tests perform no real provider requests.
 
-See the [implementation report](../../docs/exec-plans/active/odoo_omnichannel_design_v2/16-worker-implementation-status.md) for exact verification commands and remaining work.
+See the [implementation report](../../docs/exec-plans/active/odoo_omnichannel_design_v2/17-inbox-implementation-status.md) for exact verification commands and remaining work.
 
 ## Dispatch behavior
 
@@ -53,3 +53,13 @@ An administrator records and confirms recipient authorization evidence for the e
 The worker commits its attempt before invoking a provider. A timeout or lost result becomes Outcome unknown and blocks the channel. Verify the actual provider outcome, then use Reconcile outcome with explicit evidence. Reconciliation never resends. A verified not-sent outcome closes the command as Failed; replacement requires a fresh prepared message and approval. Pausing or revoking authorization stops unclaimed work, but cannot recall an already committed dispatch.
 
 Only a definite no-send result can retry, with at most five attempts and within approval expiry. Delays use jitter and provider Retry-After; five qualifying failures within five minutes open a five-minute circuit. There is no automatic sender failover.
+
+## Supervised inbox
+
+The Inbox groups verified private text by endpoint and conversation. Operators can assign a conversation to themselves, mark it waiting, close/reopen it, inspect revisions, explicitly link an existing accessible contact and prepare a reply. Preparing a reply does not send it: the original connection must have a healthy selected sender, and consent and separate approval still apply.
+
+Inbound Policies show the exact ingestion and retention scope before activation. Default retention is seven days for pending payloads, 90 days for message/revision content and 30 days for blocked evidence. Legal holds protect previously accepted content from disposal. Incoming messages from already blocked identities never retain a body, even under a hold. Activation does not create contacts or business records or authorize AI disclosure.
+
+Use Blocked Identities to review the exact identity, team/company scope, reason and expiry before confirming. A blank team means Company-wide and requires a system administrator. Unblocking does not replay old messages or grant consent. Intake Events is an administrator-only recovery view; retry is available only for recoverable retained content under the original policy.
+
+Deployment must bind the database by host, enforce HTTPS and proxy limits, and configure a certified adapter and explicitly approved cron operation. No live provider integration is bundled. Refresh is manual; groups, attachments and delivery receipts are not yet supported.

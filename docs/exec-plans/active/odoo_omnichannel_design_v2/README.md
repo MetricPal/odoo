@@ -1,6 +1,6 @@
 # Omni-Channel implementation plan
 
-Revised: 2026-10-06. Status: configuration, governed preparation and transport-neutral worker implemented; live providers, inbox and production certification pending. See [worker implementation status](16-worker-implementation-status.md).
+Revised: 2026-10-06. Status: configuration, governed preparation, transport-neutral worker and supervised private-text inbox implemented; live providers and production certification pending. See [inbox implementation status](17-inbox-implementation-status.md).
 
 ## Purpose
 

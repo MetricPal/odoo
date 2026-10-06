@@ -1,5 +1,7 @@
 # Outbound worker implementation — 2026-10-06
 
+Historical worker report. The subsequent [inbox increment](17-inbox-implementation-status.md) adds suppression and extends the lock order to company → channel → command/event.
+
 Addon: `addons/omni_channel`, version `20.0.1.1.0`. This increment adds the transport-neutral dispatch lifecycle to the [configuration foundation](15-implementation-status.md). It does not enable production messaging or complete P1/P2/P3.
 
 ## Delivered behavior
