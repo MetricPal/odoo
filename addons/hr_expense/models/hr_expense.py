@@ -1201,7 +1201,7 @@ class HrExpense(models.Model):
         match self.state:
             case 'draft':
                 return self.env.ref('hr_expense.mt_expense_reset')
-            case 'cancel':
+            case 'refused':
                 return self.env.ref('hr_expense.mt_expense_refused')
             case 'paid':
                 return self.env.ref('hr_expense.mt_expense_paid')
@@ -1700,7 +1700,7 @@ class HrExpense(models.Model):
 
     def _check_can_refuse(self):
         if not all(self.mapped('can_approve')):
-            reasons = _("You cannot refuse:\n %(reasons)s", reasons="\n".join(self._get_cannot_approve_reason().values()))
+            reasons = _("You cannot refuse:\n%(reasons)s", reasons="\n".join(filter(None, self._get_cannot_approve_reason().values())))
             raise UserError(reasons)
 
     def _check_can_reset_approval(self):

@@ -6,7 +6,7 @@ from lxml import etree
 
 from odoo import Command, _, api, fields, models
 from odoo.fields import Domain
-from odoo.tools import formatLang, frozendict, html2plaintext, html_escape, unique
+from odoo.tools import formatLang, groupby, frozendict, html2plaintext, html_escape, unique
 from odoo.tools.partner_identifiers import get_tin_metadata_of_country
 
 from odoo.addons.account.tools import dict_to_xml
@@ -725,6 +725,17 @@ class AccountEdiUBL(models.AbstractModel):
             'currencyID': currency.name,
         }
 
+    def _ubl_add_line_period_nodes(self, vals):
+        nodes = vals['line_node']['cac:InvoicePeriod'] = []
+
+        if self._is_document(vals, 'invoice', 'credit_note', 'self_invoice', 'self_credit_note'):
+            base_line = vals['line_vals']['base_line']
+            if base_line.get('deferred_start_date') or base_line.get('deferred_end_date'):
+                nodes.append({
+                    'cbc:StartDate': {'_text': base_line['deferred_start_date']},
+                    'cbc:EndDate': {'_text': base_line['deferred_end_date']},
+                })
+
     def _ubl_add_line_pricing_reference_node(self, vals):
         vals['line_node']['cac:PricingReference'] = {}
 
@@ -1053,6 +1064,7 @@ class AccountEdiUBL(models.AbstractModel):
         self._ubl_add_line_invoiced_quantity_node(vals)
         self._ubl_add_line_allowance_charge_nodes(vals)
         self._ubl_add_line_extension_amount_node(vals)
+        self._ubl_add_line_period_nodes(vals)
         self._ubl_add_line_pricing_reference_node(vals)
         self._ubl_add_line_tax_totals_nodes(vals)
         self._ubl_add_line_item_node(vals)
@@ -1070,6 +1082,7 @@ class AccountEdiUBL(models.AbstractModel):
         self._ubl_add_line_credited_quantity_node(vals)
         self._ubl_add_line_allowance_charge_nodes(vals)
         self._ubl_add_line_extension_amount_node(vals)
+        self._ubl_add_line_period_nodes(vals)
         self._ubl_add_line_pricing_reference_node(vals)
         self._ubl_add_line_tax_totals_nodes(vals)
         self._ubl_add_line_item_node(vals)
@@ -1087,6 +1100,7 @@ class AccountEdiUBL(models.AbstractModel):
         self._ubl_add_line_debited_quantity_node(vals)
         self._ubl_add_line_allowance_charge_nodes(vals)
         self._ubl_add_line_extension_amount_node(vals)
+        self._ubl_add_line_period_nodes(vals)
         self._ubl_add_line_pricing_reference_node(vals)
         self._ubl_add_line_tax_totals_nodes(vals)
         self._ubl_add_line_item_node(vals)
@@ -1966,6 +1980,91 @@ class AccountEdiUBL(models.AbstractModel):
 
         self._define_document_type(vals, document_type)
 
+    def _preprocess_base_lines(self, invoice, base_lines):
+        """Collapse the base_lines of sections/subsections flagged with 'collapse_composition'.
+
+        For each section or subsection with `collapse_composition` enabled, all of its
+        product base_lines are hidden and replaced by a single base_line per
+        tax group, whose amounts are the sum of the hidden lines it represents.
+
+        base_lines belonging to sections without `collapse_composition` are left untouched.
+        """
+        def _build_collapsed_base_line(group, section):
+            """Build a single base_line representing all lines of a tax group under a collapsed section"""
+            AccountTax = self.env['account.tax']
+            first_line = group[0]
+            total_excluded_currency = sum(bl['tax_details']['total_excluded_currency'] for bl in group)
+
+            collapsed_line = AccountTax._prepare_base_line_for_taxes_computation(
+                first_line['record'],
+                quantity=1.0,
+                price_unit=total_excluded_currency,
+                discount=0.0,
+                tax_ids=first_line['tax_ids'],
+                currency_id=first_line['currency_id'],
+            )
+            collapsed_line.update({
+                'name': section.name,
+                '_line_name': section.name,
+                'product_id': self.env['product.product'],
+            })
+            AccountTax._add_tax_details_in_base_lines([collapsed_line], invoice.company_id)
+            AccountTax._round_base_lines_tax_details([collapsed_line], invoice.company_id)
+            return collapsed_line
+
+        def _get_collapsed_section_line_ids(invoice, base_lines):
+            """Return collapse roots (sections/subsections), their subsections, and the hidden product lines."""
+
+            collapsed_roots = invoice.invoice_line_ids.filtered(
+                lambda line: line.display_type in ('line_section', 'line_subsection')
+                and all([line.collapse_composition, not line.parent_id.collapse_composition]),  # a collapsed subsection of a collapsed section shouldn't be considered as a root
+            )
+            hidden_lines = [
+                bl for bl in base_lines
+                if bl['record'].parent_id in collapsed_roots  # children of a collapsed section
+                or bl['record'].parent_id.parent_id in collapsed_roots  # children of a standalone collapsed subsection
+            ]
+            return collapsed_roots, hidden_lines
+
+        def _get_collapsed_section_base_lines(invoice, hidden_base_lines, collapsed_roots):
+            """For each collapsed (section/subsection), return one base_line per tax group."""
+
+            result = []
+            for section in collapsed_roots:
+                section_bls = [
+                    bl for bl in hidden_base_lines
+                    if section in (bl['record'].parent_id, bl['record'].parent_id.parent_id)
+                ]
+                if not section_bls:
+                    continue
+
+                for _taxes, lines in groupby(
+                    sorted(section_bls, key=lambda bl: bl['tax_ids'].ids),
+                    key=lambda bl: bl['tax_ids'],
+                ):
+                    result.append(_build_collapsed_base_line(list(lines), section))
+            return result
+
+        collapsed_roots, hidden_lines = _get_collapsed_section_line_ids(invoice, base_lines)
+        if not hidden_lines:
+            return base_lines
+
+        # Keep the original document order
+        # A hidden line is dropped, and its section's collapsed lines are inserted once, in place of its first hidden line.
+        preprocessed_base_lines = []
+        inserted_sections = set()
+        for bl in base_lines:
+            if bl not in hidden_lines:
+                preprocessed_base_lines.append(bl)
+                continue
+            record = bl['record']
+            section = record.parent_id if record.parent_id in collapsed_roots else record.parent_id.parent_id
+            if section not in inserted_sections:
+                preprocessed_base_lines += _get_collapsed_section_base_lines(invoice, hidden_lines, [section])
+                inserted_sections.add(section)
+
+        return preprocessed_base_lines
+
     def _init_invoice_export_values(self, invoice):
         vals = {'invoice': invoice.with_context(lang=invoice.partner_id.lang)}
 
@@ -1985,7 +2084,8 @@ class AccountEdiUBL(models.AbstractModel):
         self._ubl_add_values_customer(vals, customer)
         self._ubl_add_values_delivery(vals, delivery)
 
-        vals['base_lines'], vals['tax_lines'] = invoice._get_rounded_base_and_tax_lines()
+        base_lines, vals['tax_lines'] = invoice._get_rounded_base_and_tax_lines()
+        vals['base_lines'] = self._preprocess_base_lines(invoice, base_lines)
         return vals
 
     def _export_invoice(self, invoice):
@@ -2632,6 +2732,20 @@ class AccountEdiUBL(models.AbstractModel):
     def _import_ubl_invoice_line_add_account_values(self, collected_values):
         collected_values['account_values'] = {}
 
+    def _import_ubl_invoice_line_add_deferred_dates(self, collected_values):
+        if not self.module_installed('account_accountant'):
+            return
+
+        line_tree = collected_values['line_tree']
+        start_date_str = line_tree.findtext('./{*}InvoicePeriod/{*}StartDate')
+        end_date_str = line_tree.findtext('./{*}InvoicePeriod/{*}EndDate')
+        if start_date_str and end_date_str:
+            to_write = collected_values['to_write']
+            if "deferred_start_date" in self.env["account.move.line"]._fields:
+                # only checking the existence of the first of the enterprise fields
+                to_write['deferred_start_date'] = fields.Date.from_string(start_date_str)
+                to_write['deferred_end_date'] = fields.Date.from_string(end_date_str)
+
     def _import_ubl_invoice_line_prepare_classified_tax_category_tax_values(self, collected_values, tax_category_tree):
         percentage = tax_category_tree.findtext('./{*}Percent')
         category_code = tax_category_tree.findtext('./{*}ID')
@@ -2737,9 +2851,10 @@ class AccountEdiUBL(models.AbstractModel):
                 # Extract information about allowance / charges.
                 self._import_ubl_invoice_line_add_allowance_charges_values(line_collected_values)
 
-                # name / quantity / price_unit / discount
+                # name / quantity / price_unit / discount/ deferred_start_date / deferred_end_date
                 self._import_ubl_invoice_line_add_name(line_collected_values)
                 self._import_ubl_invoice_line_add_price_unit_quantity_discount(line_collected_values)
+                self._import_ubl_invoice_line_add_deferred_dates(line_collected_values)
 
                 # vehicle
 
