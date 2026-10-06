@@ -176,3 +176,9 @@ Use a separately reviewed destructive decommissioning procedure with retained
 backup/export and retention approval. Generic Approval Center requests survived
 our rehearsal and new generic drafts remained creatable, but this is not evidence
 that Omni-linked approval history remains complete after core removal.
+
+Independent transaction tests (`omni_operations_transactions`) verify real
+PostgreSQL lock contention, safe collection after serialization retry, and atomic
+rollback after queue insertion or snapshot flush. They commit and clean uniquely
+identified synthetic fixtures, so run only on a disposable database. These tests
+prove durable queue deduplication, not exactly-once SMTP delivery.

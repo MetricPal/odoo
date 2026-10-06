@@ -101,3 +101,12 @@ state. Native install/uninstall then passed without restarting: ready after
 installation, unavailable after removal, process factory retained. Two databases
 in one process were also checked: installed stays ready, uninstalled stays unavailable.
 See core decommissioning guidance; an actual active-webhook retirement was not tested.
+
+## Alert transaction reliability — 2026-10-07
+
+Independent PostgreSQL collector transactions now prove one durable queued alert
+under contention, including a fresh-transaction retry after serialization failure.
+Injected failures after queue creation and after snapshot flush leave no partial
+mail/audit/snapshot state. All 13 combined alert checks passed, including native
+loopback SMTP and confirmation UI. These strengthen local queue reliability;
+real delivery/acknowledgement and external availability monitoring remain open.

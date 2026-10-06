@@ -622,3 +622,50 @@ PYTHONPATH=/tmp/omni-settings-deps /home/moshkou/workspace/odoo/odoo-venv/bin/py
 Ruff on both addons and `git diff --check` passed. Core version 20.0.1.4.1 and
 Telegram 20.0.1.0.1. Actual active-webhook retirement and retention approval for
 live core decommissioning remain operational gates, not claimed by this rehearsal.
+
+## Operations alert transaction isolation — 2026-10-07
+
+Source baseline `71656b18ea67`. Verified `omni.channel._lock()` and
+`_collect_operations_alert()`: the row lock serializes collection, and native
+mail creation, audit insertion and snapshot update share the caller's transaction.
+Added independent physical PostgreSQL cursor tests, with real commits and no
+mocked locks or simulated serialization exceptions.
+
+- Concurrent collectors: `pg_blocking_pids` proves the second backend waits on
+  the first collector. On the first commit, the stale transaction receives a real
+  PostgreSQL serialization failure. A fresh-transaction rerun sees the persisted
+  snapshot; exactly one mail row and alert audit event remain.
+- Failure after mail insertion: forced flush then exception rolls back the mail,
+  audit and snapshot; a clean retry queues exactly one alert.
+- Failure after snapshot flush: all related writes are already issued to SQL,
+  but rollback still removes mail/audit/snapshot together; retry queues once.
+
+The module-loading test harness holds `Registry._lock`, so the competing worker's
+isolated environment is created before thread handoff, and cursor rollback/cleanup
+runs on the parent test thread. Collection itself and SQL lock contention run on
+the worker thread. Early fixture runs blocked on registry setup/cleanup; those
+were harness failures, not claimed concurrency evidence. The final tests observe
+actual PostgreSQL blocking and pass without modifying runtime behavior.
+
+Authorization is deliberately bypassed only for these uniquely named committed
+fixtures; the ordinary alert suite separately covers real roles and revocation.
+External sending raises immediately if attempted. Committed mail/message/audit/
+channel/purpose fixture records are cleaned afterward using their specific IDs.
+Use disposable databases only. A transaction retry is demonstrated explicitly;
+this does not assert that every scheduler failure is retried immediately or that
+SMTP delivery is exactly once.
+
+Three focused transaction tests passed, followed by all **13 combined alert
+checks**, zero failures/errors, on `omni_settings_20261007`. Logs:
+`/tmp/omni-alert-transactions-focused.log` and `/tmp/omni-alert-reliability.log`.
+
+```sh
+PYTHONPATH=/tmp/omni-settings-deps /home/moshkou/workspace/odoo/odoo-venv/bin/python odoo-bin server \
+  -c odoo.conf -d omni_settings_20261007 --data-dir=/tmp/omni-settings-fresh-data \
+  -u omni_channel --test-enable --test-tags=omni_operations,omni_operations_transactions \
+  --stop-after-init --http-port=8083 --max-cron-threads=0 \
+  --logfile=/tmp/omni-alert-reliability.log
+```
+
+Ruff and whitespace checks passed. Only tests/documentation changed; no module
+version bump, main database update, live alert activation or external email.

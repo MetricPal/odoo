@@ -11,6 +11,11 @@ Format:
 
 ## 2026-10-07
 
+- Added independent PostgreSQL transaction tests for concurrent alert collection
+  and rollback after mail insertion/snapshot flush. Verified one durable queue
+  entry after contention/retry and no partial persistence on failure. No runtime
+  behavior changed; all 13 combined alert checks passed.
+
 - Fixed catalog/channel readiness remaining available after adapter uninstall in
   the same process. Provider registration now identifies its owning addon and UI
   readiness checks the current database's installed modules. Core 20.0.1.4.1;
