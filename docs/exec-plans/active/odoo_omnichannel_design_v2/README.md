@@ -1,6 +1,6 @@
 # Omni-Channel implementation plan
 
-Revised: 2026-10-06. Status: configuration, governed preparation, transport-neutral worker and supervised private-text inbox implemented; optional Telegram sandbox adapter implemented; live-provider certification and production release pending. See [Telegram implementation status](18-telegram-sandbox-implementation-status.md).
+Revised: 2026-10-06. Status: configuration, governed preparation, transport-neutral worker and supervised private-text inbox implemented; optional Telegram sandbox adapter implemented; live-provider certification and production release pending. See [Telegram implementation status](18-telegram-sandbox-implementation-status.md) and the [live certification evidence sheet](19-telegram-live-certification.md).
 
 ## Purpose
 
