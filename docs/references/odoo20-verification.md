@@ -443,3 +443,12 @@ Base revision: `3fb2ca8b01c1`. Verified the current Odoo 20 checkout before impl
 - Attempted official 20.0 and master HTTP documentation URLs on 2026-10-06; both fetches timed out. Older search results were not used as Odoo 20 authority. The local checkout and executed integration tests are the evidence for these API decisions.
 
 See `docs/exec-plans/active/odoo_omnichannel_design_v2/17-inbox-implementation-status.md` for exact test scope and known live-release limitations.
+
+## Telegram adapter and health preflight — 2026-10-06
+
+Base revision: `68c72f776884`. The addon uses the existing Odoo 20 model/view/access mechanisms rather than older Odoo API assumptions.
+
+- Rechecked `odoo/http/retrying.py`: HTTP transaction serialization retries may rerun read-only provider preflight; commit occurs before the response. No send is added to a model button or webhook transaction.
+- Rechecked `omni_channel` company/channel locking and the 120-second committed claim lease. Health now snapshots configuration before bounded read-only I/O, then locks and rechecks version/configuration/generation before persisting health/selection. A test changes account configuration during preflight and proves selection is refused.
+- Installed the optional addon and upgraded inherited views on the isolated database. View selectors use stable field names rather than translated `string` attributes. Chrome exercised the native confirmation without approving it; screenshot inspection corrected a narrow paragraph layout.
+- Full combined verification: 96 tests, zero failures/errors. See [Telegram report](../exec-plans/active/odoo_omnichannel_design_v2/18-telegram-sandbox-implementation-status.md).

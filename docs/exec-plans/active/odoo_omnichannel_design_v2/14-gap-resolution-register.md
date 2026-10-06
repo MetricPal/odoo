@@ -37,3 +37,9 @@ Status refers to specification completeness, not implemented behavior. Each deci
 | future-provider API version/scopes/review | adapter implementer + account owner | each future adapter | source dossier, fixtures and live sandbox gate |
 
 These prerequisites do not block P0-P2 coding. Do not silently activate a default live policy or fabricate evidence to close them. No unresolved foundational architecture question remains for the scoped first implementation; discoveries from code/tests must still update the plan.
+
+## Implementation closure: Telegram sandbox — 2026-10-06
+
+The optional provider adapter, tenant-bound resolver, authenticated private-text normalization, bounded HTTP transport, explicit sandbox account/recipient authorization and conservative send-result mapping are now implemented and covered by local tests. Sender health preflight no longer deliberately holds the selection lock during provider I/O. See [report 18](18-telegram-sandbox-implementation-status.md) for evidence and limitations.
+
+Actual bot/recipient authorization, provisioning, webhook registration, live certification, deployment performance and operational release gates remain open with the owners listed above. Synthetic fixtures do not close these external prerequisites.

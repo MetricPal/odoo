@@ -2,7 +2,7 @@
 
 Odoo 20 Community foundation for company- and purpose-scoped communication.
 
-## Available in 20.0.1.2.0
+## Available in 20.0.1.3.0
 
 - Native channel kanban/list/forms and a deliberate app icon.
 - Twelve channel catalog entries, explicitly marked unavailable without an installed adapter.
@@ -17,7 +17,7 @@ Odoo 20 Community foundation for company- and purpose-scoped communication.
 
 ## Operational boundary
 
-This is a foundation release with a transport-neutral outbound worker. Its cron and each channel ship disabled; there is no public enable action until live-provider gates are implemented. Verified webhook handling and a private-text inbox processor are installed. No production adapter or credential resolver is included. Endpoint intake and the inbox/retention cron jobs default to disabled; activation requires a release-ready adapter and explicit processing policy. Queued means retained locally. Accepted means the provider acknowledged the send, not that the recipient received it. Automated tests use mocks only.
+This is a foundation release with a transport-neutral outbound worker. Its cron and each channel ship disabled; core alone exposes no public enable action. The optional `omni_telegram` addon adds explicitly authorized sandbox reply activation. Verified webhook handling and a private-text inbox processor are installed. Core includes no production adapter or credential resolver; the optional [Telegram sandbox addon](../omni_telegram/README.md) provides a scoped resolver and bounded private-text transport, with live certification still pending. Endpoint intake and the inbox/retention cron jobs default to disabled; activation requires a release-ready adapter and explicit processing policy. Queued means retained locally. Accepted means the provider acknowledged the send, not that the recipient received it. Automated tests use mocks only.
 
 The existing production database was not upgraded. Installation and tests used `omni_build_20261006` with data under `/tmp/omni-build-data`.
 
@@ -62,4 +62,4 @@ Inbound Policies show the exact ingestion and retention scope before activation.
 
 Use Blocked Identities to review the exact identity, team/company scope, reason and expiry before confirming. A blank team means Company-wide and requires a system administrator. Unblocking does not replay old messages or grant consent. Intake Events is an administrator-only recovery view; retry is available only for recoverable retained content under the original policy.
 
-Deployment must bind the database by host, enforce HTTPS and proxy limits, and configure a certified adapter and explicitly approved cron operation. No live provider integration is bundled. Refresh is manual; groups, attachments and delivery receipts are not yet supported.
+Deployment must bind the database by host, enforce HTTPS and proxy limits, and configure a certified adapter and explicitly approved cron operation. Telegram sandbox integration is available in the separate optional addon; it remains disabled until explicit deployment and account authorization. Refresh is manual; groups, attachments and delivery receipts are not yet supported.

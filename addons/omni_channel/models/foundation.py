@@ -1,4 +1,5 @@
 import re
+import time
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -249,6 +250,10 @@ class OmniAccount(models.Model):
         'This external account is already configured.',
     )
 
+    def _adapter_config(self):
+        self.ensure_one()
+        return {}
+
     @api.constrains('credential_reference')
     def _check_reference(self):
         for account in self:
@@ -464,62 +469,82 @@ class OmniSender(models.Model):
             raise UserError(_('Deactivate the runtime sender before removing it.'))
         return super().unlink()
 
+    def _health_config(self):
+        return {
+            'account_key': self.account_id.external_account_key,
+            'namespace': self.namespace,
+            'sender_key': self.external_key,
+            'credential_reference': self.account_id.credential_reference,
+            'adapter': self.account_id._adapter_config(),
+        }
+
+    def _health_version(self):
+        return (
+            self.write_date, self.account_id.write_date, self.channel_id.write_date,
+            self.active, self.account_id.active, self.channel_id.active,
+        )
+
     def _check_health(self):
         self.ensure_one()
         self._require_manager()
         if not self.active or not self.account_id.active or not self.channel_id.active:
             raise UserError(
-                _('Activate the channel, connection and sender configuration first.'),
+                _("Activate the channel, connection and sender configuration first."),
             )
+        config, version = self._health_config(), self._health_version()
+        started = time.monotonic()
         try:
-            result = get_adapter(self.channel_type_id.code).check_sender_health(
-                {
-                    'account_key': self.account_id.external_account_key,
-                    'namespace': self.namespace,
-                    'sender_key': self.external_key,
-                    'credential_reference': self.account_id.credential_reference,
-                },
-            )
+            result = get_adapter(self.channel_type_id.code).check_sender_health(config)
             healthy = (
                 result.healthy
                 and result.namespace == self.namespace
-                and result.account_key == self.account_id.external_account_key
+                and result.account_key == config["account_key"]
                 and result.sender_key == self.external_key
             )
             message = (
-                _('Provider identity verified.')
+                _("Provider identity verified.")
                 if healthy
-                else _('The provider could not verify this sender identity.')
+                else _("The provider could not verify this sender identity.")
             )
         except AdapterUnavailable:
             healthy, message = (
                 False,
-                _('Install and configure the provider adapter before activation.'),
+                _("Install and configure the provider adapter before activation."),
             )
-        except Exception:  # noqa: BLE001 - sanitize untrusted adapter failures at this boundary
-            # Provider exceptions can contain tokens or customer payloads. Do not persist them.
+        except Exception:  # noqa: BLE001 - never persist provider errors or tokens
             healthy, message = (
                 False,
                 _(
-                    'Provider verification failed. Review the connection and secret provisioning.',
+                    "Provider verification failed. Review the connection and secret provisioning.",
+                ),
+            )
+        # Only read-only preflight may happen above. Lock and recheck all inputs
+        # before publishing health or selecting a sender. HTTP retry may repeat
+        # this read-only request, but it must never send a message.
+        self.channel_id._lock()
+        self.invalidate_recordset()
+        self.account_id.invalidate_recordset()
+        if (
+            config != self._health_config()
+            or version != self._health_version()
+            or time.monotonic() - started > 60
+        ):
+            raise UserError(
+                _(
+                    "Configuration changed or verification expired. Check the sender again.",
                 ),
             )
         super().write(
             {
-                'health': 'healthy' if healthy else 'unhealthy',
-                'health_checked_at': fields.Datetime.now(),
-                'health_message': message,
+                "health": "healthy" if healthy else "unhealthy",
+                "health_checked_at": fields.Datetime.now(),
+                "health_message": message,
             },
         )
-        self._audit('sender.health', message)
+        self._audit("sender.health", message)
         return healthy
 
     def action_check_health(self):
-        self.ensure_one()
-        # A bounded health request under this configuration lock prevents stale
-        # configuration updates. No outbound transport exists in the foundation.
-        self._require_manager()
-        self.channel_id._lock()
         self._check_health()
         return True
 
@@ -527,37 +552,43 @@ class OmniSender(models.Model):
         self.ensure_one()
         self._require_manager()
         channel = self.channel_id
-        channel._lock()
-        channel._check_sender_change_allowed()
-        self.invalidate_recordset()
         if channel.generation != expected_generation:
             raise UserError(
                 _(
-                    'The runtime sender changed while you were reviewing. Reopen the selection dialog.',
+                    "The runtime sender changed while you were reviewing. Reopen the selection dialog.",
                 ),
             )
-        if not self._check_health():
+        channel._check_sender_change_allowed()
+        healthy = self._check_health()  # No selection lock during provider I/O.
+        channel._check_sender_change_allowed()
+        if channel.generation != expected_generation:
+            raise UserError(
+                _(
+                    "The runtime sender changed while you were reviewing. Reopen the selection dialog.",
+                ),
+            )
+        if not healthy:
             return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Sender not activated'),
-                    'message': self.health_message,
-                    'type': 'warning',
-                    'sticky': True,
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Sender not activated"),
+                    "message": self.health_message,
+                    "type": "warning",
+                    "sticky": True,
                 },
             }
         current = self.with_context(active_test=False).search(
-            [('channel_id', '=', channel.id), ('is_selected', '=', True)],
+            [("channel_id", "=", channel.id), ("is_selected", "=", True)],
         )
         if current == self:
             return True
-        super(OmniSender, current).write({'is_selected': False})
-        super().write({'is_selected': True})
+        super(OmniSender, current).write({"is_selected": False})
+        super().write({"is_selected": True})
         channel._advance_generation()
         self._audit(
-            'sender.activated',
-            _('Runtime sender selected after provider verification.'),
+            "sender.activated",
+            _("Runtime sender selected after provider verification."),
         )
         return True
 

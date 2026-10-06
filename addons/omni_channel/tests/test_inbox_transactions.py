@@ -30,11 +30,15 @@ class TestOmniInboxTransactions(TransactionCase):
         with self.database.cursor() as cr:
             env = api.Environment(cr, 1, {})
             purpose = env["omni.purpose"].create({"name": self.key, "code": self.key})
+            channel_type = env["omni.channel.type"].create(
+                {"name": self.key, "code": self.key},
+            )
+            self.channel_type_id = channel_type.id
             channel = env["omni.channel"].create(
                 {
                     "name": self.key,
                     "purpose_id": purpose.id,
-                    "channel_type_id": env.ref("omni_channel.channel_type_telegram").id,
+                    "channel_type_id": channel_type.id,
                 },
             )
             account = env["omni.account"].create(
@@ -102,7 +106,8 @@ class TestOmniInboxTransactions(TransactionCase):
     def _cleanup(self):
         with self.database.cursor() as cr:
             cr.execute(
-                "DELETE FROM omni_audit_event WHERE purpose_id = %s", [self.purpose_id],
+                "DELETE FROM omni_audit_event WHERE purpose_id = %s",
+                [self.purpose_id],
             )
             cr.execute(
                 "DELETE FROM omni_message_revision WHERE purpose_id = %s",
@@ -113,13 +118,16 @@ class TestOmniInboxTransactions(TransactionCase):
                 [self.purpose_id],
             )
             cr.execute(
-                "DELETE FROM omni_message WHERE purpose_id = %s", [self.purpose_id],
+                "DELETE FROM omni_message WHERE purpose_id = %s",
+                [self.purpose_id],
             )
             cr.execute(
-                "DELETE FROM omni_conversation WHERE purpose_id = %s", [self.purpose_id],
+                "DELETE FROM omni_conversation WHERE purpose_id = %s",
+                [self.purpose_id],
             )
             cr.execute(
-                "DELETE FROM omni_identity WHERE purpose_id = %s", [self.purpose_id],
+                "DELETE FROM omni_identity WHERE purpose_id = %s",
+                [self.purpose_id],
             )
             cr.execute(
                 "DELETE FROM omni_webhook_event WHERE purpose_id = %s",
@@ -138,12 +146,17 @@ class TestOmniInboxTransactions(TransactionCase):
                 [self.purpose_id],
             )
             cr.execute(
-                "DELETE FROM omni_account WHERE purpose_id = %s", [self.purpose_id],
+                "DELETE FROM omni_account WHERE purpose_id = %s",
+                [self.purpose_id],
             )
             cr.execute(
-                "DELETE FROM omni_channel WHERE purpose_id = %s", [self.purpose_id],
+                "DELETE FROM omni_channel WHERE purpose_id = %s",
+                [self.purpose_id],
             )
             cr.execute("DELETE FROM omni_purpose WHERE id = %s", [self.purpose_id])
+            cr.execute(
+                "DELETE FROM omni_channel_type WHERE id = %s", [self.channel_type_id],
+            )
             cr.commit()
 
     def test_simultaneous_duplicate_ingress_has_one_effect(self):

@@ -469,6 +469,7 @@ class OmniDispatchCommand(models.Model):
             account.namespace,
             command.sender_id.external_key,
             account.credential_reference or "",
+            json.dumps(account._adapter_config(), sort_keys=True),
         )
 
     def _finish_attempt(self, claim, raw_result):

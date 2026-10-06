@@ -47,3 +47,9 @@ First-provider choice, approval expiry, retention periods, health TTL, retry/lea
 ## Research completion boundary
 
 Sufficient evidence exists to begin core/mock implementation and the scoped Telegram adapter. Actual credentials, tenant permissions, infrastructure performance, provider app reviews and all future adapters remain release-specific evidence. No document can truthfully certify those in advance; they are tracked as explicit gates rather than hidden assumptions.
+
+## Telegram implementation evidence — 2026-10-06
+
+Refreshed the official [Bot API reference](https://core.telegram.org/bots/api); the rolling page identified Bot API 10.3 dated 2026-08-24. Verified private Chat/User identifiers, Update/Message text and edit fields, getMe/getChat/sendMessage, setWebhook secret_token and ResponseParameters.retry_after. Bot identity checks and the returned message contract inform the implementation; local test fixtures are synthetic, not recordings.
+
+Project choices are stricter than provider-wide capability: one to ten explicitly authorized private recipients, no groups/media/business/guest operations, minimum 32-character webhook secret, tenant-bound secret bundle and deployment networking disabled by default. Live sandbox behavior is still unverified. See [implementation status](18-telegram-sandbox-implementation-status.md) and the linked activation runbook; future-provider readiness is unchanged.

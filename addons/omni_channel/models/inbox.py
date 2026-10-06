@@ -250,6 +250,7 @@ class InboundEndpoint(models.Model):
             "namespace": self.namespace,
             "endpoint_key": self.external_key,
             "credential_reference": self.account_id.credential_reference or "",
+            "adapter": self.account_id._adapter_config(),
         }
 
     def action_enable(self):

@@ -6,7 +6,7 @@ from odoo import fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
-from odoo.addons.omni_channel.providers.base import HealthResult
+from odoo.addons.omni_channel.providers.base import HealthResult, installed_adapters
 
 
 class HealthyAdapter:
@@ -59,7 +59,9 @@ class TestOmniFoundation(TransactionCase):
         cls.other_purpose = cls.env['omni.purpose'].create(
             {'name': 'Private team', 'code': 'private'},
         )
-        cls.type = cls.env.ref('omni_channel.channel_type_telegram')
+        cls.type = cls.env['omni.channel.type'].create(
+            {'name': 'Mock transport', 'code': 'omni_test_mock'},
+        )
         cls.channel = cls.env['omni.channel'].create(
             {
                 'name': 'Test Telegram',
@@ -271,10 +273,15 @@ class TestOmniFoundation(TransactionCase):
                 },
             )
 
-    def test_catalog_contains_twelve_unavailable_integrations(self):
-        catalog = self.env['omni.channel.type'].search([])
+    def test_catalog_contains_twelve_integrations_with_truthful_adapter_availability(self):
+        codes = ('whatsapp', 'telegram', 'slack', 'discord', 'linkedin', 'facebook',
+                 'instagram', 'x', 'tiktok', 'youtube', 'threads', 'pinterest')
+        catalog = self.env['omni.channel.type'].browse([
+            self.env.ref('omni_channel.channel_type_' + code).id for code in codes
+        ])
         self.assertEqual(len(catalog), 12)
-        self.assertFalse(any(catalog.mapped('adapter_ready')))
+        for channel_type in catalog:
+            self.assertEqual(channel_type.adapter_ready, channel_type.code in installed_adapters())
         for key in (
             'channel_kanban',
             'channel_form',
@@ -291,3 +298,34 @@ class TestOmniFoundation(TransactionCase):
             self.env['omni.outbound.sender'].with_context(default_namespace='another').create(vals)
         with self.assertRaises(AccessError):
             self.env['omni.channel'].with_context(default_generation=9).create({'name': 'Forged', 'purpose_id': self.other_purpose.id, 'channel_type_id': self.type.id})
+
+    def test_health_preflight_precedes_lock_and_rejects_changed_configuration(self):
+        channel_model = type(self.channel)
+        original_lock = channel_model._lock
+        calls = []
+
+        def observe_lock(records):
+            calls.append('lock')
+            return original_lock(records)
+
+        class ReadOnlyAdapter(HealthyAdapter):
+            def check_sender_health(adapter, config):
+                self.assertFalse(calls)
+                calls.append('health')
+                return super().check_sender_health(config)
+
+        with patch.object(channel_model, '_lock', observe_lock), patch(
+            'odoo.addons.omni_channel.models.foundation.get_adapter', return_value=ReadOnlyAdapter(),
+        ):
+            self.sender.with_user(self.manager).action_activate(self.channel.generation)
+        self.assertEqual(calls[:2], ['health', 'lock'])
+        self.sender.with_user(self.manager).action_deactivate()
+
+        class ChangedAdapter(HealthyAdapter):
+            def check_sender_health(adapter, config):
+                self.account.write({'credential_reference': 'OMNI_SECRET_ROTATED'})
+                return super().check_sender_health(config)
+
+        with patch('odoo.addons.omni_channel.models.foundation.get_adapter', return_value=ChangedAdapter()), self.assertRaises(UserError):
+            self.sender.with_user(self.manager).action_activate(self.channel.generation)
+        self.assertFalse(self.sender.is_selected)

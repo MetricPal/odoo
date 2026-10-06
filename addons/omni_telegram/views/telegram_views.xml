@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="account_telegram_form" model="ir.ui.view">
+    <field name="name">omni.account.telegram.form</field>
+    <field name="model">omni.account</field>
+    <field name="inherit_id" ref="omni_channel.omni_account_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <field name="is_telegram" invisible="1"/>
+        <group invisible="not is_telegram" string="Telegram sandbox" groups="omni_channel.group_omni_manager">
+          <div colspan="2" class="text-muted mb-3">Private text only. Authorize consenting test recipients explicitly. This does not register a webhook, enable a scheduler, grant message consent or approve a reply.</div>
+          <field name="telegram_sandbox_recipients" readonly="telegram_sandbox_authorized"/>
+          <field name="telegram_sandbox_evidence" readonly="telegram_sandbox_authorized"/>
+          <field name="telegram_sandbox_authorized"/>
+          <field name="telegram_authorized_by"/>
+          <field name="telegram_authorized_at"/>
+          <div colspan="2">
+            <button name="action_authorize_telegram_sandbox" type="object" string="Verify and authorize sandbox" class="btn-primary" invisible="telegram_sandbox_authorized" confirm="Verify this bot and authorize sandbox processing for the displayed recipient IDs and evidence? Each reply still requires current consent and separate approval."/>
+            <button name="action_revoke_telegram_sandbox" type="object" string="Revoke sandbox authorization" invisible="not telegram_sandbox_authorized" confirm="Stop sandbox intake and future send claims? Existing in-flight sends may still complete; unclaimed work will require fresh approval."/>
+          </div>
+        </group>
+      </xpath>
+    </field>
+  </record>
+  <record id="channel_telegram_form" model="ir.ui.view">
+    <field name="name">omni.channel.telegram.form</field>
+    <field name="model">omni.channel</field>
+    <field name="inherit_id" ref="omni_channel.channel_dispatch_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header" position="inside">
+        <field name="is_telegram" invisible="1"/>
+        <button name="action_enable_telegram_dispatch" type="object" string="Enable Telegram sandbox replies" groups="omni_channel.group_omni_manager" invisible="dispatch_enabled or not is_telegram" confirm="Enable new dispatch claims for human-approved private replies to this bot's authorized sandbox recipients? The scheduler is configured separately. This does not send a message now."/>
+      </xpath>
+      <xpath expr="//field[@name='dispatch_enabled']/ancestor::page/p" position="replace">
+        <p invisible="not is_telegram">Telegram sandbox replies require explicit account authorization, a verified private conversation, current recipient consent and separate message approval. Pausing stops new claims; in-flight sends may finish.</p>
+        <p invisible="is_telegram">Provider dispatch requires a verified adapter and explicit activation. Pausing stops new claims; in-flight sends may finish.</p>
+      </xpath>
+    </field>
+  </record>
+</odoo>

@@ -20,6 +20,7 @@ class DispatchClaim:
     namespace: str
     sender_key: str
     credential_reference: str
+    adapter_config_json: str = "{}"
 
 
 @dataclass(frozen=True)
@@ -79,7 +80,7 @@ def dispatch_claim(claim):
     """Exactly one send invocation. Preflight methods must be read-only and bounded.
 
     Adapters must impose HTTP connect/read timeouts of at most 5/20 seconds.
-    No adapter transport ships in this increment; mocks exercise this boundary.
+    Provider implementations live in optional addons.
     """
     try:
         adapter = get_adapter(claim.provider)
@@ -91,6 +92,7 @@ def dispatch_claim(claim):
             "namespace": claim.namespace,
             "sender_key": claim.sender_key,
             "credential_reference": claim.credential_reference,
+            "adapter": json.loads(claim.adapter_config_json),
         }
         health = adapter.check_sender_health(config)
         if not (
