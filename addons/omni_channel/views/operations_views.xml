@@ -7,6 +7,11 @@
     <field name="arch" type="xml">
       <xpath expr="//notebook" position="inside">
         <page string="Operations alerts" groups="base.group_system">
+          <group string="Operators">
+            <field name="primary_operator_id" options="{'no_create': True}"/>
+            <field name="backup_operator_id" options="{'no_create': True}"/>
+          </group>
+          <p>Choose active members of this channel's communication team with company access. Assignments do not grant permissions or subscribe operators to alerts; select alert recipients separately below.</p>
           <p>Use the existing Odoo outgoing mail setup to notify authorized team members when channel counters change or recover. Healthy channels stay quiet. Counts exclude message content.</p>
           <group>
             <field name="alert_user_ids" widget="many2many_tags" readonly="alerts_enabled"/>

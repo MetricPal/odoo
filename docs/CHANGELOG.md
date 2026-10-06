@@ -11,6 +11,12 @@ Format:
 
 ## 2026-10-07
 
+- Added system-administrator-managed primary and backup operators to every
+  channel's Operations alerts tab, alongside existing alert recipients. Validates
+  distinct active internal users against company, communication team and Omni
+  access, records assignment audit events, and leaves permissions/automation
+  unchanged. Core version 20.0.1.5.0; existing channels start unassigned.
+
 - Added independent PostgreSQL transaction tests for concurrent alert collection
   and rollback after mail insertion/snapshot flush. Verified one durable queue
   entry after contention/retry and no partial persistence on failure. No runtime

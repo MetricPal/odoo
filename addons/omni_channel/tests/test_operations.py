@@ -5,7 +5,7 @@ from email.parser import BytesParser
 from unittest.mock import patch
 
 from odoo import fields
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import HttpCase, TransactionCase, new_test_user, tagged
 
 from .smtp_sink import smtp_sink
@@ -41,6 +41,67 @@ class TestOperationsAlerts(TransactionCase):
 
     def _enable(self):
         self.channel.with_user(self.admin).action_enable_alerts()
+
+    def test_operator_assignments_are_admin_only_and_audited(self):
+        channel = self.channel.with_user(self.admin)
+        recipients = channel.alert_user_ids
+        channel.write({'primary_operator_id': self.operator.id, 'backup_operator_id': self.manager.id})
+        self.assertEqual(channel.primary_operator_id, self.operator)
+        self.assertEqual(channel.backup_operator_id, self.manager)
+        self.assertEqual(channel.alert_user_ids, recipients)
+        self.assertFalse(channel.alerts_enabled)
+        self.assertFalse(channel.dispatch_enabled)
+        audit = self.env['omni.audit.event'].search([
+            ('resource', '=', f'omni.channel,{channel.id}'), ('event', '=', 'operators_assigned'),
+        ], order='id desc', limit=1)
+        self.assertEqual(audit.actor_id, self.admin)
+        self.assertIn(str(self.operator.id), audit.detail)
+        for user in (self.manager, self.operator):
+            for field in ('primary_operator_id', 'backup_operator_id'):
+                with self.subTest(user=user.login, field=field):
+                    with self.assertRaises(AccessError), self.cr.savepoint():
+                        channel.with_user(user).write({field: False})
+        channel.write({'primary_operator_id': False, 'backup_operator_id': False})
+        self.assertFalse(channel.primary_operator_id | channel.backup_operator_id)
+
+    def test_operator_validation_and_scope_changes(self):
+        channel = self.channel.with_user(self.admin)
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            channel.write({'primary_operator_id': self.operator.id, 'backup_operator_id': self.operator.id})
+        outsider = new_test_user(self.env, login='operator_outsider', groups='omni_channel.group_omni_user')
+        for user in (outsider, self.env.ref('base.public_user')):
+            with self.assertRaises(ValidationError), self.cr.savepoint():
+                channel.write({'primary_operator_id': user.id})
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self.operator.active = False
+            channel.write({'primary_operator_id': self.operator.id})
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self.operator.group_ids = [fields.Command.clear()]
+            channel.write({'primary_operator_id': self.operator.id})
+        channel.write({'primary_operator_id': self.operator.id})
+        other_purpose = self.env['omni.purpose'].create({
+            'name': 'Other operators', 'code': 'other_operators',
+            'user_ids': [fields.Command.set(self.admin.ids)],
+        })
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            channel.write({'purpose_id': other_purpose.id})
+        other_company = self.env['res.company'].create({'name': 'Other operators company'})
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            channel.sudo().write({'company_id': other_company.id})
+
+    def test_operator_create_copy_and_other_provider(self):
+        values = {
+            'name': 'Slack operators', 'purpose_id': self.purpose.id,
+            'channel_type_id': self.env.ref('omni_channel.channel_type_slack').id,
+            'primary_operator_id': self.operator.id, 'backup_operator_id': self.manager.id,
+        }
+        with self.assertRaises(AccessError), self.cr.savepoint():
+            self.env['omni.channel'].with_user(self.manager).create(values)
+        channel = self.env['omni.channel'].with_user(self.admin).create(values)
+        self.assertEqual(channel.primary_operator_id, self.operator)
+        copied = channel.copy({'channel_type_id': self.env.ref('omni_channel.channel_type_discord').id})
+        self.assertFalse(copied.primary_operator_id | copied.backup_operator_id)
+        self.assertFalse(copied.alerts_enabled)
 
     def _run(self):
         # Any direct transport call is a test failure; only queue creation is allowed.
@@ -269,6 +330,8 @@ class TestOperationsAlertsUI(HttpCase):
                     .find(el => el.textContent.includes('Operations alerts'));
                 if (!tab) throw new Error('Missing operations tab');
                 tab.click();
+                await waitFor('.o_field_widget[name="primary_operator_id"]');
+                await waitFor('.o_field_widget[name="backup_operator_id"]');
                 (await waitFor('button[name="action_enable_alerts"]')).click();
                 const modal = await waitFor('.modal');
                 if (!modal.textContent.includes('monitoring every minute') ||

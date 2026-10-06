@@ -63,6 +63,24 @@ The user requested Telegram completion and a stop before the next provider. Loca
 
 ## Shared Odoo mail alert implementation — 2026-10-07
 
+### Manage operators and recipients in the app
+
+With System Administrator and Omni Administrator access, open Omni-Channel,
+open the channel and select **Operations alerts**. Set **Primary operator** and
+**Backup operator**, then save. Both are optional while preparing deployment;
+when both are set they must be different active internal Omni users with access
+to the channel's company and communication team. Manage team membership through
+Configuration → Communication Teams and user access through normal Odoo user
+settings. Assignment records responsibility; it does not grant permissions.
+This shared configuration applies to every channel provider.
+
+Select **Alert recipients** separately. Operators are not automatically subscribed.
+Save the recipients, then use **Enable email alerts** and review its confirmation
+to authorize monitoring and email queueing through the existing Odoo mail setup.
+Pause alerts before changing recipients. Replacing an operator does not change
+an already authorized recipient policy. Review operator assignments when users
+leave or lose access; saved responsibility fields never bypass current access.
+
 Per-channel email policies now reuse native Odoo mail routing. The administrator
 confirms automatic monitoring and delivery to authorized team members; no live
 policy or scheduler was enabled during development. Read-only global diagnostics

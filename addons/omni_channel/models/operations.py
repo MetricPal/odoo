@@ -6,7 +6,7 @@ from datetime import timedelta
 from markupsafe import Markup, escape
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools import email_normalize
 
 from .command import digest, internal, is_internal
@@ -15,6 +15,37 @@ from .foundation import protected_input
 
 class OmniOperations(models.Model):
     _inherit = 'omni.channel'
+
+    primary_operator_id = fields.Many2one(
+        'res.users', string='Primary operator', groups='base.group_system',
+        domain=[('share', '=', False), ('active', '=', True)], copy=False,
+        help='Responsible for channel operations. Assignment does not grant access or enable automation.',
+    )
+    backup_operator_id = fields.Many2one(
+        'res.users', string='Backup operator', groups='base.group_system',
+        domain=[('share', '=', False), ('active', '=', True)], copy=False,
+        help='Covers the primary operator. Select a different authorized team member.',
+    )
+
+    @api.constrains('primary_operator_id', 'backup_operator_id', 'company_id', 'purpose_id')
+    def _check_operators(self):
+        for channel in self:
+            if channel.primary_operator_id and channel.primary_operator_id == channel.backup_operator_id:
+                raise ValidationError(_('Primary and backup operators must be different users.'))
+            for user in channel.primary_operator_id | channel.backup_operator_id:
+                if (not user.active or user.share
+                        or channel.company_id not in user.company_ids
+                        or user not in channel.purpose_id.user_ids
+                        or not user.has_group('omni_channel.group_omni_user')):
+                    raise ValidationError(_('Operators must be active internal users with access to this company and communication team.'))
+
+    def _audit_operators(self):
+        for channel in self:
+            channel._audit(
+                'operators_assigned',
+                f'Primary operator: {channel.primary_operator_id.id or "none"}; '
+                f'backup operator: {channel.backup_operator_id.id or "none"}.',
+            )
 
     alert_user_ids = fields.Many2many(
         'res.users', 'omni_channel_alert_user_rel', string='Alert recipients',
@@ -41,7 +72,9 @@ class OmniOperations(models.Model):
     def create(self, vals_list):
         if protected_input(self, self._alert_controls, vals_list) and not is_internal(self):
             raise AccessError(_('Use the alert activation actions.'))
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        records.filtered(lambda channel: channel.sudo().primary_operator_id or channel.sudo().backup_operator_id)._audit_operators()
+        return records
 
     def write(self, vals):
         if self._alert_controls & vals.keys() and not is_internal(self):
@@ -51,7 +84,10 @@ class OmniOperations(models.Model):
                 channel._lock()
                 if channel.sudo().alerts_enabled:
                     raise UserError(_('Pause alerts before changing recipients or ownership.'))
-        return super().write(vals)
+        result = super().write(vals)
+        if {'primary_operator_id', 'backup_operator_id'} & vals.keys():
+            self._audit_operators()
+        return result
 
     def _require_alert_admin(self):
         self.ensure_one()

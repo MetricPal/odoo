@@ -669,3 +669,28 @@ PYTHONPATH=/tmp/omni-settings-deps /home/moshkou/workspace/odoo/odoo-venv/bin/py
 
 Ruff and whitespace checks passed. Only tests/documentation changed; no module
 version bump, main database update, live alert activation or external email.
+
+## Channel operator assignments (2026-10-07)
+
+Verified local Odoo 20 `odoo/orm/models.py`: `_check_field_access` enforces
+field `groups` on writes; `_validate_fields` runs declared constraints for
+changed fields. Use native restricted Many2one fields and constraints covering
+operator, company and purpose changes. Existing Omni scope record rules and
+audit insertion remain authoritative; assignments do not grant user groups.
+
+Validation: 13 targeted operations tests and then 123 full Omni-Channel/Telegram
+tests passed on the isolated restored database (capacity tests excluded), including
+browser rendering, restricted create/write, invalid identities, company/purpose
+changes, clearing, copying and another provider. Ruff and whitespace checks passed.
+Logs: `/tmp/omni-operator-tests.log`, `/tmp/omni-operator-regression.log`.
+
+```sh
+OMNI_TELEGRAM_SANDBOX_NETWORK=0 PYTHONPATH=/tmp/omni-settings-deps \
+  /home/moshkou/workspace/odoo/odoo-venv/bin/python odoo-bin server \
+  -c odoo.conf -d omni_deployment_20261007 \
+  --data-dir=/tmp/omni-deployment-20261007/rehearsal-data \
+  -u omni_channel,omni_telegram --test-enable \
+  --test-tags=/omni_channel,/omni_telegram,-omni_capacity \
+  --stop-after-init --http-port=8083 --max-cron-threads=0 \
+  --logfile=/tmp/omni-operator-regression.log
+```

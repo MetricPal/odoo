@@ -7,8 +7,9 @@ This follows P3 rollout and the T25/T27 release gates; it does not start P4/P5.
    filestore backup and installation rehearsal on a neutralized copy. Verify
    existing approvals/business records, module versions and disabled defaults.
    Do not assign users or enable integration policies in this milestone.
-2. Configure governance after the user identifies primary/backup operators and
-   alert recipients. Record exact role, company and purpose scope before changes.
+2. Provide system-administrator controls in the app for primary/backup operators
+   and alert recipients. Administrators select people within the channel's
+   company and purpose; no names need to be supplied through this conversation.
 3. Verify actual alert delivery/acknowledgement using reviewed recipients and
    message scope. Local SMTP tests do not replace this gate.
 4. Complete deployment-specific HTTPS/DNS, backup retention/off-host storage and
@@ -69,10 +70,29 @@ under `/tmp/omni-deployment-20261007/`. They are not committed because the backu
 and adjacent evidence relate to organizational data. This commit records the
 local installation evidence; installation itself is database state, not Git state.
 
-## Next: milestone 2 — named governance assignments
+## Milestone 2 — administrator-managed governance
 
-Awaiting the user's names/login emails for primary operator, backup operator and
-alert recipients. Confirm their company and communication-purpose scope before
-assigning access. Existing SMTP configuration supplies mail transport, not an
-implicitly approved recipient. No further activation is authorized by the
-installation milestone. Milestones 3–5 remain pending as listed above.
+The user requested app-managed assignments instead of supplying names here.
+Shared channel settings now provide optional Primary operator and Backup
+operator fields alongside Alert recipients in Operations alerts. Editing needs
+System Administrator access plus normal Omni configuration access and scope.
+Operators must be distinct active internal Omni users belonging to the channel's
+company and communication team. Assignment changes are audited; copies start
+unassigned. Assigning an operator grants no groups and sends no mail. Operators
+are not automatically alert recipients. Later user deactivation or access
+removal does not grant any fallback access: these fields record responsibility,
+while normal permissions continue to govern all actions.
+
+Administrators can configure people in the app when ready. Existing SMTP
+configuration supplies transport, not an implicitly approved recipient. Actual
+assignments and activation remain pending; milestones 3–5 remain as listed above.
+
+Implementation and local installation completed at core version **20.0.1.5.0**.
+All 123 Omni regression tests passed on the restored copy, including operator
+permissions, validation, audit and browser checks. Before upgrading `odoo20`, a
+new private native backup with filestore was saved to
+`/tmp/omni-deployment-20261007/odoo20-before-operators.zip` (mode 0600).
+Upgrade ran without HTTP/cron workers; installed fields/view/version verified.
+All ten original-table fingerprints, including approval write stamps this time,
+matched the immediate pre-upgrade baseline. No people were assigned and all
+four Omni scheduled jobs remain disabled. No real email was sent.
