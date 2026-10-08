@@ -13,3 +13,4 @@ from . import (
     test_ui,
     test_worker_transactions,
 )
+from . import test_setup

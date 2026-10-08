@@ -63,3 +63,25 @@ def resolve(reference, config, environ=None):
         return TelegramSecrets(token, secret)
     except Exception:  # noqa: BLE001 - never include JSON/env material or chained exceptions
         raise TelegramConfigurationError() from None
+
+
+def discover_bot_id(reference, database, company_id, environ=None):
+    """Return only the public bot ID from a validated, deployment-scoped bundle."""
+    environ = os.environ if environ is None else environ
+    try:
+        if not isinstance(reference, str) or not re.fullmatch(
+            r"OMNI_SECRET_[A-Z0-9_]{1,100}", reference,
+        ):
+            raise TelegramConfigurationError()
+        raw = environ.get(reference, "")
+        if not isinstance(raw, str) or len(raw) > 8192:
+            raise TelegramConfigurationError()
+        value = json.loads(raw)
+        bot = canonical_id(value["bot_id"])
+        resolve(reference, {
+            "account_key": bot, "namespace": bot,
+            "adapter": {"database": database, "company_id": company_id},
+        }, environ)
+        return bot
+    except Exception:
+        raise TelegramConfigurationError() from None

@@ -721,3 +721,123 @@ OMNI_TELEGRAM_SANDBOX_NETWORK=0 PYTHONPATH=/tmp/omni-settings-deps \
   --stop-after-init --http-port=8083 --max-cron-threads=0 \
   --logfile=/tmp/omni-operator-regression.log
 ```
+
+## 2026-10-07 — Omni default system administrator access
+
+- Checked local Odoo 20 source at `026b3ed9bfbc91a67e80755d755ca8fc83fddb88`:
+  `odoo/addons/base/models/ir_access.py` uses group permissions intersected with
+  global restrictions; its evaluation context exposes `user` and selected
+  `company_ids`. An extra group grant alone cannot override a global restriction.
+- `res_users.py` derives `all_group_ids` from group implication. Therefore
+  `base.group_system` can imply the Omni manager role for existing and new admins.
+- Consulted the official 20.0 security documentation:
+  https://raw.githubusercontent.com/odoo/documentation/20.0/content/developer/reference/backend/security.rst
+  It still documents the older split access/rule models; actual local `ir.access`
+  source is authoritative for this implementation.
+- Omni scope domains and Python constraints exempt system administrators from
+  purpose enrollment only. Company selection and execution governance stay in force.
+- Deployment requires upgrading `omni_channel` to 20.0.1.5.2 and restarting Odoo.
+- Validation: isolated PostgreSQL 16 database, fresh module installation (20
+  foundation tests passed), followed by module upgrade and 85 passing tests
+  across Foundation, Commands, Inbox, Dispatch, and OperationsAlerts (zero
+  failures/errors). Invocation:
+  `.venv/bin/python odoo-bin -d omni_admin_test --db_host=/tmp --db_port=55432 --db_user=moshkou --addons-path=addons -u omni_channel --test-enable --test-tags=/omni_channel:TestOmniFoundation,/omni_channel:TestOmniCommands,/omni_channel:TestOmniInbox,/omni_channel:TestOmniDispatch,/omni_channel:TestOperationsAlerts --stop-after-init --no-http --max-cron-threads=0 --data-dir=/tmp/omni-admin-data --logfile=/tmp/omni-admin-regression.log`.
+  Browser tests and live database deployment were not performed.
+
+## 2026-10-07 — Setup and operator entry
+
+- Verified Odoo 20 `ir_actions.py::_can_execute_action_on_records`: a server
+  action without explicit groups requires model write access. The read-only
+  workspace routing action therefore explicitly allows `group_omni_user`
+  and checks group membership in its model method; operators need no channel
+  write permission.
+- Verified `ir_ui_menu.py::_visible_menu_ids`: each child action menu is
+  evaluated independently. Setup/monitoring child menus now carry administrator
+  groups directly, rather than relying only on their parent folder.
+- New guide uses native TransientModel, window/server actions, notebook pages,
+  view modifiers, and standard context defaults. All referenced fields and
+  combined views validated by upgrading core and Telegram together.
+- Telegram discovery reads only a validated scoped deployment bundle through
+  the adapter secret boundary; only the public bot ID returns to the form.
+  Sender/endpoint defaults preserve existing provider validation and activation.
+- Final test run: 65 passed, zero failures/errors, including five Chrome browser
+  tests. Command:
+  `PYTHONPATH=/tmp/omni-ui-deps .venv/bin/python odoo-bin -d omni_admin_test --db_host=/tmp --db_port=55432 --db_user=moshkou --addons-path=addons -u omni_channel,omni_telegram --test-enable --test-tags=/omni_channel:TestOmniSetup,/omni_channel:TestOmniInbox,/omni_channel:TestOperationsAlerts,/omni_channel:TestOmniUI,/omni_telegram:TestTelegramSandbox,/omni_telegram:TestTelegramProvider --stop-after-init --http-port=8079 --max-cron-threads=0 --data-dir=/tmp/omni-admin-data --logfile=/tmp/omni-journey-final.log`.
+  Tests use synthetic provider fixtures; no live Telegram account was connected.
+
+## 2026-10-08 — Omni-Channel specification alignment
+
+Verified against local Odoo 20 Community commit
+`026b3ed9bfbc91a67e80755d755ca8fc83fddb88` (`odoo/release.py`: 20.0).
+The official [Odoo 20 documentation source](https://github.com/odoo/documentation/tree/20.0/content/developer)
+was located; implementation details were checked in the actual local source.
+
+- `odoo/addons/base/views/base_menus.xml`: Technical is `base.menu_custom` under
+  Settings, gated by developer mode; the Omni section additionally requires
+  `base.group_system`.
+- `addons/web/static/src/views/fields/radio/radio_field.js`: native radio supports
+  Many2one selection and dynamic domains. Existing sender selection is reused.
+- Existing Odoo action/transient/view mechanisms support explicit view IDs,
+  modal configuration actions, statusbar and native HTML details/summary.
+  Fresh install, upgrades and Chrome HttpCase tests validate the merged views,
+  including Telegram view inheritance.
+- Runtime reuse: sender health checks/generation locking/unique index, inbound
+  ownership and blocklist checks, approved processing policy and append-only audit.
+- Added server-controlled endpoint verification status and a provider-neutral
+  wizard. No external send is performed by health verification.
+- Full regression: 145 tests, zero failures/errors, isolated `omni_spec_test`,
+  `/tmp/omni-spec-final.log`. Capacity benchmark excluded. Final focused validation
+  and exact commands are in the specification implementation report.
+
+Final checks: 15 setup/UI tests pass in `/tmp/omni-spec-visual-final.log`; clean
+installation with 8 setup tests passes in `/tmp/omni-spec-fresh.log`. Native
+`odoo/tools/convert.py` returns one ID for `<value search=...>`; category seeding
+uses nested `search`/`write` functions (as in `website_sale_stock` data) to update
+the full catalog recordset. Protected original catalog XML IDs remain noupdate.
+
+## 2026-10-08 — Email-style technical administration
+
+User-approved simplification supersedes standalone Omni navigation (20.0.1.8.0).
+Verified local source:
+- addons/phone_validation/views/phone_blacklist_views.xml:
+  phone_validation.phone_menu_main, parent base.menu_custom, sequence 3.
+- odoo/addons/base/views/base_menus.xml: Technical belongs under Settings and
+  is developer-mode gated; sequence 4 puts Omni before native Actions at 5.
+- odoo/tools/convert.py: menuitem groups uses Command.link, so upgraded menus
+  explicitly replace group_ids to remove legacy role grants.
+- odoo/addons/base/models/ir_ui_menu.py: debug visibility and user-root APIs
+  support tests for technical-only access and absence from the app launcher.
+
+Channel shortcuts reuse existing act_window actions and normal access checks.
+Standard module cleanup removes obsolete menus/actions/views and the transient
+wizard, while preserving channel/account/sender/endpoint/message/audit models.
+See 11_technical_administration.md for final test results.
+
+Final technical-only validation: 139 upgrade/regression tests passed in
+/tmp/omni-technical-verified.log; 4 clean-install administration tests passed in
+/tmp/omni-technical-clean.log. Both runs reported zero failures/errors. No live
+business database upgrade or external provider activation was performed.
+
+## 2026-10-08 — Clear forms and message monitoring (20.0.1.9.0)
+
+Verified native primary inherited views and explicit act_window.view bindings
+against the local view engine through upgrade and Chrome tests. The technical
+Messages action now selects a read-only primary form; business composition
+continues using its original action. All three redesigned forms use explicit
+label/field containers, avoiding group cell misalignment.
+
+Block connection defaults and mismatched-scope rejection are exercised in ORM
+tests. Full regression: 141 tests, zero failures/errors
+(/tmp/omni-clarity-full.log). Final administration plus desktop/mobile geometry
+and monitor-control checks: 7 tests, zero failures/errors
+(/tmp/omni-clarity-final.log). Reviewed desktop screenshots for policy, blocklist
+and monitoring and the 390px mobile policy screenshot. Ruff and diff whitespace
+checks passed. Capacity benchmark excluded; no live database upgrade performed.
+
+## 2026-10-08 — Effective Email menu order correction
+
+addons/mail/views/mail_menus.xml overrides base.menu_email to sequence 3;
+Discuss uses 1 and Activities uses 2. The earlier check of base alone missed
+this override. ir.ui.menu orders by sequence,id. Omni uses sequence 2 after the
+earlier-created Activities record. Tests assert immediate adjacency to Email
+and preserve both Discuss and Activities ahead of Omni.

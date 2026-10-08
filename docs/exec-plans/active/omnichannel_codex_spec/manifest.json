@@ -1,0 +1,19 @@
+{
+  "name": "omnichannel_codex_spec",
+  "version": "1.0",
+  "target": "Odoo 20 Community",
+  "authoritative": true,
+  "read_first": "README.md",
+  "files": [
+    "README.md",
+    "01_information_architecture.md",
+    "02_first_entry_and_setup_wizard.md",
+    "03_overview_dashboard.md",
+    "04_channel_detail.md",
+    "05_sender_and_inbound_rules.md",
+    "06_technical_data_and_monitoring.md",
+    "07_blocklist.md",
+    "08_codex_execution_rules.md",
+    "09_current_ui_correction_map.md"
+  ]
+}

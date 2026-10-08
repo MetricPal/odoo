@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version='1.0' encoding='UTF-8'?>
 <odoo>
   <record id="channel_dispatch_form" model="ir.ui.view">
     <field name="name">omni.channel.dispatch.form</field>
@@ -8,17 +8,20 @@
       <xpath expr="//header" position="inside">
         <button name="action_pause_dispatch" type="object" string="Pause dispatch" groups="omni_channel.group_omni_manager" invisible="not dispatch_enabled" confirm="Stop new dispatch claims? In-flight requests may still complete."/>
       </xpath>
-      <xpath expr="//notebook" position="inside">
-        <page string="Dispatch controls">
+      <xpath expr="//page[@name='operations']" position="inside">
+        <group>
+          <field name="dispatch_enabled"/>
+          <field name="dispatch_interval_seconds"/>
+        </group>
+        <p>Sending requires a supported provider adapter and explicit activation. An unknown outcome holds this channel until an administrator verifies whether the provider accepted the message.</p>
+        <details>
+          <summary>Technical Details</summary>
           <group>
-            <field name="dispatch_enabled"/>
-            <field name="dispatch_interval_seconds"/>
             <field name="next_dispatch_at"/>
             <field name="circuit_until"/>
             <field name="failure_count"/>
           </group>
-          <p>Outbound sending is not available in this release. An unknown outcome holds this channel until an administrator records verification evidence.</p>
-        </page>
+        </details>
       </xpath>
     </field>
   </record>
@@ -34,23 +37,26 @@
         <attribute name="invisible">state in ('cancelled', 'dispatching', 'unknown', 'accepted')</attribute>
       </xpath>
       <xpath expr="//sheet" position="inside">
-        <group string="Dispatch outcome">
-          <field name="provider_message_key"/>
-          <field name="attempt_count"/>
-          <field name="next_attempt_at"/>
-          <field name="lease_expires_at"/>
-          <field name="reconciliation_evidence" invisible="not reconciliation_evidence"/>
-        </group>
-        <field name="attempt_ids">
-          <list create="false" edit="false" delete="false">
-            <field name="number"/>
-            <field name="started_at"/>
-            <field name="ended_at"/>
-            <field name="outcome"/>
-            <field name="reason_code"/>
+        <details>
+          <summary>Technical Details</summary>
+          <group string="Dispatch outcome">
             <field name="provider_message_key"/>
-          </list>
-        </field>
+            <field name="attempt_count"/>
+            <field name="next_attempt_at"/>
+            <field name="lease_expires_at"/>
+            <field name="reconciliation_evidence" invisible="not reconciliation_evidence"/>
+          </group>
+          <field name="attempt_ids">
+            <list create="false" edit="false" delete="false">
+              <field name="number"/>
+              <field name="started_at"/>
+              <field name="ended_at"/>
+              <field name="outcome"/>
+              <field name="reason_code"/>
+              <field name="provider_message_key"/>
+            </list>
+          </field>
+        </details>
       </xpath>
     </field>
   </record>
@@ -79,12 +85,34 @@
           <field name="state" widget="statusbar"/>
         </header>
         <sheet>
-          <group>
-            <field name="channel_id" readonly="state != 'draft'"/>
-            <field name="namespace" readonly="state != 'draft'"/>
-            <field name="recipient" readonly="state != 'draft'"/>
+          <div class="alert alert-info o_omni_recipient_guidance" role="note">
+            <h3>Permission to contact this recipient</h3>
+            <p>Tip: open Recipient permission from an Inbox conversation to fill the channel, account scope and recipient automatically.</p>
+            <p>Record why this recipient may receive messages through the selected channel. Confirming this record sends no message. Each outbound message still needs its own approval.</p>
+            <ol class="mb-0" invisible="state != 'draft'">
+              <li>Choose the channel and copy the namespace from its runtime sender's provider connection.</li>
+              <li>Copy the exact recipient identifier from the verified conversation or provider record.</li>
+              <li>Record the source and scope of permission, set its expiry, then review and confirm.</li>
+            </ol>
+          </div>
+          <group string="Channel and destination">
+            <field name="channel_id" readonly="state != 'draft'" placeholder="Choose the channel used to contact this recipient"/>
+            <field name="namespace" readonly="state != 'draft'" placeholder="Copy Namespace from the provider connection"/>
+            <field name="recipient" readonly="state != 'draft'" placeholder="Exact destination ID, e.g. Telegram chat ID 123456789"/>
+          </group>
+          <p class="text-muted">Recipient identifier is entered manually and must match the message destination exactly. For Telegram, use the numeric chat ID, not a person's name or @username. Entering an identifier does not verify who owns it. Never enter a bot token or password.</p>
+          <group string="Permission and expiry">
+            <field name="evidence" readonly="state != 'draft'" placeholder="Who authorized contact? When and where? Which messages are covered? Include a request or agreement reference."/>
             <field name="expires_at" readonly="state != 'draft'"/>
-            <field name="evidence" readonly="state != 'draft'"/>
+          </group>
+          <p class="text-muted">The default expiry is 30 days. Use a date supported by the permission you recorded. Sending is blocked once this authorization expires, even if its status still says Confirmed.</p>
+          <div class="alert alert-warning" role="note" invisible="state != 'confirmed'">
+            Confirmed evidence cannot be edited. To correct or renew it, revoke this record and create a new authorization. Revoking prevents new send claims using this authorization; messages already in flight may still complete.
+          </div>
+          <div class="alert alert-secondary" role="note" invisible="state != 'revoked'">
+            This authorization has been withdrawn and is retained for audit. Create and confirm a new record if permission is granted again.
+          </div>
+          <group string="Confirmation history">
             <field name="confirmed_by"/>
             <field name="confirmed_at"/>
           </group>
@@ -96,8 +124,11 @@
     <field name="name">Recipient Authorization</field>
     <field name="res_model">omni.consent</field>
     <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Record permission to contact a recipient</p>
+      <p>Choose a channel, identify the recipient, and record the evidence and expiry. An Omni administrator must confirm the authorization before it can support an approved outbound message.</p>
+    </field>
   </record>
-  <menuitem id="menu_consent" name="Recipient Authorization" parent="menu_configuration" action="action_consent" sequence="40"/>
   <record id="attempt_list" model="ir.ui.view">
     <field name="name">omni.attempt.list</field>
     <field name="model">omni.attempt</field>
@@ -137,7 +168,6 @@
     <field name="res_model">omni.attempt</field>
     <field name="view_mode">list,form</field>
   </record>
-  <menuitem id="menu_attempts" name="Dispatch Attempts" parent="menu_monitoring" action="action_attempts" sequence="10"/>
   <record id="reconciliation_form" model="ir.ui.view">
     <field name="name">omni.reconciliation.form</field>
     <field name="model">omni.reconciliation</field>

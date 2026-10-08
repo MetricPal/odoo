@@ -9,3 +9,8 @@ Plans are scoped milestones, not permission to activate external effects.
   approvals, transport worker, inbox, Telegram sandbox and operations alerts are
   implemented. Production activation remains gated. After rollout, P4 covers
   media/business bridges; P5 adds providers and bulk messaging.
+
+
+- [Omni-Channel UI specification](omnichannel_codex_spec/README.md): superseded by the approved technical-only interface;
+  [implementation and verification report](omnichannel_codex_spec/11_technical_administration.md).
+  Live deployment remains a separate approval boundary.

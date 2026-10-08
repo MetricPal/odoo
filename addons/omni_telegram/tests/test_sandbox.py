@@ -1,4 +1,5 @@
 import json
+import os
 from unittest.mock import patch
 
 from odoo.exceptions import AccessError, UserError
@@ -16,6 +17,69 @@ from odoo.addons.omni_telegram.tools.operations_status import collect
 
 @tagged("post_install", "-at_install")
 class TestTelegramSandbox(TestOmniCommands):
+    def test_create_fills_identity_without_activating_anything(self):
+        config = self.account._telegram_config()
+        provisioned = environment(config)
+        bundle = json.loads(provisioned[REFERENCE])
+        bot = '987654322'
+        bundle['bot_id'] = bot
+        bundle['token'] = bot + ':' + bundle['token'].split(':', 1)[1]
+        provisioned[REFERENCE] = json.dumps(bundle)
+        with patch.dict(os.environ, provisioned):
+            account = self.env['omni.account'].with_user(self.manager).create({
+                'name': 'Auto-discovered bot',
+                'purpose_id': self.purpose.id,
+                'channel_type_id': self.type.id,
+                'company_id': self.company.id,
+                'credential_reference': REFERENCE,
+            })
+        self.assertEqual(account.external_account_key, bot)
+        self.assertEqual(account.namespace, bot)
+        self.assertFalse(account.telegram_sandbox_authorized)
+        for model in ('omni.outbound.sender', 'omni.inbound.endpoint'):
+            binding = self.env[model].with_user(self.manager).create({
+                'name': 'Automatically filled identity',
+                'channel_id': self.channel.id, 'account_id': account.id,
+            })
+            self.assertEqual(binding.external_key, bot)
+        self.assertFalse(self.channel.selected_sender_id)
+        self.assertFalse(self.channel.dispatch_enabled)
+
+    def test_setup_derives_bot_identity_and_bindings(self):
+        config = self.account._telegram_config()
+        with patch.dict(os.environ, environment(config)):
+            account = self.env['omni.account'].with_user(self.manager).new({
+                'channel_type_id': self.type.id,
+                'company_id': self.company.id,
+                'purpose_id': self.purpose.id,
+                'credential_reference': REFERENCE,
+            })
+            account._onchange_telegram_identity()
+            self.assertEqual(account.external_account_key, BOT)
+            self.assertEqual(account.namespace, BOT)
+            self.assertNotIn(':', account.external_account_key)
+            with self.assertRaises(AccessError):
+                self.account.with_user(self.operator)._discover_bot_identity(REFERENCE, self.company.id)
+            with self.assertRaises(AccessError):
+                self.account.with_user(self.manager)._discover_bot_identity(
+                    REFERENCE, self.other_company.id,
+                )
+            # Wrong database binding fails without echoing bundle contents.
+            bad = environment(config)
+            bundle = json.loads(bad[REFERENCE])
+            bundle['database'] = 'another-database'
+            bad[REFERENCE] = json.dumps(bundle)
+            with patch.dict(os.environ, bad), self.assertRaises(UserError) as error:
+                self.account.with_user(self.manager)._discover_bot_identity(REFERENCE, self.company.id)
+            self.assertNotIn(SECRET, str(error.exception))
+        # Defaults on an unsaved sender/endpoint need no secret access.
+        for model in ('omni.outbound.sender', 'omni.inbound.endpoint'):
+            binding = self.env[model].with_user(self.manager).new({
+                'channel_id': self.channel.id, 'account_id': self.account.id,
+            })
+            binding._onchange_telegram_binding_identity()
+            self.assertEqual(binding.external_key, BOT)
+
     def setUp(self):
         super().setUp()
         self.type = self.env.ref("omni_channel.channel_type_telegram")

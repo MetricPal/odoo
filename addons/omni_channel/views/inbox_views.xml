@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version='1.0' encoding='UTF-8'?>
 <odoo>
   <record id="conversation_list" model="ir.ui.view">
     <field name="name">omni.conversation.list</field>
@@ -39,6 +39,7 @@
       <form create="false" edit="false" delete="false">
         <header>
           <button name="action_prepare_reply" type="object" string="Prepare reply" class="oe_highlight" invisible="reply_blocked_reason"/>
+          <button name="action_recipient_permission" type="object" string="Recipient permission" groups="omni_channel.group_omni_manager" help="Open permission records for this conversation. Channel and destination are filled automatically; confirmation is still required."/>
           <button name="action_link_contact" type="object" string="Link existing contact"/>
           <button name="action_open_contact" type="object" string="Open contact" invisible="not contact_name"/>
           <button name="action_assign_me" type="object" string="Assign to me"/>
@@ -49,6 +50,7 @@
           <field name="state" widget="statusbar"/>
         </header>
         <sheet>
+          <p class="text-muted">Your daily workspace: assign the conversation to yourself, read the messages, then prepare a reply. The destination is filled automatically. Submit it for approval before queueing it. Mark waiting when you need a response, or close when the work is finished; closing sends nothing.</p>
           <div class="alert alert-warning" role="status" invisible="not reply_blocked_reason">
             <field name="reply_blocked_reason" nolabel="1"/>
           </div>
@@ -101,8 +103,11 @@
     <field name="res_model">omni.conversation</field>
     <field name="view_mode">list,form</field>
     <field name="context">{'search_default_needs_attention': 1}</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Your conversations will appear here</p>
+      <p>Open a conversation, assign it to yourself, and prepare a reply for approval. If this is a new workspace, ask your setup administrator to connect a channel and enable receiving. No conversations? Check the Needs attention filter and selected company.</p>
+    </field>
   </record>
-  <menuitem id="menu_inbox" name="Inbox" parent="menu_omni_root" action="action_inbox" sequence="1"/>
   <record id="message_form" model="ir.ui.view">
     <field name="name">omni.message.form</field>
     <field name="model">omni.message</field>
@@ -135,8 +140,8 @@
         <field name="company_id"/>
         <field name="purpose_id"/>
         <field name="channel_type_id"/>
-        <field name="namespace"/>
-        <field name="external_key"/>
+        <field name="namespace" optional="hide"/>
+        <field name="external_key" string="Number or account ID"/>
         <field name="state"/>
         <field name="expires_at"/>
       </list>
@@ -146,26 +151,13 @@
     <field name="name">omni.blocked.identity.form</field>
     <field name="model">omni.blocked.identity</field>
     <field name="arch" type="xml">
-      <form>
+      <form class="o_omni_clear_form">
         <header>
           <button name="action_block" type="object" string="Confirm block" class="oe_highlight" invisible="state != 'draft'" confirm="Block this identity in the displayed scope and remove pending content? This prevents new sends but cannot recall an in-flight send. An empty team means company-wide and requires a system administrator."/>
           <button name="action_unblock" type="object" string="Unblock" invisible="state != 'blocked'" confirm="Remove this block? Previously blocked content will not replay. This does not grant recipient consent."/>
           <field name="state" widget="statusbar"/>
         </header>
-        <sheet>
-          <p>An empty team means Company-wide. Team blocks affect only that team. Confirm the exact identity and scope before blocking.</p>
-          <group>
-            <field name="company_id" readonly="state != 'draft'"/>
-            <field name="purpose_id" readonly="state != 'draft'"/>
-            <field name="channel_type_id" readonly="state != 'draft'"/>
-            <field name="namespace" readonly="state != 'draft'"/>
-            <field name="external_key" readonly="state != 'draft'"/>
-            <field name="reason" readonly="state != 'draft'"/>
-            <field name="expires_at" readonly="state != 'draft'"/>
-            <field name="actor_id"/>
-          </group>
-        </sheet>
-      </form>
+        <sheet><h1>Block a number or account</h1><p class="lead">Prevent this identity from being processed or contacted in the selected scope. Blocking cannot recall a message already being sent.</p><div class="o_omni_settings_grid"><div class="o_omni_setting"><label for="connection_id" string="Connection"/><field name="connection_id" nolabel="1" readonly="state != 'draft'" options="{'no_create': True}" required="not namespace"/><p class="text-muted mb-0">Choose the connected account. Its channel type, company and account identifier are filled automatically.</p></div><div class="o_omni_setting"><label for="external_key" string="Number or account ID"/><field name="external_key" nolabel="1" readonly="state != 'draft'"/><p class="text-muted mb-0">Use the exact provider identity from a conversation, not the person’s display name.</p></div><div class="o_omni_setting"><label for="purpose_id" string="Team"/><field name="purpose_id" nolabel="1" readonly="state != 'draft'"/><p class="text-muted mb-0">The connection’s team is selected automatically. Clear it only when you want this block to apply to all teams in the company.</p></div><div class="o_omni_setting"><label for="expires_at" string="Block until (optional)"/><field name="expires_at" nolabel="1" readonly="state != 'draft'"/><p class="text-muted mb-0">Leave empty to keep blocking until an administrator unblocks this identity.</p></div><div class="o_omni_setting"><label for="reason" string="Reason for blocking"/><field name="reason" nolabel="1" readonly="state != 'draft'"/><p class="text-muted mb-0">Record why this identity should be blocked.</p></div></div><details class="mt-4"><summary>Change history</summary><div class="o_omni_settings_grid mt-3"><div class="o_omni_setting"><label for="actor_id" string="Blocked by"/><field name="actor_id" nolabel="1"/></div><div class="o_omni_setting"><label for="blocked_at" string="Blocked on"/><field name="blocked_at" nolabel="1"/></div></div></details><details class="mt-4"><summary>Provider details</summary><div class="o_omni_settings_grid"><div class="o_omni_setting"><label for="channel_type_id" string="Channel type"/><field name="channel_type_id" nolabel="1" readonly="state != 'draft' or connection_id"/><p class="text-muted mb-0">The service this identity uses, such as Telegram or WhatsApp.</p></div><div class="o_omni_setting"><label for="company_id" string="Company"/><field name="company_id" nolabel="1" readonly="state != 'draft' or connection_id"/><p class="text-muted mb-0">The block applies only within this company.</p></div><div class="o_omni_setting"><label for="namespace" string="Provider account scope"/><field name="namespace" nolabel="1" readonly="state != 'draft' or connection_id"/><p class="text-muted mb-0">Copy the Account identity scope from the connection. This identifies which provider account the external identity belongs to; it is not a password.</p></div></div></details></sheet></form>
     </field>
   </record>
   <record id="action_blocks" model="ir.actions.act_window">
@@ -173,7 +165,7 @@
     <field name="res_model">omni.blocked.identity</field>
     <field name="view_mode">list,form</field>
   </record>
-  <menuitem id="menu_blocks" name="Blocked Identities" parent="menu_monitoring" action="action_blocks" sequence="30"/>
+  <menuitem id="menu_blocks" name="Blocklist" parent="menu_omni_technical" action="action_blocks" sequence="40" groups="base.group_system"/>
   <record id="policy_list" model="ir.ui.view">
     <field name="name">omni.inbound.policy.list</field>
     <field name="model">omni.inbound.policy</field>
@@ -191,35 +183,22 @@
     <field name="name">omni.inbound.policy.form</field>
     <field name="model">omni.inbound.policy</field>
     <field name="arch" type="xml">
-      <form>
+      <form class="o_omni_clear_form">
         <header>
           <button name="action_activate" type="object" string="Activate policy" class="oe_highlight" invisible="state == 'active'" confirm="Authorize verified private text ingestion and automatic disposal at the displayed retention deadlines? This policy does not authorize contact creation, business-record changes, AI disclosure or replies."/>
           <button name="action_pause" type="object" string="Pause intake" invisible="state != 'active'" confirm="Pause new intake and normalization? Approved retention continues unless a legal hold is applied."/>
-          <button name="action_toggle_legal_hold" type="object" string="Toggle retention hold" confirm="Change the retention hold? A hold prevents scheduled deletion; removing it permits disposal of expired content."/>
+          <button name="action_toggle_legal_hold" type="object" string="Change deletion hold" confirm="Change the retention hold? A hold prevents scheduled deletion; removing it permits disposal of expired content."/>
           <field name="state" widget="statusbar"/>
         </header>
-        <sheet>
-          <group>
-            <field name="name" readonly="state != 'draft'"/>
-            <field name="channel_id" readonly="state != 'draft'"/>
-            <field name="payload_days" readonly="state != 'draft'"/>
-            <field name="message_days" readonly="state != 'draft'"/>
-            <field name="blocked_days" readonly="state != 'draft'"/>
-            <field name="legal_hold"/>
-            <field name="activated_by"/>
-            <field name="activated_at"/>
-          </group>
-          <p>Private text only. No attachments, automatic contacts, AI analysis or outbound messages. Retention periods are measured in days from receipt. Activation requires a verified provider integration.</p>
-        </sheet>
-      </form>
+        <sheet><h1>Receiving and message storage</h1><p class="lead">Choose how long this channel keeps messages and processing records. These settings do not enable sending.</p><div class="o_omni_settings_grid"><div class="o_omni_setting"><label for="name" string="Policy name"/><field name="name" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="channel_id" string="Channel"/><field name="channel_id" nolabel="1" readonly="state != 'draft'"/><p class="text-muted mb-0">This policy applies to incoming messages for this channel.</p></div><div class="o_omni_setting"><label for="message_days" string="Keep conversation messages (days)"/><field name="message_days" nolabel="1" readonly="state != 'draft'"/><p class="text-muted mb-0">After this period, stored message text is removed unless deletion is on hold.</p></div><div class="o_omni_setting"><label for="payload_days" string="Keep incoming processing data (days)"/><field name="payload_days" nolabel="1" readonly="state != 'draft'"/><p class="text-muted mb-0">Temporary incoming message data used to process messages or retry failed processing. The period starts when the event is received.</p></div><div class="o_omni_setting"><label for="blocked_days" string="Keep blocked-event history (days)"/><field name="blocked_days" nolabel="1" readonly="state != 'draft'"/><p class="text-muted mb-0">Keep a record that an incoming event was blocked. Newly blocked message text is not saved. Removing this history does not unblock the sender.</p></div><div class="o_omni_setting"><label for="legal_hold" string="Pause scheduled deletion"/><field name="legal_hold" nolabel="1"/><p class="text-muted mb-0">When enabled, expired content is kept. Use the header button to change this setting.</p></div></div><details class="mt-4"><summary>Change history</summary><div class="o_omni_settings_grid mt-3"><div class="o_omni_setting"><label for="activated_by" string="Activated by"/><field name="activated_by" nolabel="1"/></div><div class="o_omni_setting"><label for="activated_at" string="Activated on"/><field name="activated_at" nolabel="1"/></div></div></details><p class="text-muted mt-4">Receiving currently supports private text only. Pause stops new incoming processing; scheduled cleanup continues. To change an activated policy, pause it and create a replacement.</p></sheet></form>
     </field>
   </record>
   <record id="action_inbound_policies" model="ir.actions.act_window">
-    <field name="name">Inbound Policies</field>
+    <field name="name">Receiving &amp; retention rules</field>
     <field name="res_model">omni.inbound.policy</field>
     <field name="view_mode">list,form</field>
   </record>
-  <menuitem id="menu_inbound_policies" name="Inbound Policies" parent="menu_configuration" action="action_inbound_policies" groups="omni_channel.group_omni_manager" sequence="50"/>
+  <menuitem id="menu_inbound_policies" name="Policies" parent="menu_omni_technical" action="action_inbound_policies" groups="base.group_system" sequence="30"/>
   <record id="event_list" model="ir.ui.view">
     <field name="name">omni.webhook.event.list</field>
     <field name="model">omni.webhook.event</field>
@@ -266,14 +245,14 @@
     <field name="res_model">omni.webhook.event</field>
     <field name="view_mode">list,form</field>
   </record>
-  <menuitem id="menu_events" name="Intake Events" parent="menu_monitoring" action="action_events" groups="omni_channel.group_omni_manager" sequence="20"/>
   <record id="endpoint_inbox_form" model="ir.ui.view">
     <field name="name">omni.inbound.endpoint.intake.form</field>
     <field name="model">omni.inbound.endpoint</field>
     <field name="inherit_id" ref="omni_inbound_endpoint_form"/>
     <field name="arch" type="xml">
-      <xpath expr="//form" position="inside">
+      <xpath expr="//form/sheet" position="before">
         <header>
+          <button name="action_check_health" type="object" string="Verify" groups="omni_channel.group_omni_manager"/>
           <button name="action_enable" type="object" string="Verify and enable intake" groups="omni_channel.group_omni_manager" invisible="state == 'enabled'" confirm="Enable verified intake under the active processing policy? No external webhook registration or outbound send will occur."/>
           <button name="action_disable" type="object" string="Disable intake" groups="omni_channel.group_omni_manager" invisible="state != 'enabled'" confirm="Disable new intake and queued normalization?"/>
         </header>
@@ -281,8 +260,8 @@
       <xpath expr="//sheet" position="inside">
         <group groups="omni_channel.group_omni_manager">
           <field name="policy_id"/>
-          <field name="ownership_version"/>
-          <field name="route_key"/>
+          <field name="ownership_version" groups="base.group_no_one"/>
+          <field name="route_key" groups="base.group_no_one"/>
         </group>
       </xpath>
     </field>

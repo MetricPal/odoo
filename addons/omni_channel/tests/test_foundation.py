@@ -141,6 +141,78 @@ class TestOmniFoundation(TransactionCase):
         with self.assertRaises(AccessError):
             self.account.with_user(self.operator).read(['credential_reference'])
 
+    def test_system_admin_has_default_configuration_access_without_team(self):
+        admin = new_test_user(
+            self.env, login='omni_system_admin', groups='base.group_system',
+            company_id=self.company.id,
+        )
+        self.assertTrue(admin.has_group('omni_channel.group_omni_manager'))
+        self.assertNotIn(admin, self.other_purpose.user_ids)
+        channels = self.env['omni.channel'].with_user(admin).with_context(
+            allowed_company_ids=[self.company.id],
+        )
+        self.assertFalse(channels.env.su)
+        channel = channels.create({
+            'name': 'Admin private channel',
+            'purpose_id': self.other_purpose.id,
+            'channel_type_id': self.type.id,
+        })
+        self.assertIn(channel, channels.search([]))
+        channel.write({'name': 'Renamed by administrator'})
+        self.assertEqual(channel.read(['name'])[0]['name'], 'Renamed by administrator')
+        channel.unlink()
+        block = self.env['omni.blocked.identity'].with_user(admin).create({
+            'company_id': self.company.id,
+            'purpose_id': self.other_purpose.id,
+            'channel_type_id': self.type.id,
+            'namespace': 'admin-test',
+            'external_key': 'blocked-identity',
+            'reason': 'Administrator draft without team membership',
+        })
+        self.assertEqual(block.state, 'draft')
+        self.account.with_user(admin).read(['credential_reference'])
+        self.sender.with_user(admin).action_check_health()
+        audit = self.env['omni.audit.event'].with_user(admin).search([
+            ('actor_id', '=', admin.id), ('event', '=', 'sender.health'),
+        ])
+        self.assertTrue(audit)
+        with self.assertRaises(AccessError):
+            audit.write({'detail': 'Tampered'})
+        with self.assertRaises(AccessError):
+            self.sender.with_user(admin).write({'is_selected': True})
+
+    def test_system_admin_still_respects_selected_companies(self):
+        admin = new_test_user(
+            self.env, login='omni_company_admin', groups='base.group_system',
+            company_id=self.company.id,
+            company_ids=[fields.Command.set([self.company.id, self.other_company.id])],
+        )
+        channels = self.env['omni.channel'].with_user(admin).with_context(
+            allowed_company_ids=[self.company.id],
+        )
+        vals = {
+            'name': 'Other company private channel',
+            'purpose_id': self.other_purpose.id,
+            'channel_type_id': self.type.id,
+            'company_id': self.other_company.id,
+        }
+        with self.assertRaises(AccessError), self.cr.savepoint():
+            channels.create(vals)
+        channel = channels.with_context(
+            allowed_company_ids=[self.other_company.id],
+        ).create(vals)
+        self.assertNotIn(channel, channels.search([]))
+        with self.assertRaises(AccessError):
+            channel.with_context(allowed_company_ids=[self.company.id]).read(['name'])
+
+    def test_omni_manager_cannot_create_outside_team(self):
+        with self.assertRaises(AccessError), self.cr.savepoint():
+            self.env['omni.channel'].with_user(self.manager).create({
+                'name': 'Unauthorized private channel',
+                'purpose_id': self.other_purpose.id,
+                'channel_type_id': self.type.id,
+            })
+
     def test_no_adapter_is_not_ready_and_cannot_activate(self):
         self.sender.with_user(self.manager).action_activate(self.channel.generation)
         self.assertFalse(self.sender.is_selected)

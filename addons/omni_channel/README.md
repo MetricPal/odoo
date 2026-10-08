@@ -2,7 +2,7 @@
 
 Odoo 20 Community foundation for company- and purpose-scoped communication.
 
-## Available in 20.0.1.4.1
+## Available in 20.0.1.9.0
 
 - Native channel kanban/list/forms and a deliberate app icon.
 - Twelve channel catalog entries, explicitly marked unavailable without an installed adapter.
@@ -14,6 +14,35 @@ Odoo 20 Community foundation for company- and purpose-scoped communication.
 
 - Persisted dispatch attempts, fenced leases, current approval/recipient checks, throttling, bounded safe retries and recovery to unknown outcomes.
 - Recipient authorization records, pause controls, read-only attempt history and evidence-based manual reconciliation.
+
+## Technical administration
+
+Omni-Channel is infrastructure, not a standalone application. With developer mode
+enabled, system administrators open **Settings → Technical → Omni-Channel**,
+before **Email**. The section contains only **Channels**,
+**Messages**, **Policies**, and **Blocklist**. Messages is a read-only delivery
+monitor, with waiting-to-send and needs-attention filters; composition remains
+available to the existing business integration actions.
+
+Create a channel using the standard list/form, selecting its company, business
+purpose and channel type. Save it, then open **Connections** to configure a
+provider account with those defaults. Configure multiple senders and inbound
+endpoints in the channel's tabs. Select one outbound sender with Check & Activate;
+a failed check preserves the existing sender. Review receiving policies under
+Operations and explicitly verify/enable endpoints. Connections use
+deployment-provisioned secret references, never plaintext provider tokens.
+
+Messages and Connections are available from the channel header. Operations →
+Technical Details links to delivery logs, intake logs, purpose audit history and
+recipient authorization. Purpose/team records remain editable through their
+relational field. No separate Overview, onboarding wizard, Inbox menu,
+configuration tree or app launcher is installed. Existing inbox actions and
+business integration APIs remain available to consuming applications.
+
+The catalog and configuration are generic for all channel types. Provider
+adapters are still required for actual sending/receiving; catalog membership is
+not a working integration. Sender health, ownership, company/purpose scope,
+blocklist-first intake, approvals and audit rules are unchanged.
 
 ## Operational boundary
 
@@ -182,3 +211,20 @@ PostgreSQL lock contention, safe collection after serialization retry, and atomi
 rollback after queue insertion or snapshot flush. They commit and clean uniquely
 identified synthetic fixtures, so run only on a disposable database. These tests
 prove durable queue deduplication, not exactly-once SMTP delivery.
+
+
+## Clear administration forms (20.0.1.9.0)
+
+Policy, blocklist and message fields use labels above inputs in a responsive
+two-column layout. Each retention period has an explanation beside the input:
+conversation text, temporary incoming processing data, and blocked-event history.
+The latter is distinct from block expiry; deleting history never unblocks anyone.
+
+Choose a Connection when creating a block. Company, channel type, team and
+provider account scope are filled automatically and validated on the server.
+Existing integration-created blocks without a connection remain supported.
+Provider details and change history are secondary sections.
+
+Channel configuration explicitly warns when no provider adapter is installed.
+Catalog entries for WhatsApp, LinkedIn and other services do not imply live
+integration support; only the existing Telegram sandbox adapter is supplied.

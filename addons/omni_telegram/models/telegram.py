@@ -10,6 +10,7 @@ from odoo.addons.omni_channel.providers.base import get_adapter
 from odoo.addons.omni_telegram.providers.secrets import (
     TelegramConfigurationError,
     canonical_id,
+    discover_bot_id,
 )
 
 
@@ -54,13 +55,50 @@ class TelegramAccount(models.Model):
         "active",
     }
 
+    @api.model
+    def _discover_bot_identity(self, reference, company_id):
+        if not self.env.user.has_group('omni_channel.group_omni_manager'):
+            raise AccessError(_('Only an Omni administrator can configure a bot.'))
+        if company_id not in self.env.companies.ids:
+            raise AccessError(_('Select the connection company before configuring its bot.'))
+        try:
+            return discover_bot_id(reference, self.env.cr.dbname, company_id)
+        except TelegramConfigurationError:
+            raise UserError(_(
+                'This secret reference is not provisioned for this database and company. '
+                'Ask your deployment administrator for the scoped OMNI_SECRET_ reference. '
+                'Do not paste the bot token here.'
+            )) from None
+
+    @api.onchange('credential_reference', 'channel_type_id', 'company_id')
+    def _onchange_telegram_identity(self):
+        if self.channel_type_id.code == 'telegram' and self.credential_reference and self.company_id:
+            bot = self._discover_bot_identity(self.credential_reference, self.company_id.id)
+            self.external_account_key = bot
+            self.namespace = bot
+
     @api.model_create_multi
     def create(self, vals_list):
         if protected_input(self, self._telegram_protected, vals_list):
             raise AccessError(
                 _("Sandbox authorization requires explicit verified confirmation."),
             )
-        return super().create(vals_list)
+        prepared = []
+        for values in vals_list:
+            values = dict(values)
+            type_id = values.get('channel_type_id') or self.env.context.get('default_channel_type_id')
+            if self.env['omni.channel.type'].browse(type_id).code == 'telegram':
+                key = values.get('external_account_key') or self.env.context.get('default_external_account_key')
+                if not key:
+                    key = self._discover_bot_identity(
+                        values.get('credential_reference') or self.env.context.get('default_credential_reference'),
+                        values.get('company_id') or self.env.context.get('default_company_id') or self.env.company.id,
+                    )
+                    values['external_account_key'] = key
+                if not values.get('namespace') and not self.env.context.get('default_namespace'):
+                    values['namespace'] = key
+            prepared.append(values)
+        return super().create(prepared)
 
     def write(self, vals):
         if self._telegram_protected & vals.keys() and not is_internal(self):
@@ -320,3 +358,26 @@ class TelegramCommand(models.Model):
     def _check_dispatch_authorization(self):
         super()._check_dispatch_authorization()
         self._telegram_guard()
+
+
+class TelegramBinding(models.AbstractModel):
+    _inherit = 'omni.binding.mixin'
+
+    @api.onchange('account_id')
+    def _onchange_telegram_binding_identity(self):
+        if self.account_id.channel_type_id.code == 'telegram':
+            self.external_key = self.account_id.external_account_key
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        prepared = []
+        for values in vals_list:
+            values = dict(values)
+            account_id = values.get('account_id') or self.env.context.get('default_account_id')
+            if account_id and not values.get('external_key') and not self.env.context.get('default_external_key'):
+                account = self.env['omni.account'].browse(account_id)
+                account.check_access('read')
+                if account.channel_type_id.code == 'telegram':
+                    values['external_key'] = account.external_account_key
+            prepared.append(values)
+        return super().create(prepared)

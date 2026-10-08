@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo>
+  <record id="message_monitor_list" model="ir.ui.view">
+    <field name="name">omni.command.monitor.list</field>
+    <field name="model">omni.command</field>
+    <field name="arch" type="xml">
+      <list create="false" edit="false" delete="false" decoration-danger="state in ('failed', 'unknown')" decoration-warning="state == 'held'">
+        <field name="create_date"/>
+        <field name="channel_id"/>
+        <field name="recipient"/>
+        <field name="sender_id"/>
+        <field name="state"/>
+        <field name="held_reason" optional="show"/>
+      </list>
+    </field>
+  </record>
+  <record id="message_monitor_form" model="ir.ui.view">
+    <field name="name">omni.command.monitor.form</field>
+    <field name="model">omni.command</field>
+    <field name="inherit_id" ref="command_form"/>
+    <field name="mode">primary</field>
+    <field name="priority">90</field>
+    <field name="arch" type="xml">
+      <xpath expr="//form" position="attributes">
+        <attribute name="create">false</attribute>
+        <attribute name="edit">false</attribute>
+        <attribute name="delete">false</attribute>
+      </xpath>
+      <xpath expr="//button[@name='action_submit']" position="replace"/>
+      <xpath expr="//button[@name='action_enqueue_approved']" position="replace"/>
+      <xpath expr="//button[@name='action_cancel']" position="replace"/>
+      <xpath expr="//sheet/div[@role='status']" position="replace">
+        <p class="lead">Outgoing message status and delivery history. Messages are prepared in the business application. Queued means waiting to send; it does not confirm delivery.</p>
+      </xpath>
+    </field>
+  </record>
+  <record id="message_monitor_search" model="ir.ui.view">
+    <field name="name">omni.command.monitor.search</field>
+    <field name="model">omni.command</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="channel_id"/>
+        <field name="recipient"/>
+        <filter name="waiting" string="Waiting to send" domain="[('state', '=', 'queued')]"/>
+        <filter name="attention" string="Needs attention" domain="[('state', 'in', ['held','failed','unknown'])]"/>
+        <filter name="accepted" string="Accepted by provider" domain="[('state', '=', 'accepted')]"/>
+      </search>
+    </field>
+  </record>
+  <record id="action_message_monitoring" model="ir.actions.act_window">
+    <field name="name">Messages</field>
+    <field name="res_model">omni.command</field>
+    <field name="view_mode">list,form</field>
+    <field name="search_view_id" ref="message_monitor_search"/>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">No outgoing messages yet</p>
+      <p>Messages prepared by your business applications appear here for delivery monitoring.</p>
+    </field>
+  </record>
+  <record id="message_monitor_list_binding" model="ir.actions.act_window.view">
+    <field name="sequence">1</field>
+    <field name="view_mode">list</field>
+    <field name="view_id" ref="message_monitor_list"/>
+    <field name="act_window_id" ref="action_message_monitoring"/>
+  </record>
+  <record id="message_monitor_form_binding" model="ir.actions.act_window.view">
+    <field name="sequence">2</field>
+    <field name="view_mode">form</field>
+    <field name="view_id" ref="message_monitor_form"/>
+    <field name="act_window_id" ref="action_message_monitoring"/>
+  </record>
+  <menuitem id="menu_commands" name="Messages" parent="menu_omni_technical" action="action_message_monitoring" sequence="20" groups="base.group_system"/>
+  <record id="action_workspace" model="ir.actions.server">
+    <field name="name">Omni-Channel</field>
+    <field name="model_id" ref="model_omni_channel"/>
+    <field name="group_ids" eval="[(6, 0, [ref('group_omni_user')])]"/>
+    <field name="state">code</field>
+    <field name="code">action = model.action_open_workspace()</field>
+  </record>
+  <!-- Replace legacy menu groups on upgrade; menuitem groups only adds groups. -->
+  <record id="menu_omni_technical" model="ir.ui.menu">
+    <field name="group_ids" eval="[(6, 0, [ref('base.group_system')])]"/>
+  </record>
+  <record id="menu_channels" model="ir.ui.menu">
+    <field name="group_ids" eval="[(6, 0, [ref('base.group_system')])]"/>
+  </record>
+  <record id="menu_commands" model="ir.ui.menu">
+    <field name="group_ids" eval="[(6, 0, [ref('base.group_system')])]"/>
+  </record>
+  <record id="menu_inbound_policies" model="ir.ui.menu">
+    <field name="group_ids" eval="[(6, 0, [ref('base.group_system')])]"/>
+  </record>
+  <record id="menu_blocks" model="ir.ui.menu">
+    <field name="group_ids" eval="[(6, 0, [ref('base.group_system')])]"/>
+  </record>
+</odoo>

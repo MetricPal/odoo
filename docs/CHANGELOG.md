@@ -11,6 +11,27 @@ Format:
 
 ## 2026-10-07
 
+- Introduced separate Omni setup-administrator and operator journeys: a five-step
+  Start here guide with channel status and scoped navigation, and direct Inbox
+  entry for operators. Restricted technical navigation to administrators.
+  Added examples and clearer receiving/retention terminology, automatic Telegram
+  identity defaults from validated provisioned secrets, and recipient-permission
+  navigation from conversations without implicit consent. Versions:
+  omni_channel 20.0.1.6.0, omni_telegram 20.0.1.1.0. Upgrade both and restart.
+  Validated with 65 passing tests, including Chrome journeys; no live deployment.
+  See design decision 0004 for roles, automation boundaries and remaining
+  deployment prerequisites.
+
+- Added Recipient Authorization onboarding, clearer field labels, tooltips,
+  destination examples, evidence prompts, and expiry/renewal/revocation guidance.
+  The form explains that manual identifiers are not verified automatically and
+  confirmation sends no message. Added a browser regression covering guidance
+  and explicit confirmation. Upgrade `omni_channel` to load the revised view;
+  authorization rules and existing records are unchanged by this UI update.
+  Validation: module upgrade succeeded on the isolated test database and
+  `TestOmniUI.test_recipient_authorization_guidance_and_confirmation` passed in
+  Chrome (including the confirmation dialog and no outbound command creation).
+
 - Grouped Omni navigation into Inbox, Messages, Channels, Monitoring and
   Configuration. Replaced generic operator validation with short, specific
   instructions and native buttons opening the exact user or communication team
@@ -112,3 +133,46 @@ Format:
 - Migration/compatibility notes: Uses Odoo 20 QWeb inheritance and the existing
   standalone auth shell. Full database-backed module validation still requires
   PostgreSQL availability.
+
+## 2026-10-08 — Omni-Channel specification alignment (20.0.1.7.0)
+
+- Replaced permanent setup navigation with scoped Overview/welcome and a separate
+  generic six-step Add Channel wizard; successful activation returns to detail.
+- Aligned Configuration and Monitoring menus, added Settings Technical placement,
+  and moved dispatch internals into expandable Technical Details.
+- Added endpoint health verification/status and operational connection/inbound
+  summaries. Reused single-sender selection, endpoint ownership, blocklist-first
+  intake, audit and approval mechanisms; no new provider integrations or dispatch
+  authorization bypasses.
+- Added catalog-wide mocked setup, empty-state, activation, multi-endpoint,
+  role-scope, navigation and browser coverage. See the specification's
+  implementation report for exact validation results and deployment boundaries.
+
+## 2026-10-08 — Omni technical administration (20.0.1.8.0)
+
+- Removed the app launcher, Overview and setup wizard in favor of Settings →
+  Technical → Omni-Channel, after Phone / SMS.
+- Reduced navigation to Channels, Messages, Policies and Blocklist. Connections
+  and diagnostic actions remain accessible from scoped channel records.
+- Explicitly replaces legacy menu groups during upgrades to restrict Technical
+  navigation to system administrators. Preserves business-facing runtime APIs,
+  provider checks, approvals, company/purpose scope and existing records.
+
+## 2026-10-08 — Technical menu ordering
+
+Moved Omni-Channel before Email under Technical as requested (sequence 0).
+
+## 2026-10-08 — Clear settings and delivery monitoring (20.0.1.9.0)
+
+- Replaced cramped form groups with responsive fields whose labels sit above
+  inputs; moved explanations next to retention and blocklist settings.
+- Added connection selection to blocklist drafts, with server-validated scope
+  defaults and compatibility for existing blocks.
+- Technical Messages is now a read-only delivery monitor with status filters.
+  Existing business composition/approval actions remain separate.
+- Channel forms show an explicit warning when a catalog type has no adapter.
+
+## 2026-10-08 — Correct Email adjacency
+
+Corrected the Technical order to Discuss → Activities → Omni-Channel → Email.
+The navigation test now asserts immediate adjacency, not merely a lower sequence.

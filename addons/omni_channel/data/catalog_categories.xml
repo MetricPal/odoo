@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo>
+  <!-- Seed categories for existing noupdate catalog entries without replacing configured categories. -->
+  <function model="omni.channel.type" name="write">
+    <function model="omni.channel.type" name="search" eval="[[('id', 'in', [ref('channel_type_whatsapp'), ref('channel_type_telegram'), ref('channel_type_slack'), ref('channel_type_discord')]), ('category', '=', 'other')]]"/><value eval="{'category': 'messaging'}"/>
+  </function>
+  <function model="omni.channel.type" name="write">
+    <function model="omni.channel.type" name="search" eval="[[('id', 'in', [ref('channel_type_instagram'), ref('channel_type_facebook'), ref('channel_type_linkedin'), ref('channel_type_x'), ref('channel_type_tiktok'), ref('channel_type_threads'), ref('channel_type_youtube'), ref('channel_type_pinterest')]), ('category', '=', 'other')]]"/><value eval="{'category': 'social'}"/>
+  </function>
+</odoo>

@@ -213,6 +213,12 @@ class InboundEndpoint(models.Model):
         selection_add=[("enabled", "Enabled"), ("disabled", "Disabled")],
         ondelete={"enabled": "set default", "disabled": "set default"},
     )
+    health = fields.Selection(
+        [('unchecked', 'Not verified'), ('healthy', 'Verified'), ('unhealthy', 'Needs attention')],
+        default='unchecked', readonly=True, copy=False,
+    )
+    health_checked_at = fields.Datetime(readonly=True, copy=False)
+
     route_key = fields.Char(
         default=lambda self: str(uuid.uuid4()),
         readonly=True,
@@ -229,6 +235,8 @@ class InboundEndpoint(models.Model):
         "UNIQUE(route_key)", "Inbound routes must be unique.",
     )
     _protected = {
+        "health",
+        "health_checked_at",
         "state",
         "route_key",
         "ownership_version",
@@ -260,27 +268,44 @@ class InboundEndpoint(models.Model):
             "adapter": self.account_id._adapter_config(),
         }
 
-    def action_enable(self):
+    def _check_health(self):
         self.ensure_one()
         self._require_manager()
-        # Read-only bounded adapter check, outside the configuration lock.
+        config = self._config()
         try:
             adapter = get_adapter(self.channel_type_id.code)
-            config = self._config()
             valid = (
                 adapter.inbound_release_ready is True
                 and adapter.check_endpoint(config) is True
             )
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 - do not retain provider secrets/errors
             valid = False
         self.channel_id._lock()
         self.invalidate_recordset()
+        self.account_id.invalidate_recordset()
+        valid = bool(valid and config == self._config() and self.active
+                     and self.account_id.active and self.channel_id.active)
+        internal(self).write({
+            'health': 'healthy' if valid else 'unhealthy',
+            'health_checked_at': fields.Datetime.now(),
+        })
+        self._audit('inbound.health', _('Receiving identity verified.') if valid
+                    else _('Receiving identity verification failed.'))
+        return valid
+
+    def action_check_health(self):
+        self._check_health()
+        return True
+
+    def action_enable(self):
+        self.ensure_one()
+        self._require_manager()
+        valid = self._check_health()
         policy = self.env["omni.inbound.policy"].search(
             [("channel_id", "=", self.channel_id.id), ("state", "=", "active")], limit=1,
         )
         if (
             not valid
-            or config != self._config()
             or not policy
             or not self.active
             or not self.account_id.active
@@ -392,7 +417,11 @@ class BlockedIdentity(models.Model):
         for row in self:
             if not self.env.su and (
                 row.company_id not in self.env.companies
-                or (row.purpose_id and self.env.user not in row.purpose_id.user_ids)
+                or (
+                    row.purpose_id
+                    and not self.env.user.has_group('base.group_system')
+                    and self.env.user not in row.purpose_id.user_ids
+                )
             ):
                 raise AccessError(_("This suppression scope is not available to you."))
 
@@ -726,6 +755,28 @@ class InboxConversation(models.Model):
             "res_id": command.id,
             "view_mode": "form",
             "target": "current",
+        }
+
+    def action_recipient_permission(self):
+        self.ensure_one()
+        self.check_access('read')
+        if not self.env.user.has_group('omni_channel.group_omni_manager'):
+            raise AccessError(_('Only an Omni administrator can manage recipient permission.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Recipient permission'),
+            'res_model': 'omni.consent',
+            'view_mode': 'list,form',
+            'domain': [
+                ('channel_id', '=', self.channel_id.id),
+                ('namespace', '=', self.identity_id.namespace),
+                ('recipient', '=', self.identity_id.external_key),
+            ],
+            'context': dict(self.env.context,
+                default_channel_id=self.channel_id.id,
+                default_namespace=self.identity_id.namespace,
+                default_recipient=self.identity_id.external_key,
+            ),
         }
 
     def action_open_block(self):

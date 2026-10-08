@@ -3,3 +3,21 @@
     .o_omni_eyebrow { font-size: 0.8rem; font-weight: 600; color: var(--body-color); }
     .o_omni_sender { border-inline-start: 3px solid #418b82; padding-inline-start: 0.75rem; }
 }
+
+.o_omni_clear_form {
+    .o_omni_settings_grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px 40px;
+        margin-top: 24px;
+    }
+    .o_omni_setting {
+        min-width: 0;
+        > label { display: block; white-space: normal; margin-bottom: 8px; }
+        > .o_field_widget { display: block; width: 100%; margin-bottom: 8px; }
+        > p { line-height: 1.5; }
+    }
+    @media (max-width: 767px) {
+        .o_omni_settings_grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    }
+}

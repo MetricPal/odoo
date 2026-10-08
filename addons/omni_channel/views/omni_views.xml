@@ -10,7 +10,9 @@
         <templates>
           <t t-name="card">
             <div class="o_omni_channel_card">
-              <div class="o_omni_eyebrow"><field name="channel_type_id"/> · <field name="purpose_id"/></div>
+              <div class="o_omni_eyebrow">
+                <field name="channel_type_id"/> · <field name="purpose_id"/>
+              </div>
               <h3 class="mt-2 mb-3">
                 <field name="name"/>
               </h3>
@@ -25,8 +27,14 @@
                 <div t-else="" class="text-muted">No sender selected</div>
               </div>
               <div class="d-flex gap-4 mt-3">
-                <div><strong><field name="sender_count"/></strong> configured senders</div>
-                <div><strong><field name="endpoint_count"/></strong> inbound endpoints</div>
+                <div>
+                  <strong>
+                    <field name="sender_count"/>
+                  </strong> configured senders</div>
+                <div>
+                  <strong>
+                    <field name="endpoint_count"/>
+                  </strong> inbound endpoints</div>
               </div>
               <div class="text-muted small mt-3">
                 <field name="company_id"/>
@@ -79,10 +87,15 @@
           <button name="action_select_sender" type="object" string="Select runtime sender" class="oe_highlight" groups="omni_channel.group_omni_manager"/>
         </header>
         <sheet>
+          <div class="oe_button_box" name="button_box" groups="base.group_system">
+            <button name="action_connections" type="object" string="Connections" icon="fa-plug" class="oe_stat_button" invisible="not id"/>
+            <button name="action_messages" type="object" string="Messages" icon="fa-envelope" class="oe_stat_button" invisible="not id"/>
+          </div>
+          <div><field name="adapter_ready" invisible="1"/><div class="alert alert-warning" role="status" invisible="not channel_type_id or adapter_ready">This channel type has no installed provider adapter. You can save its configuration, but connecting, sending and receiving are unavailable until a compatible adapter is installed.</div></div>
           <div class="oe_title">
             <label for="name"/>
             <h1>
-              <field name="name" placeholder="Marketing / Telegram"/>
+              <field name="name" placeholder="Team channel"/>
             </h1>
           </div>
           <group>
@@ -94,19 +107,21 @@
             <group>
               <field name="readiness"/>
               <field name="selected_sender_id"/>
+              <field name="endpoint_count"/>
+              <field name="connection_status"/>
+              <field name="inbound_status"/>
               <field name="active"/>
-              <field name="approval_type_id"/>
-              <field name="generation" groups="base.group_no_one"/>
             </group>
           </group>
-          <div class="alert alert-info" role="status">One runtime sender. Multiple inbound endpoints. Configure your connections, then open a sender to check and activate it. Intake is not enabled by configuration alone.</div>
+          <div class="text-muted mb-3" invisible="not channel_type_id or not adapter_ready">A provider adapter is installed. Configure its connection and verify the identities before activation. An installed adapter does not mean the connection is ready.</div>
+          <div class="alert alert-info" role="status">Configure a connection, then add senders and inbound endpoints below. Activation requires verification and explicit confirmation.</div>
           <notebook>
             <page string="Outbound senders">
               <field name="sender_ids" context="{'default_channel_id': id}" readonly="not id">
                 <list>
                   <field name="name"/>
                   <field name="account_id"/>
-                  <field name="external_key"/>
+                  <field name="external_key" optional="hide"/>
                   <field name="is_selected"/>
                   <field name="health"/>
                   <field name="health_checked_at"/>
@@ -117,11 +132,34 @@
               <field name="endpoint_ids" context="{'default_channel_id': id}" readonly="not id">
                 <list>
                   <field name="name"/>
+                  <field name="purpose_id"/>
                   <field name="account_id"/>
-                  <field name="external_key"/>
+                  <field name="external_key" optional="hide"/>
                   <field name="state"/>
+                  <field name="health"/>
+                  <field name="active"/>
                 </list>
               </field>
+            </page>
+            <page string="Operations" name="operations">
+              <group>
+                <field name="approval_type_id"/>
+              </group>
+              <div groups="base.group_system">
+                <button name="action_policies" type="object" string="Receiving policies" class="btn-secondary" invisible="not id"/>
+                <details class="mt-3">
+                  <summary>Technical Details</summary>
+                  <button name="action_delivery_logs" type="object" string="Delivery logs" invisible="not id"/>
+                  <button name="action_intake_logs" type="object" string="Intake logs" invisible="not id"/>
+                  <button name="action_audit_logs" type="object" string="Purpose audit history" invisible="not id"/>
+                  <button name="action_recipient_authorizations" type="object" string="Recipient authorization" invisible="not id"/>
+                </details>
+              </div>
+            </page>
+            <page string="Alerts" name="alerts">
+              <group>
+                <field name="attention"/>
+              </group>
             </page>
           </notebook>
         </sheet>
@@ -131,9 +169,10 @@
   <record id="action_channels" model="ir.actions.act_window">
     <field name="name">Channels</field>
     <field name="res_model">omni.channel</field>
-    <field name="view_mode">kanban,list,form</field>
+    <field name="view_mode">list,kanban,form</field>
     <field name="help" type="html">
-      <p class="o_view_nocontent_smiling_face">Build your communication workspace. Add a channel for a company and purpose.</p>
+      <p class="o_view_nocontent_smiling_face">Create your first team channel</p>
+      <p>Configure a connection, then add senders and inbound endpoints below. Activation requires verification and explicit confirmation.</p>
     </field>
   </record>
   <record id="omni_account_list" model="ir.ui.view">
@@ -143,8 +182,8 @@
       <list>
         <field name="name"/>
         <field name="channel_type_id"/>
-        <field name="external_account_key"/>
-        <field name="namespace"/>
+        <field name="external_account_key" optional="hide"/>
+        <field name="namespace" optional="hide"/>
         <field name="purpose_id"/>
         <field name="company_id"/>
         <field name="active"/>
@@ -157,15 +196,16 @@
     <field name="arch" type="xml">
       <form>
         <sheet>
+          <p class="text-muted">Configure a connection, then add senders and inbound endpoints below. Activation requires verification and explicit confirmation.</p>
           <group>
-            <field name="name"/>
+            <field name="name" placeholder="Team channel"/>
             <field name="channel_type_id"/>
-            <field name="external_account_key"/>
-            <field name="namespace"/>
+            <field name="external_account_key" string="Provider account ID" placeholder="Provider-issued ID; never invent a value"/>
+            <field name="namespace" string="Account identity scope" placeholder="Provider-specific account scope"/>
             <field name="purpose_id"/>
             <field name="company_id"/>
             <field name="active"/>
-            <field name="credential_reference" groups="omni_channel.group_omni_manager" placeholder="OMNI_SECRET_MARKETING_BOT"/>
+            <field name="credential_reference" string="Provisioned secret reference" groups="omni_channel.group_omni_manager" placeholder="OMNI_SECRET_MARKETING_BOT"/>
           </group>
         </sheet>
       </form>
@@ -176,7 +216,8 @@
     <field name="res_model">omni.account</field>
     <field name="view_mode">list,form</field>
     <field name="help" type="html">
-      <p class="o_view_nocontent_smiling_face">Connections</p>
+      <p class="o_view_nocontent_smiling_face">Connect your team’s provider account</p>
+      <p>Configure a connection, then add senders and inbound endpoints below. Activation requires verification and explicit confirmation.</p>
     </field>
   </record>
   <record id="omni_outbound_sender_list" model="ir.ui.view">
@@ -187,7 +228,7 @@
         <field name="name"/>
         <field name="channel_id"/>
         <field name="account_id"/>
-        <field name="external_key"/>
+        <field name="external_key" optional="hide"/>
         <field name="is_selected"/>
         <field name="health"/>
         <field name="health_checked_at"/>
@@ -204,11 +245,11 @@
           <button name="action_deactivate" type="object" string="Deactivate" invisible="not is_selected" groups="omni_channel.group_omni_manager" confirm="Disable this channel's runtime sender?"/>
         </header>
         <sheet>
+          <p class="text-muted">Configure a connection, then add senders and inbound endpoints below. Activation requires verification and explicit confirmation.</p>
           <group>
             <field name="name"/>
             <field name="channel_id"/>
-            <field name="account_id" domain="[('purpose_id', '=', purpose_id), ('company_id', '=', company_id), ('channel_type_id', '=', channel_type_id)]"/>
-            <field name="external_key"/>
+            <field name="account_id" domain="[('purpose_id', '=', purpose_id), ('company_id', '=', company_id), ('channel_type_id', '=', channel_type_id)]" context="{'default_company_id': company_id, 'default_purpose_id': purpose_id, 'default_channel_type_id': channel_type_id}"/>
             <field name="is_selected"/>
             <field name="health"/>
             <field name="health_checked_at"/>
@@ -218,6 +259,12 @@
             <field name="active"/>
             <field name="health_message"/>
           </group>
+          <details>
+            <summary>Technical Details</summary>
+            <group>
+              <field name="external_key"/>
+            </group>
+          </details>
         </sheet>
       </form>
     </field>
@@ -227,7 +274,8 @@
     <field name="res_model">omni.outbound.sender</field>
     <field name="view_mode">list,form</field>
     <field name="help" type="html">
-      <p class="o_view_nocontent_smiling_face">Outbound Senders</p>
+      <p class="o_view_nocontent_smiling_face">Choose which account sends replies</p>
+      <p>Create a sender for your connection, then select and verify it from the channel settings.</p>
     </field>
   </record>
   <record id="omni_inbound_endpoint_list" model="ir.ui.view">
@@ -237,9 +285,12 @@
       <list>
         <field name="name"/>
         <field name="channel_id"/>
+        <field name="purpose_id"/>
         <field name="account_id"/>
-        <field name="external_key"/>
+        <field name="external_key" optional="hide"/>
         <field name="state"/>
+        <field name="health"/>
+        <field name="active"/>
       </list>
     </field>
   </record>
@@ -249,14 +300,17 @@
     <field name="arch" type="xml">
       <form>
         <sheet>
+          <p class="text-muted">Create and save an endpoint for the account that will receive messages. Activate a receiving policy for its channel, then use Verify and enable intake to allow Odoo to receive messages. The provider must also be configured to send messages to this endpoint’s webhook URL. This screen does not register the URL with the provider; that setup currently requires a deployment administrator.</p>
           <group>
             <field name="name"/>
             <field name="channel_id"/>
-            <field name="account_id" domain="[('purpose_id', '=', purpose_id), ('company_id', '=', company_id), ('channel_type_id', '=', channel_type_id)]"/>
-            <field name="external_key"/>
+            <field name="account_id" domain="[('purpose_id', '=', purpose_id), ('company_id', '=', company_id), ('channel_type_id', '=', channel_type_id)]" context="{'default_company_id': company_id, 'default_purpose_id': purpose_id, 'default_channel_type_id': channel_type_id}"/>
+            <field name="external_key" string="Receiving identity"/>
             <field name="state"/>
+            <field name="health"/>
+            <field name="health_checked_at"/>
             <field name="company_id" invisible="1"/>
-            <field name="purpose_id" invisible="1"/>
+            <field name="purpose_id"/>
             <field name="channel_type_id" invisible="1"/>
             <field name="active"/>
           </group>
@@ -269,7 +323,8 @@
     <field name="res_model">omni.inbound.endpoint</field>
     <field name="view_mode">list,form</field>
     <field name="help" type="html">
-      <p class="o_view_nocontent_smiling_face">Inbound Endpoints</p>
+      <p class="o_view_nocontent_smiling_face">Connect incoming messages to a channel</p>
+      <p>Choose a connection and an active receiving policy. Verification and explicit activation are required.</p>
     </field>
   </record>
   <record id="omni_purpose_list" model="ir.ui.view">
@@ -290,6 +345,7 @@
     <field name="arch" type="xml">
       <form>
         <sheet>
+          <p class="text-muted">A communication team controls who can see and work on its channels. Example: Customer Support. Add internal users who already have the Omni Operator or Administrator role and company access. Team membership alone does not grant an application role.</p>
           <group>
             <field name="name"/>
             <field name="code"/>
@@ -314,6 +370,7 @@
     <field name="arch" type="xml">
       <list create="false" edit="false" delete="false">
         <field name="name"/>
+        <field name="category"/>
         <field name="adapter_ready"/>
       </list>
     </field>
@@ -324,8 +381,10 @@
     <field name="arch" type="xml">
       <form create="false" edit="false" delete="false">
         <sheet>
+          <p class="text-muted">This catalog lists possible providers. Adapter installed means integration code is available; it does not mean an account is connected or sending is enabled.</p>
           <group>
             <field name="name"/>
+            <field name="category"/>
             <field name="adapter_ready"/>
           </group>
         </sheet>
@@ -361,6 +420,7 @@
     <field name="arch" type="xml">
       <form create="false" edit="false" delete="false">
         <sheet>
+          <p class="text-muted">Read-only history of confirmed actions: who acted, when, and what changed. Use this to investigate setup or operational changes. Audit entries cannot be edited or deleted.</p>
           <group>
             <field name="create_date"/>
             <field name="actor_id"/>
@@ -382,17 +442,8 @@
       <p class="o_view_nocontent_smiling_face">Audit</p>
     </field>
   </record>
-  <menuitem id="menu_omni_root" name="Omni-Channel" sequence="25" web_icon="omni_channel,static/description/icon.svg" action="action_channels" groups="group_omni_user"/>
-  <menuitem id="menu_channel_setup" name="Channels" parent="menu_omni_root" sequence="10"/>
-  <menuitem id="menu_monitoring" name="Monitoring" parent="menu_omni_root" sequence="40"/>
-  <menuitem id="menu_channels" name="Channels" parent="menu_channel_setup" action="action_channels" sequence="10"/>
-  <menuitem id="menu_senders" name="Outbound Senders" parent="menu_channel_setup" action="action_omni_outbound_sender" sequence="20"/>
-  <menuitem id="menu_endpoints" name="Inbound Endpoints" parent="menu_channel_setup" action="action_omni_inbound_endpoint" sequence="30"/>
-  <menuitem id="menu_audit" name="Audit" parent="menu_monitoring" action="action_omni_audit_event" sequence="40"/>
-  <menuitem id="menu_configuration" name="Configuration" parent="menu_omni_root" sequence="90" groups="group_omni_manager"/>
-  <menuitem id="menu_accounts" name="Connections" parent="menu_configuration" action="action_omni_account" sequence="10"/>
-  <menuitem id="menu_purposes" name="Communication Teams" parent="menu_configuration" action="action_omni_purpose" sequence="20" groups="base.group_system"/>
-  <menuitem id="menu_catalog" name="Channel Catalog" parent="menu_configuration" action="action_omni_channel_type" sequence="30"/>
+  <menuitem id="menu_omni_technical" name="Omni-Channel" parent="base.menu_custom" groups="base.group_system" sequence="2"/>
+  <menuitem id="menu_channels" name="Channels" parent="menu_omni_technical" action="action_channels" sequence="10" groups="base.group_system"/>
   <record id="command_list" model="ir.ui.view">
     <field name="name">omni.command.list</field>
     <field name="model">omni.command</field>
@@ -400,6 +451,8 @@
       <list decoration-warning="state == 'held'" decoration-success="state == 'approved'">
         <field name="name"/>
         <field name="channel_id"/>
+        <field name="create_date"/>
+        <field name="sender_id"/>
         <field name="recipient"/>
         <field name="requester_id"/>
         <field name="state" widget="label_selection"/>
@@ -411,7 +464,7 @@
     <field name="name">omni.command.form</field>
     <field name="model">omni.command</field>
     <field name="arch" type="xml">
-      <form>
+      <form class="o_omni_clear_form">
         <header>
           <button name="action_submit" type="object" string="Submit for approval" class="oe_highlight" invisible="state != 'draft'"/>
           <button name="action_view_approval" type="object" string="Review request" invisible="not approval_request_id"/>
@@ -420,27 +473,17 @@
           <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,queued"/>
         </header>
         <sheet>
-          <div class="alert alert-info" role="status">Queued messages need an enabled channel, verified provider and current recipient authorization. This installation ships with dispatch disabled.</div>
-          <group>
-            <field name="name" readonly="state != 'draft'"/>
-            <field name="channel_id" readonly="state != 'draft'"/>
-            <field name="recipient" readonly="state != 'draft'"/>
-            <field name="sender_id"/>
-            <field name="requester_id"/>
-            <field name="expires_at"/>
-            <field name="approval_request_id" readonly="1"/>
-            <field name="held_reason" invisible="not held_reason"/>
-          </group>
-          <group>
-            <field name="body" readonly="state != 'draft'" placeholder="Prepare your message…"/>
-            <field name="reason" readonly="state != 'draft'" placeholder="Explain why this message should be sent."/>
-          </group>
+          <div class="alert alert-info" role="status">Queued means approved and waiting for the background sender. It does not mean sent or delivered.</div>
+          <div class="o_omni_settings_grid mb-4">
+            <div class="o_omni_setting"><label for="name" string="Name"/><field name="name" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="channel_id" string="Channel"/><field name="channel_id" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="create_date" string="Created on"/><field name="create_date" nolabel="1"/></div><div class="o_omni_setting"><label for="purpose_id" string="Team"/><field name="purpose_id" nolabel="1"/></div><div class="o_omni_setting"><label for="recipient" string="Recipient"/><field name="recipient" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="sender_id" string="Sender"/><field name="sender_id" nolabel="1"/></div><div class="o_omni_setting"><label for="requester_id" string="Requester"/><field name="requester_id" nolabel="1"/></div><div class="o_omni_setting"><label for="expires_at" string="Expires At"/><field name="expires_at" nolabel="1"/></div><div class="o_omni_setting"><label for="approval_request_id" string="Approval Request"/><field name="approval_request_id" nolabel="1" readonly="1"/></div><div class="o_omni_setting" invisible="not held_reason"><label for="held_reason" string="Why this message is held"/><field name="held_reason" nolabel="1" invisible="not held_reason"/></div></div>
+          <div class="o_omni_settings_grid mb-4">
+            <div class="o_omni_setting"><label for="body" string="Message content"/><field name="body" nolabel="1" readonly="state != 'draft'" placeholder="Prepare your message…"/></div><div class="o_omni_setting"><label for="reason" string="Reason"/><field name="reason" nolabel="1" readonly="state != 'draft'" placeholder="Explain why this message should be sent."/></div></div>
         </sheet>
       </form>
     </field>
   </record>
   <record id="action_commands" model="ir.actions.act_window">
-    <field name="name">Prepared Messages</field>
+    <field name="name">Messages</field>
     <field name="res_model">omni.command</field>
     <field name="view_mode">list,form</field>
     <field name="help" type="html">
@@ -448,7 +491,6 @@
       <p>Content and sender identity are frozen when you submit.</p>
     </field>
   </record>
-  <menuitem id="menu_commands" name="Messages" parent="menu_omni_root" action="action_commands" sequence="5"/>
   <record id="approval_omni_content" model="ir.ui.view">
     <field name="name">approval.omni.content</field>
     <field name="model">approval.center.request</field>
@@ -458,8 +500,8 @@
         <group string="Communication review" invisible="not omni_command_id">
           <field name="omni_command_id"/>
           <field name="omni_sender_id"/>
-            <field name="omni_sender_key"/>
-            <field name="omni_expires_at"/>
+          <field name="omni_sender_key"/>
+          <field name="omni_expires_at"/>
           <field name="omni_recipient"/>
           <field name="omni_body"/>
           <button name="action_execute" type="object" string="Queue approved message" invisible="state != 'approved'"/>

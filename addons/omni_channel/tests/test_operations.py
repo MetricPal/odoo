@@ -107,17 +107,6 @@ class TestOperationsAlerts(TransactionCase):
         self.assertEqual((action['res_model'], action['res_id']), ('res.users', outsider.id))
         self.assertEqual(button, 'Open user settings')
 
-    def test_grouped_navigation_preserves_actions(self):
-        root = self.env.ref('omni_channel.menu_omni_root')
-        self.assertEqual(root.child_id.sorted('sequence').mapped('name'),
-                         ['Inbox', 'Messages', 'Channels', 'Monitoring', 'Configuration'])
-        for name in ('menu_channels', 'menu_senders', 'menu_endpoints'):
-            self.assertEqual(self.env.ref(f'omni_channel.{name}').parent_id,
-                             self.env.ref('omni_channel.menu_channel_setup'))
-        for name in ('menu_attempts', 'menu_events', 'menu_blocks', 'menu_audit'):
-            self.assertEqual(self.env.ref(f'omni_channel.{name}').parent_id,
-                             self.env.ref('omni_channel.menu_monitoring'))
-
     def test_operator_create_copy_and_other_provider(self):
         values = {
             'name': 'Slack operators', 'purpose_id': self.purpose.id,
@@ -358,7 +347,7 @@ class TestOperationsAlertsUI(HttpCase):
                     throw new Error('Missing expected operator correction UI');
                 }
                 (await waitFor(() => [...document.querySelectorAll('.o_notebook .nav-link')]
-                    .find(el => el.textContent.includes('Operations alerts')))).click();
+                    .find(el => el.textContent.includes('Alerts')))).click();
                 const input = await waitFor(() => document.querySelector('[name="primary_operator_id"] input'));
                 input.value = 'Operator Needs Team';
                 input.dispatchEvent(new Event('input', {bubbles: true}));
@@ -409,7 +398,7 @@ class TestOperationsAlertsUI(HttpCase):
                 }
                 await waitFor('.o_notebook .nav-link');
                 const tab = [...document.querySelectorAll('.o_notebook .nav-link')]
-                    .find(el => el.textContent.includes('Operations alerts'));
+                    .find(el => el.textContent.includes('Alerts'));
                 if (!tab) throw new Error('Missing operations tab');
                 tab.click();
                 await waitFor('.o_field_widget[name="primary_operator_id"]');

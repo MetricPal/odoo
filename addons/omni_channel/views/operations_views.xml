@@ -1,12 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <odoo>
   <record id="channel_operations_form" model="ir.ui.view">
     <field name="name">channel.operations.form</field>
     <field name="model">omni.channel</field>
     <field name="inherit_id" ref="channel_form"/>
     <field name="arch" type="xml">
-      <xpath expr="//notebook" position="inside">
-        <page string="Operations alerts" groups="base.group_system">
+      <xpath expr="//page[@name='alerts']" position="inside">
+        <div groups="base.group_system">
           <group string="Operators">
             <field name="primary_operator_id" options="{'no_create': True}"/>
             <field name="backup_operator_id" options="{'no_create': True}"/>
@@ -26,7 +26,7 @@
           <button name="action_enable_alerts" type="object" string="Enable email alerts" class="btn-primary" invisible="alerts_enabled" confirm="Authorize monitoring every minute and automatic emails to these recipients when counters change or recover, using the existing Odoo mail queue? This enables the shared monitoring scheduler. No customer message will be sent."/>
           <button name="action_pause_alerts" type="object" string="Pause email alerts" invisible="not alerts_enabled" confirm="Pause new alert emails? Emails already queued remain in the Odoo mail queue."/>
           <p class="text-muted mt16">Email delivery depends on Odoo and its outgoing mail service. Use external monitoring for server outages. Failed emails remain available for administrator review; they are not recreated on every check.</p>
-        </page>
+        </div>
       </xpath>
     </field>
   </record>

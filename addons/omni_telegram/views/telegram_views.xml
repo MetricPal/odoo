@@ -5,10 +5,18 @@
     <field name="model">omni.account</field>
     <field name="inherit_id" ref="omni_channel.omni_account_form"/>
     <field name="arch" type="xml">
+      <xpath expr="//field[@name='external_account_key']" position="attributes">
+        <attribute name="readonly">is_telegram</attribute>
+        <attribute name="help">Telegram: the public numeric bot ID, filled from your deployment-provisioned secret reference. It is not a username or token. Verification checks it against Telegram getMe.</attribute>
+      </xpath>
+      <xpath expr="//field[@name='namespace']" position="attributes">
+        <attribute name="readonly">is_telegram</attribute>
+        <attribute name="help">Telegram uses the bot ID as its account scope. The system fills this automatically.</attribute>
+      </xpath>
       <xpath expr="//sheet" position="inside">
         <field name="is_telegram" invisible="1"/>
         <group invisible="not is_telegram" string="Telegram sandbox" groups="omni_channel.group_omni_manager">
-          <div colspan="2" class="text-muted mb-3">Private text only. Authorize consenting test recipients explicitly. This does not register a webhook, enable a scheduler, grant message consent or approve a reply.</div>
+          <div colspan="2" class="text-muted mb-3">Private text only. Test with up to ten consenting private users. Example recipient ID: 123456789. Your deployment administrator obtains these numeric user/chat IDs from verified Telegram updates. Authorizing the sandbox verifies the bot and permits processing for this test list; you must still configure receiving rules, recipient permission and message approval.</div>
           <field name="telegram_sandbox_recipients" readonly="telegram_sandbox_authorized"/>
           <field name="telegram_sandbox_evidence" readonly="telegram_sandbox_authorized"/>
           <field name="telegram_sandbox_authorized"/>

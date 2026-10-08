@@ -46,6 +46,10 @@ class OmniChannelType(models.Model):
 
     name = fields.Char(required=True, translate=True)
     code = fields.Char(required=True, index=True)
+    category = fields.Selection(
+        [('messaging', 'Messaging'), ('social', 'Social'), ('other', 'Other')],
+        default='other', required=True,
+    )
     sequence = fields.Integer(default=10)
     adapter_ready = fields.Boolean(
         compute='_compute_adapter_ready', string='Adapter installed',
@@ -68,6 +72,8 @@ class OmniScope(models.AbstractModel):
     )
     purpose_id = fields.Many2one(
         'omni.purpose', required=True, ondelete='restrict', index=True,
+        string='Communication team',
+        help='The team and business purpose for this channel, for example Customer Support. Ordinary users need team membership and the appropriate Omni role.',
     )
 
     def _require_manager(self):
@@ -83,7 +89,10 @@ class OmniScope(models.AbstractModel):
             if not self.env.su:
                 if (
                     record.company_id not in self.env.companies
-                    or self.env.user not in record.purpose_id.user_ids
+                    or (
+                        not self.env.user.has_group('base.group_system')
+                        and self.env.user not in record.purpose_id.user_ids
+                    )
                 ):
                     raise AccessError(
                         _(
@@ -237,10 +246,14 @@ class OmniAccount(models.Model):
     channel_type_id = fields.Many2one(
         'omni.channel.type', required=True, ondelete='restrict',
     )
-    external_account_key = fields.Char(required=True)
+    external_account_key = fields.Char(
+        required=True, string='Provider account ID',
+        help='The provider-issued account identifier, not an Odoo user ID. Telegram fills its numeric bot ID from the provisioned secret reference. Other adapters define their own account identity.',
+    )
     namespace = fields.Char(
         required=True,
-        help='Canonical provider identity namespace; verified on health check.',
+        string='Account identity scope',
+        help='Keeps external identities separate between provider accounts. Telegram uses the bot ID and fills it automatically; this value must match the connected provider account.',
     )
     credential_reference = fields.Char(
         groups='omni_channel.group_omni_manager',

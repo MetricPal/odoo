@@ -51,6 +51,24 @@ class TestOmniInbox(TestOmniCommands):
         self.intake_policy.with_user(self.manager).action_activate()
         self.endpoint.with_user(self.manager).action_enable()
 
+    def test_recipient_permission_carries_identity_without_granting_consent(self):
+        self._receive()
+        self._process()
+        conversation = self.env['omni.conversation'].search([
+            ('endpoint_id', '=', self.endpoint.id),
+        ], limit=1)
+        action = conversation.with_user(self.manager).action_recipient_permission()
+        self.assertEqual(action['context']['default_recipient'], '12345')
+        self.assertEqual(action['context']['default_namespace'], self.account.namespace)
+        self.assertEqual(action['context']['default_channel_id'], self.channel.id)
+        self.assertFalse(self.env['omni.consent'].search_count([
+            ('channel_id', '=', self.channel.id),
+        ]))
+        with self.assertRaises(AccessError):
+            conversation.with_user(self.operator).action_recipient_permission()
+        with self.assertRaises(AccessError):
+            conversation.with_user(self.outsider).action_recipient_permission()
+
     def _data(self, **changes):
         data = {
             "event_key": "evt-1",

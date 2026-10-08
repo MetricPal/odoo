@@ -98,6 +98,7 @@ class OmniConsent(models.Model):
 
     channel_id = fields.Many2one(
         "omni.channel", required=True, check_company=True, ondelete="restrict",
+        help="Choose the channel whose company and communication purpose this authorization covers.",
     )
     company_id = fields.Many2one(
         related="channel_id.company_id", store=True, precompute=True, default=None,
@@ -105,14 +106,22 @@ class OmniConsent(models.Model):
     purpose_id = fields.Many2one(
         related="channel_id.purpose_id", store=True, precompute=True,
     )
-    namespace = fields.Char(required=True)
-    recipient = fields.Char(required=True)
+    namespace = fields.Char(
+        required=True, string="Provider account namespace",
+        help="Copy the Namespace from the provider connection used by this channel's runtime sender. It must match exactly; do not enter a bot token or password.",
+    )
+    recipient = fields.Char(
+        required=True, string="Recipient identifier",
+        help="Enter the exact destination identifier used by the provider. For Telegram, use the numeric chat ID from the verified conversation, not a contact name, phone number or @username. This field does not look up or verify the recipient.",
+    )
     evidence = fields.Text(
         required=True,
-        help="Record the source and scope authorizing this recipient to receive messages.",
+        string="Authorization evidence",
+        help="Describe who authorized contact, when and where they did so, and which messages are covered. Include a reference to the request or agreement. This note is reviewed by a person; the system does not verify it automatically.",
     )
     expires_at = fields.Datetime(
         required=True, default=lambda self: fields.Datetime.now() + timedelta(days=30),
+        help="Sending requires authorization that has not expired. The default is 30 days; choose a date consistent with the evidence. Expired records may still show Confirmed, but cannot authorize a send.",
     )
     state = fields.Selection(
         [("draft", "Draft"), ("confirmed", "Confirmed"), ("revoked", "Revoked")],
