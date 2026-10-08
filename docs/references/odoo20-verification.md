@@ -841,3 +841,7 @@ Discuss uses 1 and Activities uses 2. The earlier check of base alone missed
 this override. ir.ui.menu orders by sequence,id. Omni uses sequence 2 after the
 earlier-created Activities record. Tests assert immediate adjacency to Email
 and preserve both Discuss and Activities ahead of Omni.
+
+### Channel readiness badge (2026-10-08)
+
+Verified the Odoo 20 native badge field in `addons/web/static/src/views/fields/badge/badge_field.js`: selection fields and conditional semantic decorations are supported. Channel readiness now appears without a label at the top right of the form sheet, with success, warning and danger colors. The empty sender selection error now names the Outbound senders tab. No activation or permission behavior changed.

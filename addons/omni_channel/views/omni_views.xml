@@ -91,6 +91,12 @@
             <button name="action_connections" type="object" string="Connections" icon="fa-plug" class="oe_stat_button" invisible="not id"/>
             <button name="action_messages" type="object" string="Messages" icon="fa-envelope" class="oe_stat_button" invisible="not id"/>
           </div>
+          <div class="d-flex justify-content-end mb-2" role="status" aria-live="polite">
+            <field name="readiness" widget="badge" nolabel="1"
+                   decoration-success="readiness == 'ready'"
+                   decoration-warning="readiness == 'unconfigured'"
+                   decoration-danger="readiness in ('unavailable', 'blocked')"/>
+          </div>
           <div><field name="adapter_ready" invisible="1"/><div class="alert alert-warning" role="status" invisible="not channel_type_id or adapter_ready">This channel type has no installed provider adapter. You can save its configuration, but connecting, sending and receiving are unavailable until a compatible adapter is installed.</div></div>
           <div class="oe_title">
             <label for="name"/>
@@ -105,7 +111,6 @@
               <field name="company_id"/>
             </group>
             <group>
-              <field name="readiness"/>
               <field name="selected_sender_id"/>
               <field name="endpoint_count"/>
               <field name="connection_status"/>

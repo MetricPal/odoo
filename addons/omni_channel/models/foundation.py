@@ -205,7 +205,7 @@ class OmniChannel(models.Model):
         self.ensure_one()
         self._require_manager()
         if not self.sender_ids:
-            raise UserError(_('Add a sender configuration first.'))
+            raise UserError(_('Add an outbound sender in the Outbound senders tab first.'))
         wizard = (
             self.env['omni.sender.selection'].create(
                 {
