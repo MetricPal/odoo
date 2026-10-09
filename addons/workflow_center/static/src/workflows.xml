@@ -7,22 +7,7 @@
       </t>
     <t t-if="this.state.page === 'home'">
       <main class="wf_home">
-        <section class="wf_card wf_describe">
-          <div><h2>Describe what should happen.</h2><p>Say when it starts, which records it applies to, and what happens next.</p>
-            <label for="wf_description" class="visually-hidden">Workflow description</label>
-            <textarea id="wf_description" t-att-value="this.state.description" t-on-input="(ev) => this.state.description = ev.target.value" rows="3"/>
-            <div class="wf_chips mt-3"><span>Try:</span>
-              <button t-on-click="() => this.state.description = 'Assign new leads and book a first call.'">Assign new leads</button>
-              <button t-on-click="() => this.state.description = 'Create onboarding tasks for new employees.'">Onboard employees</button>
-              <button t-on-click="() => this.state.description = 'Send confirmed orders to our logistics system.'">Send orders to logistics</button>
-            </div>
-            <p class="mt-3 mb-0">AI drafting is not connected. Use a template below or start a draft with this description.</p>
-          </div>
-          <aside><h3>Or start blank</h3><label for="wf_document">Which document should this workflow watch?</label>
-            <select id="wf_document" t-att-value="this.state.modelId" t-on-change="(ev) => this.state.modelId = ev.target.value"><option t-foreach="this.state.data.models" t-as="model" t-key="model.id" t-att-value="model.id"><t t-out="model.name"/></option></select>
-            <button class="btn btn-outline-primary w-100 mt-3" t-on-click="() => this.newWorkflow()">Start blank</button>
-          </aside>
-        </section>
+
         <div class="wf_home_columns">
           <div>
             <h2>Start from a template <small class="ms-2">11 templates</small></h2>
@@ -36,14 +21,6 @@
                 <small class="wf_requirement" t-else="">Opens a draft for review and setup</small>
               </button>
             </div>
-            <section class="wf_card mt-4"><h2>Your workflows</h2>
-              <p t-if="!this.state.data.workflows.length">No workflows yet. Choose a template or start blank.</p>
-              <div class="wf_table_wrap" t-else=""><table class="table"><thead><tr><th>Workflow</th><th>Document</th><th>Starts when</th><th>Status</th></tr></thead><tbody>
-                <tr t-foreach="this.state.data.workflows" t-as="flow" t-key="flow.id">
-                  <td><button class="wf_link" t-on-click="() => this.openWorkflow(flow.id)" t-out="flow.name"/></td><td t-out="flow.model_id[1]"/><td t-out="this.triggerLabel(flow.trigger)"/><td><span t-att-class="'wf_status ' + flow.state" t-out="flow.state"/></td>
-                </tr>
-              </tbody></table></div>
-            </section>
           </div>
           <aside class="wf_explain">
             <section class="wf_card"><h3>Every workflow is When → If → Do</h3>
@@ -151,5 +128,25 @@
     </div>
     <div class="wf_connector" t-if="!node.step.end"/>
   </t>
+</t>
+<t t-name="workflow_center.WorkflowStarter">
+  <div class="o_workflow_starter" t-if="!this.props.record.resId">
+        <section class="wf_describe">
+          <div><h2>Describe what should happen.</h2><p>Say when it starts, which records it applies to, and what happens next.</p>
+            <label for="wf_description" class="visually-hidden">Workflow description</label>
+            <textarea id="wf_description" t-att-value="this.state.description" t-on-input="(ev) => this.state.description = ev.target.value" rows="3"/>
+            <div class="wf_chips mt-3"><span>Try:</span>
+              <button type="button" t-on-click="() => this.state.description = 'Assign new leads and book a first call.'">Assign new leads</button>
+              <button type="button" t-on-click="() => this.state.description = 'Create onboarding tasks for new employees.'">Onboard employees</button>
+              <button type="button" t-on-click="() => this.state.description = 'Send confirmed orders to our logistics system.'">Send orders to logistics</button>
+            </div>
+            <p class="mt-3 mb-0">AI drafting is not connected. Start blank to fill in the workflow settings with this description.</p>
+          </div>
+          <aside><h3>Or start blank</h3><label for="wf_document">Which document should this workflow watch?</label>
+            <select id="wf_document" t-att-value="this.state.modelId" t-on-change="(ev) => this.state.modelId = ev.target.value"><option t-foreach="this.state.models" t-as="model" t-key="model.id" t-att-value="model.id" t-att-selected="model.id.toString() === this.state.modelId"><t t-out="model.name"/></option></select>
+            <button type="button" class="btn btn-outline-primary w-100 mt-3 wf_start_blank" t-att-disabled="!this.state.modelId || this.state.busy" t-on-click="() => this.startBlank()">Start blank</button>
+          </aside>
+        </section>
+  </div>
 </t>
 </templates>

@@ -1,4 +1,7 @@
 import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+import { standardWidgetProps } from "@web/views/widgets/standard_widget_props";
+import { ListController } from "@web/views/list/list_controller";
+import { listView } from "@web/views/list/list_view";
 import { Layout } from "@web/search/layout";
 import { useSubEnv } from "@web/owl2/utils";
 import { getDefaultConfig } from "@web/views/view";
@@ -22,8 +25,7 @@ export class Workflows extends Component {
         this.state = proxy({
             page: this.constructor.initialPage || "home", category: "All", data: { templates: [], workflows: [], models: [] },
             workflow: null, selected: null, runFilter: "all", runs: [], run: null,
-            description: "When a customer invoice is 7 days overdue, email the customer a reminder. If it is still unpaid 7 days later, create a call activity for the salesperson.",
-            modelId: "", busy: false,
+            busy: false,
         });
         this.categories = ["All", "Reminders", "Data updates", "Create records", "Scheduled", "Integrations", "Approvals"];
         this.blocks = [
@@ -48,13 +50,14 @@ export class Workflows extends Component {
         onWillStart(async () => {
             await this.loadHome();
             if (this.state.page === "runs") await this.loadRuns();
+            if (this.props.action.params?.workflow_id) {
+                await this.openWorkflow(this.props.action.params.workflow_id);
+            }
         });
     }
     async loadHome() {
         this.state.data = await this.orm.call("workflow.definition", "home_data", []);
-        if (!this.state.modelId && this.state.data.models.length) {
-            this.state.modelId = String((this.state.data.models.find(m => m.model === 'account.move') || this.state.data.models.find(m => m.model === 'res.partner') || this.state.data.models[0]).id);
-        }
+
     }
     get templates() {
         return this.state.data.templates.filter(t => this.state.category === "All" || t.category === this.state.category);
@@ -109,11 +112,7 @@ export class Workflows extends Component {
         } finally { this.state.busy = false; }
     }
     newWorkflow() {
-        this.dialog.add(FormViewDialog, {
-            resModel: "workflow.definition", title: "New workflow",
-            context: { default_model_id: Number(this.state.modelId), default_description: this.state.description },
-            onRecordSaved: record => this.openWorkflow(record.resId),
-        });
+        return this.action.doAction("workflow_center.action_new_workflow");
     }
     configureWorkflow() {
         const workflow = this.state.workflow;
@@ -206,3 +205,62 @@ export class WorkflowRuns extends Workflows {
     static initialPage = "runs";
 }
 registry.category("actions").add("workflow_center.runs", WorkflowRuns);
+
+// Preserve existing My workflows bookmarks while using native collection views.
+registry.category("actions").add("workflow_center.my_workflows", (env) =>
+    env.services.action.doAction("workflow_center.action_workflow_library")
+);
+
+registry.category("actions").add("workflow_center.new", (env) =>
+    env.services.action.doAction({
+        type: "ir.actions.act_window", name: "New workflow",
+        res_model: "workflow.definition", views: [[false, "form"]], target: "current",
+    })
+);
+
+export class WorkflowStarter extends Component {
+    static template = "workflow_center.WorkflowStarter";
+    props = useProps(standardWidgetProps);
+
+    setup() {
+        this.orm = useService("orm");
+        this.state = proxy({ models: [], modelId: "", description: "", busy: false });
+        onWillStart(async () => {
+            if (this.props.record.resId) return;
+            const data = await this.orm.call("workflow.definition", "home_data", []);
+            this.state.models = data.models;
+            const selected = this.props.record.data.model_id?.id;
+            const model = data.models.find(m => m.id === selected)
+                || data.models.find(m => m.model === "account.move")
+                || data.models.find(m => m.model === "res.partner") || data.models[0];
+            this.state.modelId = model ? String(model.id) : "";
+            this.state.description = this.props.record.data.description || "";
+        });
+    }
+
+    async startBlank() {
+        if (this.state.busy || this.props.record.resId || this.props.readonly) return;
+        const model = this.state.models.find(m => String(m.id) === this.state.modelId);
+        if (!model) return;
+        this.state.busy = true;
+        try {
+            await this.props.record.update({
+                model_id: { id: model.id, display_name: model.name },
+                description: this.state.description,
+            });
+        } finally {
+            this.state.busy = false;
+        }
+    }
+}
+registry.category("view_widgets").add("workflow_starter", { component: WorkflowStarter });
+
+export class WorkflowListController extends ListController {
+    createRecord() {
+        return this.actionService.doAction("workflow_center.action_new_workflow");
+    }
+}
+registry.category("views").add("workflow_center_list", {
+    ...listView,
+    Controller: WorkflowListController,
+});

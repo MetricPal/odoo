@@ -4,8 +4,22 @@ Build and monitor supervised business automations in the **Workflows** app,
 available from the app menu to administrators. Internal approvers continue to
 use Approval Center.
 
-Use **Overview** and **Run history** in Odoo's top navbar.
-The standard **New** button beside the Overview breadcrumb opens a workflow draft.
+Use **My workflows** and **Run history** in Odoo's top navbar. Click the
+**Workflows** app name to return to the overview.
+**My workflows**, beside the Workflows app name, lists existing workflows and
+opens their builder from either native list rows or kanban cards. Switch views
+using Odoo's standard view switcher. Extra list columns are optional and hidden
+by default. Kanban groups by status, but cards and columns cannot be dragged;
+status changes require the existing builder actions.
+**New** in Overview, list, or kanban opens the native workflow form. The
+**Describe what should happen** panel, document selector, and **Start blank**
+button sit inside its white sheet for unsaved workflows. **Start blank** fills
+Document and Description on that same unsaved form without navigation or saving.
+It does not infer triggers or steps from prose. Save and use **Open builder** to
+configure the workflow's steps. The panel is hidden for saved workflows.
+The Workflows overview page focuses on templates and new
+drafts. The listing retains the existing administrator and company access scope.
+The overview retains templates; the creation panel lives inside the new workflow form sheet.
 
 ## Start here
 

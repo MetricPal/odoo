@@ -31,12 +31,38 @@ class TestWorkflows(TransactionCase):
         module = self.env['ir.module.module'].search([('name', '=', 'workflow_center')])
         self.assertTrue(module.application)
         sections = menu.child_id.sorted('sequence')
-        self.assertEqual(sections.mapped('name'), ['Overview', 'Run history'])
+        self.assertEqual(sections.mapped('name'), ['My workflows', 'Run history'])
         self.assertTrue(all(section.group_ids == menu.group_ids for section in sections))
-        self.assertEqual(sections[0].action, menu.action)
+        self.assertEqual(sections[0].action, self.env.ref('workflow_center.action_workflow_library'))
         self.assertEqual(sections[1].action.tag, 'workflow_center.runs')
         self.assertFalse(self.env.ref('workflow_center.menu_workflows_approvals', raise_if_not_found=False))
         self.assertFalse(self.env.ref('workflow_center.action_workflow_approvals', raise_if_not_found=False))
+
+    def test_library_views_and_guarded_status(self):
+        from lxml import etree
+        action = self.env.ref('workflow_center.action_workflow_library')
+        self.assertEqual(action.res_model, 'workflow.definition')
+        self.assertEqual(action.view_mode, 'list,kanban,form')
+        for view_type in ('list', 'kanban'):
+            view = self.env.ref('workflow_center.workflow_' + view_type)
+            arch = etree.fromstring(view.arch_db)
+            self.assertEqual(arch.get('action'), 'action_open_builder')
+            self.assertEqual(arch.get('type'), 'object')
+            if view_type == 'kanban':
+                self.assertEqual(arch.get('on_create'), 'workflow_center.action_new_workflow')
+                self.assertEqual(arch.get('records_draggable'), 'false')
+                self.assertEqual(arch.get('groups_draggable'), 'false')
+        flow = self.flow()
+        result = flow.action_open_builder()
+        self.assertEqual(result['params']['workflow_id'], flow.id)
+        self.assertEqual(result['tag'], 'workflow_center.home')
+        for state in ('active', 'paused', 'draft'):
+            with self.assertRaises(AccessError):
+                flow.write({'state': state})
+        self.assertEqual(flow.state, 'draft')
+        user = new_test_user(self.env, login='workflow_library_user', groups='base.group_user')
+        with self.assertRaises(AccessError):
+            flow.with_user(user).action_open_builder()
 
     def flow(self, **values):
         return self.env['workflow.definition'].create({

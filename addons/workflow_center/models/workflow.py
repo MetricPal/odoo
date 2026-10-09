@@ -326,6 +326,12 @@ class Workflow(models.Model):
                 ['name', 'model'], order='name'),
         }
 
+    def action_open_builder(self):
+        self.ensure_one()
+        self._manager()
+        return {'type': 'ir.actions.client', 'tag': 'workflow_center.home',
+                'name': self.name, 'params': {'workflow_id': self.id}}
+
     def builder_data(self):
         self.ensure_one()
         self._manager()

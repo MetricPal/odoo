@@ -22,14 +22,17 @@ class TestWorkflowUI(HttpCase):
                     throw new Error('Workflow UI did not reach expected state: ' + document.body.innerText.slice(-1500));
                 };
                 await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
+                if (document.querySelector('.wf_home .wf_link')) throw new Error('Existing workflows still on overview');
+                if (document.querySelector('.wf_describe')) throw new Error('Creation panel remains on overview');
                 if (document.querySelector('.wf_nav')) throw new Error('Duplicate workflow navbar');
                 const newButton = document.querySelector('.o_control_panel_main_buttons .o_workflow_button_add');
                 if (!newButton || newButton.textContent.trim() !== 'New') throw new Error('Missing native New button');
                 newButton.click();
-                await waitFor(() => document.querySelector('.modal [name="model_id"]'));
-                document.querySelector('.modal [aria-label="Close"]').click();
-                await waitFor(() => !document.querySelector('.modal'));
+                await waitFor(() => document.querySelector('.o_form_sheet .o_workflow_starter .wf_describe'));
+                if (document.querySelector('.modal') || document.querySelector('.wf_templates')) throw new Error('New did not open a dedicated page');
                 if (!document.body.innerText.includes('AI drafting is not connected')) throw new Error('Missing honest drafting status');
+                document.querySelector('.o_control_panel .breadcrumb a').click();
+                await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
                 console.log('workflow_capture_home');
                 await new Promise(resolve => setTimeout(resolve, 300));
                 const onboarding = [...document.querySelectorAll('.wf_template')].find(n => n.innerText.includes('New employee onboarding'));
@@ -52,6 +55,69 @@ class TestWorkflowUI(HttpCase):
     def test_mobile_home_and_builder(self):
         self.browser_size = '390x844'
         self.test_home_and_builder()
+
+    def test_my_workflows_navigation(self):
+        self.env['workflow.definition'].with_user(self.env.ref('base.user_admin')).create({
+            'name': 'Navigation test workflow',
+            'model_id': self.env['ir.model']._get_id('res.partner'),
+        })
+        self.browser_js('/odoo/action-workflow_center.action_workflows', """
+            (async () => {
+                const waitFor = async (predicate) => {
+                    for (let i = 0; i < 150; i++) {
+                        if (predicate()) return;
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    throw new Error('Workflow navigation did not reach expected state');
+                };
+                const menu = () => document.querySelector('.o_main_navbar [data-menu-xmlid="workflow_center.menu_my_workflows"]');
+                await waitFor(() => menu() && document.querySelector('.wf_templates'));
+                if (document.querySelector('.wf_home .wf_link')) throw new Error('Listing remains on overview');
+                if (menu().textContent.trim() !== 'My workflows') throw new Error('Incorrect menu label');
+                menu().click();
+                await waitFor(() => document.querySelector('.o_list_view'));
+                if (document.querySelector('.wf_templates')) throw new Error('Templates on My workflows');
+                if (document.querySelector('th[data-name="description"]')) throw new Error('Optional description shown by default');
+                if (!document.querySelector('.o_optional_columns')) throw new Error('Missing column selector');
+                document.querySelector('.o_switch_view.o_kanban').click();
+                await waitFor(() => document.querySelector('.o_kanban_record'));
+                if (document.querySelector('.o_kanban_record.o_draggable')) throw new Error('Workflow cards can be dragged');
+                const card = [...document.querySelectorAll('.o_kanban_record')].find(n => n.textContent.includes('Navigation test workflow'));
+                if (!card) throw new Error('Workflow missing in kanban');
+                card.click();
+                await waitFor(() => document.querySelector('.wf_builder'));
+                menu().click();
+                await waitFor(() => document.querySelector('.o_switch_view.o_list'));
+                document.querySelector('.o_switch_view.o_list').click();
+                await waitFor(() => document.querySelector('.o_list_view'));
+                const flow = [...document.querySelectorAll('.o_data_row')].find(n => n.textContent.includes('Navigation test workflow'));
+                if (!flow) throw new Error('Existing workflow missing');
+                flow.click();
+                await waitFor(() => document.querySelector('.wf_builder'));
+                if (!document.querySelector('.wf_header').textContent.includes('Navigation test workflow')) throw new Error('Wrong builder opened');
+                menu().click();
+                await waitFor(() => document.querySelector('.o_list_view'));
+                document.querySelector('.o_list_button_add').click();
+                await waitFor(() => document.querySelector('.o_form_sheet .wf_start_blank'));
+                const select = document.querySelector('#wf_document');
+                const contact = [...select.options].find(option => option.textContent === 'Contact');
+                if (!contact) throw new Error('Missing Contact document');
+                select.value = contact.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                const description = document.querySelector('#wf_description');
+                description.value = 'Review new customer registrations.';
+                description.dispatchEvent(new Event('input', { bubbles: true }));
+                const form = document.querySelector('.o_form_view');
+                const url = window.location.href;
+                document.querySelector('.wf_start_blank').click();
+                await waitFor(() => document.querySelector('.o_form_view [name="model_id"] input')?.value === 'Contact');
+                if (document.querySelector('.o_form_view') !== form || window.location.href !== url) throw new Error('Start blank navigated away from the current form');
+                if (document.querySelector('.modal')) throw new Error('Start blank opened a modal');
+                if (document.querySelector('[name="model_id"] input').value !== 'Contact') throw new Error('Document not prefilled');
+                if (document.querySelector('[name="description"] textarea').value !== 'Review new customer registrations.') throw new Error('Description not prefilled');
+                console.log('test successful');
+            })();
+        """, login='admin', timeout=90)
 
     def test_run_history_retry_and_preview_record_picker(self):
         from odoo.exceptions import UserError
@@ -127,7 +193,7 @@ class TestWorkflowUI(HttpCase):
             'sequence': 20, 'end': True,
         })
         branch.false_id = no
-        self.browser_js('/odoo/action-workflow_center.action_workflows', """
+        self.browser_js('/odoo/action-workflow_center.action_my_workflows', """
             (async () => {
                 const waitFor = async (predicate) => {
                     for (let i = 0; i < 150; i++) {
@@ -141,8 +207,8 @@ class TestWorkflowUI(HttpCase):
                     await waitFor(() => [...document.querySelectorAll('.o-autocomplete--dropdown-item')].some(n => (n.textContent.trim() === text || n.textContent.trim() === text + ' (Contact)')));
                     [...document.querySelectorAll('.o-autocomplete--dropdown-item')].find(n => (n.textContent.trim() === text || n.textContent.trim() === text + ' (Contact)')).click();
                 };
-                await waitFor(() => [...document.querySelectorAll('.wf_link')].some(n => n.textContent === 'Branch and create UI'));
-                [...document.querySelectorAll('.wf_link')].find(n => n.textContent === 'Branch and create UI').click();
+                await waitFor(() => [...document.querySelectorAll('.o_data_row')].some(n => n.textContent.includes('Branch and create UI')));
+                [...document.querySelectorAll('.o_data_row')].find(n => n.textContent.includes('Branch and create UI')).click();
                 await waitFor(() => document.querySelectorAll('.wf_branch_paths > section').length === 2);
                 const paths = document.querySelectorAll('.wf_branch_paths > section');
                 if (!paths[0].innerText.includes('Create follow-up contact') || !paths[1].innerText.includes('Wait for contact details')) throw new Error('Branch paths are mixed');
@@ -185,7 +251,7 @@ class TestWorkflowUI(HttpCase):
                 if (document.querySelector('.o_main_navbar [data-menu-xmlid="workflow_center.menu_workflows_approvals"]')) throw new Error('Unexpected approval shortcut');
                 document.querySelector('.o_main_navbar [data-menu-xmlid="workflow_center.menu_workflows_runs"]').click();
                 await waitFor(() => document.querySelector('.wf_runs'));
-                document.querySelector('.o_main_navbar [data-menu-xmlid="workflow_center.menu_workflows_overview"]').click();
+                document.querySelector('.o_main_navbar [data-menu-xmlid="workflow_center.menu_workflows"]').click();
                 await waitFor(() => document.querySelector('.wf_home'));
                 console.log('test successful');
             })();

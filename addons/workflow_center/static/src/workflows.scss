@@ -1,4 +1,4 @@
-.o_workflows {
+.o_workflows, .o_workflow_starter {
     --wf-purple: #714b67;
     height: 100%; overflow: hidden; background: #f5f3f2; color: #302b2f;
     h1 { font-size: 24px; margin: 0; } h2 { font-size: 19px; font-weight: 650; }
@@ -64,4 +64,12 @@
     @media (max-width: 1200px) { .wf_templates { grid-template-columns: repeat(2, minmax(0, 1fr)); } .wf_builder { grid-template-columns: 180px minmax(260px, 1fr) 260px; gap: 14px; padding: 20px; } }
     @media (max-width: 900px) { .wf_home_columns { grid-template-columns: 1fr; } .wf_describe { grid-template-columns: 1fr; } .wf_builder { grid-template-columns: 1fr; } .wf_palette { display: flex; flex-wrap: wrap; gap: 8px; h3, p, h4 { width: 100%; } button { width: auto; } } .wf_runs { grid-template-columns: 1fr; } }
     @media (max-width: 600px) { .wf_branch_paths { grid-template-columns: 1fr; } .wf_home, .wf_runs { padding: 16px; } .wf_templates { grid-template-columns: 1fr; } .wf_header { padding: 18px 16px; flex-wrap: wrap; } .wf_card { padding: 18px; } .wf_banner { margin: 16px; } .wf_builder { padding: 16px; } }
+}
+
+// The creation assistant belongs to the native form sheet, not the app shell.
+.o_workflow_starter {
+    height: auto;
+    overflow: visible;
+    background: transparent;
+    .wf_describe { padding-bottom: 24px; border-bottom: 1px solid #e3dfe1; }
 }

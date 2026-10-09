@@ -895,3 +895,80 @@ Removing the Workflows approval shortcut uses `ir.model.data._process_end` in
 `odoo/addons/base/models/ir_model.py`: upgrading deletes module-owned records
 whose non-noupdate XML IDs are no longer loaded. Verified removal of both the
 menu and its dedicated action on the existing disposable database.
+
+
+Workflow listing navigation (2026-10-10): verified native app-section rendering
+in `addons/web/static/src/webclient/navbar/navbar.xml` and reused the existing
+Workflows client-action registration pattern. `My workflows` is the first child
+menu (sequence 5), beside the Workflows app brand, with the same administrator
+restriction. It opens the moved listing and existing builder; no ownership
+filter or permission change was introduced. The overview retains templates.
+XML parsing, JavaScript/Python syntax, and whitespace checks passed. Browser
+coverage was added for menu navigation and opening a listed workflow; execution
+is pending explicit approval to create the disposable local test database after
+automatic approval review rejected that database creation.
+
+My workflows native views (2026-10-10): replaced the custom collection table
+with an `ir.actions.act_window` using list, kanban, and form views. Verified
+`action`/`type` row/card opening in the local list controller and kanban record,
+and `records_draggable`/`groups_draggable` parsing and resequencing guards in
+`addons/web/static/src/views/kanban/kanban_arch_parser.js` and
+`kanban_renderer.js`. Both drag flags are false, including when users regroup
+the board. The server's existing protected `state` write guard remains intact.
+The new builder-opening method enforces the existing administrator and record
+access checks. Extra business list fields use `optional="hide"`; technical
+tokens, webhook credentials, and internal execution fields are not exposed.
+The earlier client action remains as a redirect for existing bookmarks.
+
+Validation: all module XML/Python syntax, JavaScript syntax, Odoo list/search
+Relax NG schemas, and whitespace checks passed. Updated browser tests cover
+view switching, non-draggable cards, optional columns, and opening the builder;
+model tests cover direct status-write rejection and builder access. Runtime
+tests and the running-app module upgrade have not been performed; disposable
+database creation remains pending the approval requested in the previous turn.
+
+
+Workflow creation page (2026-10-10): the New client action now owns the description
+and document-selection panel. Overview retains templates. Verified the local
+Odoo 20 ListController.createRecord override and native KanbanController on_create
+route; the list extension changes only creation navigation, and kanban retains
+its non-draggable flags. Start blank returns a current-target act_window with
+an explicit form view and default_model_id/default_description; opening either
+page does not call create. The native form supplies saving and builder access.
+Updated UI coverage checks separate-page navigation and form prefilling.
+XML/Python/JavaScript syntax, list/search schemas and whitespace checks passed.
+Runtime tests and module upgrade remain unperformed, pending the previously
+requested approval for a disposable test database.
+
+Creation-page render fix: bundled OWL resolves bare `String(...)` in a template
+expression as a context property, producing `ctx.String is not a function`.
+Use `model.id.toString()` for the option selection comparison instead. Executed
+the bundled compiler's expression logic locally: reproduced the original error
+and verified the replacement for matching, nonmatching, and empty selections.
+XML parsing and whitespace checks passed; no database changes were needed.
+
+Workflow starter inside the form sheet (2026-10-10): New now routes directly to
+the native unsaved workflow form. A registered view widget inside `<sheet>` owns
+the description/document inputs and Start blank button; it is hidden for saved
+records. Verified `standardWidgetProps` and `view_widgets` registration against
+the local widget implementation, and the Odoo 20 many2one update shape
+`{id, display_name}` against native record-update callers. The button calls
+`record.update` on the form's current record rather than opening another action
+or calling create/save. Native `Record.update` keeps changes local while the new
+form is in edition. Only Document and Description are changed; prose is not
+interpreted as executable workflow configuration.
+
+Validation: executed the actual widget method with an in-memory record, checking
+field population, preservation of existing name/trigger, saved/readonly/invalid
+selection guards, and busy-state recovery after errors. XML/Python/JavaScript
+syntax and whitespace checks passed. UI regression now requires the panel to be
+inside the sheet and the URL/form to stay unchanged when Start blank is clicked.
+Live browser verification and module upgrade remain pending.
+
+
+Workflow navbar simplification (2026-10-10): removed the redundant Overview
+child menu. The Workflows root keeps its existing overview action; My workflows
+and Run history remain its visible sections. Module upgrade removes the obsolete
+module-owned menu using the previously verified XML-ID cleanup mechanism.
+Updated navigation assertions and the UI return path to use the app brand.
+XML/Python syntax and whitespace checks passed; live upgrade remains pending.
