@@ -1,0 +1,155 @@
+<templates xml:space="preserve">
+<t t-name="workflow_center.Workflows">
+  <div class="o_workflows d-flex flex-column">
+    <Layout display="{ controlPanel: {} }" className="'overflow-auto'">
+      <t t-set-slot="control-panel-buttons">
+        <button t-if="this.state.page === 'home'" type="button" class="btn btn-primary o_workflow_button_add" data-hotkey="c" t-on-click="() => this.newWorkflow()">New</button>
+      </t>
+    <t t-if="this.state.page === 'home'">
+      <main class="wf_home">
+        <section class="wf_card wf_describe">
+          <div><h2>Describe what should happen.</h2><p>Say when it starts, which records it applies to, and what happens next.</p>
+            <label for="wf_description" class="visually-hidden">Workflow description</label>
+            <textarea id="wf_description" t-att-value="this.state.description" t-on-input="(ev) => this.state.description = ev.target.value" rows="3"/>
+            <div class="wf_chips mt-3"><span>Try:</span>
+              <button t-on-click="() => this.state.description = 'Assign new leads and book a first call.'">Assign new leads</button>
+              <button t-on-click="() => this.state.description = 'Create onboarding tasks for new employees.'">Onboard employees</button>
+              <button t-on-click="() => this.state.description = 'Send confirmed orders to our logistics system.'">Send orders to logistics</button>
+            </div>
+            <p class="mt-3 mb-0">AI drafting is not connected. Use a template below or start a draft with this description.</p>
+          </div>
+          <aside><h3>Or start blank</h3><label for="wf_document">Which document should this workflow watch?</label>
+            <select id="wf_document" t-att-value="this.state.modelId" t-on-change="(ev) => this.state.modelId = ev.target.value"><option t-foreach="this.state.data.models" t-as="model" t-key="model.id" t-att-value="model.id"><t t-out="model.name"/></option></select>
+            <button class="btn btn-outline-primary w-100 mt-3" t-on-click="() => this.newWorkflow()">Start blank</button>
+          </aside>
+        </section>
+        <div class="wf_home_columns">
+          <div>
+            <h2>Start from a template <small class="ms-2">11 templates</small></h2>
+            <div class="wf_chips my-3"><button t-foreach="this.categories" t-as="category" t-key="category" t-att-class="this.state.category === category ? 'selected' : ''" t-on-click="() => this.state.category = category"><t t-out="category"/></button></div>
+            <div class="wf_templates">
+              <button t-foreach="this.templates" t-as="template" t-key="template.key" class="wf_card wf_template" t-on-click="() => this.fromTemplate(template)" t-att-disabled="!template.available || this.state.busy">
+                <div class="wf_tags"><span t-out="template.app"/><span t-out="template.category"/></div>
+                <h3 t-out="template.name"/><p t-out="template.description"/>
+                <div class="wf_chips"><span t-foreach="template.blocks.slice(0, 4)" t-as="block" t-key="block" t-out="block"/></div>
+                <small class="wf_requirement" t-if="!template.available">Install <t t-out="template.app"/> to use this template</small>
+                <small class="wf_requirement" t-else="">Opens a draft for review and setup</small>
+              </button>
+            </div>
+            <section class="wf_card mt-4"><h2>Your workflows</h2>
+              <p t-if="!this.state.data.workflows.length">No workflows yet. Choose a template or start blank.</p>
+              <div class="wf_table_wrap" t-else=""><table class="table"><thead><tr><th>Workflow</th><th>Document</th><th>Starts when</th><th>Status</th></tr></thead><tbody>
+                <tr t-foreach="this.state.data.workflows" t-as="flow" t-key="flow.id">
+                  <td><button class="wf_link" t-on-click="() => this.openWorkflow(flow.id)" t-out="flow.name"/></td><td t-out="flow.model_id[1]"/><td t-out="this.triggerLabel(flow.trigger)"/><td><span t-att-class="'wf_status ' + flow.state" t-out="flow.state"/></td>
+                </tr>
+              </tbody></table></div>
+            </section>
+          </div>
+          <aside class="wf_explain">
+            <section class="wf_card"><h3>Every workflow is When → If → Do</h3>
+              <ol><li><strong>When</strong><p>A record changes, a date arrives, a schedule runs, a button is clicked or a webhook arrives.</p></li>
+                <li><strong>If</strong><p>Optional conditions select the records that should run.</p></li>
+                <li><strong>Do</strong><p>Update records, create tasks, send messages, wait, branch or ask for approval.</p></li>
+                <li><strong>Preview, then activate</strong><p>Inspect the planned steps on a real record. Review setup, then authorize automatic execution.</p></li></ol>
+            </section>
+            <section class="wf_card mt-3"><h3>Building blocks</h3>
+              <h4>Triggers</h4><div class="wf_chips"><span>Created</span><span>Changed</span><span>Stage / status</span><span>Button</span><span>Date field</span><span>Schedule</span><span>Webhook in</span></div>
+              <t t-foreach="this.blocks" t-as="group" t-key="group.title"><h4 class="mt-3" t-out="group.title"/><div class="wf_chips"><span t-foreach="group.items" t-as="item" t-key="item[2]" t-out="item[2]"/></div></t>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </t>
+    <t t-if="this.state.page === 'builder' &amp;&amp; this.state.workflow">
+      <header class="wf_header"><div><small>Workflows / <t t-out="this.state.workflow.model_id[1]"/></small><h1><t t-out="this.state.workflow.name"/> <span t-att-class="'wf_status ' + this.state.workflow.state" t-out="this.state.workflow.state"/></h1></div>
+        <div class="d-flex gap-2"><button class="btn btn-outline-primary" t-on-click="() => this.testRun()">Preview / run</button>
+          <button t-if="this.state.workflow.state === 'active'" class="btn btn-primary" t-on-click="() => this.pause()">Pause</button>
+          <button t-else="" class="btn btn-primary" t-att-disabled="this.state.workflow.issues.length || !this.state.workflow.preview_current" t-on-click="() => this.activate()">Activate</button>
+        </div>
+      </header>
+      <div class="wf_banner">Select a step to inspect it. New steps are inserted after the selected step. <span t-if="this.state.workflow.state === 'active'">Pause before editing.</span></div>
+      <main class="wf_builder">
+        <aside class="wf_card wf_palette"><h3>Add a step</h3><p>After: <t t-out="this.selectedStep ? this.selectedStep.name : 'the trigger'"/></p>
+          <t t-foreach="this.blocks" t-as="group" t-key="group.title"><h4 t-out="group.title"/>
+            <button t-foreach="group.items" t-as="item" t-key="item[2]" t-on-click="() => this.addStep(item)" t-att-disabled="this.state.workflow.state === 'active'">
+              <i class="oi" t-att-data-icon="item[3]"/><t t-out="item[2]"/>
+            </button>
+          </t>
+        </aside>
+        <section class="wf_canvas" aria-label="Workflow steps">
+          <button class="wf_node wf_trigger" t-on-click="() => this.configureWorkflow()"><small>WHEN</small><strong t-out="this.triggerLabel(this.state.workflow.trigger)"/><span t-out="this.state.workflow.model_id[1]"/><span>Edit trigger and record filter</span></button>
+          <div class="wf_connector"/>
+          <p class="wf_empty" t-if="!this.state.workflow.steps.length">Add your first action from the step menu.</p>
+          <t t-call="workflow_center.Path" nodes="this.canvas.nodes"/>
+          <span class="wf_end">End</span>
+          <div t-if="this.canvas.unused.length" class="wf_unconnected">
+            <h3>Not connected to the trigger</h3>
+            <p>Connect these steps or remove them before activation.</p>
+            <button t-foreach="this.canvas.unused" t-as="step" t-key="step.id" class="btn btn-outline-primary m-1" t-on-click="() => this.configureStep(step)" t-out="step.name"/>
+          </div>
+        </section>
+        <aside>
+          <section class="wf_card" t-if="this.selectedStep"><small t-out="this.selectedStep.kind.toUpperCase()"/><h2 t-out="this.selectedStep.name"/>
+            <p t-if="this.selectedStep.kind === 'action'">Choose what this action does and how to handle failure.</p>
+            <p t-if="this.selectedStep.kind === 'approval'">Wait for a decision from the approvers on the selected Approval Type.</p>
+            <button class="btn btn-primary w-100" t-on-click="() => this.configureStep(this.selectedStep)">Step settings</button>
+            <button t-if="this.state.workflow.state !== 'active'" class="btn btn-link text-danger mt-2" t-on-click="() => this.removeStep(this.selectedStep)">Remove step</button>
+          </section>
+          <section class="wf_card mt-3"><h3>Before you activate</h3>
+            <ul t-if="this.state.workflow.issues.length"><li t-foreach="this.state.workflow.issues" t-as="issue" t-key="issue" t-out="issue"/></ul>
+            <p t-else=""><i class="oi text-success me-2" data-icon="check_circle"/>Required settings are complete.</p>
+            <p t-if="!this.state.workflow.preview_current">Run a preview on a record for this version.</p>
+            <p t-else="">Preview recorded for this version. It does not certify external delivery.</p>
+            <button class="btn btn-outline-primary" t-on-click="() => this.configureWorkflow()">Workflow settings</button>
+          </section>
+        </aside>
+      </main>
+    </t>
+    <t t-if="this.state.page === 'runs'">
+      <header class="wf_header"><h1>Run history</h1><div class="wf_chips"><button t-foreach="['all', 'running', 'waiting', 'failed', 'done', 'stopped']" t-as="filter" t-key="filter" t-att-class="this.state.runFilter === filter ? 'selected' : ''" t-on-click="() => this.filterRuns(filter)" t-out="filter"/><button t-on-click="() => this.loadRuns()" aria-label="Refresh run history"><i class="oi" data-icon="refresh"/></button></div></header>
+      <main class="wf_runs">
+        <section class="wf_card"><p t-if="!this.state.runs.length">No runs match this filter. Preview a workflow to see its planned steps here.</p>
+          <div class="wf_table_wrap" t-else=""><table class="table"><thead><tr><th>Workflow</th><th>Record</th><th>Now at</th><th>Status</th></tr></thead><tbody>
+            <tr t-foreach="this.state.runs" t-as="run" t-key="run.id" t-att-class="this.state.run?.id === run.id ? 'selected' : ''">
+              <td><button class="wf_link" t-on-click="() => this.openRun(run.id)" t-out="run.workflow_id[1]"/><small class="d-block" t-if="run.is_test">Preview only</small></td><td t-out="run.name"/><td t-out="run.step_id ? run.step_id[1] : 'Finished'"/><td><span t-att-class="'wf_status ' + run.state" t-out="run.state"/></td>
+            </tr>
+          </tbody></table><small>Showing up to 200 recent runs.</small></div>
+        </section>
+        <aside class="wf_card" t-if="this.state.run">
+          <button class="wf_link" t-on-click="() => this.openWorkflow(this.state.run.workflow_id[0])" t-out="this.state.run.workflow_id[1]"/>
+          <h2 class="mt-2" t-out="this.state.run.name"/><p>Started <t t-out="this.state.run.started_at"/></p>
+          <div class="wf_timeline"><article t-foreach="this.state.run.logs" t-as="log" t-key="log.id"><span t-att-class="'wf_status ' + log.state" t-out="log.state"/><strong t-out="log.name"/><p t-out="log.message"/></article></div>
+          <p t-if="this.state.run.error" class="alert alert-danger" t-out="this.state.run.error"/>
+          <div class="wf_run_controls" t-if="!this.state.run.is_test">
+            <t t-if="this.state.run.state === 'failed'">
+              <button class="btn btn-primary" t-if="!this.state.run.delivery_unknown" t-on-click="() => this.operateRun('action_retry', 'Retry this step')">Retry this step</button>
+              <button class="btn btn-primary" t-else="" t-on-click="() => this.operateRun('action_retry_confirmed', 'Retry after checking delivery')">Retry after checking delivery</button>
+              <button t-if="['action', 'foreach'].includes(this.state.run.step_kind)" class="btn btn-outline-primary" t-on-click="() => this.operateRun('action_skip', 'Skip and continue')">Skip and continue</button>
+            </t>
+            <button t-if="['running', 'waiting', 'failed'].includes(this.state.run.state)" class="btn btn-outline-danger" t-on-click="() => this.operateRun('action_stop', 'Stop run')">Stop run</button>
+          </div>
+        </aside>
+      </main>
+    </t>
+    </Layout>
+  </div>
+</t>
+<t t-name="workflow_center.Path">
+  <t t-foreach="nodes" t-as="node" t-key="node.step.id">
+    <div t-att-class="'wf_node ' + (this.state.selected === node.step.id ? 'is_selected ' : '') + node.step.kind">
+      <button class="wf_node_select" t-on-click="() => this.state.selected = node.step.id">
+        <small t-out="node.step.kind === 'approval' ? 'APPROVAL · OPTIONAL' : node.step.kind.toUpperCase()"/>
+        <strong t-out="node.step.name"/>
+        <span t-if="node.step.kind === 'action'" t-out="node.step.action_id ? node.step.action_id[1] : 'Choose this step to configure its action'"/>
+        <span t-if="node.step.kind === 'wait'"><t t-if="node.step.wait_date_id">Until <t t-out="node.step.wait_date_id[1]"/></t><t t-else=""><t t-out="node.step.wait_hours"/> hours</t></span>
+      </button>
+      <small t-if="node.step.end" class="wf_end">End of this path</small>
+    </div>
+    <div t-if="node.step.kind === 'branch'" class="wf_branch_paths">
+      <section><span class="wf_path_label yes">Yes</span><t t-call="workflow_center.Path" nodes="node.yes"/><small t-if="!node.yes.length">End / next shared step</small></section>
+      <section><span class="wf_path_label no">No</span><t t-call="workflow_center.Path" nodes="node.no"/><small t-if="!node.no.length">Choose the No path in step settings</small></section>
+    </div>
+    <div class="wf_connector" t-if="!node.step.end"/>
+  </t>
+</t>
+</templates>

@@ -176,3 +176,23 @@ Moved Omni-Channel before Email under Technical as requested (sequence 0).
 
 Corrected the Technical order to Discuss → Activities → Omni-Channel → Email.
 The navigation test now asserts immediate adjacency, not merely a lower sequence.
+
+## 2026-10-09 — Workflows
+
+Added the Workflows app with a When → If → Do template catalog, visual
+builder, optional Approval Center steps, and persistent run history. Includes
+native action configuration, record/date/webhook triggers, schedules, waits,
+branching, bounded related-record loops, previews and explicit activation.
+Tracked webhook failures require reconciliation for uncertain deliveries.
+Templates name missing apps and configuration; AI drafting and provider chat
+remain explicitly unavailable until integrated.
+
+Workflows opens from the app menu with its own icon. Upgrades move the existing
+menu out of Technical while preserving administrator access.
+
+Moved Overview, Run history and My approvals into Odoo's native app navbar.
+Replaced the separate navigation strip and right-aligned New workflow button
+with the standard control panel and left-aligned New button.
+
+Removed the My approvals shortcut and its dedicated action from Workflows.
+Approvers use Approval Center; Workflows navigation contains Overview and Run history.

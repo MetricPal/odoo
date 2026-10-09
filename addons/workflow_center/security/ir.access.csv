@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,operation
+workflow_admin,Workflow administrators,model_workflow_definition,base.group_system,crud
+step_admin,Workflow step administrators,model_workflow_step,base.group_system,crud
+run_admin,Workflow run administrators,model_workflow_run,base.group_system,cru
+log_admin,Workflow history administrators,model_workflow_run_log,base.group_system,cr
+test_admin,Workflow tests,model_workflow_test,base.group_system,crud
+value_admin,Workflow field mappings,model_workflow_value,base.group_system,crud

@@ -1,0 +1,127 @@
+<odoo>
+  <record id="workflow_form" model="ir.ui.view">
+    <field name="name">workflow.definition.form</field><field name="model">workflow.definition</field>
+    <field name="arch" type="xml">
+      <form string="Workflow settings">
+        <sheet>
+          <group>
+            <field name="name"/><field name="description" placeholder="When this happens, do this…"/>
+            <field name="model_id" options="{'no_create': True}"/>
+            <field name="model_name" invisible="1"/>
+            <field name="company_id" groups="base.group_multi_company"/>
+            <field name="user_id" domain="[('share', '=', False)]" options="{'no_create': True}"/>
+          </group>
+          <group string="When">
+            <field name="trigger"/>
+            <field name="trigger_field_id" domain="[('model_id', '=', model_id)]" invisible="trigger not in ('write', 'stage')" options="{'no_create': True}"/>
+            <field name="date_field_id" domain="[('model_id', '=', model_id), ('ttype', 'in', ['date', 'datetime'])]" invisible="trigger != 'date'" options="{'no_create': True}"/>
+            <field name="offset_days" invisible="trigger != 'date'"/>
+            <field name="interval_hours" invisible="trigger != 'schedule'"/>
+            <field name="webhook_url" widget="CopyClipboardChar" invisible="trigger != 'webhook' or not webhook_url"/>
+          </group>
+          <group string="If — optional">
+            <field name="domain" widget="domain" options="{'model': 'model_name'}"/>
+          </group>
+          <p class="text-muted">Actions run with the selected user's permissions in this company. A stage or status trigger watches the chosen field; use the filter above to select its new value.</p>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="step_form" model="ir.ui.view">
+    <field name="name">workflow.step.form</field><field name="model">workflow.step</field>
+    <field name="arch" type="xml">
+      <form string="Step settings">
+        <header>
+          <button name="action_configure" string="Configure action" type="object" class="btn-primary" invisible="kind not in ('action', 'foreach') or action_type == 'object_create'"/>
+        </header>
+        <sheet>
+          <group>
+            <field name="workflow_id" invisible="1"/><field name="model_name" invisible="1"/><field name="model_id" invisible="1"/>
+            <field name="name"/><field name="kind"/>
+            <field name="action_type" invisible="kind not in ('action', 'foreach')"/>
+            <field name="relation_field_id" domain="[('model_id', '=', model_id), ('ttype', 'in', ['one2many', 'many2many'])]" invisible="kind != 'foreach'" options="{'no_create': True}"/>
+            <field name="action_id" domain="[('state', '=', action_type)]" invisible="kind not in ('action', 'foreach') or action_type == 'object_create'" options="{'no_create': True}"/>
+            <field name="domain" widget="domain" options="{'model': 'model_name'}" invisible="kind not in ('condition', 'branch')"/>
+            <field name="wait_hours" invisible="kind != 'wait' or wait_date_id"/>
+            <field name="wait_date_id" domain="[('model_id', '=', model_id), ('ttype', 'in', ['date', 'datetime'])]" invisible="kind != 'wait'" options="{'no_create': True}"/>
+            <field name="policy_id" invisible="kind != 'approval'" domain="[('active', '=', True), ('action_name', '=', False)]"/>
+          </group>
+          <group string="Create a record" invisible="kind not in ('action', 'foreach') or action_type != 'object_create'">
+            <field name="create_model_id" options="{'no_create': True}" domain="[('transient', '=', False), ('abstract', '=', False)]"/>
+            <field name="created_link_field_id" options="{'no_create': True}" domain="[('model_id', '=', model_id), ('ttype', '=', 'many2one')]"/>
+          </group>
+          <field name="value_ids" invisible="action_type != 'object_create' or not create_model_id" context="{'default_step_id': id}">
+            <list><field name="field_id"/><field name="source"/><field name="source_field_id" optional="show"/><field name="text_value" optional="show"/></list>
+            <form string="Set a field on the new record"><group>
+              <field name="step_id" invisible="1"/><field name="target_model_id" invisible="1"/><field name="source_model_id" invisible="1"/>
+              <field name="field_type" invisible="1"/><field name="relation_model" invisible="1"/>
+              <field name="field_id" domain="[('model_id', '=', target_model_id), ('readonly', '=', False), ('ttype', 'in', ['char', 'text', 'html', 'integer', 'float', 'monetary', 'boolean', 'date', 'datetime', 'selection', 'many2one'])]" options="{'no_create': True}"/>
+              <field name="source"/>
+              <field name="source_field_id" invisible="source != 'field'" domain="[('model_id', '=', source_model_id)]" options="{'no_create': True}"/>
+              <field name="text_value" invisible="source != 'fixed' or field_type not in ('char', 'text', 'html')"/>
+              <field name="number_value" invisible="source != 'fixed' or field_type not in ('integer', 'float', 'monetary')"/>
+              <field name="boolean_value" invisible="source != 'fixed' or field_type != 'boolean'"/>
+              <field name="date_value" invisible="source != 'fixed' or field_type != 'date'"/>
+              <field name="datetime_value" invisible="source != 'fixed' or field_type != 'datetime'"/>
+              <field name="record_value" widget="many2one_reference" invisible="source != 'fixed' or field_type != 'many2one'" options="{'no_create': True}"/>
+              <field name="selection_value_id" invisible="source != 'fixed' or field_type != 'selection'" domain="[('field_id', '=', field_id)]" options="{'no_create': True}"/>
+            </group></form>
+          </field>
+          <p class="text-muted" invisible="kind != 'approval'">Approval is optional. This step waits for the people and approval count configured on the selected Approval Type. Refusal stops the run. Put the business action after this step.</p>
+          <p class="text-muted" invisible="action_type != 'chat' or kind != 'action'">Provider chat needs a workflow provider integration. WhatsApp is not connected yet. This draft cannot activate with an unconfigured chat step.</p>
+          <group string="What happens next">
+            <field name="end"/>
+            <field name="next_id" invisible="end" domain="[('workflow_id', '=', workflow_id), ('id', '!=', id)]" options="{'no_create': True}"/>
+            <field name="false_id" invisible="kind != 'branch'" domain="[('workflow_id', '=', workflow_id), ('id', '!=', id)]" options="{'no_create': True}"/>
+          </group>
+          <p class="text-muted">If Next is empty, continue to the next step on the canvas. For a branch, choose where the No path goes. End this path prevents it from continuing into another branch.</p>
+          <group string="If the action fails" invisible="kind not in ('action', 'foreach')">
+            <field name="on_error"/><field name="max_attempts" invisible="on_error != 'retry'"/>
+          </group>
+          <p class="text-muted" invisible="action_type != 'webhook'">Webhook delivery is tracked. If delivery cannot be confirmed, the run stops for review; check the destination before retrying.</p>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="run_list" model="ir.ui.view">
+    <field name="name">workflow.run.list</field><field name="model">workflow.run</field>
+    <field name="arch" type="xml"><list create="0" edit="0" delete="0">
+      <field name="workflow_id"/><field name="name"/><field name="step_id"/><field name="state" widget="badge"/><field name="is_test"/><field name="started_at"/>
+    </list></field>
+  </record>
+  <record id="run_form" model="ir.ui.view">
+    <field name="name">workflow.run.form</field><field name="model">workflow.run</field>
+    <field name="arch" type="xml"><form create="0" edit="0" delete="0">
+      <header>
+        <button name="action_retry" string="Retry this step" type="object" invisible="state != 'failed' or is_test or delivery_unknown" confirm="Retry this failed action using the approved workflow?"/>
+        <button name="action_retry_confirmed" string="Retry after checking delivery" type="object" invisible="state != 'failed' or is_test or not delivery_unknown" confirm="I checked the destination and confirm that it did not process this delivery. Retry now?"/>
+        <button name="action_skip" string="Skip and continue" type="object" invisible="state != 'failed' or is_test or step_kind not in ('action', 'foreach')" confirm="Skip this failed action and continue the approved workflow?"/>
+        <button name="action_stop" string="Stop run" type="object" invisible="state in ('done', 'stopped') or is_test" confirm="Stop this run? Completed actions will not be undone."/>
+        <field name="state" widget="statusbar"/>
+      </header>
+      <sheet><field name="step_kind" invisible="1"/><group><field name="workflow_id"/><field name="name"/><field name="is_test"/><field name="step_id"/><field name="started_at"/><field name="wake_at"/><field name="approval_id" invisible="not approval_id"/><field name="delivery_unknown" invisible="not delivery_unknown"/></group>
+        <div class="alert alert-warning" invisible="not is_test">Preview only. No business record was changed and no message or webhook was sent. Conditions use current values; later actions may change them in a real run.</div>
+        <field name="error" invisible="not error"/>
+        <field name="log_ids"><list create="0" edit="0" delete="0"><field name="occurred_at"/><field name="name"/><field name="state"/><field name="message"/><field name="actor_id"/></list></field>
+      </sheet>
+    </form></field>
+  </record>
+  <record id="test_form" model="ir.ui.view">
+    <field name="name">workflow.test.form</field><field name="model">workflow.test</field>
+    <field name="arch" type="xml"><form><group>
+      <field name="workflow_id" readonly="1"/><field name="model_name" invisible="1"/>
+      <field name="record_id" widget="many2one_reference" options="{'no_create': True}"/><field name="mode"/>
+    </group><p>A preview follows conditions using this record's current values. It records planned steps without executing actions or waiting.</p>
+    <footer><button name="action_start" string="Continue" type="object" class="btn-primary" confirm="Continue in the selected mode? Run mode executes the active, approved workflow; Preview changes no business data."/><button string="Cancel" special="cancel"/></footer>
+    </form></field>
+  </record>
+  <record id="action_workflows" model="ir.actions.client">
+    <field name="name">Workflows</field><field name="tag">workflow_center.home</field><field name="path">workflows</field>
+  </record>
+  <menuitem id="menu_workflows" name="Workflows" action="action_workflows" sequence="35" groups="base.group_system" web_icon="workflow_center,static/description/icon.svg"/>
+  <record id="action_workflow_runs" model="ir.actions.client">
+    <field name="name">Run history</field><field name="tag">workflow_center.runs</field><field name="path">workflow-runs</field>
+  </record>
+  <menuitem id="menu_workflows_overview" name="Overview" parent="menu_workflows" action="action_workflows" sequence="10" groups="base.group_system"/>
+  <menuitem id="menu_workflows_runs" name="Run history" parent="menu_workflows" action="action_workflow_runs" sequence="20" groups="base.group_system"/>
+</odoo>

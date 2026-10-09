@@ -845,3 +845,53 @@ and preserve both Discuss and Activities ahead of Omni.
 ### Channel readiness badge (2026-10-08)
 
 Verified the Odoo 20 native badge field in `addons/web/static/src/views/fields/badge/badge_field.js`: selection fields and conditional semantic decorations are supported. Channel readiness now appears without a label at the top right of the form sheet, with success, warning and danger colors. The empty sender selection error now names the Outbound senders tab. No activation or permission behavior changed.
+
+### Workflows research (2026-10-09)
+
+Verified Odoo 20 source: base_automation supports on_create, on_write,
+on_time and on_webhook, trigger fields and domain filtering. Its callbacks
+execute server actions under elevated access; Workflows must explicitly switch
+back to its approved execution user and company. ir.actions.server.run supports
+native record updates/creation, activities, followers, messages and Python.
+The native webhook action uses postcommit fire-and-forget callbacks, so it
+cannot supply durable step failures; tracked workflow webhooks need a separate
+executor. Approval Center provides policy-defined approvers, review permissions
+and request state; Workflows will reuse these requests. OWL client actions use
+the action registry, ORM service and standard form dialogs.
+
+Workflows implementation findings:
+- Odoo 20 has `ir.access` with CRUD operation strings and domains; it has no
+  `ir.rule` or legacy `ir.model.access` model.
+- OWL 3 templates use `this` for component members and explicit parameters on
+  `t-call`. Native icons use `oi` plus `data-icon`. Client action dictionaries
+  returned through ORM calls must include their `views` array.
+- `ir.actions.server.run` calls a sudo runner after its initial access check.
+  Workflows retains the native check/dispatcher with a non-sudo execution
+  environment so relational updates and created records keep their ACL checks.
+- Native mail actions queue notifications with `mail_notify_force_send=False`.
+  Successful workflow handoff is distinct from external email delivery.
+- Activation fingerprints include executable configuration, excluding chatter
+  and other changing operational metadata.
+
+The native Create Record action only calls name_create(value). Workflows therefore
+uses a small typed field-mapping form and ordinary ORM create for this step, so
+required business fields (such as a purchase vendor) can actually be supplied.
+Mappings accept fixed values, compatible source fields or the source record.
+The target create and optional source-link write run in the same step savepoint.
+
+Workflows verification completed on disposable databases: clean installation
+passed; final regression recorded 34 tests with zero failures/errors in
+`/tmp/workflows-release-check.log`. Browser checks cover both viewport sizes,
+branch paths, creation mappings, preview, recovery and Approval Center return
+navigation. Test providers are synthetic; this is not live delivery evidence.
+
+Workflow app navigation: Odoo 20 `webclient/navbar/navbar.xml` renders root-menu
+children as app sections. `web/search/layout` supplies the native control panel;
+its `control-panel-buttons` slot places primary buttons beside the breadcrumbs.
+The list controller uses a `btn btn-primary` button labelled New with hotkey `c`.
+Use these mechanisms for Workflows rather than a second in-page navigation bar.
+
+Removing the Workflows approval shortcut uses `ir.model.data._process_end` in
+`odoo/addons/base/models/ir_model.py`: upgrading deletes module-owned records
+whose non-noupdate XML IDs are no longer loaded. Verified removal of both the
+menu and its dedicated action on the existing disposable database.

@@ -1,0 +1,11 @@
+<odoo noupdate="1">
+  <record id="cron_workflows" model="ir.cron">
+    <field name="name">Workflows: resume waiting runs and schedules</field>
+    <field name="model_id" ref="model_workflow_run"/>
+    <field name="state">code</field>
+    <field name="code">model._cron_advance()</field>
+    <field name="interval_number">1</field>
+    <field name="interval_type">minutes</field>
+    <field name="active" eval="False"/>
+  </record>
+</odoo>

@@ -1,0 +1,38 @@
+<odoo>
+  <record id="workflow_company_rule" model="ir.access">
+    <field name="name">Workflows: selected companies</field>
+    <field name="model_id" ref="model_workflow_definition"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="step_company_rule" model="ir.access">
+    <field name="name">Workflow steps: selected companies</field>
+    <field name="model_id" ref="model_workflow_step"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="run_company_rule" model="ir.access">
+    <field name="name">Workflow runs: selected companies</field>
+    <field name="model_id" ref="model_workflow_run"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="log_company_rule" model="ir.access">
+    <field name="name">Workflow history: selected companies</field>
+    <field name="model_id" ref="model_workflow_run_log"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="workflow_approval_company" model="ir.access">
+    <field name="name">Workflow approvals: selected companies</field>
+    <field name="model_id" ref="approval_center.model_approval_center_request"/>
+    <field name="operation">crud</field>
+    <field name="domain">['|', ('workflow_run_id', '=', False), ('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="value_company_rule" model="ir.access">
+    <field name="name">Workflow field mappings: selected companies</field>
+    <field name="model_id" ref="model_workflow_value"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+</odoo>

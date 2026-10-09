@@ -9,3 +9,6 @@ Plans are scoped milestones, not permission to activate external effects.
   approvals, transport worker, inbox, Telegram sandbox and operations alerts are
   implemented. Production activation remains gated. After rollout, P4 covers
   media/business bridges; P5 adds providers and bulk messaging.
+
+- [Workflows](Workflows/Workflows.md): automation home, builder and run history;
+  [implementation and verification](Workflows/implementation.md).
