@@ -1,5 +1,9 @@
 # Omni-Channel — Codex Implementation Specification
 
+> **Completed for the current scope — 2026-10-09.** Archived at the user’s request.
+> Remaining UX improvements and WhatsApp integration are future work. This archive
+> preserves implementation history; it does not certify production deployment.
+
 > **Navigation superseded by the user's 2026-10-08 instruction.** The current
 > interface is Settings → Technical → Omni-Channel (before Email), with
 > Channels, Messages, Policies and Blocklist only. The standalone app, Overview
