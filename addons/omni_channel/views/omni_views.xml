@@ -4,42 +4,27 @@
     <field name="name">channel_kanban</field>
     <field name="model">omni.channel</field>
     <field name="arch" type="xml">
-      <kanban class="o_omni_channels">
-        <field name="readiness"/>
+      <kanban records_draggable="false" groups_draggable="false" quick_create="false"
+              group_create="false" group_edit="false" group_delete="false">
         <field name="selected_sender_id"/>
         <templates>
           <t t-name="card">
-            <div class="o_omni_channel_card">
-              <div class="o_omni_eyebrow">
-                <field name="channel_type_id"/> · <field name="purpose_id"/>
-              </div>
-              <h3 class="mt-2 mb-3">
-                <field name="name"/>
-              </h3>
-              <div class="mb-3">
-                <field name="readiness" widget="label_selection"/>
-              </div>
-              <div class="o_omni_sender">
-                <span class="text-muted small">RUNTIME SENDER</span>
-                <div t-if="record.selected_sender_id.raw_value">
-                  <field name="selected_sender_id"/>
-                </div>
-                <div t-else="" class="text-muted">No sender selected</div>
-              </div>
-              <div class="d-flex gap-4 mt-3">
-                <div>
-                  <strong>
-                    <field name="sender_count"/>
-                  </strong> configured senders</div>
-                <div>
-                  <strong>
-                    <field name="endpoint_count"/>
-                  </strong> inbound endpoints</div>
-              </div>
-              <div class="text-muted small mt-3">
-                <field name="company_id"/>
-              </div>
+            <field name="name" class="fw-bold fs-5"/>
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              <field name="purpose_id" widget="badge"/>
+              <field name="channel_type_id" class="text-muted"/>
             </div>
+            <field name="readiness" widget="badge"/>
+            <div class="mt-2">
+              <span class="text-muted">Runtime sender: </span>
+              <field t-if="record.selected_sender_id.raw_value" name="selected_sender_id"/>
+              <span t-else="" class="text-muted">No sender selected</span>
+            </div>
+            <div class="d-flex gap-3 text-muted small mt-2">
+              <span><field name="sender_count"/> senders</span>
+              <span><field name="endpoint_count"/> inbound endpoints</span>
+            </div>
+            <field name="company_id" class="text-muted small mt-2" groups="base.group_multi_company"/>
           </t>
         </templates>
       </kanban>
@@ -53,11 +38,14 @@
         <field name="name"/>
         <field name="purpose_id"/>
         <field name="channel_type_id"/>
-        <field name="selected_sender_id"/>
-        <field name="readiness" widget="label_selection"/>
-        <field name="sender_count"/>
-        <field name="endpoint_count"/>
-        <field name="company_id"/>
+        <field name="readiness" widget="badge"/>
+        <field name="selected_sender_id" optional="hide"/>
+        <field name="sender_count" optional="hide"/>
+        <field name="endpoint_count" optional="hide"/>
+        <field name="connection_status" optional="hide"/>
+        <field name="inbound_status" optional="hide"/>
+        <field name="active" optional="hide"/>
+        <field name="company_id" optional="hide" groups="base.group_multi_company"/>
       </list>
     </field>
   </record>
@@ -69,12 +57,18 @@
         <field name="name"/>
         <field name="purpose_id"/>
         <field name="channel_type_id"/>
+        <filter name="messaging" string="Messaging" domain="[('channel_type_id.category', '=', 'messaging')]"/>
+        <filter name="social" string="Social" domain="[('channel_type_id.category', '=', 'social')]"/>
+        <filter name="other" string="Other" domain="[('channel_type_id.category', '=', 'other')]"/>
+        <separator/>
         <filter name="archived" string="Archived" domain="[('active','=',False)]"/>
-        <group>
-          <filter name="by_purpose" string="Purpose" context="{'group_by':'purpose_id'}"/>
-          <filter name="by_type" string="Channel" context="{'group_by':'channel_type_id'}"/>
-          <filter name="by_company" string="Company" context="{'group_by':'company_id'}"/>
-        </group>
+        <separator/>
+        <filter name="by_purpose" string="Communication team" context="{'group_by':'purpose_id'}"/>
+        <filter name="by_type" string="Channel type" context="{'group_by':'channel_type_id'}"/>
+        <filter name="by_company" string="Company" context="{'group_by':'company_id'}" groups="base.group_multi_company"/>
+        <searchpanel view_types="kanban,list">
+          <field name="purpose_id" string="Communication teams" select="one" enable_counters="1" expand="1"/>
+        </searchpanel>
       </search>
     </field>
   </record>
@@ -174,7 +168,10 @@
   <record id="action_channels" model="ir.actions.act_window">
     <field name="name">Channels</field>
     <field name="res_model">omni.channel</field>
-    <field name="view_mode">list,kanban,form</field>
+    <field name="view_mode">kanban,list,form</field>
+    <field name="view_id" ref="channel_kanban"/>
+    <field name="search_view_id" ref="channel_search"/>
+    <field name="limit">80</field>
     <field name="help" type="html">
       <p class="o_view_nocontent_smiling_face">Create your first team channel</p>
       <p>Configure a connection, then add senders and inbound endpoints below. Activation requires verification and explicit confirmation.</p>

@@ -1301,3 +1301,23 @@ saving a renamed workflow. Native FormController behavior otherwise remains.
 Regression assertions cover initial title, trigger/step selection and step save.
 Local syntax and isolated title-ownership checks passed; live browser execution
 remains pending.
+
+
+### Channels overview with communication teams
+
+`omni_channel.action_channels` now explicitly selects native kanban/list/form
+views, channel search, and an 80-record page size. The search panel uses the
+existing `purpose_id` Many2one (Communication team), with counters and expanded
+team choices. Existing Sales, Human Resources, Marketing and Recruitment catalog
+records are reused; no team membership or channel ownership is reassigned.
+Native category filters use stored channel-type categories; non-stored readiness
+is displayed but is not used as a search/group field. Grouping supports team,
+channel type and company. Secondary business columns are optional/hidden.
+Removed the custom channel kanban shell styles and disabled card/group dragging.
+Existing create/form, provider setup, access and company boundaries remain.
+
+Verified the native search-panel approach against the workflow overview and
+Odoo 20 search view schema. Database-free view-contract test, native list/search
+schemas, Python/XML syntax, SCSS compilation and diff checks passed. Added a
+browser regression for team filtering, view switching and native controls; that
+test and a live module upgrade have not been run.

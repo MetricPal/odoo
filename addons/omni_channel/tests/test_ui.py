@@ -51,6 +51,37 @@ class TestOmniUI(HttpCase):
             },
         )
 
+    def test_channels_native_team_panel_and_view_switching(self):
+        self.browser_js('/odoo/action-omni_channel.action_channels', """
+            (async () => {
+                const waitFor = async predicate => {
+                    for (let i = 0; i < 150; i++) {
+                        if (predicate()) return;
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    throw new Error('Channels native controls did not load');
+                };
+                await waitFor(() => document.querySelector('.o_search_panel') && document.querySelector('.o_kanban_record'));
+                if (!document.querySelector('.o_search_panel').textContent.includes('Communication teams')) throw new Error('Missing team section');
+                const team = [...document.querySelectorAll('.o_search_panel_category_value')].find(el => el.textContent.includes('Customer care'));
+                if (!team) throw new Error('Accessible communication team missing');
+                team.click();
+                await waitFor(() => [...document.querySelectorAll('.o_kanban_record')].some(el => el.textContent.includes('Customer care / Telegram')));
+                document.querySelector('.o_switch_view.o_list').click();
+                await waitFor(() => document.querySelector('.o_data_row'));
+                if (!document.querySelector('.o_search_panel').textContent.includes('Customer care')) throw new Error('Team panel lost on view switch');
+                if (document.querySelector('th[data-name="sender_count"]')) throw new Error('Secondary list column shown by default');
+                if (!document.querySelector('.o_control_panel .o_pager')) throw new Error('Native pager missing');
+                document.querySelector('.o_searchview_dropdown_toggler').click();
+                await waitFor(() => document.querySelector('.o_filter_menu'));
+                for (const label of ['Messaging', 'Social', 'Archived']) {
+                    if (![...document.querySelectorAll('.o_filter_menu .dropdown-item')].some(el => el.textContent.trim() === label)) throw new Error('Missing filter ' + label);
+                }
+                if (!document.querySelector('.o_group_by_menu').textContent.includes('Communication team')) throw new Error('Missing team grouping');
+                console.log('test successful');
+            })();
+        """, login='omni_ui', timeout=90)
+
     def test_operator_entry_opens_inbox_with_empty_state_guidance(self):
         self.browser_js(
             '/odoo/action-omni_channel.action_workspace',

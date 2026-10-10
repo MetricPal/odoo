@@ -14,3 +14,4 @@ from . import (
     test_worker_transactions,
 )
 from . import test_setup
+from . import test_channel_views

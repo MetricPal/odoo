@@ -24,7 +24,16 @@ before **Email**. The section contains only **Channels**,
 monitor, with waiting-to-send and needs-attention filters; composition remains
 available to the existing business integration actions.
 
-Create a channel using the standard list/form, selecting its company, business
+Channels uses the native Odoo kanban/list switcher, search, filters, grouping,
+and pagination (80 records per page). The left **Communication teams** search
+panel lists existing teams such as Sales and HR, with counts and an All option.
+Team selection combines with search and channel-category/archive filters. Group
+by team, channel type, or company where permitted. Extra list columns are hidden
+by default and available in the native column selector. Kanban cards cannot be
+dragged to change team or company. Existing team membership and company access
+rules apply to results and counts.
+
+Create a channel using the standard New/form flow, selecting its company, business
 purpose and channel type. Save it, then open **Connections** to configure a
 provider account with those defaults. Configure multiple senders and inbound
 endpoints in the channel's tabs. Select one outbound sender with Check & Activate;
