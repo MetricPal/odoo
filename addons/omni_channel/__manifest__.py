@@ -1,6 +1,6 @@
 {
     'name': 'Omni-Channel',
-    'version': '20.0.1.16.0',
+    'version': '20.0.1.23.0',
     'summary': 'Manage communication channels, sender readiness and ownership in one governed workspace',
     'category': 'Productivity',
     'author': 'metric.io',
@@ -22,6 +22,8 @@
     ],
     'assets': {'web.assets_backend': [
         'omni_channel/static/src/scss/omni.scss',
+        'omni_channel/static/src/setup_progress/setup_progress.js',
+        'omni_channel/static/src/setup_progress/setup_progress.xml',
         'omni_channel/static/src/channel_setup/channel_setup.js',
         'omni_channel/static/src/channel_setup/channel_setup.xml',
     ]},

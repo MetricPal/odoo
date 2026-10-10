@@ -1,5 +1,3 @@
-import { Component, useProps } from "@odoo/owl";
-import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { proxy } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { FormController } from "@web/views/form/form_controller";
@@ -34,15 +32,14 @@ export class ChannelSetupController extends FormController {
         super.setup();
         const completed = this.props.context.setup_completed_step_ids ||
             Array.from({ length: this.props.context.setup_completed_steps || 0 }, (_, i) => i);
-        this.setupState = proxy({ step: this.props.state?.setupStep ?? (completed.length ? Math.max(...completed) : 0), busy: false,
+        this.setupState = proxy({ step: Math.min(this.props.state?.setupStep ?? (completed.length ? Math.max(...completed) : 0), 4), busy: false,
             completed: this.props.state?.setupCompleted || completed });
         this.steps = [
             { title: "Prepare", hint: "Choose the channel, company and team.", about: "Give the channel a name, choose its type, and select the company and team that will use it." },
             { title: "Credentials", hint: "Connect and verify your account.", about: "Enter credentials here or choose an existing connection. For Telegram, paste the token from BotFather. Verification fills in the bot ID and public profile; you do not need to enter the bot ID or database name." },
-            { title: "Connect & verify", hint: "Set up and check receiving.", about: "Enable receiving when the connection is ready, or choose Set up receiving later to continue with a draft." },
+            { title: "Connect & verify", hint: "Set up and check receiving.", about: "Enable receiving when the connection is ready, or choose Next: Branding to continue with a draft." },
             { title: "Branding", hint: "Choose how the channel appears.", about: "Set the channel's display name and internal description. Public bot names and pictures are managed by the provider, not by these internal labels." },
-            { title: "Team & apps", hint: "Review ownership and availability.", about: "Review the communication team and company chosen in Prepare. The Inbox is available now. Only installed, supported application integrations can be connected." },
-            { title: "Test & go live", hint: "Review a test and activate explicitly.", about: "Send an incoming message from an authorized test user, then select its conversation to draft a test reply. Review and approve sending separately. Activation is an explicit action; Finish setup only saves configuration." },
+            { title: "Test & go live", hint: "Review a test and activate explicitly.", about: "Send a short test message to the displayed tester, then finish setup." },
         ];
         useSetupAction({ getLocalState: () => ({ setupStep: this.setupState.step, setupCompleted: this.setupState.completed }) });
     }
@@ -111,7 +108,7 @@ export class ChannelSetupController extends FormController {
         this.setupState.busy = true;
         try {
             if (await this.save()) {
-                await this.orm.call("omni.channel", "action_setup_complete_step", [[this.model.root.resId], 5]);
+                await this.orm.call("omni.channel", "action_setup_complete_step", [[this.model.root.resId], 4]);
                 await this.actionService.doAction({ type: "ir.actions.act_window", res_model: "omni.channel",
                     res_id: this.model.root.resId, views: [[false, "form"]], target: "current" });
             }
@@ -121,13 +118,3 @@ export class ChannelSetupController extends FormController {
 registry.category("views").add("omni_channel_setup", { ...formView, Controller: ChannelSetupController });
 registry.category("views").add("omni_channel_list", { ...listView, ArchParser: ChannelListArchParser, Controller: ChannelListController });
 registry.category("views").add("omni_channel_kanban", { ...kanbanView, Controller: ChannelKanbanController });
-
-// A generated URL remains selectable as an input without editing deployment settings.
-class CallbackInput extends Component {
-    static template = "omni_channel.CallbackInput";
-    props = useProps(standardFieldProps);
-}
-registry.category("fields").add("omni_callback_input", {
-    component: CallbackInput,
-    supportedTypes: ["char"],
-});

@@ -6,7 +6,8 @@ from unittest.mock import patch
 
 from odoo import fields
 from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
-from odoo.tests import HttpCase, TransactionCase, new_test_user, tagged
+from odoo.tests import HttpCase, TransactionCase, tagged
+from .test_users import new_test_user
 
 from .smtp_sink import smtp_sink
 from odoo.addons.omni_channel.models.command import internal

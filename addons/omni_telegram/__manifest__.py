@@ -1,6 +1,6 @@
 {
     "name": "Omni-Channel Telegram",
-    "version": "20.0.1.7.0",
+    "version": "20.0.1.15.0",
     "summary": "Review and authorize Telegram private-text sandbox conversations and replies",
     "category": "Productivity",
     "author": "metric.io",
@@ -8,6 +8,7 @@
     "depends": ["omni_channel"],
     "external_dependencies": {"python": ["cryptography"]},
     "data": ["security/ir.access.csv", "views/telegram_views.xml"],
+    "assets": {"web.assets_backend": ["omni_telegram/static/src/verification_retry.js"]},
     "installable": True,
     "application": False,
     "auto_install": False,

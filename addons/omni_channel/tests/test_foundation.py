@@ -4,7 +4,8 @@ from psycopg2 import IntegrityError
 
 from odoo import fields
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tests import TransactionCase, new_test_user, tagged
+from odoo.tests import TransactionCase, tagged
+from .test_users import new_test_user
 
 from odoo.addons.omni_channel.providers.base import HealthResult, installed_adapters
 
@@ -444,11 +445,11 @@ class TestOmniFoundation(TransactionCase):
             with self.assertRaises(AccessError):
                 channel.with_user(user).action_continue_setup()
         with patch.object(type(channel), 'action_setup_validate_step', return_value=True), patch.object(type(channel), '_is_setup_receiving_ready', return_value=True):
-            for step in range(1, 6):
+            for step in range(1, 5):
                 channel.action_setup_complete_step(step)
-        self.assertEqual(channel.setup_completed_steps, 6)
+        self.assertEqual(channel.setup_completed_steps, 5)
         self.assertFalse(channel.dispatch_enabled)
-        self.assertNotIn(channel, self.env['omni.channel'].search([('setup_completed_steps', '<', 6)]))
+        self.assertNotIn(channel, self.env['omni.channel'].search([('setup_completed_steps', '<', 5)]))
 
     def test_receiving_can_be_deferred_without_false_completion(self):
         channel = self.channel.with_user(self.manager)
@@ -459,21 +460,20 @@ class TestOmniFoundation(TransactionCase):
             channel.action_setup_complete_step(1)
             channel.action_setup_defer_receiving()
             channel.action_setup_complete_step(3)
-            channel.action_setup_complete_step(4)
-            self.assertEqual(channel.setup_completed_steps, 4)
-            self.assertEqual(channel._completed_setup_steps(), [0, 1, 3, 4])
+            self.assertEqual(channel.setup_completed_steps, 3)
+            self.assertEqual(channel._completed_setup_steps(), [0, 1, 3])
             self.assertTrue(channel.setup_receiving_deferred)
             with self.assertRaises(UserError):
-                channel.action_setup_complete_step(5)
+                channel.action_setup_complete_step(4)
             self.assertFalse(channel.dispatch_enabled)
-            self.assertEqual(channel.action_continue_setup()['context']['setup_completed_step_ids'], [0, 1, 3, 4])
+            self.assertEqual(channel.action_continue_setup()['context']['setup_completed_step_ids'], [0, 1, 3])
             channel.action_setup_complete_step(2)
             self.assertFalse(channel.setup_receiving_deferred)
             with self.assertRaises(UserError):
-                channel.action_setup_complete_step(5)  # A stale completed step is not readiness.
+                channel.action_setup_complete_step(4)  # A stale completed step is not readiness.
             with patch.object(type(channel), '_is_setup_receiving_ready', return_value=True):
-                channel.action_setup_complete_step(5)
-            self.assertEqual(channel.setup_completed_steps, 6)
+                channel.action_setup_complete_step(4)
+            self.assertEqual(channel.setup_completed_steps, 5)
             self.assertFalse(channel.dispatch_enabled)
         for user in (self.operator, self.outsider, self.portal):
             with self.assertRaises(AccessError):

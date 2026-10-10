@@ -46,7 +46,7 @@ class TelegramAdapter:
         try:
             bot, _recipients = self._sandbox(config, authorized=False)
             secret = self.resolver(config["credential_reference"], config)
-            result = self.transport.call(secret.token, "getMe", {})
+            result = self.transport.call(secret.token, "getMe", {}, verify_only=True)
             user = result.data.get("result") if isinstance(result.data, dict) else None
             good = (
                 result.status == 200

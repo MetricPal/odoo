@@ -1,4 +1,6 @@
 import re
+import hashlib
+import json
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -14,8 +16,29 @@ from odoo.addons.omni_telegram.providers.secrets import (
     resolve,
 )
 
+from odoo.addons.omni_telegram.providers.test_message import TEST_MESSAGE, send_test_message
 from odoo.addons.omni_telegram.providers import runtime_secrets
-from odoo.addons.omni_telegram.providers.setup import TelegramSetupError, prepare_credentials, verify_webhook
+from odoo.addons.omni_telegram.providers.setup import TelegramSetupError, prepare_credentials, verify_webhook, webhook_info, register_webhook
+
+
+def verification_retry(record, method, error):
+    """Transient checks return a retry action without changing verification history."""
+    messages = {
+        'transport': _("Couldn’t reach Telegram. Please try again."),
+        'unavailable': _("Telegram is temporarily unavailable. Please try again shortly."),
+        'rate_limit': _("Telegram is receiving too many requests. Please wait before retrying."),
+    }
+    if error.reason not in messages:
+        return None
+    details = {
+        'transport': _("The HTTPS request to api.telegram.org did not complete. The exact cause was not identified. If retries keep failing, check server DNS, outbound HTTPS, TLS certificates and timeouts. This does not mean the bot token is invalid."),
+        'unavailable': _("Telegram returned a server error. Retry later. Your saved credentials and last successful verification have not changed."),
+        'rate_limit': _("Telegram returned HTTP 429 (too many requests). No automatic retry was made. Your saved credentials and last successful verification have not changed."),
+    }
+    return {'type': 'ir.actions.client', 'tag': 'omni_telegram.verification_retry', 'params': {
+        'model': record._name, 'record_id': record.id, 'method': method,
+        'message': messages[error.reason], 'details': details[error.reason],
+    }}
 
 
 class TelegramAccount(models.Model):
@@ -117,7 +140,7 @@ class TelegramAccount(models.Model):
             'webhook_mismatch': _('This bot has a different webhook registered. Ask your administrator to review it before changing the connection.'),
             'token_format': _('The bot token format is invalid. Paste the complete token from BotFather without spaces, quotes or a URL.'),
             'secret_format': _('The webhook secret must contain 32–256 letters, numbers, underscores or hyphens. Leave it empty to generate one for a new connection.'),
-            'transport': _('Odoo could not complete a secure request to api.telegram.org. Ask your administrator to check server DNS, outbound HTTPS, TLS certificates and timeouts. This does not establish that the token is invalid.'),
+            'transport': _('Couldn’t reach Telegram. Please try again. Your credentials were not changed.'),
             'rejected': _('Telegram rejected this bot token. Check that it is complete and is the current token for your bot.'),
             'rate_limit': _('Telegram temporarily limited verification requests. Wait before trying again.'),
             'unavailable': _('Telegram is temporarily unavailable. Try verification again later.'),
@@ -138,6 +161,9 @@ class TelegramAccount(models.Model):
         try:
             _bundle, identity = prepare_credentials(secret.token, secret.webhook_secret, self.env.cr.dbname, self.company_id.id)
         except TelegramSetupError as error:
+            retry = verification_retry(self, 'action_verify_telegram_bot', error)
+            if retry:
+                return retry
             self._raise_setup_verification_error(error)
         lock_company(self)
         self.invalidate_recordset()
@@ -298,7 +324,10 @@ class TelegramAccount(models.Model):
         try:
             if not 1 <= len(keys) <= 10 or len(set(keys)) != len(keys):
                 raise TelegramConfigurationError()  # noqa: TRY301 - sanitized boundary validation
-            return [canonical_id(key) for key in keys]
+            recipients = [canonical_id(key) for key in keys]
+            if self.external_account_key in recipients:
+                raise ValidationError(_("Enter your personal Telegram user ID, not this bot’s ID."))
+            return recipients
         except TelegramConfigurationError:
             raise ValidationError(
                 _(
@@ -338,11 +367,10 @@ class TelegramAccount(models.Model):
         if (
             self.channel_type_id.code != "telegram"
             or not self.active
-            or not (self.telegram_sandbox_evidence or "").strip()
         ):
             raise UserError(
                 _(
-                    "Select an active Telegram connection and record explicit sandbox authorization evidence.",
+                    "Select an active Telegram connection.",
                 ),
             )
         self._telegram_recipients()
@@ -363,7 +391,7 @@ class TelegramAccount(models.Model):
         ):
             raise UserError(
                 _(
-                    "Bot verification failed. Check the scoped secret bundle and deployment sandbox network switch.",
+                    "Couldn’t verify the bot. Please try again.",
                 ),
             )
         internal(self).write(
@@ -581,7 +609,7 @@ class TelegramGuidedSetup(models.Model):
     setup_bot_id = fields.Char(related='setup_account_id.external_account_key', string='Bot ID')
     setup_bot_verified_at = fields.Datetime(related='setup_account_id.telegram_verified_at', string='Last verified')
     setup_bot_authorized = fields.Boolean(related='setup_account_id.telegram_sandbox_authorized')
-    setup_test_recipients = fields.Text(related='setup_account_id.telegram_sandbox_recipients', readonly=False, string='Consenting test user IDs', groups='omni_channel.group_omni_manager')
+    setup_test_recipients = fields.Text(related='setup_account_id.telegram_sandbox_recipients', readonly=False, string='Test user IDs', groups='omni_channel.group_omni_manager')
     setup_authorization_evidence = fields.Text(related='setup_account_id.telegram_sandbox_evidence', readonly=False, string='Authorization evidence', groups='omni_channel.group_omni_manager')
 
     def _compute_setup_secret_inputs(self):
@@ -616,6 +644,8 @@ class TelegramGuidedSetup(models.Model):
     def create(self, vals_list):
         if any('default_' + key in self.env.context for key in ('setup_bot_token', 'setup_webhook_secret')):
             raise AccessError(_('Enter credentials in the Credentials step, not in context defaults.'))
+        if protected_input(self, {'setup_test_send_state', 'setup_webhook_fingerprint'}, vals_list) and not is_internal(self):
+            raise AccessError(_('Test delivery status is managed by the test action.'))
         prepared, credentials = [], []
         for values in vals_list:
             values = dict(values)
@@ -628,6 +658,8 @@ class TelegramGuidedSetup(models.Model):
         return channels
 
     def write(self, values):
+        if {'setup_test_send_state', 'setup_webhook_fingerprint'} & values.keys() and not is_internal(self):
+            raise AccessError(_('Test delivery status is managed by the test action.'))
         values = dict(values)
         token = values.pop('setup_bot_token', False)
         secret = values.pop('setup_webhook_secret', False)
@@ -638,6 +670,184 @@ class TelegramGuidedSetup(models.Model):
         if token or secret:
             self._save_setup_credentials(token, secret)
         return result
+
+    setup_test_recipient = fields.Char(compute='_compute_setup_test_recipient', string='Tester', groups='omni_channel.group_omni_manager')
+    setup_test_text = fields.Char(compute='_compute_setup_test_recipient', string='Message', groups='omni_channel.group_omni_manager')
+    setup_webhook_fingerprint = fields.Char(readonly=True, copy=False, groups='omni_channel.group_omni_manager')
+    setup_test_send_state = fields.Selection([
+        ('pending', 'Sending'), ('sent', 'Test message sent'),
+        ('failed', 'Not sent'), ('unknown', 'Delivery unconfirmed'),
+    ], readonly=True, copy=False, groups='omni_channel.group_omni_manager')
+
+    @api.depends('setup_test_recipients')
+    def _compute_setup_test_recipient(self):
+        for channel in self:
+            recipients = channel.setup_account_id._telegram_recipients() if channel.setup_test_recipients else []
+            channel.setup_test_recipient = recipients[0] if recipients else False
+            channel.setup_test_text = TEST_MESSAGE
+
+    def _claim_setup_test(self):
+        self.ensure_one()
+        self._require_manager()
+        self._lock()
+        self._check_setup_account()
+        account = self.setup_account_id
+        if not self.is_telegram or not self.active or not account.telegram_verified_at or not self._is_setup_connection_ready():
+            raise UserError(_('Connect Telegram first.'))
+        if self.setup_test_send_state in ('pending', 'sent', 'unknown'):
+            raise UserError(_('A test was already sent or may still be delivered. Check Telegram.'))
+        recipient = account._telegram_recipients()[0]
+        if self.env['omni.blocked.identity']._matches(self, account.namespace, recipient):
+            raise UserError(_('This tester is blocked.'))
+        try:
+            secret = resolve(account.credential_reference, account._telegram_config())
+        except Exception:
+            raise UserError(_('The saved bot credentials could not be read.')) from None
+        if not account.telegram_sandbox_authorized:
+            account.action_authorize_telegram_sandbox()
+        if not self._is_setup_receiving_ready():
+            self.action_setup_enable_receiving()
+        internal(self).write({'setup_test_send_state': 'pending'})
+        self._audit('telegram.setup_test_authorized', json.dumps({
+            'account': account.id, 'tester': recipient, 'message': TEST_MESSAGE,
+            'policy': 'manager-confirmed-fixed-setup-test',
+        }))
+        return secret.token, recipient
+
+    def _finish_setup_test(self, state, detail):
+        self._require_manager()
+        self._lock()
+        if self.setup_test_send_state != 'pending' or state not in ('sent', 'failed', 'unknown'):
+            raise UserError(_('The test result cannot be changed.'))
+        internal(self).write({'setup_test_send_state': state})
+        self._audit('telegram.setup_test_result', json.dumps({'state': state, 'detail': detail}))
+
+    def action_setup_send_test(self):
+        self.ensure_one()
+        self._require_manager()
+        # Commit the claim before I/O so repeated clicks, HTTP retries and process
+        # failure cannot silently send the same diagnostic twice.
+        context = {'allowed_company_ids': self.env.companies.ids}
+        with self.env.registry.cursor() as cr:
+            record = api.Environment(cr, self.env.uid, context)[self._name].browse(self.id)
+            token, recipient = record._claim_setup_test()
+            cr.commit()
+        state, detail = send_test_message(token, recipient)
+        with self.env.registry.cursor() as cr:
+            record = api.Environment(cr, self.env.uid, context)[self._name].browse(self.id)
+            record._finish_setup_test(state, detail)
+            cr.commit()
+        self.invalidate_recordset(['setup_test_send_state'])
+        messages = {
+            'sent': _('Test message sent.'),
+            'failed': (_('Open the bot and press Start, then try again.') if detail == 'start_bot' else _('Test not sent. Please try again.')),
+            'unknown': _('Delivery unconfirmed. Check Telegram before sending another test.'),
+        }
+        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+            'message': messages[state], 'type': 'success' if state == 'sent' else 'warning',
+            'sticky': state != 'sent',
+        }}
+
+    def _setup_connection_fingerprint(self):
+        account = self.setup_account_id
+        values = [self.setup_callback_url, account.id, account.external_account_key,
+                  account.namespace, account.credential_reference, str(account.telegram_verified_at)]
+        return hashlib.sha256(json.dumps(values).encode()).hexdigest()
+
+    def _is_setup_connection_ready(self):
+        if not self.is_telegram:
+            return super()._is_setup_connection_ready()
+        account = self.setup_account_id
+        return bool(self.active and account.active and account.telegram_verified_at and
+                    (self.setup_webhook_fingerprint == self._setup_connection_fingerprint()
+                     if self.setup_webhook_fingerprint else self._is_setup_receiving_ready()))
+
+    def _registration_fingerprint(self):
+        values = [self.setup_callback_url, self.setup_account_id.id,
+                  self.setup_account_id._telegram_config()]
+        return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
+
+    def action_setup_connect_telegram(self):
+        return self._connect_telegram()
+
+    def _connect_telegram(self, expected_remote=None, expected_config=None):
+        self.ensure_one()
+        self._require_manager()
+        self._lock()
+        self._check_setup_account()
+        account = self.setup_account_id
+        endpoint = self.setup_endpoint_id
+        if not self.is_telegram or not account or not endpoint or not account.telegram_verified_at:
+            raise UserError(_('Verify the bot in Credentials first.'))
+        account._require_manager()
+        if not self.active or not endpoint.active or not account.active:
+            raise UserError(_('Restore the channel and connection before connecting Telegram.'))
+        lock_company(account)
+        from odoo.addons.omni_channel.models.deployment import valid_callback_url
+        url = self.setup_callback_url
+        if not valid_callback_url(url, endpoint.route_key):
+            raise UserError(_('Enter your public HTTPS webhook URL first.'))
+        fingerprint = self._registration_fingerprint()
+        if expected_config and expected_config != fingerprint:
+            raise UserError(_('The connection changed. Close this dialog and click Connect Telegram again.'))
+        try:
+            secret = resolve(account.credential_reference, account._telegram_config())
+        except Exception:
+            raise UserError(_('The saved credentials could not be read. Check credential storage.')) from None
+        try:
+            current = webhook_info(secret.token)['url']
+        except TelegramSetupError as error:
+            account._raise_setup_verification_error(error)
+        remote_digest = hashlib.sha256(current.encode()).hexdigest()
+        if expected_remote and expected_remote != remote_digest:
+            raise UserError(_('Telegram’s webhook changed. Close this dialog and click Connect Telegram again.'))
+        if current and current != url and not expected_remote:
+            wizard = self.env['omni.telegram.webhook.registration'].create({
+                'channel_id': self.id, 'callback_url': url,
+                'remote_digest': remote_digest, 'config_digest': fingerprint,
+            })
+            return {'type': 'ir.actions.act_window', 'res_model': wizard._name,
+                    'res_id': wizard.id, 'view_mode': 'form', 'target': 'new'}
+        # Permission/config checks and serialization occur before any external mutation.
+        try:
+            previous_error = register_webhook(secret.token, secret.webhook_secret, url)
+        except TelegramSetupError as error:
+            messages = {
+                'registration_rejected': _('Telegram rejected the registration. Check that the public HTTPS URL and certificate are reachable, then try Connect Telegram again.'),
+                'registration_unknown': _('Telegram did not confirm the request. The webhook may have changed. Click Verify webhook before trying Connect Telegram again.'),
+                'registration_unconfirmed': _('Telegram accepted the registration, but its final settings could not be confirmed. Click Verify webhook to check them.'),
+            }
+            if error.reason not in messages:
+                account._raise_setup_verification_error(error)
+            self._audit('telegram.webhook_registration', error.reason)
+            return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+                'title': _('Webhook registration needs attention'), 'message': messages[error.reason],
+                'type': 'warning', 'sticky': True,
+            }}
+        internal(self).write({'setup_webhook_fingerprint': self._setup_connection_fingerprint()})
+        self._audit('telegram.webhook_registered', _('Webhook registered. Test-user receiving remains disabled until the final test confirmation.'))
+        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+            'title': _('Telegram connected'),
+            'message': (_('Connected. Telegram reports a previous delivery error; send a new test message.')
+                        if previous_error else _('Connected. Continue to Branding.')),
+            'type': 'warning' if previous_error else 'success', 'sticky': True,
+        }}
+
+    def action_setup_complete_step(self, step):
+        if step != 4 or not self.is_telegram:
+            return super().action_setup_complete_step(step)
+        self.ensure_one()
+        self._require_manager()
+        self._lock()
+        if self.setup_test_send_state != 'sent':
+            raise UserError(_('Send the test message first.'))
+        with self.env.cr.savepoint():
+            completed = super().action_setup_complete_step(step)
+            if self.selected_sender_id != self.setup_sender_id:
+                self.setup_sender_id.action_activate(self.generation)
+            if self.selected_sender_id != self.setup_sender_id:
+                raise UserError(_('The bot could not be checked. Try Finish setup again.'))
+        return completed
 
     def action_setup_verify_webhook(self):
         self.ensure_one()
@@ -659,6 +869,9 @@ class TelegramGuidedSetup(models.Model):
         try:
             has_delivery_error = verify_webhook(secret.token, url)
         except TelegramSetupError as error:
+            retry = verification_retry(self, 'action_setup_verify_webhook', error)
+            if retry:
+                return retry
             account._raise_setup_verification_error(error)
         self.invalidate_recordset()
         account.invalidate_recordset()
@@ -705,7 +918,7 @@ class TelegramGuidedSetup(models.Model):
         self.invalidate_recordset(['setup_policy_id', 'setup_sender_id', 'setup_endpoint_id', 'setup_callback_url'])
         return True
 
-    @api.depends('setup_endpoint_state', 'setup_endpoint_health', 'setup_callback_url', 'setup_bot_authorized')
+    @api.depends('setup_endpoint_state', 'setup_endpoint_health', 'setup_callback_url', 'setup_bot_authorized', 'setup_webhook_fingerprint', 'setup_account_id.active', 'setup_account_id.telegram_verified_at', 'setup_account_id.credential_reference', 'setup_account_id.external_account_key', 'setup_account_id.namespace', 'active')
     def _compute_setup_receiving_ready(self):
         super()._compute_setup_receiving_ready()
 
@@ -714,8 +927,6 @@ class TelegramGuidedSetup(models.Model):
 
     def action_setup_validate_step(self, step):
         result = super().action_setup_validate_step(step)
-        if step == 2 and self.is_telegram and not self.setup_bot_authorized:
-            raise UserError(_('Authorize the consenting sandbox users before continuing.'))
         return result
 
     def action_setup_enable_receiving(self):
@@ -757,3 +968,22 @@ class TelegramGuidedSetup(models.Model):
         if self.selected_sender_id != self.setup_sender_id:
             raise UserError(_('Sender verification failed. Activation remains disabled.'))
         return self.action_enable_telegram_dispatch()
+
+
+class TelegramWebhookRegistration(models.TransientModel):
+    _name = 'omni.telegram.webhook.registration'
+    _description = 'Confirm Telegram webhook replacement'
+
+    channel_id = fields.Many2one('omni.channel', required=True, readonly=True)
+    callback_url = fields.Char(required=True, readonly=True)
+    remote_digest = fields.Char(required=True, readonly=True)
+    config_digest = fields.Char(required=True, readonly=True)
+
+    def action_confirm(self):
+        self.ensure_one()
+        self.check_access('read')
+        self.channel_id._require_manager()
+        result = self.channel_id._connect_telegram(self.remote_digest, self.config_digest)
+        if result.get('tag') == 'display_notification':
+            result['params']['next'] = {'type': 'ir.actions.act_window_close'}
+        return result

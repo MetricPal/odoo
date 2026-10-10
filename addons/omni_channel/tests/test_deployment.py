@@ -1,6 +1,6 @@
 from odoo.tests import TransactionCase, tagged
 
-from odoo.addons.omni_channel.models.deployment import channel_origin
+from odoo.addons.omni_channel.models.deployment import channel_origin, valid_callback_url
 
 
 @tagged('post_install', '-at_install', 'omni_deployment')
@@ -63,3 +63,43 @@ class TestOmniDeployment(TransactionCase):
         self.assertEqual(endpoint.read(['state', 'route_key']), before)
         self.assertNotIn('omni_server_address', self.env['res.config.settings']._fields)
         self.assertFalse(self.env.ref('omni_channel.menu_deployment_settings', raise_if_not_found=False))
+
+    def test_tunnel_webhook_url_validation(self):
+        route = 'test-route'
+        self.assertTrue(valid_callback_url('https://server.tail123.ts.net/omni/inbound/test-route', route))
+        for url in ['http://server.tail123.ts.net/omni/inbound/test-route',
+                    'https://localhost/omni/inbound/test-route',
+                    'https://server.tail123.ts.net/omni/inbound/another-route',
+                    'https://server.tail123.ts.net/omni/inbound/test-route?token=secret']:
+            self.assertFalse(valid_callback_url(url, route))
+
+    def test_tunnel_override_is_used_without_hostname_prefix(self):
+        endpoint = self._endpoint('telegram')
+        url = f'https://server.tail123.ts.net/omni/inbound/{endpoint.route_key}'
+        endpoint.write({'webhook_url_override': url})
+        self.assertEqual(endpoint._get_webhook_url(), url)
+        channel = endpoint.channel_id
+        channel.write({'setup_account_id': endpoint.account_id.id})
+        self.assertEqual(channel.setup_callback_preview, url)
+        other = f'https://other.tail123.ts.net/omni/inbound/{endpoint.route_key}'
+        channel.write({'setup_callback_preview': other})
+        self.assertEqual(channel.setup_callback_url, other)
+        self.assertEqual(endpoint.webhook_url_override, other)
+
+    def test_form_creation_accepts_unchanged_webhook_example(self):
+        purpose = self.env['omni.purpose'].create({'name': 'New setup', 'code': 'new_setup_callback'})
+        channel = self.env['omni.channel'].create({
+            'name': 'New setup', 'purpose_id': purpose.id,
+            'channel_type_id': self.env.ref('omni_channel.channel_type_telegram').id,
+            'setup_callback_preview': 'https://channels.<your-domain>/omni/inbound/<route_key>',
+        })
+        self.assertFalse(channel.setup_endpoint_id)
+
+    def test_tunnel_base_url_gets_current_route(self):
+        endpoint = self._endpoint('telegram')
+        channel = endpoint.channel_id
+        channel.write({'setup_account_id': endpoint.account_id.id})
+        channel.write({'setup_callback_preview': 'https://moshkou.taila1ffa6.ts.net/'})
+        expected = f'https://moshkou.taila1ffa6.ts.net/omni/inbound/{endpoint.route_key}'
+        self.assertEqual(endpoint.webhook_url_override, expected)
+        self.assertEqual(channel.setup_callback_url, expected)

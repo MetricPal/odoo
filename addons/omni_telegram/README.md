@@ -38,7 +38,7 @@ These are deployment actions for an authorized sandbox operator, not instruction
 2. Install the addon on the approved sandbox database. Grant ordinary company/team access and the configuration role. Configure the bot identity, secret reference, recipient list and authorization evidence.
 3. Use **Verify and authorize sandbox**. It verifies bot identity with read-only `getMe` and records the human actor/time. Then use the existing sender selection and **Check & Activate** action. These actions never send.
 4. Review and activate the inbound processing policy, including retention/hold settings, and explicitly enable the bot endpoint. Configure HTTPS, host-bound database routing, request/proxy limits and restricted access to route/header logs.
-5. Separately approve and perform Telegram webhook registration against the exact `/omni/inbound/<route_key>` URL, with the same `secret_token` and `allowed_updates` limited to `message` and `edited_message`. Review any existing webhook and pending-update consequences first. This addon deliberately has no `setWebhook` executor or polling fallback. Never use a `db` query parameter.
+5. In Connect & verify, enter the public HTTPS URL and click Connect Telegram. Confirm registration; a different existing webhook requires a separate replacement confirmation. Odoo sends the saved secret and subscribes to message and edited_message updates. Pending updates are preserved. No polling fallback is installed. Never use a db query parameter.
 6. Separately authorize the core inbox/retention scheduler operation. Verify one real incoming private text and edit, duplicate handling, and rejection of an incorrect secret and unlisted user. Retain sanitized certification evidence.
 7. Record and confirm exact recipient consent. Prepare a reply from the inbox and have its assigned, distinct approver approve it. Explicitly enable Telegram sandbox replies on the channel, enqueue the approved command and authorize the dispatch scheduler operation separately. Verify exactly one accepted reply with its scoped provider key.
 8. Exercise pause/revoke and unknown-outcome reconciliation in the sandbox. Record results before any release decision. Do not induce ambiguous real sends without a reviewed test procedure.
@@ -133,18 +133,14 @@ reference and clears the token/secret inputs. An existing verified connection
 can be selected instead. Next creates draft bindings idempotently and refuses a
 bot already owned by another channel; empty same-team channels remain allowed.
 
-Connect & verify exposes the backend callback URL, manager-only secret disclosure,
-consenting sandbox user IDs/evidence, retention policy, connection check and
-explicit receiving authorization. Webhook registration is still an administrator
-operation; the adapter does not implement `setWebhook`. Missing public HTTPS
-configuration is explained in place. A successful bot check does not claim that
-a webhook has delivered a message.
+Connect & verify displays the editable public callback URL and retention policy.
+Connect Telegram registers the webhook with an explicit confirmation. Personal
+test-user IDs are entered in Test & go live; Send test message authorizes them
+and enables receiving before sending the fixed diagnostic. Verify webhook remains visible.
 
-Branding edits internal labels. Team & apps shows actual integration availability.
-Test & go live selects a received conversation and prepares a draft reply for the
-existing permission/approval flow. Explicit sandbox activation uses the existing
-sender selection and dispatch actions; it does not bypass approval, networking
-or scheduler controls. Saving or finishing never sends a message.
+Branding edits internal labels. Test & go live sends one fixed diagnostic to the
+displayed authorized tester. Finish setup selects the verified runtime sender.
+Normal replies retain recipient permission and Approval Center approval.
 
 
 Credential setup errors distinguish invalid input format, rejected tokens,
@@ -161,8 +157,8 @@ connection it performs an explicit recheck. Last verified records the previous
 successful check; a failed recheck does not erase that history. Recheck errors
 distinguish unreadable storage from provider verification failures.
 
-Connect & verify shows receiving status, a selectable, read-only callback URL input
-and Verify webhook below it. The URL uses the configured public hostname and the
+Connect & verify shows receiving status, a native editable webhook URL input
+and Connect Telegram below it. The URL uses the configured public hostname and the
 endpoint’s generated route key. Without a public domain, the input shows
 `https://channels.<your-domain>/omni/inbound/<route_key>`, substituting the real
 route key when available. This display fallback is never treated as a usable
@@ -170,10 +166,104 @@ callback URL by verification or receiving. Verify webhook
 uses Telegram getWebhookInfo and compares the registered URL exactly, reporting
 missing/different registrations and historical delivery errors separately. It does
 not register webhooks, verify the secret, enable receiving or prove delivery.
-Native collapsed Advanced settings contains secret details, sandbox user
-authorization, retention and
-credential rechecks. Retention defaults and all authorization gates are preserved.
-Enable receiving requires a public callback address; it does not register a
-webhook. Open Telegram to test opens the verified bot's public username without
-prefilling or sending a message. View received messages uses the existing inbox.
-Administrator registration instructions are collapsed in the guidance panel.
+Connect Telegram registers the webhook without requiring test-user IDs. Its
+confirmed URL and credential identity determine completion of Connect & verify.
+The final test confirmation authorizes the entered users and retention policy,
+enables receiving and sends the fixed message. Replies remain separately approved. Verify webhook and
+retention settings remain visible in the receiving step.
+
+The Webhook URL field accepts a public HTTPS tunnel URL (for example Tailscale
+Funnel) ending in `/omni/inbound/<this endpoint’s route key>`. Saving stores an
+endpoint-specific override, used by callback display and Verify webhook, without
+adding a `channels.` prefix or changing the global Odoo address. It does not
+register the webhook or enable receiving. Clearing it restores the configured
+domain fallback. The tunnel must forward that path to this Odoo database.
+
+Temporary failures when rechecking a saved bot or verifying its webhook now show
+a short warning with Retry and Details. Retry repeats only that verification,
+ignores repeated clicks while pending, and refreshes the displayed record after
+success. No automatic retry is performed. Previous verification timestamps and
+saved credentials are preserved on failure. Invalid tokens and malformed inputs
+remain actionable errors. New credential saves retain transactional rollback and
+use a short retry message if Telegram cannot be reached.
+
+Run `node addons/omni_telegram/tools/test_verification_retry.mjs` for the retry
+interaction checks. Database tests also cover unchanged verification history.
+
+Guided setup labels the numeric recipient list Test user IDs and does not ask for
+a separate Authorization evidence note. The explicit authorization confirmation
+records the approving manager and time after verifying the bot and validating
+the test-user list. Existing notes are preserved; a free-text note is no longer
+a prerequisite for authorization.
+
+Connect Telegram explicitly registers the displayed URL using `setWebhook` and
+then reads `getWebhookInfo` to confirm the URL and update subscriptions. It sends
+the saved secret directly; guided setup no longer exposes a copy-secret button.
+A conflicting remote URL opens a manager-only confirmation bound to fingerprints
+of the local connection and remote URL. Confirmation rechecks both before writing.
+External changes during the provider calls cannot be atomically prevented by the
+Telegram API, so final registration is read back. Timeout/unknown outcomes are
+reported as warnings with a Verify webhook instruction, never silently retried.
+Only the explicit registration transport flag permits setWebhook; it cannot send
+messages or be used with verify_only. Registration remains separate from the sandbox send network switch and replies.
+Test-user authorization and receiving activation occur in the final test claim,
+not webhook registration. A replacement confirmation occurs before either local or external mutation.
+Registration outcomes are audited without tokens, secrets or remote URL contents.
+The tunnel must route to this database; DNS/TLS and a real incoming test remain
+necessary. Live provider certification is still pending.
+
+The Webhook URL input also accepts a tunnel base URL; saving appends this
+endpoint’s generated `/omni/inbound/<route_key>` path. The computed input has
+its own compute method so inverse saves do not protect the endpoint bindings.
+Unchanged example text submitted during native form creation is ignored.
+
+Sender/endpoint identity health checks use read-only getMe verification, like
+Verify bot. They no longer depend on the sandbox send network switch. getChat
+and sendMessage retain their existing network and authorization gates. Test-user
+IDs cannot contain the current bot ID; the UI asks for personal Telegram IDs.
+
+Guided setup hides the internal endpoint identity health field and removes the
+duplicate Recheck credentials button. Verify bot, webhook verification and
+Receiving status provide the user-facing results; activation still performs the
+server-side endpoint health check.
+
+The final setup step accepts personal test-user IDs and displays a fixed short
+message and **Send test message**. The existing manager confirmation is the
+approval for this bounded diagnostic; it bypasses neither normal reply approval
+nor consent. See `docs/APPROVALS.md` for its exact scope. The test uses a separate,
+payload-restricted transport capability. A durable claim prevents duplicate sends
+on repeated clicks, request retries and unknown outcomes. No automatic retry is
+performed. Finish setup requires confirmed send success and selects the verified
+runtime sender, leaving business dispatch and scheduler controls unchanged.
+Reply drafting and approval remain in the inbox, outside channel setup.
+
+### Channel overview
+
+Completed Telegram channels show their bot, receiving status, team/company and
+manager-visible test users. **Open inbox** opens only that channel's conversations.
+**Channel settings** edits the name and retention; bot and webhook URL are read-only.
+Saving changed retention creates a new policy version, preserves the old version
+and moves enabled endpoints to the new active policy through their existing actions.
+Old pending payloads stay under the old policy and its retention controls.
+**Edit test users** adds/removes personal IDs in one manager-confirmed save. Changed
+lists revoke the previous sandbox authorization, pause reply dispatch and invalidate
+old send generations, then verify and authorize the new list. An empty list revokes
+access. Failed verification or invalid IDs roll back the entire change. These forms
+send no messages and do not enable business dispatch. Concurrent edits require reopening.
+System administrators retain the original infrastructure controls through the
+native action menu's **Technical configuration** entry, including explicit reply
+activation. They are kept off the normal channel overview.
+
+Completed Telegram cards and list rows expose Settings, Inbox and Edit test users.
+Cards show a green Connected badge only for an active, previously verified bot;
+otherwise they show Needs connection. Test IDs and configuration buttons remain
+manager-only. All channel progress indicators use one continuous bar with a trailing
+completed/5 value. Incomplete channels retain Start/Continue setup actions.
+
+Kanban conditional widget fields use a `<t t-else="">` wrapper; the empty directive
+must not sit on `<field widget="...">`, because Odoo 20's CardCompiler forwards
+widget attributes as expressions and produces invalid JavaScript for an empty one.
+`tools/test_card_compilation.cjs <combined-kanban.xml>` uses Playwright, the
+checked-out CardCompiler and bundled Owl to compile the real combined card and
+reproduce the original failing pattern. Set `OMNI_NODE_MODULES` if Playwright is
+provided by a separate local Node package directory.

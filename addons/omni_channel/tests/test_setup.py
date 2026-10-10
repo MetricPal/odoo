@@ -1,7 +1,8 @@
 from unittest.mock import patch
 
 from odoo.exceptions import AccessError, ValidationError
-from odoo.tests import new_test_user, tagged
+from odoo.tests import tagged
+from .test_users import new_test_user
 
 from .test_foundation import HealthyAdapter, TestOmniFoundation
 

@@ -2,7 +2,8 @@ from unittest.mock import patch
 
 from odoo import fields
 from odoo.exceptions import AccessError, UserError
-from odoo.tests import new_test_user, tagged
+from odoo.tests import tagged
+from .test_users import new_test_user
 
 from .test_foundation import HealthyAdapter, TestOmniFoundation
 

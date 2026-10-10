@@ -13,14 +13,15 @@ class ChannelSetup(models.Model):
     setup_completed_step_ids = fields.Json(readonly=True, copy=False)
     setup_receiving_deferred = fields.Boolean(readonly=True, copy=False)
     setup_receiving_ready = fields.Boolean(compute='_compute_setup_receiving_ready')
+    setup_connection_ready = fields.Boolean(compute='_compute_setup_receiving_ready')
     setup_step_total = fields.Integer(compute='_compute_setup_progress')
     setup_progress_label = fields.Char(string='Setup', compute='_compute_setup_progress')
 
     @api.depends('setup_completed_steps')
     def _compute_setup_progress(self):
         for channel in self:
-            channel.setup_step_total = 6
-            channel.setup_progress_label = _('%s of 6 steps', channel.setup_completed_steps)
+            channel.setup_step_total = 5
+            channel.setup_progress_label = _('%s of 5 steps', channel.setup_completed_steps)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -37,10 +38,14 @@ class ChannelSetup(models.Model):
     def _compute_setup_receiving_ready(self):
         for channel in self:
             channel.setup_receiving_ready = channel._is_setup_receiving_ready()
+            channel.setup_connection_ready = channel._is_setup_connection_ready()
 
     def _is_setup_receiving_ready(self):
         self.ensure_one()
         return bool(self.setup_callback_url and self.setup_endpoint_state == 'enabled' and self.setup_endpoint_health == 'healthy')
+
+    def _is_setup_connection_ready(self):
+        return self._is_setup_receiving_ready()
 
     def action_setup_defer_receiving(self):
         self.ensure_one()
@@ -57,16 +62,16 @@ class ChannelSetup(models.Model):
         self._require_manager()
         self._lock()
         self.invalidate_recordset(['setup_completed_steps', 'setup_completed_step_ids', 'setup_receiving_deferred'])
-        if type(step) is not int or not 0 <= step <= 5:
+        if type(step) is not int or not 0 <= step <= 4:
             raise UserError(_('Unknown setup step.'))
         completed = set(self._completed_setup_steps())
         prerequisites = set(range(step))
-        if step in (3, 4) and self.setup_receiving_deferred:
+        if step == 3 and self.setup_receiving_deferred:
             prerequisites.discard(2)
         if not prerequisites.issubset(completed):
             raise UserError(_('Complete the previous setup steps first.'))
         self.action_setup_validate_step(step)
-        if step == 5 and not self._is_setup_receiving_ready():
+        if step == 4 and not self._is_setup_receiving_ready():
             raise UserError(_('Receiving is not ready. Save this channel as a draft and finish receiving setup later.'))
         completed.add(step)
         values = {'setup_completed_steps': len(completed), 'setup_completed_step_ids': sorted(completed)}
@@ -78,7 +83,7 @@ class ChannelSetup(models.Model):
     def action_open_channel(self):
         self.ensure_one()
         self.check_access('read')
-        if self.setup_completed_steps != 6:
+        if self.setup_completed_steps != 5:
             raise UserError(_('Use Start setup or Continue setup to finish this channel.'))
         return {
             'type': 'ir.actions.act_window', 'res_model': self._name,
@@ -119,7 +124,7 @@ class ChannelSetup(models.Model):
     setup_endpoint_id = fields.Many2one('omni.inbound.endpoint', compute='_compute_setup_bindings')
     setup_policy_id = fields.Many2one('omni.inbound.policy', compute='_compute_setup_bindings')
     setup_callback_url = fields.Char(string='Callback URL', compute='_compute_setup_bindings')
-    setup_callback_preview = fields.Char(compute='_compute_setup_bindings')
+    setup_callback_preview = fields.Char(string='Webhook URL', compute='_compute_setup_callback_preview', inverse='_inverse_setup_callback_preview')
     setup_endpoint_state = fields.Selection(related='setup_endpoint_id.state', string='Receiving status')
     setup_endpoint_health = fields.Selection(related='setup_endpoint_id.health', string='Connection check')
     setup_policy_state = fields.Selection(related='setup_policy_id.state')
@@ -130,7 +135,7 @@ class ChannelSetup(models.Model):
     setup_conversation_id = fields.Many2one('omni.conversation', string='Test conversation', check_company=True, copy=False)
     setup_test_body = fields.Text(string='Test message', copy=False)
 
-    @api.depends('sender_ids.account_id', 'endpoint_ids.account_id', 'setup_account_id', 'endpoint_ids.state')
+    @api.depends('sender_ids.account_id', 'endpoint_ids.account_id', 'setup_account_id', 'endpoint_ids.state', 'endpoint_ids.webhook_url_override', 'endpoint_ids.route_key')
     def _compute_setup_bindings(self):
         for channel in self:
             sender = channel.sender_ids.filtered(lambda s: s.account_id == channel.setup_account_id)[:1]
@@ -139,15 +144,41 @@ class ChannelSetup(models.Model):
             channel.setup_endpoint_id = endpoint
             channel.setup_has_bindings = bool(channel.sender_ids or channel.endpoint_ids)
             channel.setup_callback_url = endpoint._get_webhook_url() if endpoint else False
-            channel.setup_callback_preview = channel.setup_callback_url or (
-                'https://channels.<your-domain>/omni/inbound/%s'
-                % (endpoint.route_key if endpoint and endpoint.route_key else '<route_key>')
-            )
             channel.setup_policy_id = self.env['omni.inbound.policy'].search(
                 [('channel_id', '=', channel.id), ('state', '=', 'active')], limit=1,
             ) or self.env['omni.inbound.policy'].search(
                 [('channel_id', '=', channel.id)], order='id desc', limit=1,
             ) if channel.id and isinstance(channel.id, int) else False
+
+    @api.depends('setup_callback_url', 'setup_endpoint_id', 'endpoint_ids.route_key')
+    def _compute_setup_callback_preview(self):
+        for channel in self:
+            endpoint = channel.setup_endpoint_id
+            channel.setup_callback_preview = channel.setup_callback_url or (
+                'https://channels.<your-domain>/omni/inbound/%s'
+                % (endpoint.route_key if endpoint and endpoint.route_key else '<route_key>')
+            )
+
+    def _inverse_setup_callback_preview(self):
+        from urllib.parse import urlsplit
+        for channel in self:
+            channel._require_manager()
+            value = (channel.setup_callback_preview or '').strip()
+            # Native form creation may submit the unchanged computed example.
+            if not value or value == 'https://channels.<your-domain>/omni/inbound/<route_key>':
+                if not channel.setup_endpoint_id:
+                    continue
+            endpoint = channel.setup_endpoint_id
+            if not endpoint:
+                raise UserError(_('Verify the bot before entering its webhook URL.'))
+            preview = 'https://channels.<your-domain>/omni/inbound/%s' % endpoint.route_key
+            if value == preview:
+                continue
+            parsed = urlsplit(value)
+            if value and parsed.path in ('', '/'):
+                value = value.rstrip('/') + '/omni/inbound/' + endpoint.route_key
+            endpoint.write({'webhook_url_override': value or False})
+        self.invalidate_recordset(['setup_callback_url', 'setup_callback_preview', 'setup_receiving_ready'])
 
     @api.constrains('setup_account_id', 'company_id', 'purpose_id', 'channel_type_id')
     def _check_setup_account(self):
@@ -189,7 +220,7 @@ class ChannelSetup(models.Model):
     def action_setup_validate_step(self, step):
         self.ensure_one()
         self._require_manager()
-        if type(step) is not int or not 0 <= step <= 5:
+        if type(step) is not int or not 0 <= step <= 4:
             raise ValidationError(_('Unknown setup step.'))
         if step == 1:
             if not self.setup_account_id:
@@ -198,8 +229,8 @@ class ChannelSetup(models.Model):
         if step == 2:
             if not self.setup_endpoint_id:
                 raise UserError(_('Complete Credentials first to prepare the receiving endpoint.'))
-            if not self._is_setup_receiving_ready():
-                raise UserError(_('Receiving is not ready. Choose Set up receiving later to continue configuring this draft.'))
+            if not self._is_setup_connection_ready():
+                raise UserError(_('Receiving is not ready. Choose Next: Branding to continue configuring this draft.'))
         return True
 
     def action_setup_enable_receiving(self):

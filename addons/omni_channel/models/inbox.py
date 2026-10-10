@@ -13,7 +13,7 @@ from odoo import SUPERUSER_ID, _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 from .command import digest, internal, is_internal
-from .deployment import channel_origin
+from .deployment import channel_origin, valid_callback_url
 from .dispatch import OmniDispatchCommand
 from .foundation import protected_input
 from odoo.addons.omni_channel.providers.base import get_adapter
@@ -203,9 +203,19 @@ class InboundPolicy(models.Model):
 class InboundEndpoint(models.Model):
     _inherit = "omni.inbound.endpoint"
 
+    webhook_url_override = fields.Char(string='Public webhook URL', copy=False)
+
+    @api.constrains('webhook_url_override', 'route_key')
+    def _check_webhook_url_override(self):
+        for endpoint in self:
+            if endpoint.webhook_url_override and not valid_callback_url(endpoint.webhook_url_override, endpoint.route_key):
+                raise ValidationError(_('Use a public HTTPS URL ending in /omni/inbound/%s. Keep this channel’s route key.', endpoint.route_key))
+
     def _get_webhook_url(self):
         """Backend-only registration input; deriving a URL never registers it."""
         self.ensure_one()
+        if self.webhook_url_override:
+            return self.webhook_url_override
         origin = channel_origin(self.get_base_url())
         return f"{origin}/omni/inbound/{self.route_key}" if origin else False
 
@@ -252,6 +262,8 @@ class InboundEndpoint(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        if "webhook_url_override" in vals:
+            self._require_manager()
         if self._protected & vals.keys() and not is_internal(self):
             raise AccessError(_("Endpoint intake state is server-managed."))
         for channel in self.channel_id.sorted("id"):

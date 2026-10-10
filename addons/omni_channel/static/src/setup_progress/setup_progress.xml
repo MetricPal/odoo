@@ -1,0 +1,10 @@
+<templates xml:space="preserve">
+  <t t-name="omni_channel.SetupProgress">
+    <div class="o_omni_setup_progress d-flex align-items-center gap-2 w-100" role="progressbar" aria-label="Channel setup" t-att-aria-valuenow="this.completed" aria-valuemin="0" aria-valuemax="5">
+      <div class="o_omni_setup_track bg-200 flex-grow-1" aria-hidden="true">
+        <div class="o_omni_setup_fill bg-primary h-100" t-att-style="'width: ' + (this.completed * 20) + '%'"/>
+      </div>
+      <span class="flex-shrink-0 text-nowrap"><t t-out="this.completed"/>/5</span>
+    </div>
+  </t>
+</templates>

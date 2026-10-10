@@ -179,5 +179,59 @@ class TestWebhookVerification(unittest.TestCase):
             setup.verify_webhook(TOKEN, '', client)
         self.assertEqual(client.calls, [])
 
+class TestWebhookRegistration(unittest.TestCase):
+    URL = 'https://machine.tail123.ts.net/omni/inbound/route'
+    SECRET = 'synthetic_webhook_secret_for_tests_only'
+
+    def client(self, responses):
+        from unittest.mock import Mock
+        client = Mock()
+        client.call.side_effect = responses
+        return client
+
+    def test_registers_secret_preserves_updates_and_verifies(self):
+        client = self.client([
+            transport.HTTPResult(200, {'ok': True, 'result': True}),
+            transport.HTTPResult(200, {'ok': True, 'result': {'url': self.URL, 'allowed_updates': ['message', 'edited_message']}}),
+        ])
+        self.assertFalse(setup.register_webhook(TOKEN, self.SECRET, self.URL, client))
+        self.assertEqual(client.call.call_args_list[0].args, (TOKEN, 'setWebhook', {
+            'url': self.URL, 'secret_token': self.SECRET,
+            'allowed_updates': ['message', 'edited_message'], 'drop_pending_updates': False,
+        }))
+        self.assertEqual(client.call.call_args_list[0].kwargs, {'register_webhook': True})
+        self.assertEqual(client.call.call_args_list[1].args[1], 'getWebhookInfo')
+
+    def test_timeout_never_retries_mutation_or_exposes_secret(self):
+        client = self.client([RuntimeError(TOKEN + self.SECRET)])
+        with self.assertRaises(setup.TelegramSetupError) as error:
+            setup.register_webhook(TOKEN, self.SECRET, self.URL, client)
+        self.assertEqual(error.exception.reason, 'registration_unknown')
+        self.assertEqual(client.call.call_count, 1)
+        self.assertNotIn(TOKEN, str(error.exception))
+        self.assertNotIn(self.SECRET, str(error.exception))
+
+    def test_rejected_or_unconfirmed_are_not_success(self):
+        for status, data, reason in [
+            (400, {}, 'registration_rejected'), (429, {}, 'registration_rejected'),
+            (500, {}, 'registration_unknown'), (200, {'ok': True, 'result': False}, 'registration_unknown'),
+        ]:
+            with self.assertRaises(setup.TelegramSetupError) as error:
+                setup.register_webhook(TOKEN, self.SECRET, self.URL, self.client([transport.HTTPResult(status, data)]))
+            self.assertEqual(error.exception.reason, reason)
+        for info in [{'url': 'https://different.example/path'}, {'url': self.URL, 'allowed_updates': ['message']}, {'url': self.URL, 'allowed_updates': [{}]}]:
+            client = self.client([transport.HTTPResult(200, {'ok': True, 'result': True}), transport.HTTPResult(200, {'ok': True, 'result': info})])
+            with self.assertRaises(setup.TelegramSetupError) as error:
+                setup.register_webhook(TOKEN, self.SECRET, self.URL, client)
+            self.assertEqual(error.exception.reason, 'registration_unconfirmed')
+
+    def test_registration_capability_cannot_send_or_run_as_readonly(self):
+        with patch.dict('os.environ', {'OMNI_TELEGRAM_SANDBOX_NETWORK': '1'}):
+            for kwargs in ({}, {'verify_only': True}, {'verify_only': True, 'register_webhook': True}):
+                with self.assertRaises(transport.TelegramTransportError):
+                    transport.TelegramHTTP().call(TOKEN, 'setWebhook', {}, **kwargs)
+            with self.assertRaises(transport.TelegramTransportError):
+                transport.TelegramHTTP().call(TOKEN, 'sendMessage', {}, register_webhook=True)
+
 if __name__ == '__main__':
     unittest.main()

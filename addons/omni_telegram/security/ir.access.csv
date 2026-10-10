@@ -1,2 +1,5 @@
 id,name,model_id:id,group_id:id,operation
 access_telegram_webhook_secret_manager,Telegram webhook secret manager,model_omni_telegram_webhook_secret,omni_channel.group_omni_manager,crd
+access_telegram_webhook_registration_manager,Telegram webhook registration manager,model_omni_telegram_webhook_registration,omni_channel.group_omni_manager,crd
+
+access_telegram_channel_details_manager,Telegram channel settings manager,model_omni_telegram_channel_details,omni_channel.group_omni_manager,crud

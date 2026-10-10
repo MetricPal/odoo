@@ -19,14 +19,11 @@
 // Step visibility is local UI state; the native form owns all fields and validation.
 .o_omni_setup {
     .o_omni_setup_stage { display: none; }
-    @for $step from 0 through 5 {
+    @for $step from 0 through 4 {
         &[data-setup-step="#{$step}"] .o_omni_setup_stage_#{$step} { display: block; }
     }
 }
 
-.o_search_panel {
-    width: var(--SearchPanel-width, 340px);
-}
 // User-requested stepper colors; the native left search panel has no card surface.
 .o_omni_setup_steps {
     background: transparent;
@@ -116,5 +113,14 @@
         > .o_search_panel_resize { display: none; }
         > .o_omni_setup { flex: 0 0 100%; height: auto !important; overflow: visible; }
         .o_omni_setup_save_hint { order: 3; flex-basis: 100%; }
+    }
+}
+
+.o_omni_setup_progress {
+    min-width: 120px;
+    .o_omni_setup_track {
+        overflow: hidden;
+        height: 7px;
+        border-radius: 3px;
     }
 }

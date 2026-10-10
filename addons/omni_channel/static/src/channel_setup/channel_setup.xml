@@ -28,21 +28,20 @@
       </div>
       <div class="o_form_renderer d-flex flex-nowrap h-100 flex-grow-1 min-w-0 o_omni_setup" t-att-data-setup-step="this.setupState.step">
         <div class="o_form_sheet_bg o_omni_setup_form overflow-auto o-scrollbar-thin min-w-0">
-          <div class="px-3 pt-3"><small>Step <t t-out="this.setupState.step + 1"/> of <t t-out="this.steps.length"/></small><h2 t-out="this.steps[this.setupState.step].title"/></div>
           <t t-component="this.props.Renderer" record="this.model.root" Compiler="this.props.Compiler" archInfo="this.archInfo"
              readonly="this.props.readonly or !this.canEdit" translateAlert="this.translateAlert" onNotebookPageChange.bind="this.onNotebookPageChange"/>
           <div class="o_omni_setup_footer d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 border-top">
             <button class="btn btn-secondary" t-att-disabled="this.setupState.step === 0 || this.setupState.busy" t-on-click="() => this.goToStep(this.setupState.step - 1)">Back</button>
             <span class="o_omni_setup_save_hint text-muted align-self-center">Changes are saved when you continue.</span>
-            <t t-if="this.setupState.step === 2 &amp;&amp; !this.model.root.data.setup_receiving_ready">
-              <button class="btn btn-primary" t-att-disabled="this.setupState.busy" t-on-click="this.deferReceiving">Set up receiving later</button>
+            <t t-if="this.setupState.step === 2 &amp;&amp; !this.model.root.data.is_telegram &amp;&amp; !this.model.root.data.setup_connection_ready">
+              <button class="btn btn-primary" t-att-disabled="this.setupState.busy" t-on-click="this.deferReceiving">Next: Branding</button>
             </t>
-            <button t-elif="this.setupState.step &lt; this.steps.length - 1" class="btn btn-primary" t-att-disabled="this.setupState.busy" t-on-click="() => this.goToStep(this.setupState.step + 1)">Next: <t t-out="this.steps[this.setupState.step + 1].title"/></button>
-            <t t-elif="!this.setupState.completed.includes(2) || !this.model.root.data.setup_receiving_ready">
+            <button t-elif="this.setupState.step &lt; this.steps.length - 1" class="btn btn-primary" t-att-disabled="this.setupState.busy || (this.setupState.step === 2 &amp;&amp; !this.model.root.data.setup_connection_ready)" t-on-click="() => this.goToStep(this.setupState.step + 1)">Next: <t t-out="this.steps[this.setupState.step + 1].title"/></button>
+            <t t-elif="!this.setupState.completed.includes(2) || !this.model.root.data.setup_connection_ready">
               <button class="btn btn-secondary" t-att-disabled="this.setupState.busy" t-on-click="() => this.goToStep(2)">Finish receiving setup</button>
               <button class="btn btn-primary" t-att-disabled="this.setupState.busy" t-on-click="this.saveSetupDraft">Save draft</button>
             </t>
-            <button t-else="" class="btn btn-primary" t-att-disabled="this.setupState.busy" t-on-click="() => this.finishSetup()">Finish setup</button>
+            <button t-else="" class="btn btn-primary" t-att-disabled="this.setupState.busy || (this.model.root.data.is_telegram &amp;&amp; this.model.root.data.setup_test_send_state !== 'sent')" t-on-click="() => this.finishSetup()">Finish setup</button>
           </div>
         </div>
         <aside class="o-mail-ChatterContainer o-mail-Form-chatter o-aside w-print-100" aria-label="Setup guidance">
@@ -67,35 +66,21 @@
                 <p>A bot already assigned to another channel cannot be reused here. Switching choices clears unsaved credentials.</p>
               </t>
               <t t-if="this.setupState.step === 2">
-                <p>Telegram must be able to reach this server over HTTPS. A localhost address works only on your computer. Choose Set up receiving later to finish the other details without enabling messages.</p>
-                <details><summary>Administrator instructions</summary>
-                  <p class="mt-2">The callback URL uses the configured public domain and this channel’s generated route key. Advanced settings contains the webhook secret, test-user authorization and retention periods.</p>
-                  <p t-if="this.model.root.data.is_telegram">Register the callback URL with Telegram using the webhook secret as secret_token and subscribe to message and edited_message updates. This wizard does not register the webhook automatically.</p>
-                  <p>Verify webhook checks whether Telegram has the displayed URL registered. It does not register a webhook or prove message delivery. Send a test message to confirm delivery.</p>
-                </details>
+                <p t-if="this.model.root.data.is_telegram">Enter a public HTTPS URL (e.g. Tailscale Funnel). Connect Telegram registers the webhook.</p>
+                <p t-else="">Enter a public HTTPS webhook URL, then enable receiving.</p>
               </t>
               <t t-if="this.setupState.step === 3">
                 <p>The display name and description help your colleagues recognize this channel in Odoo. They do not change the provider account’s public profile or credentials.</p>
               </t>
               <t t-if="this.setupState.step === 4">
-                <p>The company and team become fixed once a connection is bound. A team can have several channels, each with its own provider identity. The Inbox is currently available; the form identifies business-app integrations that are not yet supported.</p>
-              </t>
-              <t t-if="this.setupState.step === 5">
-                <h4>Test before sending</h4>
-                <ol><li>Have an authorized test user send a private message to your bot.</li><li>Select the received conversation and enter a test reply.</li><li>Review the approval policy and activate sandbox replies explicitly when ready.</li><li>Click Review test reply to open a draft. Sending still requires recipient permission and the normal approval process.</li></ol>
-                <p>If no conversation appears, ask your administrator to check webhook registration and inbound processing. Finish setup saves the channel; it does not send the test reply or enable scheduled processing.</p>
+                <p>Enter your personal Telegram user ID and send the test message. Then finish setup.</p>
               </t>
               <div class="alert alert-warning" t-if="this.model.root.data.channel_type_id &amp;&amp; !this.model.root.data.adapter_ready">This channel type needs an installed provider adapter before it can connect, send or receive. You can save its configuration now.</div>
-              <p t-if="this.setupState.step > 0" class="text-muted">Setup does not send a test message or activate delivery automatically.</p>
+              <p t-if="this.setupState.step > 0 &amp;&amp; this.setupState.step &lt; 2" class="text-muted">Setup does not send a test message or activate delivery automatically.</p>
             </div>
           </div>
         </aside>
       </div>
     </xpath>
   </t>
-    <t t-name="omni_channel.CallbackInput">
-        <input type="text" class="o_input border rounded px-2 py-2 w-100" readonly="readonly"
-               t-att-id="this.props.id" aria-label="Callback URL"
-               t-att-value="this.props.record.data[this.props.name] || this.props.record.data.setup_callback_preview || 'https://channels.&lt;your-domain&gt;/omni/inbound/&lt;route_key&gt;'"/>
-    </t>
 </templates>

@@ -1,7 +1,8 @@
 from unittest.mock import patch
 
 from odoo import fields
-from odoo.tests import HttpCase, new_test_user, tagged
+from odoo.tests import HttpCase, tagged
+from .test_users import new_test_user
 from odoo.tests.common import ChromeBrowser
 
 from odoo.addons.omni_channel.models.command import internal

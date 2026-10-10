@@ -33,3 +33,17 @@ def channel_origin(base_url):
         return f"https://{host}" if len(host) <= 253 else False
     except (ValueError, UnicodeError):
         return False
+
+
+def valid_callback_url(url, route_key):
+    """Accept an HTTPS tunnel hostname unchanged, with this endpoint's route."""
+    try:
+        parsed = urlsplit(url or '')
+        return bool(
+            parsed.scheme == 'https' and channel_origin(url)
+            and parsed.port in (None, 443, 8443)
+            and not parsed.query and not parsed.fragment
+            and parsed.path == f'/omni/inbound/{route_key}'
+        )
+    except ValueError:
+        return False

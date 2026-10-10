@@ -73,3 +73,57 @@ def verify_webhook(token, expected_url, transport=None):
         raise TelegramSetupError('webhook_mismatch')
     # Telegram may report an earlier delivery failure; never echo its raw text.
     return bool(result.get('last_error_date'))
+
+
+def webhook_info(token, transport=None):
+    try:
+        response = (transport or TelegramHTTP()).call(token, 'getWebhookInfo', {}, verify_only=True)
+    except Exception:
+        raise TelegramSetupError('transport') from None
+    if response.status in (401, 404):
+        raise TelegramSetupError('rejected')
+    if response.status == 429:
+        raise TelegramSetupError('rate_limit')
+    if response.status >= 500:
+        raise TelegramSetupError('unavailable')
+    data = response.data
+    result = data.get('result') if isinstance(data, dict) else None
+    if response.status != 200 or not isinstance(result, dict) or data.get('ok') is not True or not isinstance(result.get('url'), str):
+        raise TelegramSetupError('webhook_response')
+    return result
+
+
+def register_webhook(token, secret, url, transport=None):
+    """Explicit registration, never drop pending updates or retry a mutation."""
+    from urllib.parse import urlsplit
+    try:
+        parsed = urlsplit(url)
+        valid = parsed.scheme == 'https' and parsed.hostname and not parsed.username and not parsed.password and not parsed.fragment and not parsed.query
+    except ValueError:
+        valid = False
+    if not valid:
+        raise TelegramSetupError('callback_missing')
+    if not isinstance(secret, str) or not re.fullmatch(r'[A-Za-z0-9_-]{32,256}', secret):
+        raise TelegramSetupError('secret_format')
+    client = transport or TelegramHTTP()
+    try:
+        response = client.call(token, 'setWebhook', {
+            'url': url, 'secret_token': secret,
+            'allowed_updates': ['message', 'edited_message'],
+            'drop_pending_updates': False,
+        }, register_webhook=True)
+    except Exception:
+        raise TelegramSetupError('registration_unknown') from None
+    if response.status in (400, 401, 403, 404, 429):
+        raise TelegramSetupError('registration_rejected')
+    data = response.data
+    if response.status != 200 or not isinstance(data, dict) or data.get('ok') is not True or data.get('result') is not True:
+        raise TelegramSetupError('registration_unknown')
+    try:
+        info = webhook_info(token, client)
+    except TelegramSetupError:
+        raise TelegramSetupError('registration_unconfirmed') from None
+    updates = info.get('allowed_updates')
+    if info['url'] != url or not isinstance(updates, list) or not all(isinstance(item, str) for item in updates) or not {'message', 'edited_message'}.issubset(set(updates)):
+        raise TelegramSetupError('registration_unconfirmed')
+    return bool(info.get('last_error_date'))

@@ -13,6 +13,7 @@
         'workflow_center/static/src/workflows.xml',
         'workflow_center/static/src/workflows.scss',
     ]},
+    'icon': '/workflow_center/static/description/icon.svg',
     'application': True,
     'installable': True,
 }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <odoo>
   <record id="account_telegram_form" model="ir.ui.view">
     <field name="name">omni.account.telegram.form</field>
@@ -14,10 +14,8 @@
       <xpath expr="//field[@name='external_account_key']" position="before">
         <field name="company_id" position="move"/>
         <field name="telegram_has_credentials" invisible="1"/>
-        <field name="telegram_bot_token" password="True" invisible="not is_telegram" readonly="telegram_sandbox_authorized"
-               required="is_telegram and not telegram_has_credentials" placeholder="Paste the bot token; saving verifies the bot"/>
-        <field name="telegram_webhook_secret" password="True" invisible="not is_telegram" readonly="telegram_sandbox_authorized"
-               placeholder="Generate automatically for a new connection"/>
+        <field name="telegram_bot_token" password="True" invisible="not is_telegram" readonly="telegram_sandbox_authorized" required="is_telegram and not telegram_has_credentials" placeholder="Paste the bot token; saving verifies the bot"/>
+        <field name="telegram_webhook_secret" password="True" invisible="not is_telegram" readonly="telegram_sandbox_authorized" placeholder="Generate automatically for a new connection"/>
         <div colspan="2" class="text-muted mb-3" invisible="not is_telegram" groups="omni_channel.group_omni_manager">
           Saving a new token verifies the bot with Telegram and securely stores its credentials.
           The database is selected automatically. Leave the webhook secret blank to generate one for a new connection,
@@ -102,27 +100,166 @@
         </group>
         <button name="action_setup_verify_bot" type="object" string="Verify bot" class="btn-primary" invisible="not is_telegram"/>
       </xpath>
-      <xpath expr="//div[@name='setup_receiving_actions']" position="before">
-        <p invisible="not is_telegram or setup_bot_authorized or not setup_callback_url">Add and authorize your test users in Advanced settings before enabling receiving.</p>
+      <xpath expr="//field[@name='setup_endpoint_state']/parent::group" position="attributes">
+        <attribute name="invisible">is_telegram</attribute>
       </xpath>
-      <xpath expr="//button[@name='action_setup_enable_receiving']" position="attributes">
-        <attribute name="invisible">not setup_endpoint_id or not setup_callback_url or setup_endpoint_state == 'enabled' or (is_telegram and not setup_bot_authorized)</attribute>
-      </xpath>
-      <xpath expr="//div[@name='setup_receiving_actions']" position="inside">
-        <button name="action_setup_open_bot" type="object" string="Open Telegram to test" class="btn-secondary" invisible="not is_telegram or not setup_bot_username or setup_endpoint_state != 'enabled'"/>
-      </xpath>
-      <xpath expr="//div[@name='setup_provider_receiving']" position="inside">
+      <xpath expr="//div[@name='setup_primary_connection']" position="inside">
         <div invisible="not is_telegram">
-          <button name="action_setup_webhook_secret" type="object" string="Copy webhook secret" class="btn-secondary mb-3" invisible="not setup_account_id"/>
-          <p>Private-text testing supports up to ten consenting Telegram users. Enter their numeric user IDs and record their agreement below.</p>
-          <group><field name="setup_test_recipients" readonly="setup_bot_authorized" placeholder="Numeric Telegram user IDs, separated by commas"/><field name="setup_authorization_evidence" readonly="setup_bot_authorized"/></group>
-          <button name="action_setup_authorize_bot" type="object" string="Authorize sandbox users" class="btn-secondary mb-3" invisible="setup_bot_authorized or not setup_account_id" confirm="Verify this bot and authorize sandbox processing for the displayed users and evidence? Replies still require separate consent and message approval."/>
-          <p invisible="not setup_bot_authorized" class="text-success">Sandbox users authorized.</p>
+          <button name="action_setup_connect_telegram" type="object" string="Connect Telegram" class="btn-primary mb-3" invisible="not setup_account_id or setup_connection_ready" confirm="Register the displayed webhook URL with Telegram?"/>
+          <p invisible="not setup_connection_ready" class="text-success">Telegram connected.</p>
         </div>
       </xpath>
-      <xpath expr="//div[@name='setup_provider_activation']" position="inside">
-        <button name="action_setup_activate" type="object" string="Activate Telegram sandbox replies" class="btn-primary mb-3" invisible="not is_telegram or dispatch_enabled" confirm="Select this verified sender and enable dispatch for approved sandbox replies? Only separately approved messages can be sent. Scheduler execution remains separately controlled."/>
+      <xpath expr="//div[@name='setup_receiving_actions']" position="attributes">
+        <attribute name="invisible">is_telegram</attribute>
       </xpath>
+      <xpath expr="//div[@name='setup_provider_activation']" position="inside">
+        <div invisible="not is_telegram">
+          <group><field name="setup_test_recipients" readonly="setup_bot_authorized" placeholder="Your personal Telegram user ID"/><field name="setup_test_text"/><field name="setup_test_send_state" invisible="not setup_test_send_state"/></group>
+          <p>The tester must press Start in your bot first.</p>
+          <button name="action_setup_send_test" type="object" string="Send test message" class="btn-primary" invisible="setup_test_send_state in ('pending', 'sent', 'unknown')" confirm="Allow messages from these test users under the retention settings and send the displayed test message to the first ID? Confirm they agreed to testing."/>
+        </div>
+      </xpath>
+    </field>
+  </record>
+  <record id="telegram_webhook_registration_form" model="ir.ui.view">
+    <field name="name">omni.telegram.webhook.registration.form</field>
+    <field name="model">omni.telegram.webhook.registration</field>
+    <field name="arch" type="xml">
+      <form string="Replace existing Telegram webhook?">
+        <p>This bot currently sends updates to another address. Replacing it will stop delivery to that address.</p>
+        <group><field name="channel_id"/><field name="callback_url" string="New webhook URL"/></group>
+        <footer>
+          <button name="action_confirm" type="object" string="Replace webhook" class="btn-primary"/>
+          <button special="cancel" string="Cancel" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+  <record id="channel_telegram_overview_form" model="ir.ui.view">
+    <field name="name">omni.channel.telegram.overview.form</field>
+    <field name="model">omni.channel</field>
+    <field name="inherit_id" ref="channel_telegram_form"/>
+    <field name="priority">99</field>
+    <field name="arch" type="xml">
+      <xpath expr="//header" position="attributes"><attribute name="invisible">is_telegram and not context.get('omni_technical')</attribute></xpath>
+      <xpath expr="//sheet/*[1]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[2]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[3]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[4]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[5]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[6]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[7]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[8]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
+      <xpath expr="//sheet" position="inside">
+        <div name="telegram_channel_overview" invisible="not is_telegram or context.get('omni_technical')">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+            <field name="telegram_overview_connected" invisible="1"/>
+            <field name="telegram_overview_status" widget="badge" nolabel="1" decoration-success="telegram_overview_connected" decoration-warning="not telegram_overview_connected"/>
+          </div>
+          <div class="d-flex flex-wrap gap-2 text-muted mb-4">
+            <field name="channel_type_id" readonly="1" options="{'no_open': True}"/> ·
+            <field name="purpose_id" readonly="1" options="{'no_open': True}"/> ·
+            <field name="company_id" readonly="1" options="{'no_open': True}"/>
+          </div>
+          <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
+            <field name="telegram_overview_bot" nolabel="1"/>
+            <field name="telegram_overview_receiving" nolabel="1"/>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mb-4">
+            <button name="action_telegram_open_inbox" type="object" string="Open inbox" class="btn-primary"/>
+            <button name="action_telegram_settings" type="object" string="Channel settings" class="btn-secondary" groups="omni_channel.group_omni_manager"/>
+          </div>
+          <div class="border-top pt-3 d-flex flex-wrap justify-content-between align-items-start gap-3" groups="omni_channel.group_omni_manager">
+            <div><h3>Test users</h3><field name="telegram_overview_test_users" nolabel="1"/></div>
+            <button name="action_telegram_edit_test_users" type="object" string="Edit test users" class="btn-link"/>
+          </div>
+        </div>
+      </xpath>
+    </field>
+  </record>
+  <record id="telegram_channel_details_form" model="ir.ui.view">
+    <field name="name">omni.telegram.channel.details.form</field>
+    <field name="model">omni.telegram.channel.details</field>
+    <field name="arch" type="xml">
+      <form>
+        <field name="mode" invisible="1"/>
+        <group invisible="mode != 'settings'">
+          <field name="name"/>
+          <field name="bot"/>
+          <field name="webhook_url"/>
+        </group>
+        <group string="Message retention · days" invisible="mode != 'settings'">
+          <field name="message_days"/><field name="payload_days"/><field name="blocked_days"/>
+        </group>
+        <group invisible="mode != 'test_users'"><field name="test_user_ids" placeholder="44087589, 12345678"/></group>
+        <p invisible="mode != 'test_users'">Add or remove up to 10 personal Telegram IDs, separated by commas. Saving changes pauses replies. It sends no message.</p>
+        <footer>
+          <button name="action_save" type="object" string="Save" class="btn-primary" invisible="mode != 'settings'"/>
+          <button name="action_save" type="object" string="Save test users" class="btn-primary" invisible="mode != 'test_users'" confirm="Authorize these test users? Removed users lose access. Replies pause; no message is sent."/>
+          <button string="Discard" special="cancel" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+  <record id="action_telegram_technical_configuration" model="ir.actions.server">
+    <field name="name">Technical configuration</field>
+    <field name="model_id" ref="omni_channel.model_omni_channel"/>
+    <field name="binding_model_id" ref="omni_channel.model_omni_channel"/>
+    <field name="binding_view_types">form</field>
+    <field name="group_ids" eval="[(4, ref('base.group_system'))]"/>
+    <field name="state">code</field>
+    <field name="code">action = records.action_telegram_technical_configuration()</field>
+  </record>
+  <record id="channel_telegram_kanban" model="ir.ui.view">
+    <field name="name">omni.channel.telegram.kanban</field><field name="model">omni.channel</field>
+    <field name="inherit_id" ref="omni_channel.channel_kanban"/>
+    <field name="arch" type="xml">
+      <xpath expr="//kanban/templates" position="before">
+        <field name="is_telegram"/><field name="setup_completed_steps"/>
+        <field name="telegram_overview_connected"/><field name="telegram_overview_status"/>
+      </xpath>
+      <xpath expr="//div[@name='channel_card_standard']" position="attributes">
+        <attribute name="t-if">!record.is_telegram.raw_value || record.setup_completed_steps.raw_value !== 5</attribute>
+      </xpath>
+      <xpath expr="//div[@name='channel_card_standard']" position="after">
+        <div name="telegram_channel_card" t-else="" class="d-flex flex-column h-100"><div class="d-flex justify-content-between align-items-start gap-2">
+    <div><field name="name" class="fw-bold fs-5"/><div class="text-muted mt-1"><field name="telegram_overview_bot"/></div>
+  </div>
+    <div class="text-end"><div class="mb-1"><field name="channel_type_id" widget="badge"/></div>
+      <div class="mb-1"><field name="purpose_id" widget="badge"/></div><span t-if="record.telegram_overview_connected.raw_value" class="badge rounded-pill text-bg-success">Connected</span>
+      <t t-else=""><field name="telegram_overview_status" widget="badge"/></t>
+    </div>
+  </div>
+  <div class="text-muted small mb-2" groups="base.group_multi_company"><field name="company_id"/></div>
+  <field name="setup_completed_steps" widget="omni_setup_progress" class="my-0"/>
+  <div class="mt-0" groups="omni_channel.group_omni_manager"><div class="fw-bold mb-1">Test users</div><div><field name="telegram_overview_test_users"/></div></div>
+  <div class="d-flex flex-wrap align-items-center gap-2 mt-auto pt-3">
+    <div class="d-flex flex-wrap gap-2">
+      <button name="action_telegram_edit_test_users" type="object" string="Edit test users" class="btn btn-secondary" groups="omni_channel.group_omni_manager"/>
+      <button name="action_telegram_open_inbox" type="object" string="Inbox" class="btn btn-primary"/>
+    </div>
+    <button name="action_telegram_settings" type="object" string="Settings" class="btn btn-secondary ms-auto" groups="omni_channel.group_omni_manager"/>
+  </div>
+</div></xpath>
+    </field>
+  </record>
+  <record id="channel_telegram_list" model="ir.ui.view">
+    <field name="name">omni.channel.telegram.list</field><field name="model">omni.channel</field>
+    <field name="inherit_id" ref="omni_channel.channel_list"/>
+    <field name="arch" type="xml">
+      <xpath expr="//list/field[@name='readiness']" position="before">
+        <field name="is_telegram" column_invisible="True"/><field name="telegram_overview_connected" column_invisible="True"/>
+        <field name="telegram_overview_list_status" string="Status" widget="badge" decoration-success="is_telegram and setup_completed_steps == 5 and telegram_overview_connected"/>
+      </xpath>
+      <xpath expr="//list/field[@name='readiness']" position="attributes"><attribute name="optional">hide</attribute></xpath>
+      <xpath expr="//list/field[@name='setup_completed_steps']" position="after">
+        <field name="telegram_overview_test_users" string="Test users" groups="omni_channel.group_omni_manager" invisible="not is_telegram or setup_completed_steps != 5"/>
+        <button name="action_telegram_settings" type="object" string="Settings" groups="omni_channel.group_omni_manager" invisible="not is_telegram or setup_completed_steps != 5"/>
+        <button name="action_telegram_open_inbox" type="object" string="Inbox" invisible="not is_telegram or setup_completed_steps != 5"/>
+        <button name="action_telegram_edit_test_users" type="object" string="Edit test users" groups="omni_channel.group_omni_manager" invisible="not is_telegram or setup_completed_steps != 5"/>
+      </xpath>
+      <xpath expr="//button[@name='action_open_channel']" position="attributes"><attribute name="invisible">setup_completed_steps != 5 or is_telegram</attribute></xpath>
     </field>
   </record>
 </odoo>

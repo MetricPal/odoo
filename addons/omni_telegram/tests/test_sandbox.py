@@ -512,3 +512,246 @@ class TestTelegramSandbox(TestOmniCommands):
                 with self.assertRaises(AccessError):
                     channel.with_user(user).action_setup_verify_webhook()
         self.assertEqual((endpoint.state, endpoint.health, channel.setup_completed_steps), before)
+
+    def test_transient_bot_recheck_offers_retry_without_changing_history(self):
+        from odoo.addons.omni_telegram.providers.setup import TelegramSetupError
+        values, _mocked, _storage = self._runtime_fixture()
+        account = self.env['omni.account'].with_user(self.manager).create(values)
+        original = (account.telegram_verified_at, account.credential_reference, account.write_date)
+        for reason in ('transport', 'unavailable', 'rate_limit'):
+            with patch('odoo.addons.omni_telegram.models.telegram.prepare_credentials', side_effect=TelegramSetupError(reason)):
+                result = account.action_verify_telegram_bot()
+            self.assertEqual(result['tag'], 'omni_telegram.verification_retry')
+            self.assertEqual(result['params']['method'], 'action_verify_telegram_bot')
+            self.assertEqual((account.telegram_verified_at, account.credential_reference, account.write_date), original)
+        with patch('odoo.addons.omni_telegram.models.telegram.prepare_credentials', side_effect=TelegramSetupError('rejected')):
+            with self.assertRaises(UserError):
+                account.action_verify_telegram_bot()
+
+    def test_explicit_test_authorization_needs_no_free_text_evidence(self):
+        account = self.account.with_user(self.manager)
+        account.write({'telegram_sandbox_evidence': False})
+        account.action_authorize_telegram_sandbox()
+        self.assertTrue(account.telegram_sandbox_authorized)
+        self.assertEqual(account.telegram_authorized_by, self.manager)
+        self.assertTrue(account.telegram_authorized_at)
+        self.assertFalse(account.telegram_sandbox_evidence)
+        self.assertFalse(self.channel.dispatch_enabled)
+
+    def test_connect_telegram_requires_scope_and_confirms_replacement(self):
+        from odoo import fields
+        from odoo.addons.omni_channel.models.command import internal
+        channel = self.channel.with_user(self.manager)
+        internal(self.account).write({'telegram_verified_at': fields.Datetime.now()})
+        self.sender.unlink()
+        self.endpoint.unlink()
+        channel.write({'setup_account_id': self.account.id})
+        channel.action_setup_validate_step(1)
+        endpoint = channel.setup_endpoint_id
+        url = f'https://machine.tail123.ts.net/omni/inbound/{endpoint.route_key}'
+        endpoint.write({'webhook_url_override': url})
+        before = (endpoint.state, channel.dispatch_enabled, channel.setup_completed_steps)
+        with patch('odoo.addons.omni_telegram.models.telegram.resolve', return_value=resolve(REFERENCE, self.account._telegram_config(), environment(self.account._telegram_config()))), patch('odoo.addons.omni_telegram.models.telegram.webhook_info', return_value={'url': 'https://other.example/private-route'}) as info, patch(
+            'odoo.addons.omni_telegram.models.telegram.register_webhook', return_value=False,
+        ) as register:
+            result = channel.action_setup_connect_telegram()
+            self.assertEqual(result['res_model'], 'omni.telegram.webhook.registration')
+            register.assert_not_called()
+            wizard = self.env[result['res_model']].with_user(self.manager).browse(result['res_id'])
+            self.assertEqual(wizard.callback_url, url)
+            info.return_value = {'url': 'https://changed.example/private-route'}
+            with self.assertRaises(UserError):
+                wizard.action_confirm()
+            register.assert_not_called()
+            info.return_value = {'url': 'https://other.example/private-route'}
+            self.assertEqual(wizard.action_confirm()['params']['type'], 'success')
+            self.assertEqual(register.call_args.args[2], url)
+            self.assertEqual(register.call_count, 1)
+            for user in (self.operator, self.outsider, self.portal):
+                with self.assertRaises(AccessError):
+                    channel.with_user(user).action_setup_connect_telegram()
+            self.assertEqual(register.call_count, 1)
+        self.assertEqual((endpoint.state, channel.dispatch_enabled, channel.setup_completed_steps), before)
+        self.assertFalse(self.account.telegram_sandbox_authorized)
+        self.assertEqual(channel.setup_policy_id.state, 'draft')
+        self.assertTrue(channel.setup_connection_ready)
+
+    def test_connect_telegram_unknown_outcome_does_not_claim_success(self):
+        from odoo.addons.omni_telegram.providers.setup import TelegramSetupError
+        from odoo import fields
+        from odoo.addons.omni_channel.models.command import internal
+        channel = self.channel.with_user(self.manager)
+        internal(self.account).write({'telegram_verified_at': fields.Datetime.now()})
+        self.sender.unlink()
+        self.endpoint.unlink()
+        channel.write({'setup_account_id': self.account.id})
+        channel.action_setup_validate_step(1)
+        endpoint = channel.setup_endpoint_id
+        endpoint.write({'webhook_url_override': f'https://machine.tail123.ts.net/omni/inbound/{endpoint.route_key}'})
+        with patch('odoo.addons.omni_telegram.models.telegram.resolve', return_value=resolve(REFERENCE, self.account._telegram_config(), environment(self.account._telegram_config()))), patch('odoo.addons.omni_telegram.models.telegram.webhook_info', return_value={'url': ''}), patch(
+            'odoo.addons.omni_telegram.models.telegram.register_webhook', side_effect=TelegramSetupError('registration_unknown'),
+        ) as register:
+            result = channel.action_setup_connect_telegram()
+        self.assertEqual(result['params']['type'], 'warning')
+        self.assertIn('Verify webhook', result['params']['message'])
+        self.assertEqual(register.call_count, 1)
+        self.assertFalse(channel.dispatch_enabled)
+        self.assertFalse(self.account.telegram_sandbox_authorized)
+        self.assertNotEqual(endpoint.state, 'enabled')
+        self.assertEqual(channel.setup_policy_id.state, 'draft')
+
+    def test_bot_id_is_not_a_test_user(self):
+        from odoo.exceptions import ValidationError
+        with self.assertRaisesRegex(ValidationError, 'personal Telegram user ID'), self.cr.savepoint():
+            self.account.with_user(self.manager).write({'telegram_sandbox_recipients': self.account.external_account_key})
+        self.assertFalse(self.account.telegram_sandbox_authorized)
+
+    def _prepare_setup_diagnostic(self):
+        from odoo import fields
+        from odoo.addons.omni_channel.models.command import internal
+        channel = self.channel.with_user(self.manager)
+        internal(self.account).write({'telegram_verified_at': fields.Datetime.now()})
+        self.sender.unlink()
+        self.endpoint.unlink()
+        channel.write({'setup_account_id': self.account.id})
+        channel.action_setup_complete_step(0)
+        channel.action_setup_complete_step(1)
+        endpoint = channel.setup_endpoint_id
+        endpoint.write({'webhook_url_override': f'https://machine.tail123.ts.net/omni/inbound/{endpoint.route_key}'})
+        self.account.with_user(self.manager).action_authorize_telegram_sandbox()
+        channel.action_setup_enable_receiving()
+        channel.action_setup_complete_step(2)
+        channel.action_setup_complete_step(3)
+        return channel
+
+    def test_diagnostic_claim_is_manager_scoped_and_deduplicated(self):
+        channel = self._prepare_setup_diagnostic()
+        scoped = resolve(REFERENCE, self.account._telegram_config(), environment(self.account._telegram_config()))
+        with patch('odoo.addons.omni_telegram.models.telegram.resolve', return_value=scoped):
+            for user in (self.operator, self.outsider, self.portal):
+                with self.assertRaises(AccessError):
+                    channel.with_user(user).action_setup_send_test()
+            self.assertEqual(channel.setup_test_recipient, '12345')
+            _token, tester = channel._claim_setup_test()
+            self.assertEqual(tester, channel.setup_test_recipient)
+            with self.assertRaises(UserError):
+                channel._claim_setup_test()
+            channel._finish_setup_test('unknown', 'unconfirmed')
+            with self.assertRaises(UserError):
+                channel._claim_setup_test()
+        self.assertFalse(channel.dispatch_enabled)
+        self.assertFalse(channel.selected_sender_id)
+        with self.assertRaises(AccessError):
+            channel.write({'setup_test_send_state': 'sent'})
+
+    def test_diagnostic_finish_requires_success_without_business_dispatch(self):
+        channel = self._prepare_setup_diagnostic()
+        with self.assertRaisesRegex(UserError, 'Send the test message first'):
+            channel.action_setup_complete_step(4)
+        scoped = resolve(REFERENCE, self.account._telegram_config(), environment(self.account._telegram_config()))
+        with patch('odoo.addons.omni_telegram.models.telegram.resolve', return_value=scoped):
+            channel._claim_setup_test()
+            channel._finish_setup_test('failed', 'rejected')
+            channel._claim_setup_test()  # Only an explicitly confirmed not-sent result can retry.
+            channel._finish_setup_test('sent', '1')
+        self.assertEqual(channel.action_setup_complete_step(4), 5)
+        self.assertEqual(channel.selected_sender_id, channel.setup_sender_id)
+        self.assertFalse(channel.dispatch_enabled)
+        self.assertFalse(any(method == 'sendMessage' for method, _payload in self.http.calls))
+
+    def test_webhook_connect_needs_no_tester_until_final_step(self):
+        from odoo import fields
+        from odoo.addons.omni_channel.models.command import internal
+        channel = self.channel.with_user(self.manager)
+        self.sender.unlink()
+        self.endpoint.unlink()
+        internal(self.account).write({'telegram_verified_at': fields.Datetime.now()})
+        self.account.write({'telegram_sandbox_recipients': False})
+        channel.write({'setup_account_id': self.account.id})
+        channel.action_setup_complete_step(0)
+        channel.action_setup_complete_step(1)
+        endpoint = channel.setup_endpoint_id
+        endpoint.write({'webhook_url_override': f'https://machine.tail123.ts.net/omni/inbound/{endpoint.route_key}'})
+        scoped = resolve(REFERENCE, self.account._telegram_config(), environment(self.account._telegram_config()))
+        with patch('odoo.addons.omni_telegram.models.telegram.resolve', return_value=scoped), patch(
+            'odoo.addons.omni_telegram.models.telegram.webhook_info', return_value={'url': ''},
+        ), patch('odoo.addons.omni_telegram.models.telegram.register_webhook', return_value=False):
+            channel.action_setup_connect_telegram()
+            self.assertFalse(self.account.telegram_sandbox_authorized)
+            self.assertFalse(channel.setup_receiving_ready)
+            self.assertTrue(channel.setup_connection_ready)
+            self.assertEqual(channel.action_setup_complete_step(2), 3)
+            channel.action_setup_complete_step(3)
+            channel.write({'setup_test_recipients': '12345'})
+            self.assertTrue(channel.setup_connection_ready)
+            _token, tester = channel._claim_setup_test()
+            self.assertEqual(tester, '12345')
+            self.assertTrue(self.account.telegram_sandbox_authorized)
+            self.assertTrue(channel.setup_receiving_ready)
+            self.assertEqual(channel.setup_policy_id.state, 'active')
+            self.assertFalse(channel.dispatch_enabled)
+            # Editing the URL invalidates registration readiness before intake.
+            internal(channel.setup_endpoint_id).write({'state': 'disabled'})
+            endpoint.write({'webhook_url_override': f'https://different.example/omni/inbound/{endpoint.route_key}'})
+            self.assertFalse(channel.setup_connection_ready)
+
+    def test_compact_channel_settings_versions_retention_and_scopes_access(self):
+        self._activate()
+        channel = self.channel.with_user(self.manager)
+        for user in (self.operator, self.outsider, self.portal):
+            with self.assertRaises(AccessError):
+                channel.with_user(user).action_telegram_settings()
+        action = channel.action_telegram_settings()
+        wizard = self.env[action['res_model']].with_user(self.manager).browse(action['res_id'])
+        wizard.write({'name': 'HR Telegram', 'message_days': 60})
+        wizard.action_save()
+        self.assertEqual(channel.name, 'HR Telegram')
+        self.assertEqual(self.intake.state, 'paused')
+        self.assertEqual(self.intake.message_days, 90)
+        self.assertEqual(self.endpoint.policy_id.message_days, 60)
+        self.assertEqual(self.endpoint.policy_id.state, 'active')
+        self.assertFalse(channel.dispatch_enabled)
+        self.assertFalse(any(method == 'sendMessage' for method, _payload in self.http.calls))
+        self.assertIn('Receiving', channel.with_user(self.operator).telegram_overview_receiving)
+        self.assertEqual(channel.action_telegram_open_inbox()['domain'], [('channel_id', '=', channel.id)])
+
+    def test_compact_test_users_update_is_atomic_and_rejects_stale_edits(self):
+        self._activate()
+        channel = self.channel.with_user(self.manager)
+        action = channel.action_telegram_edit_test_users()
+        wizard = self.env[action['res_model']].with_user(self.manager).browse(action['res_id'])
+        with self.assertRaises(AccessError):
+            wizard.write({'channel_id': self.channel.id})
+        wizard.write({'test_user_ids': '12345, 67890'})
+        wizard.action_save()
+        self.assertEqual(self.account.telegram_sandbox_recipients, '12345, 67890')
+        self.assertTrue(self.account.telegram_sandbox_authorized)
+        self.assertGreater(channel.generation, 0)
+        self.assertFalse(channel.dispatch_enabled)
+        with self.assertRaisesRegex(UserError, 'channel changed'):
+            wizard.action_save()
+        fresh = channel.action_telegram_edit_test_users()
+        invalid = self.env[fresh['res_model']].with_user(self.manager).browse(fresh['res_id'])
+        invalid.write({'test_user_ids': self.account.external_account_key})
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            invalid.action_save()
+        self.assertEqual(self.account.telegram_sandbox_recipients, '12345, 67890')
+        self.assertTrue(self.account.telegram_sandbox_authorized)
+        self.assertFalse(any(method == 'sendMessage' for method, _payload in self.http.calls))
+
+    def test_completed_overview_list_status_and_test_user_visibility(self):
+        from odoo import fields
+        from odoo.addons.omni_channel.models.command import internal
+        self._activate()
+        internal(self.account).write({'telegram_verified_at': fields.Datetime.now()})
+        internal(self.channel).write({'setup_completed_steps': 5})
+        operator_channel = self.channel.with_user(self.operator)
+        self.assertEqual(operator_channel.telegram_overview_list_status, 'Connected')
+        self.assertEqual(operator_channel.telegram_overview_receiving, 'Receiving messages')
+        with self.assertRaises(AccessError):
+            operator_channel.read(['telegram_overview_test_users'])
+        self.assertEqual(self.channel.with_user(self.manager).telegram_overview_test_users, '12345')
+        internal(self.channel).write({'setup_completed_steps': 2})
+        self.assertNotEqual(operator_channel.telegram_overview_list_status, 'Connected')
+        self.assertFalse(any(method == 'sendMessage' for method, _payload in self.http.calls))

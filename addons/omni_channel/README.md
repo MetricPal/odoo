@@ -33,8 +33,8 @@ by default and available in the native column selector. Kanban cards cannot be
 dragged to change team or company. Existing team membership and company access
 rules apply to results and counts.
 
-**New** in Channels opens six steps matching the design: **Prepare → Credentials
-→ Connect & verify → Branding → Team & apps → Test & go live**. The native search
+**New** in Channels opens five steps matching the design: **Prepare → Credentials
+→ Connect & verify → Branding → Test & go live**. The native search
 panel is a transparent stepper, the center uses native form fields, and the right
 panel explains the selected step. Completed stages have green check circles;
 the current stage is purple with padded, rounded selection. Small screens stack
@@ -45,15 +45,16 @@ unvisited stages cannot be skipped. Credentials stay in the wizard. The provider
 adapter prepares draft sender/endpoint bindings and a draft receiving policy;
 this never activates delivery. Connect & verify requires a healthy, explicitly
 enabled endpoint before it is marked complete. A credential check is not proof
-of webhook delivery: the final step uses an actual received conversation.
+of webhook delivery. The Telegram final step sends a fixed diagnostic to the
+displayed authorized tester; it tests outbound delivery, not inbound delivery.
 
 Company and communication team are selected before credentials for scope
 validation and become fixed when identities are bound. Branding controls
-internal names only. Team & apps identifies the available Inbox and explicitly
-labels business-app integrations that are not implemented. Review test reply
-creates a draft for separate consent/approval. Finish setup only saves; provider
-activation remains a separate confirmed action. Unsupported providers remain
-saved drafts with a clear explanation in Credentials.
+internal names only. Telegram setup displays the tester and a fixed message;
+Send test message requires explicit manager confirmation under the bounded setup
+policy in docs/APPROVALS.md. Finish setup selects the verified sender after a
+successful test. Reply composition and Approval Center review remain in the inbox.
+Unsupported providers remain saved drafts with a clear explanation in Credentials.
 
 Messages and Connections are available from the channel header. Operations →
 Technical Details links to delivery logs, intake logs, purpose audit history and
@@ -94,7 +95,10 @@ python odoo-bin server -c odoo.conf -d YOUR_DISPOSABLE_TEST_DB \
   --http-port=8077 --max-cron-threads=0
 ```
 
-Use `-u omni_channel` for the upgrade path. Browser tests require Chrome and `websocket-client`; a skipped browser test is not a pass. Concurrency and crash tests deliberately use independent PostgreSQL transactions and remove their committed fixtures. Other fixtures roll back. Tests perform no real provider requests.
+Use `-u omni_channel` for the upgrade path. Browser tests require Chrome and `websocket-client`; a skipped browser test is not a pass. Concurrency and crash tests deliberately use independent PostgreSQL transactions and remove their committed fixtures. Other fixtures roll back. Test-user creation explicitly disables signup invitations
+and mail tracking, including when invoked from an Odoo shell. Database rollback
+cannot undo SMTP delivery; ad-hoc checks must also block external mail transport.
+Tests perform no real provider requests.
 
 See the [implementation report](../../docs/exec-plans/active/odoo_omnichannel_design_v2/17-inbox-implementation-status.md) for exact verification commands and remaining work.
 
@@ -282,7 +286,7 @@ Prepare contains only the four setup fields. Its explanation appears once in
 About this step; credential and receiving requirements appear in their own steps.
 
 
-Channels cards and lists show saved setup progress out of six steps. Managers
+Channels cards and lists show saved setup progress out of five steps. Managers
 can use Continue setup to reopen the last completed step (or Prepare when none are complete). The native
 Incomplete setup filter selects records with fewer than six recorded steps.
 Progress advances only after the current step passes server validation; revisiting
@@ -299,10 +303,33 @@ step. The sidebar allows only completed steps and the current step; Next
 validates and advances into unfinished steps.
 
 
-When receiving is unavailable, Connect & verify offers Set up receiving later.
-This saves the draft and permits Branding and Team & apps without completing the
-receiving step. Per-step progress preserves the gap (four of six after those
-steps); old contiguous progress is read compatibly. Test & go live offers Save
+When receiving is unavailable, Connect & verify offers Next: Branding.
+This saves the draft and permits Branding without completing the
+receiving step. Per-step progress preserves the gap (three of five after Branding); old contiguous progress is read compatibly. Test & go live offers Save
 draft or Finish receiving setup until receiving passes validation. Direct RPC
 cannot finish setup with deferred receiving or forge step completion. Deferring
 never authorizes intake, registers a webhook, sends a message or activates dispatch.
+
+Setup now has Prepare, Credentials, Connect & verify, Branding, and Test & go live.
+Company/team selection stays in Prepare. The 20.0.1.17.0 migration removes the
+old Team & apps completion entry and maps Test & go live from index 5 to 4.
+Finished channels remain finished; pending receiving remains pending.
+
+Channel cards and list rows show continuous setup progress with a trailing `0/5`
+through `5/5`, without duplicate setup text. The readonly `omni_setup_progress`
+field widget uses Odoo 20's field registry and native record props. Telegram's
+adapter supplies completed-channel summary cards and manager-only quick actions.
+
+The setup-progress field uses Owl 3 `useProps(standardFieldProps)` and explicit
+`this.completed` / `this.segments` template references. Browser regression check:
+`node addons/omni_channel/tools/test_setup_progress_browser.cjs` (Playwright required;
+set `OMNI_NODE_MODULES` when supplied by a separate local package directory).
+This mounts the real component with checked-out Owl, then verifies reactive fill
+widths, trailing counters and accessible progress values for 0/5, 2/5 and 5/5.
+
+The Channels filter panel lists Communication teams followed by Channel types,
+with native single selections and record counters in both kanban and list views.
+Card headers stack channel type and communication-team tags at the right, followed
+by readiness. Cards omit the receiving-status wording and extra progress spacing.
+Setup forms omit the duplicate central step number/title; the left step navigation
+identifies the current step.

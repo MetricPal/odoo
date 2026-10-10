@@ -76,3 +76,21 @@ When an approved request maps to existing Odoo behavior, execute it through the
 module's public action method instead of writing final states directly. The
 approval layer must enforce policy before calling the action and record the
 audit result after the action completes or fails.
+
+## Telegram setup diagnostic
+
+The manager's explicit **Send test message** confirmation authorizes one fixed
+setup diagnostic (`Telegram connection test successful.`) to the displayed first
+personal Telegram test-user ID entered on that scoped connection. The same
+confirmation authorizes the listed test users and displayed retention policy,
+and enables receiving before claiming the diagnostic.
+This narrow setup policy permits no arbitrary text, recipient, group, business
+reply, dispatch activation or scheduler change. The tester must have started the
+bot. Blocked identities remain blocked. Normal replies retain recipient consent
+and Approval Center review.
+
+The execution boundary commits an actor-audited claim before network I/O. A
+pending, successful or uncertain claim cannot be repeated. Only a confirmed
+not-sent outcome permits another explicit attempt. Provider errors are sanitized;
+no automatic retry occurs. Finish setup requires a confirmed successful test and
+selects the verified bot as runtime sender; it does not enable business dispatch.

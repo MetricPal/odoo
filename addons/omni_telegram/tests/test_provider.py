@@ -66,7 +66,7 @@ class FakeHTTP:
         self.calls = []
         self.send_result = None
 
-    def call(self, token, method, payload):
+    def call(self, token, method, payload, **kwargs):
         assert token == TOKEN
         self.calls.append((method, payload))
         if method == "getMe":

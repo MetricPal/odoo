@@ -72,11 +72,31 @@ class PinnedHTTPSConnection(http.client.HTTPSConnection):
 
 
 class TelegramHTTP:
-    def call(self, token, method, payload, *, verify_only=False):
-        if os.environ.get("OMNI_TELEGRAM_SANDBOX_NETWORK") != "1" and not (verify_only and method in ("getMe", "getWebhookInfo")):
-            raise TelegramTransportError()  # noqa: TRY301 - sanitized boundary validation
-        if method not in ("getMe", "getWebhookInfo", "getChat", "sendMessage"):
-            raise TelegramTransportError()  # noqa: TRY301 - sanitized boundary validation
+    def call(self, token, method, payload, *, verify_only=False, register_webhook=False, test_message=False):
+        if test_message:
+            from .test_message import TEST_MESSAGE
+            from .secrets import canonical_id
+            if verify_only or register_webhook or method not in ('getChat', 'sendMessage'):
+                raise TelegramTransportError()
+            recipient = canonical_id(payload.get('chat_id'))
+            expected = {'chat_id': recipient}
+            if method == 'sendMessage':
+                expected.update(text=TEST_MESSAGE, link_preview_options={'is_disabled': True})
+            if payload != expected:
+                raise TelegramTransportError()
+        readonly = method in ("getMe", "getWebhookInfo")
+        if verify_only and not readonly:
+            raise TelegramTransportError()
+        if register_webhook and method != "setWebhook":
+            raise TelegramTransportError()
+        if method == "setWebhook" and not register_webhook:
+            raise TelegramTransportError()
+        if os.environ.get("OMNI_TELEGRAM_SANDBOX_NETWORK") != "1" and not (
+            (verify_only and readonly) or (register_webhook and method == "setWebhook") or test_message
+        ):
+            raise TelegramTransportError()
+        if method not in ("getMe", "getWebhookInfo", "getChat", "sendMessage", "setWebhook"):
+            raise TelegramTransportError()
         # All input paths are constructed from a validated token and this enum.
         import re  # noqa: PLC0415
 
