@@ -47,7 +47,8 @@ class WorkflowRun(models.Model):
     record_id = fields.Integer(string='Source record ID', required=True)
     revision = fields.Integer(required=True)
     state = fields.Selection([('running', 'Running'), ('waiting', 'Waiting'), ('failed', 'Failed'),
-                              ('done', 'Done'), ('stopped', 'Stopped')], default='running', required=True)
+                              ('done', 'Done'), ('stopped', 'Stopped')], default='running', required=True,
+                             group_expand=True)
     is_test = fields.Boolean(string='Preview only')
     step_id = fields.Many2one('workflow.step', ondelete='restrict', string='Current step')
     step_kind = fields.Selection(related='step_id.kind')
@@ -276,6 +277,11 @@ class WorkflowRun(models.Model):
     def _require_active(self):
         if self.workflow_id.state != 'active':
             raise UserError(_('Activate the reviewed workflow before retrying or continuing a run.'))
+
+    def action_open_workflow(self):
+        self.ensure_one()
+        self.check_access('read')
+        return self.workflow_id.action_open_builder()
 
     def action_retry(self):
         self._operate()

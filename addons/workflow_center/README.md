@@ -9,17 +9,43 @@ Use **My workflows** and **Run history** in Odoo's top navbar. Click the
 **My workflows**, beside the Workflows app name, lists existing workflows and
 opens their builder from either native list rows or kanban cards. Switch views
 using Odoo's standard view switcher. Extra list columns are optional and hidden
-by default. Kanban groups by status, but cards and columns cannot be dragged;
+by default. Kanban always shows Draft, Active, and Pause in that order, including empty
+columns. Cards and columns cannot be dragged;
 status changes require the existing builder actions.
 **New** in Overview, list, or kanban opens the native workflow form. The
 **Describe what should happen** panel, document selector, and **Start blank**
 button sit inside its white sheet for unsaved workflows. **Start blank** fills
 Document and Description on that same unsaved form without navigation or saving.
-It does not infer triggers or steps from prose. Save and use **Open builder** to
-configure the workflow's steps. The panel is hidden for saved workflows.
-The Workflows overview page focuses on templates and new
-drafts. The listing retains the existing administrator and company access scope.
+It does not infer triggers or steps from prose. **Open builder**, immediately after **New** in the form toolbar, validates and
+saves the draft before opening its steps. The panel is hidden for saved workflows. The native chatter sits alongside the
+form on wide screens, using Odoo's normal responsive form layout.
+The Workflows overview has a native Kanban/List switcher (Kanban by default).
+Both views share the application search panel and top search/filter/group controls.
+List shows Template, Application, and Category; extra columns are hidden by
+default and available through the column selector. Opening a card or row starts
+a draft from that template. New opens a blank workflow form.
+
+The overview has a native left search panel listing Applications from
+the card badges, with counts and an All option. Selecting an application filters
+the cards and combines with the top search controls. The kanban renderer sits directly beside the search panel, without form-sheet
+wrappers, and scrolls below the fixed toolbar and search controls. The Workflow guide, including
+**Every workflow is When → If → Do**, appears in the builder directly below
+the selected-step settings. Templates use Odoo's wrapping kanban
+layout and article cards, without a gallery heading or template count. Use Odoo's search bar for template text,
+Filters for recipe categories, and Group By for Category or Application. Clear
+the search facets to see all recipes. A read-only catalog view supplies native
+search metadata; it does not create or activate workflow definitions. The listing retains the existing administrator and company access scope.
 The overview retains templates; the creation panel lives inside the new workflow form sheet.
+
+Run history uses native Odoo List/Kanban views and pagination (80 runs per list
+page). Search by record, workflow, or step; filter by status, preview/live runs,
+uncertain delivery, or start date. Group by workflow, status, preview/live,
+start date, or company when permitted. Additional list columns are optional and
+hidden initially. Kanban groups runs into Running, Waiting, Failed, Done, and Stopped, in that
+order, including empty columns. Run cards cannot be dragged to change status. Open a run to
+inspect its logs and use the existing confirmed recovery controls; **Open
+workflow** returns to its builder. Historical Run history URLs redirect to this
+native action, retaining the existing access and company rules.
 
 ## Start here
 
@@ -27,10 +53,13 @@ The overview retains templates; the creation panel lives inside the new workflow
 2. Choose a template, or choose a business document and start blank.
 3. Set **When** the workflow starts and the optional **If** filter. Choose the
    company and the internal user whose permissions should apply.
-4. Select each step and open **Step settings**. For Create record, choose its document and fields to set. For other business
+4. Select a step to edit its settings directly in the right-hand panel. Use the
+   native action row at the top of the right panel: **Save**, **Discard**,
+   **Remove step**, then extra actions such as **Configure action**. Remove step
+   uses secondary styling; a horizontal divider separates the row from settings. For Create record, choose its document and fields to set. For other business
    actions, use **Configure action** to select the actual field, activity, email template,
    record creation or code in Odoo's standard configuration screen.
-5. Resolve each item under **Before you activate**. Run **Preview / run** on a
+5. Review workflow setup by selecting the **When** starting-point card. Run **Preview / run** on a
    real record in Preview mode. No business action is performed during preview.
 6. Review the configured effects and click **Activate**. This explicitly
    authorizes matching future events and enables the shared worker.
@@ -139,3 +168,25 @@ python odoo-bin -d workflows_test --addons-path=addons -i workflow_center \
 
 Chrome and websocket-client are required for the desktop/mobile browser tests.
 Transport tests use synthetic responses; no external webhook is sent.
+
+The builder places Preview / run and Activate (Pause for active workflows) in
+the native top-left control-panel button area. Select the **When** starting-point
+card to show workflow settings in the right-hand editor; there is no separate Settings button. Add a step uses the left Odoo search-panel layout and
+native draggable resize handle. The workflow canvas and right chatter-style guidance area
+scroll independently below that toolbar. The right content shows the selected step’s native form; Workflow guide appears
+only when neither a step nor the starting point is selected. The
+activation checklist and insertion hint are removed; activation validation remains.
+
+The Add a step panel explains both ways to add steps: click a palette item or
+drag it onto the canvas.
+Drop on a step to insert after it, or on the When card to insert at the beginning.
+A blank-canvas drop inserts after the current selection. Step cards have a borderless × with red text and a transparent background;
+the right-panel Remove step action is a secondary button. Both use the
+existing deletion confirmation and branch-reference checks. Switching selections
+saves pending valid edits through Odoo’s form controller; validation failures keep
+the current editor open. Active workflows remain read-only until paused.
+
+Only the selected canvas card has a highlighted border, including the When card.
+
+The builder shows the workflow status beside its name in the native top bar;
+the canvas has no duplicate workflow title or document breadcrumb.

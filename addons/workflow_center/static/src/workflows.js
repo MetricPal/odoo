@@ -2,32 +2,43 @@ import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 import { standardWidgetProps } from "@web/views/widgets/standard_widget_props";
 import { ListController } from "@web/views/list/list_controller";
 import { listView } from "@web/views/list/list_view";
+import { formView } from "@web/views/form/form_view";
+import { kanbanView } from "@web/views/kanban/kanban_view";
+import { KanbanController } from "@web/views/kanban/kanban_controller";
 import { Layout } from "@web/search/layout";
+import { SearchPanel } from "@web/search/search_panel/search_panel";
 import { useSubEnv } from "@web/owl2/utils";
+import { View } from "@web/views/view";
+import { FormController } from "@web/views/form/form_controller";
 import { getDefaultConfig } from "@web/views/view";
-import { useSetupAction } from "@web/search/action_hook";
+import { CallbackRecorder, useSetupAction } from "@web/search/action_hook";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
-import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+
+let nextInspectorId = 0;
 
 export class Workflows extends Component {
     static template = "workflow_center.Workflows";
-    static components = { Layout };
+    static components = { Layout, View };
     props = useProps();
     setup() {
-        useSubEnv({ config: { ...getDefaultConfig(), ...this.env.config } });
-        useSetupAction();
+        this.inspectorId = `wf_builder_${++nextInspectorId}`;
+        useSubEnv({
+            config: { ...getDefaultConfig(), ...this.env.config },
+            workflowInspectorTarget: `#${this.inspectorId} .wf_inspector_toolbar`,
+        });
+        this.stepBeforeLeave = new CallbackRecorder();
+        useSetupAction({ beforeLeave: () => this.saveSelectedStep() });
         this.orm = useService("orm");
         this.action = useService("action");
         this.dialog = useService("dialog");
         this.notification = useService("notification");
         this.state = proxy({
-            page: this.constructor.initialPage || "home", category: "All", data: { templates: [], workflows: [], models: [] },
-            workflow: null, selected: null, runFilter: "all", runs: [], run: null,
+            page: this.constructor.initialPage || "home", data: { templates: [], workflows: [], models: [] },
+            workflow: null, selected: null,
             busy: false,
         });
-        this.categories = ["All", "Reminders", "Data updates", "Create records", "Scheduled", "Integrations", "Approvals"];
         this.blocks = [
             { title: "Actions", items: [
                 ["action", "object_write", "Update record", "edit"],
@@ -49,7 +60,6 @@ export class Workflows extends Component {
         ];
         onWillStart(async () => {
             await this.loadHome();
-            if (this.state.page === "runs") await this.loadRuns();
             if (this.props.action.params?.workflow_id) {
                 await this.openWorkflow(this.props.action.params.workflow_id);
             }
@@ -58,9 +68,6 @@ export class Workflows extends Component {
     async loadHome() {
         this.state.data = await this.orm.call("workflow.definition", "home_data", []);
 
-    }
-    get templates() {
-        return this.state.data.templates.filter(t => this.state.category === "All" || t.category === this.state.category);
     }
     get selectedStep() {
         return this.state.workflow?.steps.find(s => s.id === this.state.selected);
@@ -100,43 +107,78 @@ export class Workflows extends Component {
     }
     async openWorkflow(id) {
         this.state.workflow = await this.orm.call("workflow.definition", "builder_data", [[id]]);
+        this.env.config.setDisplayName(this.state.workflow.name);
         this.state.page = "builder";
-        if (!this.state.workflow.steps.some(s => s.id === this.state.selected)) this.state.selected = null;
+        if (this.state.selected !== "trigger" && !this.state.workflow.steps.some(s => s.id === this.state.selected)) this.state.selected = null;
     }
-    async fromTemplate(template) {
-        if (this.state.busy) return;
+    async configureWorkflow() {
+        if (this.state.selected === "trigger" || !await this.saveSelectedStep()) return;
+        this.state.selected = "trigger";
+    }
+    async saveSelectedStep() {
+        for (const callback of this.stepBeforeLeave.callbacks) {
+            if (await callback() === false) return false;
+        }
+        return true;
+    }
+    async configureStep(step) {
+        if (this.state.selected === step.id || !await this.saveSelectedStep()) return;
+        this.state.selected = step.id;
+    }
+    async closeStep() {
+        if (await this.saveSelectedStep()) this.state.selected = null;
+    }
+    get stepViewProps() {
+        const isTrigger = this.state.selected === "trigger";
+        return {
+            type: "form", resModel: isTrigger ? "workflow.definition" : "workflow.step",
+            resId: isTrigger ? this.state.workflow.id : this.state.selected,
+            context: { form_view_ref: isTrigger ? "workflow_center.workflow_inspector_form" : "workflow_center.step_inspector_form" },
+            jsClass: "workflow_inline_step", display: { controlPanel: false },
+            preventCreate: true, readonly: this.state.workflow.state === "active",
+            __beforeLeave__: this.stepBeforeLeave,
+            removeRecord: isTrigger ? undefined : () => this.removeStep(this.selectedStep),
+            onSave: () => this.openWorkflow(this.state.workflow.id),
+        };
+    }
+    async addStep(item, afterId = this.selectedStep?.id || false) {
+        if (this.state.busy || this.state.workflow.state === "active") return;
         this.state.busy = true;
         try {
-            const id = await this.orm.call("workflow.definition", "from_template", [template.key]);
-            await this.openWorkflow(id);
-        } finally { this.state.busy = false; }
+            if (!await this.saveSelectedStep()) return;
+            const id = await this.orm.call("workflow.definition", "add_step", [[this.state.workflow.id], item[0], item[1], afterId]);
+            await this.openWorkflow(this.state.workflow.id);
+            this.state.selected = id;
+        } finally {
+            this.state.busy = false;
+        }
     }
-    newWorkflow() {
-        return this.action.doAction("workflow_center.action_new_workflow");
+    startStepDrag(ev, item) {
+        if (this.state.workflow.state === "active" || this.state.busy) {
+            ev.preventDefault();
+            return;
+        }
+        this.draggedStep = item;
+        ev.dataTransfer.effectAllowed = "copy";
+        ev.dataTransfer.setData("application/x-workflow-step", item[0] + ":" + item[1]);
     }
-    configureWorkflow() {
-        const workflow = this.state.workflow;
-        this.dialog.add(FormViewDialog, {
-            resModel: "workflow.definition", resId: workflow.id, title: "When and which records",
-            readonly: workflow.state === "active",
-            onRecordSaved: () => this.openWorkflow(workflow.id),
-        });
+    allowStepDrop(ev) {
+        if (!this.draggedStep || this.state.workflow.state === "active" || this.state.busy) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.dataTransfer.dropEffect = "copy";
     }
-    configureStep(step) {
-        this.state.selected = step.id;
-        this.dialog.add(FormViewDialog, {
-            resModel: "workflow.step", resId: step.id, title: step.name,
-            readonly: this.state.workflow.state === "active",
-            onRecordSaved: () => this.openWorkflow(this.state.workflow.id),
-        });
+    async dropStep(ev, afterId = this.selectedStep?.id || false) {
+        if (!this.draggedStep) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const item = this.draggedStep;
+        this.draggedStep = null;
+        await this.addStep(item, afterId);
     }
-    async addStep(item) {
-        const id = await this.orm.call("workflow.definition", "add_step", [[this.state.workflow.id], item[0], item[1], this.state.selected || false]);
-        await this.openWorkflow(this.state.workflow.id);
-        this.state.selected = id;
-        this.configureStep(this.selectedStep);
-    }
-    removeStep(step) {
+    async removeStep(step) {
+        if (this.state.workflow.state === "active") return;
+        if (this.state.selected !== step.id && !await this.saveSelectedStep()) return;
         this.dialog.add(ConfirmationDialog, {
             title: "Remove step", body: "Remove this step from the draft? If another branch points here, update that branch first.",
             confirm: async () => {
@@ -146,10 +188,12 @@ export class Workflows extends Component {
         });
     }
     async testRun() {
+        if (!await this.saveSelectedStep()) return;
         const action = await this.orm.call("workflow.definition", "action_test_dialog", [[this.state.workflow.id]]);
         await this.action.doAction(action, { onClose: () => this.openWorkflow(this.state.workflow.id) });
     }
-    activate() {
+    async activate() {
+        if (!await this.saveSelectedStep()) return;
         this.dialog.add(ConfirmationDialog, {
             title: "Activate workflow",
             body: "Authorize this workflow's configured actions, trigger, record filter, execution user and company? Matching events will run automatically. The shared worker will resume waits and scheduled runs. You can pause the workflow at any time.",
@@ -164,35 +208,10 @@ export class Workflows extends Component {
         await this.orm.call("workflow.definition", "action_pause", [[this.state.workflow.id]]);
         await this.openWorkflow(this.state.workflow.id);
     }
-    async loadRuns() {
-        const domain = this.state.runFilter === "all" ? [] : [["state", "=", this.state.runFilter]];
-        this.state.runs = await this.orm.searchRead("workflow.run", domain,
-            ["workflow_id", "name", "step_id", "state", "started_at", "is_test"], { limit: 200 });
-        if (this.state.run) await this.openRun(this.state.run.id);
-    }
-    async filterRuns(filter) {
-        this.state.runFilter = filter;
-        this.state.run = null;
-        await this.loadRuns();
-    }
-    async openRun(id) {
-        const [run] = await this.orm.read("workflow.run", [id], [
-            "workflow_id", "name", "step_id", "step_kind", "state", "error", "started_at", "is_test", "delivery_unknown", "approval_id",
-        ]);
-        run.logs = await this.orm.searchRead("workflow.run.log", [["run_id", "=", id]], ["name", "state", "message", "occurred_at"]);
-        this.state.run = run;
-    }
-    operateRun(method, label) {
-        this.dialog.add(ConfirmationDialog, {
-            title: label,
-            body: method === "action_retry_confirmed"
-                ? "Confirm that you checked the destination and it did not process this delivery. Retrying may otherwise duplicate the external action."
-                : label + "? Completed actions will not be undone.",
-            confirm: async () => {
-                await this.orm.call("workflow.run", method, [[this.state.run.id]]);
-                await this.loadRuns();
-            },
-        });
+    resizeStepPanel(ev) {
+        const panel = ev.currentTarget.previousElementSibling;
+        // Reuse the native search-panel drag bounds and pointer cleanup.
+        SearchPanel.prototype._onStartResize.call({ root: () => panel }, ev);
     }
     triggerLabel(value) {
         return { manual: "Button / run manually", create: "Record created", write: "Record changed",
@@ -200,11 +219,32 @@ export class Workflows extends Component {
     }
     edgeName(value) { return value ? value[1] : "Next step"; }
 }
-registry.category("actions").add("workflow_center.home", Workflows);
-export class WorkflowRuns extends Workflows {
-    static initialPage = "runs";
+// Keep the native form widgets, validation, and Save/Discard behavior in the inspector.
+class WorkflowInlineStepController extends FormController {
+    static template = "workflow_center.InlineStepForm";
+    setup() {
+        // Embedded records must not overwrite the enclosing workflow breadcrumb.
+        useSubEnv({ config: { ...this.env.config, setDisplayName: () => {} } });
+        super.setup();
+    }
+    get hasInspectorActions() {
+        const data = this.model.root.data;
+        return this.props.resModel === "workflow.step" && !this.props.readonly
+            && ["action", "foreach"].includes(data.kind) && data.action_type !== "object_create";
+    }
 }
-registry.category("actions").add("workflow_center.runs", WorkflowRuns);
+registry.category("views").add("workflow_inline_step", {
+    ...formView, Controller: WorkflowInlineStepController,
+});
+registry.category("actions").add("workflow_center.builder", Workflows);
+registry.category("actions").add("workflow_center.home", (env, action) =>
+    env.services.action.doAction(action.params?.workflow_id
+        ? { type: "ir.actions.client", tag: "workflow_center.builder", name: action.name, params: action.params }
+        : "workflow_center.action_workflow_templates")
+);
+registry.category("actions").add("workflow_center.runs", (env) =>
+    env.services.action.doAction("workflow_center.action_run_history")
+);
 
 // Preserve existing My workflows bookmarks while using native collection views.
 registry.category("actions").add("workflow_center.my_workflows", (env) =>
@@ -263,4 +303,25 @@ export class WorkflowListController extends ListController {
 registry.category("views").add("workflow_center_list", {
     ...listView,
     Controller: WorkflowListController,
+});
+
+registry.category("views").add("workflow_center_form", {
+    ...formView,
+    buttonTemplate: "workflow_center.FormButtons",
+});
+
+class WorkflowTemplateKanbanController extends KanbanController {
+    createRecord() {
+        return this.actionService.doAction("workflow_center.action_new_workflow");
+    }
+}
+registry.category("views").add("workflow_template_kanban", {
+    ...kanbanView,
+    Controller: WorkflowTemplateKanbanController,
+    buttonTemplate: "workflow_center.TemplateButtons",
+});
+registry.category("views").add("workflow_template_list", {
+    ...listView,
+    Controller: WorkflowListController,
+    buttonTemplate: "workflow_center.TemplateButtons",
 });

@@ -48,8 +48,8 @@ class Workflow(models.Model):
     offset_days = fields.Integer(string='Days after date', default=0)
     interval_hours = fields.Integer(string='Repeat every (hours)', default=24)
     domain = fields.Char(string='Only when', default='[]', required=True)
-    state = fields.Selection([('draft', 'Draft'), ('active', 'Active'), ('paused', 'Paused')],
-                             default='draft', readonly=True, tracking=True)
+    state = fields.Selection([('draft', 'Draft'), ('active', 'Active'), ('paused', 'Pause')],
+                             default='draft', readonly=True, tracking=True, group_expand=True)
     revision = fields.Integer(default=1, readonly=True)
     tested_revision = fields.Integer(readonly=True)
     tested_digest = fields.Char(readonly=True)
@@ -315,7 +315,10 @@ class Workflow(models.Model):
         self._manager()
         from .templates import catalog
         templates = catalog()
-        for item in templates:
+        for index, item in enumerate(templates, 1):
+            item['id'] = index
+            item['model_name'] = item['model']
+            item['display_name'] = item['name']
             item['available'] = item['model'] in self.env
         return {
             'templates': templates,
@@ -329,7 +332,7 @@ class Workflow(models.Model):
     def action_open_builder(self):
         self.ensure_one()
         self._manager()
-        return {'type': 'ir.actions.client', 'tag': 'workflow_center.home',
+        return {'type': 'ir.actions.client', 'tag': 'workflow_center.builder',
                 'name': self.name, 'params': {'workflow_id': self.id}}
 
     def builder_data(self):

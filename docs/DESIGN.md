@@ -18,6 +18,9 @@ Review → Understand → Approve/Reject → Done.
 
 ## Odoo view principles
 
+Reuse existing Odoo CSS and DOM structure by default. Add custom styling or
+layout wrappers only when the user requests those changes.
+
 The user's five reference screenshots establish the following design boundaries.
 Use their structure as guidance, not their sample records, exact dimensions, or
 empty-state overlays as requirements.

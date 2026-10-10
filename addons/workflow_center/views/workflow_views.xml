@@ -1,4 +1,63 @@
 <odoo>
+  <record id="template_search" model="ir.ui.view">
+    <field name="name">workflow.template.search</field><field name="model">workflow.template</field>
+    <field name="arch" type="xml"><search>
+      <field name="name" string="Template" filter_domain="['|', ('name', 'ilike', self), ('description', 'ilike', self)]"/>
+      <field name="app"/><field name="category"/>
+      <filter name="reminders" string="Reminders" domain="[('category', '=', 'Reminders')]"/>
+      <filter name="data_updates" string="Data updates" domain="[('category', '=', 'Data updates')]"/>
+      <filter name="create_records" string="Create records" domain="[('category', '=', 'Create records')]"/>
+      <filter name="scheduled" string="Scheduled" domain="[('category', '=', 'Scheduled')]"/>
+      <filter name="integrations" string="Integrations" domain="[('category', '=', 'Integrations')]"/>
+      <filter name="approvals" string="Approvals" domain="[('category', '=', 'Approvals')]"/>
+      <separator/>
+      <filter name="group_category" string="Category" context="{'group_by': 'category'}"/>
+      <filter name="group_app" string="Application" context="{'group_by': 'app'}"/>
+      <searchpanel>
+        <field name="app" string="Applications" select="one" enable_counters="1" expand="1"/>
+      </searchpanel>
+    </search></field>
+  </record>
+  <record id="template_kanban" model="ir.ui.view">
+    <field name="name">workflow.template.kanban</field><field name="model">workflow.template</field>
+    <field name="arch" type="xml">
+      <kanban js_class="workflow_template_kanban" create="0" edit="0" delete="0"
+              records_draggable="false" groups_draggable="false" group_create="false" group_edit="false" group_delete="false"
+              quick_create="false" action="action_start" type="object">
+        <field name="available"/>
+        <templates><t t-name="card" class="wf_template">
+          <div class="d-flex flex-column gap-2 w-100">
+            <field name="name" class="fw-bold fs-5"/>
+            <div class="d-flex flex-wrap gap-1"><field name="app" widget="badge"/><field name="category" widget="badge"/></div>
+            <field name="description" class="text-muted"/>
+            <field name="blocks" class="text-muted small"/>
+            <small t-if="!record.available.raw_value" class="text-muted">Install <field name="app"/> to use this template</small>
+            <small t-else="" class="text-muted">Opens a draft for review and setup</small>
+          </div>
+        </t></templates>
+      </kanban>
+    </field>
+  </record>
+  <record id="template_list" model="ir.ui.view">
+    <field name="name">workflow.template.list</field><field name="model">workflow.template</field>
+    <field name="arch" type="xml">
+      <list js_class="workflow_template_list" create="0" edit="0" delete="0" action="action_start" type="object">
+        <field name="name" string="Template"/>
+        <field name="app" optional="show"/>
+        <field name="category" optional="show"/>
+        <field name="description" optional="hide"/>
+        <field name="blocks" optional="hide"/>
+        <field name="trigger" optional="hide"/>
+        <field name="model_name" optional="hide"/>
+        <field name="available" optional="hide"/>
+      </list>
+    </field>
+  </record>
+  <record id="action_workflow_templates" model="ir.actions.act_window">
+    <field name="name">Workflows</field><field name="res_model">workflow.template</field>
+    <field name="view_mode">kanban,list</field><field name="view_id" ref="template_kanban"/>
+    <field name="search_view_id" ref="template_search"/>
+  </record>
   <record id="workflow_list" model="ir.ui.view">
     <field name="name">workflow.definition.list</field><field name="model">workflow.definition</field>
     <field name="arch" type="xml">
@@ -64,12 +123,12 @@
   <record id="workflow_form" model="ir.ui.view">
     <field name="name">workflow.definition.form</field><field name="model">workflow.definition</field>
     <field name="arch" type="xml">
-      <form string="Workflow settings">
-        <header><button name="action_open_builder" type="object" string="Open builder" class="btn-primary"/></header>
+      <form string="Workflow settings" js_class="workflow_center_form">
         <sheet>
           <widget name="workflow_starter" invisible="id"/>
           <group>
-            <field name="name"/><field name="description" placeholder="When this happens, do this…"/>
+            <field name="name"/>
+            <field name="description" placeholder="When this happens, do this…"/>
             <field name="model_id" options="{'no_create': True}"/>
             <field name="model_name" invisible="1"/>
             <field name="company_id" groups="base.group_multi_company"/>
@@ -88,6 +147,7 @@
           </group>
           <p class="text-muted">Actions run with the selected user's permissions in this company. A stage or status trigger watches the chosen field; use the filter above to select its new value.</p>
         </sheet>
+        <chatter/>
       </form>
     </field>
   </record>
@@ -147,16 +207,97 @@
       </form>
     </field>
   </record>
+  <!-- Compact inspector variants retain the native fields, domains and widgets. -->
+  <record id="workflow_inspector_form" model="ir.ui.view">
+    <field name="name">workflow.definition.inspector.form</field>
+    <field name="model">workflow.definition</field>
+    <field name="inherit_id" ref="workflow_form"/>
+    <field name="mode">primary</field><field name="priority">99</field>
+    <field name="arch" type="xml">
+      <xpath expr="//form" position="attributes">
+        <attribute name="js_class">workflow_inline_step</attribute>
+        <attribute name="create">0</attribute><attribute name="delete">0</attribute>
+      </xpath>
+      <xpath expr="//chatter" position="replace"/>
+      <xpath expr="//widget[@name='workflow_starter']" position="replace"/>
+    </field>
+  </record>
+  <record id="step_inspector_form" model="ir.ui.view">
+    <field name="name">workflow.step.inspector.form</field>
+    <field name="model">workflow.step</field>
+    <field name="inherit_id" ref="step_form"/>
+    <field name="mode">primary</field><field name="priority">99</field>
+    <field name="arch" type="xml">
+      <xpath expr="//form" position="attributes">
+        <attribute name="js_class">workflow_inline_step</attribute>
+        <attribute name="create">0</attribute><attribute name="delete">0</attribute>
+      </xpath>
+      <xpath expr="//header" position="replace"/>
+    </field>
+  </record>
+  <record id="run_search" model="ir.ui.view">
+    <field name="name">workflow.run.search</field><field name="model">workflow.run</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="workflow_id"/><field name="step_id"/>
+      <filter name="running" string="Running" domain="[('state', '=', 'running')]"/>
+      <filter name="waiting" string="Waiting" domain="[('state', '=', 'waiting')]"/>
+      <filter name="failed" string="Failed" domain="[('state', '=', 'failed')]"/>
+      <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+      <filter name="stopped" string="Stopped" domain="[('state', '=', 'stopped')]"/>
+      <separator/>
+      <filter name="previews" string="Previews" domain="[('is_test', '=', True)]"/>
+      <filter name="live_runs" string="Live runs" domain="[('is_test', '=', False)]"/>
+      <separator/>
+      <filter name="uncertain_delivery" string="Uncertain delivery" domain="[('delivery_unknown', '=', True)]"/>
+      <separator/>
+      <filter name="started_at" string="Started" date="started_at"/>
+      <separator/>
+      <filter name="group_workflow" string="Workflow" context="{'group_by': 'workflow_id'}"/>
+      <filter name="group_status" string="Status" context="{'group_by': 'state'}"/>
+      <filter name="group_preview" string="Preview / Live" context="{'group_by': 'is_test'}"/>
+      <filter name="group_started" string="Started" context="{'group_by': 'started_at:month'}"/>
+      <filter name="group_company" string="Company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+    </search></field>
+  </record>
   <record id="run_list" model="ir.ui.view">
     <field name="name">workflow.run.list</field><field name="model">workflow.run</field>
     <field name="arch" type="xml"><list create="0" edit="0" delete="0">
-      <field name="workflow_id"/><field name="name"/><field name="step_id"/><field name="state" widget="badge"/><field name="is_test"/><field name="started_at"/>
+      <field name="workflow_id"/><field name="name"/>
+      <field name="step_id" optional="show"/><field name="state" widget="badge" optional="show"/>
+      <field name="is_test" optional="show"/><field name="started_at" optional="show"/>
+      <field name="finished_at" optional="hide"/><field name="wake_at" optional="hide"/>
+      <field name="attempts" optional="hide"/><field name="error" optional="hide"/>
+      <field name="delivery_unknown" optional="hide"/><field name="approval_id" optional="hide"/>
+      <field name="revision" optional="hide"/><field name="record_id" optional="hide"/>
+      <field name="company_id" optional="hide" groups="base.group_multi_company"/>
     </list></field>
+  </record>
+  <record id="run_kanban" model="ir.ui.view">
+    <field name="name">workflow.run.kanban</field><field name="model">workflow.run</field>
+    <field name="arch" type="xml">
+      <kanban default_group_by="state" create="0" edit="0" delete="0" quick_create="false" records_draggable="false" groups_draggable="false"
+              group_create="false" group_edit="false" group_delete="false">
+        <field name="is_test"/>
+        <templates><t t-name="card">
+          <field name="workflow_id" class="fw-bold fs-5"/>
+          <field name="name"/>
+          <field name="step_id" class="text-muted"/>
+          <div class="d-flex gap-2"><field name="state" widget="badge"/><span t-if="record.is_test.raw_value" class="badge text-bg-light">Preview only</span></div>
+          <field name="started_at" class="text-muted small"/>
+        </t></templates>
+      </kanban>
+    </field>
+  </record>
+  <record id="action_run_history" model="ir.actions.act_window">
+    <field name="name">Run history</field><field name="res_model">workflow.run</field>
+    <field name="view_mode">list,kanban,form</field><field name="view_id" ref="run_list"/>
+    <field name="search_view_id" ref="run_search"/><field name="limit">80</field>
   </record>
   <record id="run_form" model="ir.ui.view">
     <field name="name">workflow.run.form</field><field name="model">workflow.run</field>
     <field name="arch" type="xml"><form create="0" edit="0" delete="0">
       <header>
+        <button name="action_open_workflow" string="Open workflow" type="object"/>
         <button name="action_retry" string="Retry this step" type="object" invisible="state != 'failed' or is_test or delivery_unknown" confirm="Retry this failed action using the approved workflow?"/>
         <button name="action_retry_confirmed" string="Retry after checking delivery" type="object" invisible="state != 'failed' or is_test or not delivery_unknown" confirm="I checked the destination and confirm that it did not process this delivery. Retry now?"/>
         <button name="action_skip" string="Skip and continue" type="object" invisible="state != 'failed' or is_test or step_kind not in ('action', 'foreach')" confirm="Skip this failed action and continue the approved workflow?"/>
@@ -185,7 +326,7 @@
   <record id="action_workflows" model="ir.actions.client">
     <field name="name">Workflows</field><field name="tag">workflow_center.home</field><field name="path">workflows</field>
   </record>
-  <menuitem id="menu_workflows" name="Workflows" action="action_workflows" sequence="35" groups="base.group_system" web_icon="workflow_center,static/description/icon.svg"/>
+  <menuitem id="menu_workflows" name="Workflows" action="action_workflow_templates" sequence="35" groups="base.group_system" web_icon="workflow_center,static/description/icon.svg"/>
   <record id="action_workflow_runs" model="ir.actions.client">
     <field name="name">Run history</field><field name="tag">workflow_center.runs</field><field name="path">workflow-runs</field>
   </record>
@@ -198,5 +339,5 @@
     <field name="view_id" ref="workflow_list"/><field name="search_view_id" ref="workflow_search"/>
   </record>
   <menuitem id="menu_my_workflows" name="My workflows" parent="menu_workflows" action="action_workflow_library" sequence="5" groups="base.group_system"/>
-  <menuitem id="menu_workflows_runs" name="Run history" parent="menu_workflows" action="action_workflow_runs" sequence="20" groups="base.group_system"/>
+  <menuitem id="menu_workflows_runs" name="Run history" parent="menu_workflows" action="action_run_history" sequence="20" groups="base.group_system"/>
 </odoo>

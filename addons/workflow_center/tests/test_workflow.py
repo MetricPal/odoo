@@ -21,7 +21,7 @@ class TestWorkflows(TransactionCase):
     def test_workflows_is_an_administrator_app(self):
         menu = self.env.ref('workflow_center.menu_workflows')
         self.assertFalse(menu.parent_id)
-        self.assertEqual(menu.action, self.env.ref('workflow_center.action_workflows'))
+        self.assertEqual(menu.action, self.env.ref('workflow_center.action_workflow_templates'))
         self.assertEqual(menu.web_icon, 'workflow_center,static/description/icon.svg')
         self.assertTrue(menu.web_icon_data)
         self.assertEqual(menu.group_ids, self.env.ref('base.group_system'))
@@ -34,9 +34,51 @@ class TestWorkflows(TransactionCase):
         self.assertEqual(sections.mapped('name'), ['My workflows', 'Run history'])
         self.assertTrue(all(section.group_ids == menu.group_ids for section in sections))
         self.assertEqual(sections[0].action, self.env.ref('workflow_center.action_workflow_library'))
-        self.assertEqual(sections[1].action.tag, 'workflow_center.runs')
+        self.assertEqual(sections[1].action, self.env.ref('workflow_center.action_run_history'))
         self.assertFalse(self.env.ref('workflow_center.menu_workflows_approvals', raise_if_not_found=False))
         self.assertFalse(self.env.ref('workflow_center.action_workflow_approvals', raise_if_not_found=False))
+
+    def test_run_history_native_action_and_navigation(self):
+        action = self.env.ref('workflow_center.action_run_history')
+        self.assertEqual(action.res_model, 'workflow.run')
+        self.assertEqual(action.view_mode, 'list,kanban,form')
+        self.assertEqual(action.search_view_id, self.env.ref('workflow_center.run_search'))
+        self.assertEqual(action.limit, 80)
+        flow = self.flow()
+        run = internal(self.env['workflow.run']).create({
+            'workflow_id': flow.id, 'name': self.partner.display_name,
+            'record_id': self.partner.id, 'revision': flow.revision, 'is_test': True,
+        })
+        result = run.action_open_workflow()
+        self.assertEqual(result['params']['workflow_id'], flow.id)
+        self.assertEqual(result['tag'], 'workflow_center.builder')
+        user = new_test_user(self.env, login='workflow_run_reader', groups='base.group_user')
+        with self.assertRaises(AccessError):
+            run.with_user(user).action_open_workflow()
+
+    def test_run_status_groups_include_empty_columns_in_order(self):
+        flow = self.flow()
+        run = internal(self.env['workflow.run']).create({
+            'workflow_id': flow.id, 'name': self.partner.display_name,
+            'record_id': self.partner.id, 'revision': flow.revision,
+            'is_test': True, 'state': 'done',
+        })
+        model = self.env['workflow.run'].with_context(read_group_expand=True)
+        for domain, counts in [([('id', '=', run.id)], [0, 0, 0, 1, 0]),
+                               ([('id', '=', 0)], [0, 0, 0, 0, 0])]:
+            groups = model.formatted_read_group(domain, ['state'], ['__count'])
+            self.assertEqual([group['state'] for group in groups],
+                             ['running', 'waiting', 'failed', 'done', 'stopped'])
+            self.assertEqual([group['__count'] for group in groups], counts)
+
+    def test_workflow_status_groups_include_empty_columns_in_order(self):
+        flow = self.flow()
+        model = self.env['workflow.definition'].with_context(read_group_expand=True)
+        for domain, counts in [([('id', '=', flow.id)], [1, 0, 0]),
+                               ([('id', '=', 0)], [0, 0, 0])]:
+            groups = model.formatted_read_group(domain, ['state'], ['__count'])
+            self.assertEqual([group['state'] for group in groups], ['draft', 'active', 'paused'])
+            self.assertEqual([group['__count'] for group in groups], counts)
 
     def test_library_views_and_guarded_status(self):
         from lxml import etree
@@ -55,7 +97,7 @@ class TestWorkflows(TransactionCase):
         flow = self.flow()
         result = flow.action_open_builder()
         self.assertEqual(result['params']['workflow_id'], flow.id)
-        self.assertEqual(result['tag'], 'workflow_center.home')
+        self.assertEqual(result['tag'], 'workflow_center.builder')
         for state in ('active', 'paused', 'draft'):
             with self.assertRaises(AccessError):
                 flow.write({'state': state})
@@ -240,6 +282,40 @@ class TestWorkflows(TransactionCase):
         last = self.step(flow, name='Last')
         middle = flow.add_step('wait', after_id=first.id)
         self.assertEqual(flow.step_ids.sorted('sequence').ids, [first.id, middle, last.id])
+
+    def test_template_overview_native_views(self):
+        action = self.env.ref('workflow_center.action_workflow_templates')
+        self.assertEqual(action.view_mode, 'kanban,list')
+        self.assertEqual(action.res_model, 'workflow.template')
+        self.assertEqual(action.search_view_id, self.env.ref('workflow_center.template_search'))
+        template = self.env['workflow.template'].search([('key', '=', 'onboarding')])
+        self.assertTrue(template.available)
+        result = template.action_start()
+        draft = self.env['workflow.definition'].browse(result['params']['workflow_id'])
+        self.assertEqual(draft.state, 'draft')
+        self.assertEqual(result['tag'], 'workflow_center.builder')
+
+    def test_template_search_catalog_is_read_only(self):
+        templates = self.env['workflow.template']
+        recipes = self.env['workflow.definition'].home_data()['templates']
+        categories = templates.search_panel_select_range('app', enable_counters=True, expand=True)['values']
+        self.assertEqual({item['id'] for item in categories}, {item['app'] for item in recipes})
+        for item in categories:
+            self.assertEqual(item['__count'], sum(recipe['app'] == item['id'] for recipe in recipes))
+
+        self.assertEqual(templates.search([]).mapped('key'), [item['key'] for item in recipes])
+        reminders = templates.search([('category', '=', 'Reminders')])
+        self.assertEqual(set(reminders.mapped('key')),
+                         {item['key'] for item in recipes if item['category'] == 'Reminders'})
+        with self.assertRaises(AccessError):
+            reminders.write({'name': 'Changed template'})
+        with self.assertRaises(AccessError):
+            templates.create({'name': 'Unapproved recipe'})
+        with self.assertRaises(AccessError):
+            reminders.unlink()
+        user = new_test_user(self.env, login='template_catalog_staff', groups='base.group_user')
+        with self.assertRaises(AccessError):
+            templates.with_user(user).search_read([], ['name'])
 
     def test_template_catalog_and_onboarding_shape(self):
         self.assertEqual(len(self.env['workflow.definition'].home_data()['templates']), 11)

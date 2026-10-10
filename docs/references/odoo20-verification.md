@@ -972,3 +972,332 @@ and Run history remain its visible sections. Module upgrade removes the obsolete
 module-owned menu using the previously verified XML-ID cleanup mechanism.
 Updated navigation assertions and the UI return path to use the app brand.
 XML/Python syntax and whitespace checks passed; live upgrade remains pending.
+
+
+Workflow overview search and layout (2026-10-10): the template gallery now uses
+native WithSearch, SearchBar, and useSearchBarToggler in Layout's standard
+control-panel slots (verified against the local list controller template).
+Category toggles moved to search filters; Category/Application groupings partition
+the template cards. A read-only `workflow.template` SQL view exposes only static
+recipe metadata so native custom-filter field lookup/validation targets a real
+model, not workflow definitions. It is backed by the existing recipe catalog,
+with administrator read-only access and no writable template records. The UI
+uses native Domain evaluation on the same metadata. The left content is a white
+sheet, with separate right guidance and stacked sections on small screens.
+Browser and model regression tests cover filtering, grouping, and catalog access.
+Validation performed: XML/Python/JavaScript syntax, native search-view Relax NG
+schema, SCSS compilation, and whitespace checks passed. Executed the actual
+overview grouping getter for ungrouped, category, application, combined, and
+empty-result cases, checking that cards are neither lost nor duplicated. Live
+browser/model tests and the SQL-view module upgrade remain pending the previously
+requested test-database approval; they are not reported as passed.
+
+Overview filter-loading correction: Odoo 20 SearchModel only loads the search
+view when `searchViewId !== undefined`. Omitting this WithSearch prop gives an
+empty `<search/>`, leaving only Custom Filter visible. Explicitly passing
+`searchViewId="false"` requests the model's default search view. Verified the
+actual loader condition with omitted and false values, validated six category
+filters and two groupings against the native schema, and strengthened the UI
+regression to require every predefined menu entry. Live browser verification
+has not been run for this correction.
+
+Overview independent scrolling: Layout keeps the control panel outside its
+content element. The overview now constrains that element and its grid to the
+remaining height, with separate vertical overflow on the left white sheet and
+right guidance section. Both are keyboard-focusable and prevent scroll chaining;
+stacked narrow-screen sections retain independent scrolling. Added browser
+assertions for independent scroll positions and stationary toolbar geometry.
+XML/Python syntax, SCSS compilation, and whitespace checks passed; the browser
+regression has not been run against a live database.
+
+
+Native form styling alignment: verified `form_controller.scss`, the form
+compiler, and `mail/static/src/chatter/web/form_renderer.scss` against the DOM
+reference. The overview now uses `o_form_view`, `o_form_renderer`,
+`o_form_sheet_bg`, and `o_form_sheet`; its guidance uses the native aside and
+scroll-container structure with a sticky heading. Removed custom sheet border,
+padding, and grid sizing in favor of Odoo's rules. The actual workflow form now
+includes native chatter (the model already inherits mail.thread). Its starter
+stays inside the sheet. Overview sections retain independent scrolling and stack
+at the native XXL breakpoint. XML/Python syntax, SCSS compilation, and whitespace
+checks passed; live browser verification and module upgrade remain pending.
+
+
+Workflow form toolbar: registered a model-scoped form view configuration with a
+custom buttonTemplate. It calls native `web.FormView.Buttons`, then renders a
+native ViewButton for action_open_builder. Removed the old form header row.
+Verified formView buttonTemplate forwarding, FormController's ViewButton
+registration, and beforeExecuteActionButton: the standard handler saves and
+validates the record before dispatching the object action. UI regression checks
+button order and opening the builder with the selected document. XML/Python/JS
+syntax and whitespace checks passed; live browser verification remains pending.
+
+
+Overview template cards: removed the gallery heading/count and replaced custom
+button cards/grid sizing with the native kanban renderer CSS structure, article
+cards (`o_card_record o_kanban_record`), flex wrapping, and ghost fillers. Checked
+local KanbanRenderer and CardRenderer templates and kanban styles. The overview
+still owns its filtered catalog rendering; it reuses native card markup/styles.
+Cards support click, Enter, and Space. Unavailable recipes and busy submissions
+are guarded in fromTemplate, since aria-disabled alone does not prevent actions.
+XML/Python/JavaScript syntax, SCSS compilation and whitespace checks passed;
+updated UI assertions require article cards and no gallery heading. Live browser
+verification remains pending.
+
+
+Overview guidance relocation: removed the overview aside and expanded its native
+sheet container. Moved Workflow guide and the When → If → Do explanation into
+the builder immediately after Before you activate. The overview's redundant
+Building blocks summary is removed; the builder retains its existing step
+palette. Updated scroll and placement regression assertions. XML placement,
+Python syntax, SCSS compilation, and whitespace checks passed; live browser
+verification remains pending.
+
+
+Overview application search panel: added native `<searchpanel>` on the template
+search view and forwarded WithSearch's display configuration to Layout. The app
+field is now a selection derived from distinct recipe badge values (same SQL
+text values); Odoo 20 search_panel_select_range requires selection or relational
+fields, not Char. Native selection-range handling supplies counters and All;
+its domain combines with the top search/filter/group controls. The catalog
+remains read-only, including templates for apps not yet installed. Added model
+checks for categories/counters and UI coverage for selecting CRM and clearing it.
+Syntax/schema/SCSS checks passed; live regression and module upgrade are pending.
+
+Search-panel layout correction: native `.o_form_view` applies
+`flex-flow: column nowrap`, which placed the full-height sidebar above the
+gallery and clipped the cards. The overview content now explicitly uses
+`flex-flow: row nowrap` while retaining native sheet styles. Added browser
+assertions for side-by-side geometry and visible cards, rather than only DOM
+presence. SCSS compilation and syntax checks passed; live verification is pending.
+
+
+Overview native kanban structure correction: removed o_form_view,
+o_form_renderer, o_form_sheet_bg, and o_form_sheet wrappers from this overview.
+The single o_kanban_renderer is now a direct Layout content child beside the
+native search panel/resizer. Article cards and ghost fillers are direct renderer
+children; optional grouping labels have full width without wrapping the cards.
+Removed form-layout CSS overrides and retained only scroll/flex sizing. Native
+new-workflow form styling is unchanged. Structural assertions, XML/Python syntax,
+SCSS compilation and whitespace checks passed; live verification remains pending.
+
+
+Overview styling cleanup: removed the o_workflows CSS scope and all overview
+layout overrides. Overview uses the native o_kanban_view root and Layout without
+className, yielding only o_content and o_component_with_search_panel on main.
+Existing builder/run-history styling is scoped exclusively to their non-overview
+root; the overview no longer inherits its colors, typography, or sizing. Added
+an exact main-class assertion. Native styling/structure is the documented default.
+XML/Python syntax, SCSS compilation, and whitespace checks passed; live
+verification is pending.
+
+
+Overview Kanban/List switcher: replaced the custom catalog-rendering client page
+with a native act_window on workflow.template (`kanban,list`). Native controllers
+now own the renderer, pager, search state and view switcher. Added native kanban
+and read-only list architectures with optional hidden detail columns; both open
+templates via the same access-checked action_start method and preserve the
+existing draft-creation/activation boundary. Dedicated button templates route
+New to the workflow form, rather than attempting to create read-only recipes.
+The old overview action remains a redirect for existing bookmarks. Removed
+custom Overview/WithSearch rendering and client filtering/grouping code.
+Regression coverage includes switching while CRM is selected, hidden list
+columns, native action wiring, and opening a draft. XML/Python/JavaScript/schema
+checks passed; browser and database tests remain pending approval.
+
+
+### Native Run history views
+
+Run history now opens an `ir.actions.act_window` on `workflow.run` with native
+list, kanban and form views, a search view and an 80-row page size. Odoo owns
+search/filter/grouping, switching and pagination; the previous custom 200-run
+fetch and sidebar renderer are removed. Kanban drag/drop and CRUD are disabled.
+Native run forms retain confirmed recovery actions and add read-checked builder
+navigation. Existing client-action URLs redirect to the native window action.
+Verified selectors against Odoo 20 `core/pager/pager.xml` and
+`views/fields/statusbar/statusbar_field.xml`. Added browser coverage for paging,
+status filtering, grouped view switching and updated recovery/navigation checks;
+added model coverage for native action configuration and builder access denial.
+Local syntax/schema checks are run separately from database/browser tests. A live
+module upgrade and database/browser regression remain pending authorization for
+the previously blocked disposable test database.
+
+
+### My workflows empty status columns
+
+The workflow state uses native Selection `group_expand=True`. Odoo 20
+`odoo/orm/fields_selection.py::_default_group_expand` returns every selection
+value in declaration order; this provides Draft, Active, Pause even with no
+matching workflows. No custom renderer or CSS is needed; drag/drop stays off.
+Regression coverage checks one draft and a completely empty domain, and the
+browser navigation check asserts column order. Python syntax and diff checks
+passed; database/browser execution remains pending.
+
+
+### Run history empty status columns
+
+Run kanban uses native `default_group_by="state"`; its Selection field uses
+`group_expand=True` to show Running, Waiting, Failed, Done, Stopped in declaration
+order, even for an empty result. Verified against Odoo 20's kanban arch parser
+and Selection `_default_group_expand`. Existing drag restrictions remain.
+Model regression covers a single done run and an empty domain; browser coverage
+checks all five columns before and after a filter produces no matching runs.
+Local Python/XML syntax and diff checks passed; database/browser tests not run.
+
+
+### Builder native surrounding layout
+
+Builder actions use Layout's `control-panel-buttons` slot, verified in Odoo 20
+`search/layout.xml` and `layout.js`. The step palette uses `o_search_panel`;
+the canvas uses `o_form_renderer`/`o_form_sheet_bg`, with guidance inside
+`o-mail-Chatter-content d-flex flex-column flex-grow-1 bg-inherit`. Native form
+and mail chatter layout rules supply the surrounding structure. The canvas and
+right content have separate scroll containers. Custom canvas/node rendering
+remains; the old three-column grid and palette/card shell overrides are removed.
+Existing activation/preview handlers and permissions are unchanged. Updated
+browser assertions target the native toolbar, left panel and right content.
+Python/XML syntax, SCSS compilation, and diff checks passed. Browser tests and
+live visual verification have not been run.
+
+
+### Builder resize and settings refinement
+
+Added the native `o_search_panel_resize h-100 px-2 opacity-0 opacity-100-hover`
+handle and reused Odoo 20 SearchPanel `_onStartResize` for pointer bounds and
+listener cleanup. Settings follows Activate/Pause and calls the same
+`configureWorkflow()` handler as the previous Workflow settings button. Removed
+the Before you activate section and step insertion hint; activation guards stay
+unchanged. Browser regression checks cover placement and pointer resizing.
+Local XML/Python/JS syntax, handler checks and diff checks passed; browser tests
+remain unexecuted.
+
+
+### Builder settings entry point
+
+Removed the duplicate toolbar Settings button at the user's request. The always
+present When starting-point card retains `configureWorkflow()` and opens the
+workflow configuration. Updated the toolbar regression assertion and user guide.
+XML/Python syntax and the starting-point handler binding were checked locally.
+
+
+### Builder inline step editor and palette drag/drop
+
+Selected steps render through native `View` and `FormController`, using the
+existing `workflow.step` form. A primary inheritance of `web.FormView` adds
+native Save/Discard controls above the form without a nested control panel.
+Verified view `jsClass` and callback-recorder props against Odoo 20 `view.js`,
+`form_view.js`, `form_controller.js`, and `action_hook.js`. Selection changes and
+preview/activation first run the native form's before-leave validation/save;
+failed validation retains the current editor. A confirmed deletion of the
+selected step may discard its pending edits. Closing the editor restores the
+guide. Active workflows use a read-only form and cannot add/remove steps.
+
+Palette items support native browser drag events; only this builder's palette
+items are accepted. Dropping on a card inserts after that step; on When inserts
+at the start; blank canvas uses the current selection. Calls reuse `add_step`,
+including existing sequence/branch handling and backend permission checks.
+Red Remove step and per-card × controls share the existing confirmation and
+unlink checks. The starting-point card is never removable.
+
+Local isolated JS checks passed for drop targets, active-workflow guards,
+invalid-edit selection guards, and confirmed deletion. Python/JS/XML syntax,
+SCSS compilation, template inheritance targets and diff checks passed. Updated
+browser regression exercises dragging, inline save, card removal, guide
+visibility, and create-record mappings. Full database/browser tests and live
+visual verification remain pending.
+
+
+### Inspector starting point and removal styling
+
+The starting-point card selects an inline `workflow.definition` form instead
+of FormViewDialog. Explicit primary inherited inspector views reuse the native
+workflow/step fields and set `workflow_inline_step`; the workflow variant removes
+chatter and the new-workflow starter. Separate primary views avoid changing the
+normal full-page forms. The inspector's scoped spacing/height rules remove
+nested full-page sizing and keep one outer sidebar scrollbar. Native transparent,
+borderless link-button utilities give removal controls and the top-right × red
+text without a colored background. Insertion uses a numeric selected-step ID
+or false, so selecting the trigger never sends its UI key to the model.
+Browser regression now checks inline trigger settings, guide visibility, lack
+of nested chatter, and transparent borderless removal controls. Local source,
+syntax, inheritance and interaction checks are recorded separately from live
+browser verification, which remains pending.
+
+
+### Inspector footer buttons
+
+Moved the native Save/Discard template after `o_form_view_container`. The inline
+controller root explicitly uses Odoo flex-column utilities, and its footer uses
+a horizontal, non-stretching button row. This corrects the buttons appearing as
+tall columns alongside the settings fields. Added browser geometry assertions
+for footer position and normal button height. Local XML/Python syntax and native
+template inheritance checks passed; live browser verification remains pending.
+
+
+### Inspector actions in the main control panel
+
+Inline form actions now use Odoo's custom portal mechanism (as in native
+`search/layout.xml`) to render in this builder instance's uniquely scoped
+`o_control_panel_navigation`. Native form Save/Discard callbacks and ViewButton
+object execution remain attached to the form controller. Remove step retains
+its confirmation and red-text style. Configure action follows a vertical divider
+only for editable action/foreach steps other than Create record; it uses the
+native ViewButton save-before-execution path. The inspector-specific step view
+removes its original header to avoid a duplicate Configure action button.
+Updated browser checks cover toolbar placement and absent dividers on trigger
+and wait settings. Local syntax, native inheritance and action-condition checks
+passed; live browser verification remains pending.
+
+
+### Palette native dragging fix
+
+Odoo's bundled Owl `setAttribute` converts boolean true to an empty HTML
+attribute. `draggable` is enumerated, so the palette must render the strings
+"true" and "false", rather than booleans. Corrected the binding and added a
+browser assertion for both the attribute and native `element.draggable` property
+before the existing drop regression. Replaced After with a drag/click hint.
+Local XML/Python checks and a regression using the checked-out Owl attribute
+setter passed; live browser drag verification remains pending.
+
+
+### Inspector toolbar order
+
+Ordered inspector actions as extra actions, conditional vertical divider, Remove
+step, Discard, Save. Native save/discard handlers remain unchanged. Verified
+actual Odoo template inheritance and added a browser order assertion.
+
+
+### Right-panel action row and selected-card highlight
+
+Moved the form action portal into the builder's native chatter-top/topbar area.
+The order is Save, Discard, Remove step (secondary), then other actions. A
+horizontal rule follows the row; the previous vertical divider is removed.
+Save/Discard and ViewButton execution still use the native form controller.
+Removed the permanent trigger border rule: `is_selected` alone controls the
+highlight and the starting point sets it only while its editor is selected.
+Updated browser assertions cover placement, order, separator and single-card
+selection. Local syntax, inheritance and SCSS checks passed; live browser
+verification remains pending.
+
+
+### Builder title and status placement
+
+Removed the duplicated document breadcrumb/workflow heading above the canvas.
+The status badge uses Layout's `control-panel-additional-actions` slot, rendered
+beside the current name by native Odoo 20 Breadcrumb.Actions. Status labels remain
+Draft, Active, Pause. Updated navigation assertions to use the native title and
+trigger card, and added coverage for the badge and absent canvas header. Local
+XML/Python syntax and diff checks passed; browser verification remains pending.
+
+
+### Keep workflow breadcrumb stable during inline editing
+
+Odoo FormController calls `env.config.setDisplayName` during loading and saving.
+The embedded inspector inherited the enclosing action's setter, allowing its
+loading/record title to overwrite the workflow breadcrumb (including Unnamed).
+Isolated the inspector setter in its child environment. The builder now explicitly
+sets its action title from `builder_data.name` on each reload, including after
+saving a renamed workflow. Native FormController behavior otherwise remains.
+Regression assertions cover initial title, trigger/step selection and step save.
+Local syntax and isolated title-ownership checks passed; live browser execution
+remains pending.
