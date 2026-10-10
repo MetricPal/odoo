@@ -236,3 +236,21 @@ test("favorite stars are visible only after View all and administrative apps are
     expect('[data-app-id="90"]').toHaveCount(0);
     expect('[data-app-id="91"]').toHaveCount(0);
 });
+
+
+test("available app stars disappear at capacity and return when a slot is freed", async () => {
+    browser.localStorage.setItem("ai_home.favorite_apps.42", JSON.stringify(
+        Array.from({ length: FAVORITE_LIMIT }, (_, index) => index + 2)
+    ));
+    await mountWithCleanup(WorkDashboard);
+    await contains(".o_ai_home_favorites_view_all").click();
+    expect(".o_ai_home_all_app").toHaveCount(1);
+    expect(".o_ai_home_all_app .o_ai_home_favorite_toggle").toHaveCount(0);
+    expect(".o_ai_home_favorite_item .o_ai_home_favorite_toggle").toHaveCount(FAVORITE_LIMIT);
+
+    await contains('.o_ai_home_favorite_item[data-app-id="2"] .o_ai_home_favorite_toggle').click();
+    expect(".o_ai_home_all_app .o_ai_home_favorite_toggle").toHaveCount(2);
+    await contains('.o_ai_home_all_app[data-app-id="2"] .o_ai_home_favorite_toggle').click();
+    expect(".o_ai_home_all_app .o_ai_home_favorite_toggle").toHaveCount(0);
+    expect(".o_ai_home_favorite_item .o_ai_home_favorite_toggle").toHaveCount(FAVORITE_LIMIT);
+});

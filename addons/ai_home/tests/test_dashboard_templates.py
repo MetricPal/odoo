@@ -19,6 +19,14 @@ class TestDashboardTemplates(unittest.TestCase):
         self.assertEqual(buttons[0].get('t-if'), 'app and this.state.showAllApps')
         self.assertEqual(len(buttons[0].xpath("span[@data-icon='star' and @class='oi oi-filled']")), 1)
 
+    def test_available_app_stars_require_favorite_capacity(self):
+        template = etree.parse(str(
+            Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
+        ))
+        buttons = template.xpath("//button[@class='o_ai_home_favorite_toggle']")
+        self.assertEqual(len(buttons), 1)
+        self.assertEqual(buttons[0].get('t-if'), 'this.hasFavoriteCapacity')
+
     def test_favorites_view_all_only_shows_when_apps_are_available(self):
         template = etree.parse(str(
             Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'

@@ -162,6 +162,7 @@
                             <button
                                 type="button"
                                 class="o_ai_home_favorite_toggle"
+                                t-if="this.hasFavoriteCapacity"
                                 t-att-class="{ 'o_is_favorite': this.isFavorite(app) }"
                                 t-att-aria-label="this.isFavorite(app)
                                     ? 'Remove ' + app.name + ' from favorites'

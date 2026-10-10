@@ -99,3 +99,11 @@ Use clear hierarchy, readable typography, adequate touch targets, keyboard acces
 ## UX consistency
 
 Web and mobile should share concepts and terminology, not necessarily identical layouts.
+
+
+### Home favorites capacity
+
+In expanded Favorites, non-favorite apps show add-star controls only while a
+favorite slot is available. At capacity those stars are hidden; selected
+favorites retain removal stars so users can free a slot. Available apps remain
+visible and can still be opened.
