@@ -24,7 +24,7 @@
         &.active, &.done { color: #16745e; background: #ddf2eb; } &.failed { color: #a62b23; background: #fbe3df; }
         &.waiting, &.paused, &.needs_setup { color: #815409; background: #fcf0d6; } &.running { color: #2362a0; background: #e4eef9; }
     }
-    .wf_canvas { height: 98%; background: radial-gradient(#ddd 1px, transparent 1px) 0 0 / 16px 16px #ffffff; border: 1px solid #e3dfe1; border-radius: 10px; padding: 28px 24px; display: flex; align-items: center; flex-direction: column; min-width: 0; }
+    .wf_canvas { background: radial-gradient(#ddd 1px, transparent 1px) 0 0 / 16px 16px #ffffff; border: 1px solid #e3dfe1; border-radius: 10px; padding: 28px 24px; display: flex; align-items: center; flex-direction: column; min-width: 0; }
     .wf_node { border: 1px solid #d7d1d5; border-radius: 9px; background: white; padding: 16px; width: 100%; max-width: 460px; text-align: left;
         &.is_selected { border: 2px solid #3975b0; }
         small { color: #3d665c; letter-spacing: .08em; font-size: 10px; }
