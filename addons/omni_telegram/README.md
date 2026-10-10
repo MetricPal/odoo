@@ -12,7 +12,7 @@ Private text and text edits become the core inbox DTOs. Unsupported groups, topi
 
 `accepted` records the returned bot/chat/message key. It does not assert delivery or reading. Timeouts, malformed success, redirects and server failures are unknown outcomes and must not automatically resend. Valid API rejections are definite no-send outcomes; only a bounded 429 `retry_after` can request the worker's existing capped retry policy. Manual reconciliation never resends.
 
-## Deployment-controlled secrets
+## Legacy deployment-controlled secrets
 
 A deployment owner provisions a process environment variable named by the connection's `OMNI_SECRET_...` reference. The value is a JSON bundle with this shape (placeholders, not working credentials):
 
@@ -77,3 +77,103 @@ emails and uncertain sends. Adapter uninstall preserves core command/audit recor
 but removes Telegram-specific fields. Core uninstall deletes Omni history.
 The adapter's readiness now follows this database's installation state even when
 another database in the same process still has Telegram installed.
+### Creating a Telegram connection at runtime
+
+An Omni administrator selects an allowed company and communication team, chooses
+Telegram, and enters the **Bot token** in the masked field. Saving calls Telegram
+`getMe`, validates the returned bot ID against the token, and fills the numeric
+bot ID, namespace, name, username and verification time. Database scope comes
+from the active Odoo cursor, not a user-supplied database name. No manual
+`OMNI_SECRET_` provisioning is required for new connections.
+
+Leave **Webhook secret** blank to generate a random secret for a new connection.
+An optional replacement must be 32–256 letters, digits, underscores or hyphens.
+On an existing connection, blank inputs retain existing credentials. Use the
+manager-only **Webhook secret** action to copy the secret for registration;
+the bot token is never returned by a record read. **Verify bot** rechecks identity.
+Saving/verifying does not authorize the sandbox, register a webhook, select a
+sender, enable receiving, or send messages.
+
+Runtime bundles are encrypted using Fernet and stored outside the ORM in private
+files under `data_dir/omni_telegram_credentials/<database-sha256>/`. A generated
+key and credential files use mode 600; directories use mode 700. The Odoo record
+contains only a generated opaque reference and public bot metadata. The key is
+local to this Odoo deployment: it does not protect against a compromised Odoo
+process or an administrator with access to both key and files. All Odoo workers
+must share this directory, with restricted backups of both key and bundles.
+Database-only backups cannot restore runtime credentials. Restoring under a
+new database name requires fresh credential setup.
+
+Rotation is refused while sandbox authorization or a selected runtime sender
+is active. Revoke/deactivate first. Replacement tokens must belong to the same
+bot; another bot needs another connection. Existing reference bundles remain
+immutable so in-flight claims cannot accidentally resolve a different secret.
+Full transaction rollback removes newly written bundles; failed record saves
+also remove their new bundle. Successful older versions, and files orphaned by
+process crashes or enclosing savepoint rollback, require administrator cleanup
+after confirming that no record or in-flight claim still references them.
+
+Legacy environment references remain supported. The dedicated runtime identity
+check can call **only getMe** without the sandbox network flag; ordinary adapter
+calls and all sending still require the existing deployment switch and approval
+checks. No credentials are placed in audit events or returned provider errors.
+
+Tests: `PYTHONPATH=. .venv/bin/python addons/omni_telegram/tests/test_connection_view.py`
+and `.venv/bin/python addons/omni_telegram/tools/test_runtime_credentials.py` are
+database-free. `test_sandbox.py` additionally covers runtime setup, role/company/
+team restrictions, write-only inputs, disclosure and rotation in Odoo.
+
+
+## Guided channel setup
+
+The six-step channel wizard accepts a masked bot token directly in Credentials,
+with the company and communication team already selected in Prepare. Saving
+verifies `getMe`, derives the bot ID, creates an encrypted runtime credential
+reference and clears the token/secret inputs. An existing verified connection
+can be selected instead. Next creates draft bindings idempotently and refuses a
+bot already owned by another channel; empty same-team channels remain allowed.
+
+Connect & verify exposes the backend callback URL, manager-only secret disclosure,
+consenting sandbox user IDs/evidence, retention policy, connection check and
+explicit receiving authorization. Webhook registration is still an administrator
+operation; the adapter does not implement `setWebhook`. Missing public HTTPS
+configuration is explained in place. A successful bot check does not claim that
+a webhook has delivered a message.
+
+Branding edits internal labels. Team & apps shows actual integration availability.
+Test & go live selects a received conversation and prepares a draft reply for the
+existing permission/approval flow. Explicit sandbox activation uses the existing
+sender selection and dispatch actions; it does not bypass approval, networking
+or scheduler controls. Saving or finishing never sends a message.
+
+
+Credential setup errors distinguish invalid input format, rejected tokens,
+verification transport failure, rate limiting, provider unavailability, invalid
+bot identity, unreadable saved credentials and encrypted-storage failure. Error
+messages use fixed categories; they never include provider response bodies,
+credential values or raw transport exceptions. Storage errors explicitly indicate
+that bot verification succeeded, so users are not told to replace a valid token
+for a server filesystem problem.
+
+The setup Verify bot button uses the successful credential-save verification when
+new inputs are present, without making a second network request. For a saved
+connection it performs an explicit recheck. Last verified records the previous
+successful check; a failed recheck does not erase that history. Recheck errors
+distinguish unreadable storage from provider verification failures.
+
+Connect & verify shows receiving status, a selectable, read-only callback URL input
+and Verify webhook below it. The URL uses the configured public hostname and the
+endpoint’s generated route key. Without a public domain, the input shows
+`https://channels.<your-domain>/omni/inbound/<route_key>`, substituting the real
+route key when available. This display fallback is never treated as a usable
+callback URL by verification or receiving. Verify webhook
+uses Telegram getWebhookInfo and compares the registered URL exactly, reporting
+missing/different registrations and historical delivery errors separately. It does
+not register webhooks, verify the secret, enable receiving or prove delivery.
+Native collapsed Advanced settings contains secret details, sandbox user
+authorization, retention and
+credential rechecks. Retention defaults and all authorization gates are preserved.
+Enable receiving requires a public callback address; it does not register a
+webhook. Open Telegram to test opens the verified bot's public username without
+prefilling or sending a message. View received messages uses the existing inbox.
+Administrator registration instructions are collapsed in the guidance panel.

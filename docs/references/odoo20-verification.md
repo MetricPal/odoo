@@ -1321,3 +1321,68 @@ Odoo 20 search view schema. Database-free view-contract test, native list/search
 schemas, Python/XML syntax, SCSS compilation and diff checks passed. Added a
 browser regression for team filtering, view switching and native controls; that
 test and a live module upgrade have not been run.
+
+
+### Guided channel creation
+
+Channels New now opens a dedicated native `omni.channel` setup form through
+small list/kanban controller extensions. It has five local UI steps: details,
+connections, senders, receiving, review/verify. Odoo 20 FormController owns the
+record, field widgets, validation, saving, action buttons and access checks.
+The setup template inherits `web.FormView`, verified with Odoo's actual template
+inheritance helper. Its layout uses `o_search_panel`, native resize behavior,
+`o_form_renderer`/`o_form_sheet_bg`, and a separate chatter-style guidance area.
+Native action state retains the selected step across scoped connection/policy
+navigation. Step changes save and stop on validation failure; no completion or
+verification state is fabricated. Finish saves and opens the regular channel
+form; all delivery/provider activation remains behind the existing controls.
+No provider credentials, callbacks or unsupported integration flows are invented.
+
+Added database-free layout/view tests and a browser creation regression asserting
+no selected sender, dispatch or enabled endpoints. Both database-free tests,
+JS/Python/XML syntax, native search/list schemas, manifest parsing, SCSS,
+actual template inheritance, and isolated navigation/error/finish checks passed.
+Database/browser execution and the live module upgrade have not been run.
+
+## Telegram runtime setup (2026-10-10)
+
+Checked local Odoo 20 `odoo/orm/fields.py`: computed inverse fields default to
+non-stored and writable; runtime token inputs are consumed before ORM create/write
+and recompute as false. `odoo/orm/models.py` provides record-aware `check_access`;
+`odoo/addons/base/models/ir_access.py` uses `ir.access` CSV operation flags, not
+older `ir.model.access` permission columns. Native Char supports `password=True`,
+and `CopyClipboardChar` is registered in web's copy_clipboard field component.
+`odoo/sql_db.py` exposes postrollback callbacks for cleanup of new private files.
+The existing `data_dir` config option supplies credential storage location; the
+active cursor supplies database scope. Module import, combined XML inheritance,
+standalone credential tests and synthetic provider tests pass. Database migration,
+ORM integration tests and live Telegram/browser verification remain pending.
+
+## Multiple channels per communication team (2026-10-10)
+
+Checked `odoo/orm/table_objects.py`: a `_scope_unique` declaration on
+`omni.channel` names its PostgreSQL constraint `omni_channel_scope_unique`.
+Removed only that declaration and added an idempotent pre-migration in
+20.0.1.10.0. Provider identity constraints and the per-channel selected-sender
+index are unchanged. Regression coverage allows same-scope active and archived
+channels while still rejecting duplicate sender ownership across channels.
+
+After explicit user approval, tested the migration twice against a PostgreSQL
+temporary table (rolled back): duplicate scopes succeeded, archived rows and the
+primary key were preserved. Applied the same migration to `odoo20` on 2026-10-10.
+Verified after commit that `omni_channel_scope_unique` is absent, channel row
+count is unchanged, and every other constraint/index on channels, accounts,
+senders and inbound endpoints is unchanged. No full module upgrade was run.
+
+
+### Six-step Omni-Channel setup (2026-10-10)
+
+Verified the checked-out `addons/web/static/src/views/form/form_controller.js`
+uses the ORM service, native `save()` validation and `model.load({resId})`.
+The setup retains that lifecycle and calls a manager-checked server transition
+before marking a forward step complete. XML inheritance is exercised against
+both the core setup form and the Telegram extension using Odoo's
+`apply_inheritance_specs`; no separate connection form is required by the wizard.
+Draft binding preparation reuses the existing account, sender, endpoint and
+policy ORM mechanisms. Enable/activate/test actions delegate to existing
+permission, approval and audit actions rather than assigning final states.

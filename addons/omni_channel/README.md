@@ -33,18 +33,32 @@ by default and available in the native column selector. Kanban cards cannot be
 dragged to change team or company. Existing team membership and company access
 rules apply to results and counts.
 
-Create a channel using the standard New/form flow, selecting its company, business
-purpose and channel type. Save it, then open **Connections** to configure a
-provider account with those defaults. Configure multiple senders and inbound
-endpoints in the channel's tabs. Select one outbound sender with Check & Activate;
-a failed check preserves the existing sender. Review receiving policies under
-Operations and explicitly verify/enable endpoints. Connections use
-deployment-provisioned secret references, never plaintext provider tokens.
+**New** in Channels opens six steps matching the design: **Prepare → Credentials
+→ Connect & verify → Branding → Team & apps → Test & go live**. The native search
+panel is a transparent stepper, the center uses native form fields, and the right
+panel explains the selected step. Completed stages have green check circles;
+the current stage is purple with padded, rounded selection. Small screens stack
+guidance below the form and steps above it.
+
+Next saves through Odoo and validates the current stage before advancing; later
+unvisited stages cannot be skipped. Credentials stay in the wizard. The provider
+adapter prepares draft sender/endpoint bindings and a draft receiving policy;
+this never activates delivery. Connect & verify requires a healthy, explicitly
+enabled endpoint before it is marked complete. A credential check is not proof
+of webhook delivery: the final step uses an actual received conversation.
+
+Company and communication team are selected before credentials for scope
+validation and become fixed when identities are bound. Branding controls
+internal names only. Team & apps identifies the available Inbox and explicitly
+labels business-app integrations that are not implemented. Review test reply
+creates a draft for separate consent/approval. Finish setup only saves; provider
+activation remains a separate confirmed action. Unsupported providers remain
+saved drafts with a clear explanation in Credentials.
 
 Messages and Connections are available from the channel header. Operations →
 Technical Details links to delivery logs, intake logs, purpose audit history and
 recipient authorization. Purpose/team records remain editable through their
-relational field. No separate Overview, onboarding wizard, Inbox menu,
+relational field. No separate Overview, Inbox menu,
 configuration tree or app launcher is installed. Existing inbox actions and
 business integration APIs remain available to consuming applications.
 
@@ -63,7 +77,7 @@ The existing production database was not upgraded. Installation and tests used `
 
 1. In Settings, a system administrator grants Omni-Channel Administrator to configuration owners and Operator to reviewers/requesters as appropriate.
 2. A system administrator assigns internal users to Communication Teams. A role alone does not grant purpose membership; selected Odoo companies also restrict access.
-3. Configure one channel for the company, business purpose and channel type. Configure connections under that same scope. Credential fields accept only `OMNI_SECRET_...` references, never token values.
+3. Configure named channels for the company, communication team and channel type. A team may have several channels of the same type, including when older channels are archived. Configure connections under that same scope. Generic credential-reference fields accept only references. With the Telegram adapter installed, enter a token in its dedicated masked Bot token field; saving verifies and stores it securely.
 4. Configure sender identities and inbound endpoint identities. An unavailable adapter cannot pass Check & Activate. Do not enter invented health evidence to work around this.
 5. For future provider-enabled preparation, select a company-specific Approval Center type with explicit approvers. Each must have the Approval Center Approver role, the communication team, company access and be different from the requester. Manager-derived chains are intentionally rejected in this first integration.
 
@@ -237,3 +251,58 @@ Provider details and change history are secondary sections.
 Channel configuration explicitly warns when no provider adapter is installed.
 Catalog entries for WhatsApp, LinkedIn and other services do not imply live
 integration support; only the existing Telegram sandbox adapter is supplied.
+
+### Multiple channels for a communication team
+
+Version 20.0.1.10.0 removes the old channel scope uniqueness constraint. Upgrade
+`omni_channel` to apply the included idempotent pre-migration on existing databases.
+It drops only `omni_channel_scope_unique`; no channel is deleted or unarchived.
+Provider-account, outbound-sender and inbound-endpoint identity uniqueness,
+per-channel runtime sender selection and company/team access rules still apply.
+
+### Responsive channel setup
+
+The guided setup responds to its content width, including split browser windows.
+Above 1200px, the form and guidance sit side by side. At 1200px and below,
+guidance stacks under the form. At 767px and below, the steps wrap above the
+form and their secondary hints are hidden; labels, step numbers and selected
+state remain visible. Footer buttons retain their natural height and wrap.
+The left panel stays transparent. Styles apply only to the setup view.
+
+
+Connection setup starts with the native horizontal choice **Create new connection**
+or **Use existing connection**. New shows credential inputs; existing shows only
+the saved-account selector and public bot details. Switching choices clears
+unsaved secrets. After verification creates a connection, the choice changes to
+existing. Once bindings exist the choice is locked. The wizard cannot replace
+an existing connection's credentials. The right-hand **About this step** panel
+shows only instructions for the selected choice; later steps are unchanged.
+
+Prepare contains only the four setup fields. Its explanation appears once in
+About this step; credential and receiving requirements appear in their own steps.
+
+
+Channels cards and lists show saved setup progress out of six steps. Managers
+can use Continue setup to reopen the last completed step (or Prepare when none are complete). The native
+Incomplete setup filter selects records with fewer than six recorded steps.
+Progress advances only after the current step passes server validation; revisiting
+a step does not count it twice, and Finish setup records the sixth step without
+activating delivery. Older channels start with no recorded wizard progress;
+readiness is not used to invent completed setup steps.
+
+Channel cards and list rows use native Odoo `can_open="false"` for kanban and the list renderer’s
+`noOpen` flag through the registered Channels parser. Odoo 20’s list XML schema
+rejects `no_open`, so it is not placed in XML. Record navigation is button-only: Start setup / Continue setup for
+unfinished channels, Open channel for completed channels. No controller click
+interception or CSS pointer blocking is used. Resume opens the last completed
+step. The sidebar allows only completed steps and the current step; Next
+validates and advances into unfinished steps.
+
+
+When receiving is unavailable, Connect & verify offers Set up receiving later.
+This saves the draft and permits Branding and Team & apps without completing the
+receiving step. Per-step progress preserves the gap (four of six after those
+steps); old contiguous progress is read compatibly. Test & go live offers Save
+draft or Finish receiving setup until receiving passes validation. Direct RPC
+cannot finish setup with deferred receiving or forge step completion. Deferring
+never authorizes intake, registers a webhook, sends a message or activates dispatch.

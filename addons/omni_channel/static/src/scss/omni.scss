@@ -15,3 +15,106 @@
         .o_omni_settings_grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
     }
 }
+
+// Step visibility is local UI state; the native form owns all fields and validation.
+.o_omni_setup {
+    .o_omni_setup_stage { display: none; }
+    @for $step from 0 through 5 {
+        &[data-setup-step="#{$step}"] .o_omni_setup_stage_#{$step} { display: block; }
+    }
+}
+
+.o_search_panel {
+    width: var(--SearchPanel-width, 340px);
+}
+// User-requested stepper colors; the native left search panel has no card surface.
+.o_omni_setup_steps {
+    background: transparent;
+    .o_omni_setup_step {
+        background: transparent;
+        color: inherit;
+        .o_omni_step_circle {
+            width: 26px;
+            height: 26px;
+            border: 1px solid #cfc8ce;
+            color: #757078;
+        }
+        &.completed .o_omni_step_circle {
+            background: #008772;
+            border-color: #008772;
+            color: white;
+        }
+        &.current {
+            background: #f5eff4;
+            .o_omni_step_circle {
+                background: #714b67;
+                border-color: #714b67;
+                color: white;
+            }
+        }
+    }
+}
+
+// Size the guided setup by its actual content area, including split windows.
+.o_omni_setup_content {
+    container: omni-channel-setup / inline-size;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    min-height: 0;
+    overflow: auto;
+
+    > .o_omni_setup_steps {
+        width: clamp(210px, var(--SearchPanel-width, 24%), 300px);
+        max-width: 30%;
+        height: 100%;
+    }
+    > .o_search_panel_resize { flex: 0 0 16px; }
+    > .o_omni_setup {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: none;
+        overflow: auto;
+        > .o_omni_setup_form { flex: 1 1 0; width: 0; max-width: none; }
+        > .o-mail-ChatterContainer { flex: 0 0 320px; width: 320px; max-width: 35%; }
+    }
+    .o_omni_setup_footer {
+        > .btn { flex: 0 0 auto; white-space: nowrap; }
+        > .o_omni_setup_save_hint { flex: 1 1 180px; text-align: center; }
+    }
+}
+
+@container omni-channel-setup (max-width: 1200px) {
+    .o_omni_setup_content > .o_omni_setup {
+        flex-direction: column;
+        > .o_omni_setup_form {
+            flex: 0 0 auto;
+            width: 100%;
+            overflow: visible !important;
+        }
+        > .o-mail-ChatterContainer {
+            flex: 0 0 auto;
+            width: 100%;
+            max-width: none;
+            > .o-mail-Chatter { height: auto !important; overflow: visible !important; }
+        }
+    }
+}
+
+@container omni-channel-setup (max-width: 767px) {
+    .o_omni_setup_content {
+        > .o_omni_setup_steps {
+            flex: 0 0 100%;
+            width: 100%;
+            max-width: none;
+            height: auto;
+            padding-bottom: 12px !important;
+            > nav { flex-direction: row !important; flex-wrap: wrap; }
+            .o_omni_setup_step { flex: 1 1 140px; padding: 10px !important; }
+            .o_omni_setup_step small { display: none !important; }
+        }
+        > .o_search_panel_resize { display: none; }
+        > .o_omni_setup { flex: 0 0 100%; height: auto !important; overflow: visible; }
+        .o_omni_setup_save_hint { order: 3; flex-basis: 100%; }
+    }
+}

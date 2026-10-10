@@ -317,3 +317,198 @@ class TestTelegramSandbox(TestOmniCommands):
         result = collect(self.env)
         self.assertEqual(result['severity'], 'critical')
         self.assertEqual(result['counts']['unknown_outcomes'], 1)
+
+    def _runtime_fixture(self):
+        import tempfile
+        from odoo.addons.omni_telegram.providers import runtime_secrets
+        from odoo.addons.omni_telegram.providers.transport import HTTPResult
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        original = runtime_secrets._root
+        patcher = patch.object(runtime_secrets, '_root', lambda db, data_dir=None: original(db, directory.name))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        bot = '987654322'
+        transport = patch('odoo.addons.omni_telegram.providers.setup.TelegramHTTP.call', return_value=HTTPResult(
+            200, {'ok': True, 'result': {'id': int(bot), 'is_bot': True, 'first_name': 'Setup bot', 'username': 'setup_bot'}},
+        ))
+        mocked = transport.start()
+        self.addCleanup(transport.stop)
+        values = {
+            'name': 'Runtime bot', 'purpose_id': self.purpose.id,
+            'company_id': self.company.id, 'channel_type_id': self.type.id,
+            'telegram_bot_token': bot + ':synthetic_runtime_token_for_tests_only',
+        }
+        return values, mocked, runtime_secrets
+
+    def test_runtime_setup_verifies_and_keeps_inputs_write_only(self):
+        values, mocked, storage = self._runtime_fixture()
+        account = self.env['omni.account'].with_user(self.manager).create(values)
+        self.assertEqual(account.external_account_key, '987654322')
+        self.assertEqual(account.namespace, account.external_account_key)
+        self.assertEqual(account.telegram_bot_username, 'setup_bot')
+        self.assertTrue(account.telegram_verified_at)
+        self.assertFalse(account.telegram_sandbox_authorized)
+        self.assertFalse(account.telegram_bot_token)
+        self.assertFalse(account.telegram_webhook_secret)
+        self.assertEqual(mocked.call_args.args[1], 'getMe')
+        self.assertEqual(mocked.call_args.kwargs, {'verify_only': True})
+        bundle = json.loads(storage.load(account.credential_reference, self.env.cr.dbname))
+        self.assertEqual(bundle['database'], self.env.cr.dbname)
+        self.assertEqual(bundle['company_id'], self.company.id)
+        self.assertGreaterEqual(len(bundle['webhook_secret']), 32)
+        action = account.action_show_telegram_webhook_secret()
+        wizard = self.env[action['res_model']].with_user(self.manager).browse(action['res_id'])
+        self.assertEqual(wizard.webhook_secret, bundle['webhook_secret'])
+        for user in (self.operator, self.outsider, self.portal):
+            with self.assertRaises(AccessError):
+                account.with_user(user).action_show_telegram_webhook_secret()
+        for model in ('omni.outbound.sender', 'omni.inbound.endpoint'):
+            self.assertFalse(self.env[model].search_count([('account_id', '=', account.id)]))
+
+    def test_runtime_setup_rejects_scope_before_network(self):
+        values, mocked, _storage = self._runtime_fixture()
+        for user in (self.operator, self.outsider, self.portal):
+            with self.assertRaises(AccessError):
+                self.env['omni.account'].with_user(user).create(values)
+        for changes in ({'company_id': self.other_company.id}, {'purpose_id': self.other_purpose.id}):
+            with self.assertRaises(AccessError):
+                self.env['omni.account'].with_user(self.manager).create(dict(values, **changes))
+        mocked.assert_not_called()
+
+    def test_runtime_rotation_respects_authorization_and_clears_inputs(self):
+        values, mocked, storage = self._runtime_fixture()
+        account = self.env['omni.account'].with_user(self.manager).create(values)
+        original_ref = account.credential_reference
+        account.write({'telegram_webhook_secret': 'custom_webhook_secret_for_tests_12345'})
+        self.assertNotEqual(account.credential_reference, original_ref)
+        self.assertFalse(account.telegram_webhook_secret)
+        self.assertEqual(resolve(account.credential_reference, account._telegram_config()).webhook_secret, 'custom_webhook_secret_for_tests_12345')
+        from odoo.addons.omni_channel.models.command import internal
+        internal(account).write({'telegram_sandbox_authorized': True})
+        mocked.reset_mock()
+        with self.assertRaises(UserError):
+            account.write({'telegram_bot_token': values['telegram_bot_token']})
+        mocked.assert_not_called()
+
+    def test_runtime_metadata_cannot_be_forged(self):
+        values, mocked, _storage = self._runtime_fixture()
+        with self.assertRaises(AccessError):
+            self.env['omni.account'].with_user(self.manager).create(dict(values, telegram_bot_name='Forged'))
+        with self.assertRaises(AccessError):
+            self.account.with_user(self.manager).write({'telegram_verified_at': '2026-01-01 00:00:00'})
+        mocked.assert_not_called()
+
+    def test_guided_setup_credentials_prepare_only_draft_bindings(self):
+        values, mocked, _storage = self._runtime_fixture()
+        token = values.pop('telegram_bot_token')
+        channel = self.env['omni.channel'].with_user(self.manager).create(values)
+        self.assertFalse(channel.sender_ids)
+        channel.write({'setup_bot_token': token})
+        self.assertFalse(channel.setup_bot_token)
+        self.assertFalse(channel.setup_webhook_secret)
+        self.assertEqual(channel.setup_bot_id, '987654322')
+        self.assertTrue(channel.action_setup_validate_step(1))
+        self.assertTrue(channel.action_setup_validate_step(1))  # Idempotent Next.
+        self.assertEqual(len(channel.sender_ids), 1)
+        self.assertEqual(len(channel.endpoint_ids), 1)
+        self.assertEqual(channel.setup_policy_id.state, 'draft')
+        self.assertFalse(channel.selected_sender_id)
+        self.assertFalse(channel.dispatch_enabled)
+        self.assertNotEqual(channel.setup_endpoint_id.state, 'enabled')
+        self.assertFalse(channel.setup_bot_authorized)
+        with self.assertRaises(UserError):
+            channel.action_setup_validate_step(2)
+        for user in (self.operator, self.outsider, self.portal):
+            with self.assertRaises(AccessError):
+                channel.with_user(user).action_setup_validate_step(1)
+        other = self.env['omni.channel'].with_user(self.manager).create(dict(values, name='Same team, different channel', setup_account_id=channel.setup_account_id.id))
+        with self.assertRaisesRegex(UserError, 'already belongs'):
+            other.action_setup_validate_step(1)
+        self.assertFalse(other.sender_ids)
+        self.assertFalse(other.endpoint_ids)
+        self.assertTrue(mocked.called)
+
+    def test_guided_setup_requires_connection_and_same_channel_test(self):
+        values, _mocked, _storage = self._runtime_fixture()
+        values.pop('telegram_bot_token')
+        channel = self.env['omni.channel'].with_user(self.manager).create(values)
+        with self.assertRaises(UserError):
+            channel.action_setup_validate_step(1)
+        with self.assertRaises(UserError):
+            channel.action_setup_prepare_test()
+        self.assertFalse(channel.sender_ids)
+        self.assertFalse(channel.endpoint_ids)
+        self.assertFalse(channel.dispatch_enabled)
+
+    def test_guided_connection_switch_clears_unsaved_credentials(self):
+        channel = self.env['omni.channel'].with_user(self.manager).new({
+            'name': 'Choice test', 'purpose_id': self.purpose.id,
+            'channel_type_id': self.type.id,
+        })
+        channel.setup_bot_token = 'unsaved-token'
+        channel.setup_webhook_secret = 'unsaved-secret'
+        channel.setup_connection_mode = 'existing'
+        channel._onchange_setup_credential_choice()
+        self.assertFalse(channel.setup_bot_token)
+        self.assertFalse(channel.setup_webhook_secret)
+        channel.setup_account_id = self.account
+        channel.setup_connection_mode = 'new'
+        channel._onchange_setup_connection_mode()
+        self.assertFalse(channel.setup_account_id)
+
+    def test_guided_existing_connection_cannot_replace_credentials(self):
+        values, mocked, _storage = self._runtime_fixture()
+        account = self.env['omni.account'].with_user(self.manager).create(values)
+        channel = self.env['omni.channel'].with_user(self.manager).create({
+            'name': 'Existing connection', 'purpose_id': self.purpose.id,
+            'channel_type_id': self.type.id, 'setup_account_id': account.id,
+        })
+        self.assertEqual(channel.setup_connection_mode, 'existing')
+        reference = account.credential_reference
+        mocked.reset_mock()
+        with self.assertRaises(UserError), self.cr.savepoint():
+            channel.write({'setup_bot_token': values['telegram_bot_token']})
+        mocked.assert_not_called()
+        self.assertEqual(account.credential_reference, reference)
+
+    def test_setup_test_link_requires_enabled_verified_bot(self):
+        values, _mocked, _storage = self._runtime_fixture()
+        token = values.pop('telegram_bot_token')
+        channel = self.env['omni.channel'].with_user(self.manager).create(values)
+        channel.write({'setup_bot_token': token})
+        channel.action_setup_validate_step(1)
+        with self.assertRaises(UserError):
+            channel.action_setup_open_bot()
+        from odoo.addons.omni_channel.models.command import internal
+        internal(channel.setup_endpoint_id).write({'state': 'enabled'})
+        channel.invalidate_recordset()
+        self.assertEqual(channel.action_setup_open_bot(), {
+            'type': 'ir.actions.act_url', 'url': 'https://t.me/setup_bot', 'target': 'new',
+        })
+        for user in (self.operator, self.outsider, self.portal):
+            with self.assertRaises(AccessError):
+                channel.with_user(user).action_setup_open_bot()
+        internal(channel.setup_account_id).write({'telegram_bot_username': '../invalid?token=private'})
+        with self.assertRaises(UserError):
+            channel.action_setup_open_bot()
+
+    def test_setup_webhook_verification_is_readonly_and_manager_only(self):
+        values, _mocked, _storage = self._runtime_fixture()
+        token = values.pop('telegram_bot_token')
+        channel = self.env['omni.channel'].with_user(self.manager).create(values)
+        channel.write({'setup_bot_token': token})
+        channel.action_setup_validate_step(1)
+        endpoint = channel.setup_endpoint_id
+        before = (endpoint.state, endpoint.health, channel.setup_completed_steps)
+        with patch.object(type(endpoint), '_get_webhook_url', return_value='https://channels.example.com/omni/inbound/test-route'), patch(
+            'odoo.addons.omni_telegram.models.telegram.verify_webhook', return_value=False,
+        ) as verify:
+            channel.invalidate_recordset()
+            result = channel.action_setup_verify_webhook()
+            self.assertEqual(result['params']['type'], 'success')
+            self.assertEqual(verify.call_args.args[1], channel.setup_callback_url)
+            for user in (self.operator, self.outsider, self.portal):
+                with self.assertRaises(AccessError):
+                    channel.with_user(user).action_setup_verify_webhook()
+        self.assertEqual((endpoint.state, endpoint.health, channel.setup_completed_steps), before)

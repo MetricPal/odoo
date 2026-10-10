@@ -36,7 +36,11 @@ def resolve(reference, config, environ=None):
             r"OMNI_SECRET_[A-Z0-9_]{1,100}", reference,
         ):
             raise TelegramConfigurationError()  # noqa: TRY301 - sanitized boundary validation
-        raw = environ.get(reference, "")
+        if reference.startswith("OMNI_SECRET_RUNTIME_"):
+            from .runtime_secrets import load
+            raw = load(reference, config["adapter"]["database"])
+        else:
+            raw = environ.get(reference, "")
         if not isinstance(raw, str) or len(raw) > 8192:
             raise TelegramConfigurationError()  # noqa: TRY301 - sanitized boundary validation
         value = json.loads(raw)
@@ -73,7 +77,11 @@ def discover_bot_id(reference, database, company_id, environ=None):
             r"OMNI_SECRET_[A-Z0-9_]{1,100}", reference,
         ):
             raise TelegramConfigurationError()
-        raw = environ.get(reference, "")
+        if reference.startswith("OMNI_SECRET_RUNTIME_"):
+            from .runtime_secrets import load
+            raw = load(reference, database)
+        else:
+            raw = environ.get(reference, "")
         if not isinstance(raw, str) or len(raw) > 8192:
             raise TelegramConfigurationError()
         value = json.loads(raw)

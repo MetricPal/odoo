@@ -4,7 +4,7 @@
     <field name="name">channel_kanban</field>
     <field name="model">omni.channel</field>
     <field name="arch" type="xml">
-      <kanban records_draggable="false" groups_draggable="false" quick_create="false"
+      <kanban can_open="false" js_class="omni_channel_kanban" records_draggable="false" groups_draggable="false" quick_create="false"
               group_create="false" group_edit="false" group_delete="false">
         <field name="selected_sender_id"/>
         <templates>
@@ -25,6 +25,12 @@
               <span><field name="endpoint_count"/> inbound endpoints</span>
             </div>
             <field name="company_id" class="text-muted small mt-2" groups="base.group_multi_company"/>
+            <div class="mt-3 pt-2 border-top">
+              <div class="d-flex justify-content-between mb-1"><span>Setup</span><field name="setup_progress_label"/></div>
+              <field name="setup_step_total" invisible="1"/>
+              <field name="setup_completed_steps" widget="progressbar" options="{'max_value': 'setup_step_total'}"/>
+              <div class="text-end mt-2"><button name="action_continue_setup" type="object" string="Start setup" class="btn btn-secondary" invisible="setup_completed_steps != 0" groups="omni_channel.group_omni_manager"/><button name="action_continue_setup" type="object" string="Continue setup" class="btn btn-secondary" invisible="setup_completed_steps == 0 or setup_completed_steps == 6" groups="omni_channel.group_omni_manager"/><button name="action_open_channel" type="object" string="Open channel" class="btn btn-secondary" invisible="setup_completed_steps != 6"/></div>
+            </div>
           </t>
         </templates>
       </kanban>
@@ -34,11 +40,15 @@
     <field name="name">channel_list</field>
     <field name="model">omni.channel</field>
     <field name="arch" type="xml">
-      <list>
+      <list js_class="omni_channel_list">
         <field name="name"/>
         <field name="purpose_id"/>
         <field name="channel_type_id"/>
         <field name="readiness" widget="badge"/>
+        <field name="setup_progress_label"/>
+        <field name="setup_step_total" column_invisible="True"/>
+        <field name="setup_completed_steps" string="Setup progress" widget="progressbar" options="{'max_value': 'setup_step_total'}"/>
+        <button name="action_continue_setup" type="object" string="Start setup" invisible="setup_completed_steps != 0" groups="omni_channel.group_omni_manager"/><button name="action_continue_setup" type="object" string="Continue setup" invisible="setup_completed_steps == 0 or setup_completed_steps == 6" groups="omni_channel.group_omni_manager"/>
         <field name="selected_sender_id" optional="hide"/>
         <field name="sender_count" optional="hide"/>
         <field name="endpoint_count" optional="hide"/>
@@ -46,6 +56,7 @@
         <field name="inbound_status" optional="hide"/>
         <field name="active" optional="hide"/>
         <field name="company_id" optional="hide" groups="base.group_multi_company"/>
+        <button name="action_open_channel" type="object" string="Open channel" invisible="setup_completed_steps != 6"/>
       </list>
     </field>
   </record>
@@ -60,6 +71,8 @@
         <filter name="messaging" string="Messaging" domain="[('channel_type_id.category', '=', 'messaging')]"/>
         <filter name="social" string="Social" domain="[('channel_type_id.category', '=', 'social')]"/>
         <filter name="other" string="Other" domain="[('channel_type_id.category', '=', 'other')]"/>
+        <separator/>
+        <filter name="setup_incomplete" string="Incomplete setup" domain="[('setup_completed_steps', '&lt;', 6)]"/>
         <separator/>
         <filter name="archived" string="Archived" domain="[('active','=',False)]"/>
         <separator/>
@@ -164,6 +177,81 @@
         </sheet>
       </form>
     </field>
+  </record>
+  <record id="channel_setup_form" model="ir.ui.view">
+    <field name="name">omni.channel.setup.form</field><field name="model">omni.channel</field>
+    <field name="priority">99</field>
+    <field name="arch" type="xml">
+      <form string="Create channel" js_class="omni_channel_setup" create="0" delete="0">
+        <sheet>
+          <field name="adapter_ready" invisible="1"/>
+          <field name="setup_completed_step_ids" invisible="1"/>
+          <field name="setup_receiving_deferred" invisible="1"/>
+          <field name="setup_receiving_ready" invisible="1"/>
+          <field name="setup_has_bindings" invisible="1"/>
+          <field name="setup_callback_preview" invisible="1"/>
+          <field name="setup_sender_id" invisible="1"/>
+          <field name="setup_endpoint_id" invisible="1"/>
+          <field name="setup_policy_id" invisible="1"/>
+          <field name="setup_policy_state" invisible="1"/>
+          <div class="o_omni_setup_stage o_omni_setup_stage_0">
+            <group><field name="name" placeholder="Sales enquiries"/><field name="channel_type_id" readonly="setup_has_bindings"/><field name="company_id" readonly="setup_has_bindings"/><field name="purpose_id" readonly="setup_has_bindings"/></group>
+          </div>
+          <div class="o_omni_setup_stage o_omni_setup_stage_1">
+            <field name="setup_connection_mode" widget="radio" options="{'horizontal': True}" readonly="setup_has_bindings"/>
+            <group invisible="setup_connection_mode != 'existing'"><field name="setup_account_id" string="Connection" placeholder="Select a saved connection" required="setup_connection_mode == 'existing'" readonly="setup_has_bindings" options="{'no_create': True, 'no_open': True}" domain="[('company_id', '=', company_id), ('purpose_id', '=', purpose_id), ('channel_type_id', '=', channel_type_id), ('active', '=', True)]"/></group>
+            <div name="setup_credentials"/>
+            <p name="setup_provider_unavailable" class="text-muted">Guided credential entry requires a supported provider adapter.</p>
+          </div>
+          <div class="o_omni_setup_stage o_omni_setup_stage_2">
+            <group><field name="setup_endpoint_state" string="Receiving status"/></group>
+            <group><field name="setup_callback_url" widget="omni_callback_input"/></group>
+            <button name="action_setup_verify_webhook" type="object" string="Verify webhook" class="btn-secondary mb-3"/>
+            <div name="setup_receiving_actions" class="d-flex flex-wrap gap-2 mb-3">
+              <button name="action_setup_enable_receiving" type="object" string="Enable receiving" class="btn-primary" invisible="not setup_endpoint_id or not setup_callback_url or setup_endpoint_state == 'enabled'" confirm="Enable receiving under the retention policy in Advanced settings? This does not register the provider webhook or send a message."/>
+              <button name="action_messages" type="object" string="View received messages" class="btn-secondary" invisible="setup_endpoint_state != 'enabled'"/>
+            </div>
+            <details name="setup_receiving_advanced" class="mt-3">
+              <summary>Advanced settings</summary>
+              <div class="pt-3">
+                <group><field name="setup_endpoint_health"/></group>
+                <div name="setup_provider_receiving"/>
+                <group string="Message retention" invisible="not setup_policy_id">
+                  <field name="setup_payload_days" readonly="setup_policy_state != 'draft'"/><field name="setup_message_days" readonly="setup_policy_state != 'draft'"/><field name="setup_blocked_days" readonly="setup_policy_state != 'draft'"/>
+                </group>
+                <button name="action_setup_check_connection" type="object" string="Recheck credentials" class="btn-secondary" invisible="not setup_endpoint_id"/>
+              </div>
+            </details>
+          </div>
+          <div class="o_omni_setup_stage o_omni_setup_stage_3">
+            <p>Choose how your team recognizes this channel inside Odoo.</p>
+            <group><field name="name" string="Channel display name"/><field name="setup_description"/></group>
+            <p class="text-muted">The bot’s public name and profile image are managed in the provider account.</p>
+          </div>
+          <div class="o_omni_setup_stage o_omni_setup_stage_4">
+            <group><field name="purpose_id" readonly="setup_has_bindings"/><field name="company_id" readonly="setup_has_bindings"/></group>
+            <p>The owning team and company are selected before credentials are connected. To use another team after connecting, create a separate channel.</p>
+            <group string="Available applications"><div colspan="2"><strong>Omni-Channel Inbox</strong><p>Incoming conversations appear in the inbox for authorized team members. CRM, Sales, Recruitment and Employees integrations are not available in this setup yet.</p></div></group>
+            <p class="text-muted">A team can own several named channels of the same type. Each provider identity still has one channel owner.</p>
+          </div>
+          <div class="o_omni_setup_stage o_omni_setup_stage_5">
+            <p invisible="setup_receiving_ready">Receiving is still pending. Save this channel as a draft, or return to Connect &amp; verify to finish connecting.</p>
+            <div invisible="not setup_receiving_ready">
+            <group><field name="readiness" widget="badge"/><field name="connection_status"/><field name="inbound_status"/><field name="dispatch_enabled" readonly="1"/><field name="attention"/></group>
+            <div name="setup_provider_activation"/>
+            <group string="Review a test reply"><field name="approval_type_id"/><field name="setup_conversation_id" domain="[('channel_id', '=', id)]" options="{'no_create': True, 'no_open': True}"/><field name="setup_test_body"/></group>
+            <p>First send a private message to the bot from an authorized test account. Select its received conversation above. A test reply follows the same consent and approval process as any other message.</p>
+            <button name="action_setup_prepare_test" type="object" string="Review test reply" class="btn-secondary"/>
+            <p class="text-muted mt-3">This opens a draft for review; it does not send. Finish setup saves your configuration. Activation and sending always require their explicit actions.</p>
+            </div>
+          </div>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_channel_setup" model="ir.actions.act_window">
+    <field name="name">Create channel</field><field name="res_model">omni.channel</field>
+    <field name="view_mode">form</field><field name="view_id" ref="channel_setup_form"/>
   </record>
   <record id="action_channels" model="ir.actions.act_window">
     <field name="name">Channels</field>

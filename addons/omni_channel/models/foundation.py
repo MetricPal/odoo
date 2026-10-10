@@ -144,10 +144,6 @@ class OmniChannel(models.Model):
         ],
         compute='_compute_summary',
     )
-    _scope_unique = models.Constraint(
-        'UNIQUE(company_id, purpose_id, channel_type_id)',
-        'This company already has a channel for this purpose and channel type. Restore the archived channel instead.',
-    )
 
     @api.depends(
         'sender_ids.is_selected',

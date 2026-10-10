@@ -11,13 +11,152 @@ from odoo.addons.omni_telegram.providers.secrets import (
     TelegramConfigurationError,
     canonical_id,
     discover_bot_id,
+    resolve,
 )
+
+from odoo.addons.omni_telegram.providers import runtime_secrets
+from odoo.addons.omni_telegram.providers.setup import TelegramSetupError, prepare_credentials, verify_webhook
 
 
 class TelegramAccount(models.Model):
     _inherit = "omni.account"
 
+    # Non-stored, write-only inputs: ORM reads always return an empty value.
+    telegram_bot_token = fields.Char(
+        string="Bot token", compute="_compute_credential_inputs", inverse="_inverse_credential_inputs",
+        groups="omni_channel.group_omni_manager", copy=False,
+    )
+    telegram_webhook_secret = fields.Char(
+        string="Webhook secret", compute="_compute_credential_inputs", inverse="_inverse_credential_inputs",
+        groups="omni_channel.group_omni_manager", copy=False,
+        help="Leave blank to generate a secret for a new connection, or keep the existing secret when replacing a token.",
+    )
+    telegram_bot_name = fields.Char(readonly=True, copy=False)
+    telegram_bot_username = fields.Char(readonly=True, copy=False)
+    telegram_verified_at = fields.Datetime(string="Bot verified at", readonly=True, copy=False)
+    telegram_has_credentials = fields.Boolean(compute="_compute_has_credentials")
     is_telegram = fields.Boolean(compute="_compute_is_telegram")
+
+    def _compute_credential_inputs(self):
+        for record in self:
+            record.telegram_bot_token = False
+            record.telegram_webhook_secret = False
+
+    def _inverse_credential_inputs(self):
+        # create/write consume these inputs before the ORM can cache them.
+        pass
+
+    @api.depends("credential_reference")
+    def _compute_has_credentials(self):
+        for record in self:
+            record.telegram_has_credentials = bool(record.sudo().credential_reference)
+
+    @api.model
+    def _prepare_runtime_credentials(self, values, existing=None):
+        values = dict(values)
+        token = values.pop('telegram_bot_token', False)
+        secret = values.pop('telegram_webhook_secret', False)
+        if not token and not secret:
+            return values, None
+        self.check_access('write' if existing else 'create')
+        if not self.env.user.has_group('omni_channel.group_omni_manager'):
+            raise AccessError(_('Only an Omni administrator can configure a bot.'))
+        company_id = values.get('company_id') or (existing.company_id.id if existing else self.env.context.get('default_company_id') or self.env.company.id)
+        purpose_id = values.get('purpose_id') or (existing.purpose_id.id if existing else self.env.context.get('default_purpose_id'))
+        type_id = values.get('channel_type_id') or (existing.channel_type_id.id if existing else self.env.context.get('default_channel_type_id'))
+        if company_id not in self.env.companies.ids:
+            raise AccessError(_('Select an allowed company before configuring the bot.'))
+        purpose = self.env['omni.purpose'].browse(purpose_id).exists()
+        purpose.check_access('read')
+        if not purpose or (not self.env.user.has_group('base.group_system') and self.env.user not in purpose.user_ids):
+            raise AccessError(_('Select an authorized communication team.'))
+        channel_type = self.env['omni.channel.type'].browse(type_id)
+        channel_type.check_access('read')
+        if channel_type.code != 'telegram':
+            raise ValidationError(_('Bot credentials can only be used for Telegram.'))
+        if existing:
+            existing._require_manager()
+            if existing.telegram_sandbox_authorized:
+                raise UserError(_('Revoke sandbox authorization before replacing credentials.'))
+            if company_id != existing.company_id.id or purpose_id != existing.purpose_id.id or type_id != existing.channel_type_id.id:
+                raise UserError(_('Create a new connection to change credential ownership.'))
+            # Guard before verification or writing a new credential file.
+            if self.env['omni.outbound.sender'].sudo().search_count([('account_id', '=', existing.id), ('is_selected', '=', True)]):
+                raise UserError(_('Deactivate the runtime sender before replacing credentials.'))
+        try:
+            if existing and existing.credential_reference and (not token or not secret):
+                saved = resolve(existing.credential_reference, existing._telegram_config())
+                token = token or saved.token
+                secret = secret or saved.webhook_secret
+            bundle, identity = prepare_credentials(token, secret, self.env.cr.dbname, company_id)
+            if existing and bundle['bot_id'] != existing.external_account_key:
+                raise UserError(_('This token belongs to another bot. Create a new connection for it.'))
+        except TelegramSetupError as error:
+            self._raise_setup_verification_error(error)
+        except UserError:
+            raise
+        except Exception:
+            raise UserError(_('Odoo could not read the existing saved credentials. Ask your administrator to check the credential reference, encryption key and storage permissions. No credentials were changed.')) from None
+        try:
+            reference = runtime_secrets.store(bundle)
+        except Exception:
+            raise UserError(_('Telegram verified the bot, but Odoo could not save its encrypted credentials. Ask your administrator to check the Odoo data directory permissions, encryption key and available disk space. No connection changes were saved.')) from None
+        database = self.env.cr.dbname
+        self.env.cr.postrollback.add(lambda: runtime_secrets.remove(reference, database))
+        values.update(identity)
+        values.update(credential_reference=reference, telegram_verified_at=fields.Datetime.now())
+        if not existing:
+            values.update(external_account_key=bundle['bot_id'], namespace=bundle['bot_id'])
+        return values, reference
+
+    def _raise_setup_verification_error(self, error):
+        messages = {
+            'callback_missing': _('Configure the public channel domain before verifying the webhook.'),
+            'webhook_response': _('Telegram returned an invalid webhook response. Try again later.'),
+            'webhook_absent': _('No webhook is registered for this bot. Register the displayed callback URL with Telegram, then verify again.'),
+            'webhook_mismatch': _('This bot has a different webhook registered. Ask your administrator to review it before changing the connection.'),
+            'token_format': _('The bot token format is invalid. Paste the complete token from BotFather without spaces, quotes or a URL.'),
+            'secret_format': _('The webhook secret must contain 32–256 letters, numbers, underscores or hyphens. Leave it empty to generate one for a new connection.'),
+            'transport': _('Odoo could not complete a secure request to api.telegram.org. Ask your administrator to check server DNS, outbound HTTPS, TLS certificates and timeouts. This does not establish that the token is invalid.'),
+            'rejected': _('Telegram rejected this bot token. Check that it is complete and is the current token for your bot.'),
+            'rate_limit': _('Telegram temporarily limited verification requests. Wait before trying again.'),
+            'unavailable': _('Telegram is temporarily unavailable. Try verification again later.'),
+            'identity': _('Telegram did not return a valid matching bot identity. Verification stopped; no credentials were saved.'),
+        }
+        raise UserError(messages.get(error.reason, _('Bot verification failed. No credentials were saved.'))) from None
+
+    def action_verify_telegram_bot(self):
+        self.ensure_one()
+        self._require_manager()
+        if not self.is_telegram:
+            raise UserError(_('Select a Telegram connection.'))
+        config, version = self._telegram_config(), self.write_date
+        try:
+            secret = resolve(self.credential_reference, config)
+        except Exception:
+            raise UserError(_('The saved credentials could not be read. Ask your administrator to check credential storage and the encryption key. The displayed time is the last successful verification.')) from None
+        try:
+            _bundle, identity = prepare_credentials(secret.token, secret.webhook_secret, self.env.cr.dbname, self.company_id.id)
+        except TelegramSetupError as error:
+            self._raise_setup_verification_error(error)
+        lock_company(self)
+        self.invalidate_recordset()
+        if version != self.write_date or config != self._telegram_config():
+            raise UserError(_('The connection changed during verification. Try again.'))
+        internal(self).write(dict(identity, telegram_verified_at=fields.Datetime.now()))
+        self._audit('telegram.credentials_verified', _('Bot identity verified. No sandbox authorization, webhook registration or message delivery enabled.'))
+        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+            'title': _('Bot verified'), 'message': _('The bot identity is valid. Delivery remains separately controlled.'), 'type': 'success',
+        }}
+
+    def action_show_telegram_webhook_secret(self):
+        self.ensure_one()
+        self._require_manager()
+        if not self.is_telegram:
+            raise UserError(_('Select a Telegram connection.'))
+        wizard = self.env['omni.telegram.webhook.secret'].create({'account_id': self.id})
+        return {'type': 'ir.actions.act_window', 'res_model': wizard._name, 'res_id': wizard.id,
+                'view_mode': 'form', 'target': 'new'}
 
     @api.depends("channel_type_id.code")
     def _compute_is_telegram(self):
@@ -39,11 +178,13 @@ class TelegramAccount(models.Model):
     telegram_authorized_by = fields.Many2one("res.users", readonly=True, copy=False)
     telegram_authorized_at = fields.Datetime(readonly=True, copy=False)
     _telegram_protected = {
+        "telegram_bot_name", "telegram_bot_username", "telegram_verified_at",
         "telegram_sandbox_authorized",
         "telegram_authorized_by",
         "telegram_authorized_at",
     }
     _telegram_configuration = {
+        "telegram_bot_token", "telegram_webhook_secret",
         "telegram_sandbox_recipients",
         "telegram_sandbox_evidence",
         "credential_reference",
@@ -83,9 +224,13 @@ class TelegramAccount(models.Model):
             raise AccessError(
                 _("Sandbox authorization requires explicit verified confirmation."),
             )
-        prepared = []
+        if any('default_' + name in self.env.context for name in ('telegram_bot_token', 'telegram_webhook_secret')):
+            raise AccessError(_('Enter credentials in the connection form, not in defaults.'))
+        prepared, references = [], []
         for values in vals_list:
-            values = dict(values)
+            values, reference = self._prepare_runtime_credentials(values)
+            if reference:
+                references.append(reference)
             type_id = values.get('channel_type_id') or self.env.context.get('default_channel_type_id')
             if self.env['omni.channel.type'].browse(type_id).code == 'telegram':
                 key = values.get('external_account_key') or self.env.context.get('default_external_account_key')
@@ -98,11 +243,26 @@ class TelegramAccount(models.Model):
                 if not values.get('namespace') and not self.env.context.get('default_namespace'):
                     values['namespace'] = key
             prepared.append(values)
-        return super().create(prepared)
+        try:
+            accounts = super().create(prepared)
+            accounts.invalidate_recordset(['telegram_bot_token', 'telegram_webhook_secret'])
+            for account in accounts.filtered(lambda a: a.telegram_verified_at):
+                account._audit('telegram.credentials_verified', _('Runtime credentials saved after bot verification. Delivery remains disabled.'))
+            return accounts
+        except Exception:
+            for reference in references:
+                runtime_secrets.remove(reference, self.env.cr.dbname)
+            raise
 
     def write(self, vals):
         if self._telegram_protected & vals.keys() and not is_internal(self):
             raise AccessError(_("Use the sandbox authorization actions."))
+        reference = None
+        if {'telegram_bot_token', 'telegram_webhook_secret'} & vals.keys():
+            self.ensure_one()
+            vals, reference = self._prepare_runtime_credentials(vals, existing=self)
+        if not reference and {'credential_reference', 'external_account_key', 'namespace', 'company_id', 'channel_type_id'} & vals.keys():
+            vals = dict(vals, telegram_verified_at=False, telegram_bot_name=False, telegram_bot_username=False)
         if self._telegram_configuration & vals.keys():
             for account in self.sorted(lambda a: (a.company_id.id, a.id)):
                 account.check_access("write")
@@ -114,7 +274,16 @@ class TelegramAccount(models.Model):
                             "Revoke sandbox authorization before changing the authorized configuration.",
                         ),
                     )
-        return super().write(vals)
+        try:
+            result = super().write(vals)
+            self.invalidate_recordset(['telegram_bot_token', 'telegram_webhook_secret'])
+            if reference:
+                self._audit('telegram.credentials_verified', _('Runtime credentials replaced after bot verification. Delivery remains separately controlled.'))
+            return result
+        except Exception:
+            if reference:
+                runtime_secrets.remove(reference, self.env.cr.dbname)
+            raise
 
     @api.constrains("telegram_sandbox_recipients")
     def _validate_recipient_list(self):
@@ -381,3 +550,210 @@ class TelegramBinding(models.AbstractModel):
                     values['external_key'] = account.external_account_key
             prepared.append(values)
         return super().create(prepared)
+
+
+class TelegramWebhookSecret(models.TransientModel):
+    _name = 'omni.telegram.webhook.secret'
+    _description = 'Telegram webhook secret disclosure'
+
+    account_id = fields.Many2one('omni.account', required=True, readonly=True)
+    webhook_secret = fields.Char(compute='_compute_webhook_secret', groups='omni_channel.group_omni_manager')
+
+    def _compute_webhook_secret(self):
+        for wizard in self:
+            account = wizard.account_id
+            account._require_manager()
+            if not account.is_telegram:
+                raise AccessError(_('Select an authorized Telegram connection.'))
+            try:
+                wizard.webhook_secret = resolve(account.credential_reference, account._telegram_config()).webhook_secret
+            except Exception:
+                raise UserError(_('The webhook secret is unavailable. Check the connection credentials.')) from None
+
+
+class TelegramGuidedSetup(models.Model):
+    _inherit = 'omni.channel'
+
+    setup_bot_token = fields.Char(string='Bot token', compute='_compute_setup_secret_inputs', inverse='_inverse_setup_secret_inputs', groups='omni_channel.group_omni_manager', copy=False)
+    setup_webhook_secret = fields.Char(string='Webhook secret (optional)', compute='_compute_setup_secret_inputs', inverse='_inverse_setup_secret_inputs', groups='omni_channel.group_omni_manager', copy=False)
+    setup_bot_name = fields.Char(related='setup_account_id.telegram_bot_name', string='Bot name')
+    setup_bot_username = fields.Char(related='setup_account_id.telegram_bot_username', string='Bot username')
+    setup_bot_id = fields.Char(related='setup_account_id.external_account_key', string='Bot ID')
+    setup_bot_verified_at = fields.Datetime(related='setup_account_id.telegram_verified_at', string='Last verified')
+    setup_bot_authorized = fields.Boolean(related='setup_account_id.telegram_sandbox_authorized')
+    setup_test_recipients = fields.Text(related='setup_account_id.telegram_sandbox_recipients', readonly=False, string='Consenting test user IDs', groups='omni_channel.group_omni_manager')
+    setup_authorization_evidence = fields.Text(related='setup_account_id.telegram_sandbox_evidence', readonly=False, string='Authorization evidence', groups='omni_channel.group_omni_manager')
+
+    def _compute_setup_secret_inputs(self):
+        for channel in self:
+            channel.setup_bot_token = False
+            channel.setup_webhook_secret = False
+
+    def _inverse_setup_secret_inputs(self):
+        pass  # create/write consume inputs without storing them on the channel.
+
+    @api.onchange('setup_connection_mode', 'setup_account_id')
+    def _onchange_setup_credential_choice(self):
+        self.setup_bot_token = False
+        self.setup_webhook_secret = False
+
+    def _save_setup_credentials(self, token, secret):
+        self.ensure_one()
+        self._require_manager()
+        if self.channel_type_id.code != 'telegram':
+            raise ValidationError(_('Bot token entry is available for Telegram only.'))
+        account = self.setup_account_id
+        values = {'telegram_bot_token': token, 'telegram_webhook_secret': secret}
+        if account or self.setup_connection_mode == 'existing':
+            raise UserError(_('Saved credentials are reused for an existing connection. To connect a new bot, choose Create new connection.'))
+        account = self.env['omni.account'].create(dict(values, name=self.name,
+            company_id=self.company_id.id, purpose_id=self.purpose_id.id,
+            channel_type_id=self.channel_type_id.id))
+        self.write({'setup_account_id': account.id})
+        self.invalidate_recordset(['setup_bot_token', 'setup_webhook_secret'])
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        if any('default_' + key in self.env.context for key in ('setup_bot_token', 'setup_webhook_secret')):
+            raise AccessError(_('Enter credentials in the Credentials step, not in context defaults.'))
+        prepared, credentials = [], []
+        for values in vals_list:
+            values = dict(values)
+            credentials.append((values.pop('setup_bot_token', False), values.pop('setup_webhook_secret', False)))
+            prepared.append(values)
+        channels = super().create(prepared)
+        for channel, (token, secret) in zip(channels, credentials):
+            if token or secret:
+                channel._save_setup_credentials(token, secret)
+        return channels
+
+    def write(self, values):
+        values = dict(values)
+        token = values.pop('setup_bot_token', False)
+        secret = values.pop('setup_webhook_secret', False)
+        if token or secret:
+            self.ensure_one()
+            self._require_manager()
+        result = super().write(values)
+        if token or secret:
+            self._save_setup_credentials(token, secret)
+        return result
+
+    def action_setup_verify_webhook(self):
+        self.ensure_one()
+        self._require_manager()
+        if self.channel_type_id.code != 'telegram':
+            return super().action_setup_verify_webhook()
+        self._check_setup_account()
+        account = self.setup_account_id
+        url = self.setup_callback_url
+        if not account or not self.setup_endpoint_id:
+            raise UserError(_('Complete Credentials first.'))
+        if not url:
+            raise UserError(_('Configure the public channel domain before verifying the webhook.'))
+        config = account._telegram_config()
+        try:
+            secret = resolve(account.credential_reference, config)
+        except Exception:
+            raise UserError(_('The saved credentials could not be read. Ask your administrator to check credential storage.')) from None
+        try:
+            has_delivery_error = verify_webhook(secret.token, url)
+        except TelegramSetupError as error:
+            account._raise_setup_verification_error(error)
+        self.invalidate_recordset()
+        account.invalidate_recordset()
+        if self.setup_account_id != account or self.setup_callback_url != url or account._telegram_config() != config:
+            raise UserError(_('The connection changed during verification. Try again.'))
+        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+            'title': _('Webhook registered'),
+            'message': (_('The URL matches, but Telegram reports a previous delivery error. Send a new test message to check delivery.')
+                        if has_delivery_error else _('Telegram has this callback URL registered. Send a test message to confirm delivery.')),
+            'type': 'warning' if has_delivery_error else 'success',
+            'sticky': True,
+        }}
+
+    def action_setup_verify_bot(self):
+        self.ensure_one()
+        self._require_manager()
+        if not self.setup_account_id:
+            raise UserError(_('Enter a bot token or select an existing connection.'))
+        return self.setup_account_id.action_verify_telegram_bot()
+
+    def action_setup_prepare_connection(self):
+        self.ensure_one()
+        self._require_manager()
+        if self.channel_type_id.code != 'telegram':
+            return super().action_setup_prepare_connection()
+        self._lock()
+        self._check_setup_account()
+        account = self.setup_account_id
+        if not account or not account.telegram_verified_at:
+            raise UserError(_('Verify the bot in Credentials before continuing.'))
+        for model in ('omni.outbound.sender', 'omni.inbound.endpoint'):
+            existing = self.env[model].sudo().with_context(active_test=False).search([
+                ('account_id', '=', account.id), ('channel_id', '!=', self.id),
+            ], limit=1)
+            if existing:
+                raise UserError(_('This bot already belongs to another channel. Select a different bot.'))
+            binding = self.env[model].with_context(active_test=False).search([('account_id', '=', account.id), ('channel_id', '=', self.id)], limit=1)
+            if binding and not binding.active:
+                raise UserError(_('Restore this connection’s archived sender or endpoint before continuing.'))
+            if not binding:
+                self.env[model].create({'name': self.name, 'channel_id': self.id, 'account_id': account.id})
+        if not self.env['omni.inbound.policy'].search_count([('channel_id', '=', self.id)]):
+            self.env['omni.inbound.policy'].create({'name': self.name, 'channel_id': self.id})
+        self.invalidate_recordset(['setup_policy_id', 'setup_sender_id', 'setup_endpoint_id', 'setup_callback_url'])
+        return True
+
+    @api.depends('setup_endpoint_state', 'setup_endpoint_health', 'setup_callback_url', 'setup_bot_authorized')
+    def _compute_setup_receiving_ready(self):
+        super()._compute_setup_receiving_ready()
+
+    def _is_setup_receiving_ready(self):
+        return super()._is_setup_receiving_ready() and (not self.is_telegram or self.setup_bot_authorized)
+
+    def action_setup_validate_step(self, step):
+        result = super().action_setup_validate_step(step)
+        if step == 2 and self.is_telegram and not self.setup_bot_authorized:
+            raise UserError(_('Authorize the consenting sandbox users before continuing.'))
+        return result
+
+    def action_setup_enable_receiving(self):
+        self.ensure_one()
+        self._require_manager()
+        if self.is_telegram and not self.setup_bot_authorized:
+            raise UserError(_('Authorize the consenting sandbox users before enabling receiving.'))
+        return super().action_setup_enable_receiving()
+
+    def action_setup_open_bot(self):
+        self.ensure_one()
+        self._require_manager()
+        username = self.setup_bot_username or ''
+        if not self.is_telegram or self.setup_endpoint_state != 'enabled' or not re.fullmatch(r'[A-Za-z0-9_]{5,32}', username):
+            raise UserError(_('Enable receiving for a verified Telegram bot first.'))
+        return {'type': 'ir.actions.act_url', 'url': 'https://t.me/' + username, 'target': 'new'}
+
+    def action_setup_authorize_bot(self):
+        self.ensure_one()
+        self._require_manager()
+        if not self.setup_account_id:
+            raise UserError(_('Complete Credentials first.'))
+        return self.setup_account_id.action_authorize_telegram_sandbox()
+
+    def action_setup_webhook_secret(self):
+        self.ensure_one()
+        self._require_manager()
+        if not self.setup_account_id:
+            raise UserError(_('Complete Credentials first.'))
+        return self.setup_account_id.action_show_telegram_webhook_secret()
+
+    def action_setup_activate(self):
+        self.ensure_one()
+        self._require_manager()
+        if not self.setup_sender_id or not self.setup_endpoint_id or self.setup_endpoint_id.state != 'enabled':
+            raise UserError(_('Verify the bot and enable receiving in Connect & verify first.'))
+        if self.selected_sender_id != self.setup_sender_id:
+            self.setup_sender_id.action_activate(self.generation)
+        if self.selected_sender_id != self.setup_sender_id:
+            raise UserError(_('Sender verification failed. Activation remains disabled.'))
+        return self.action_enable_telegram_dispatch()

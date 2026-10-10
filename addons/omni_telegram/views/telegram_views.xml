@@ -5,12 +5,41 @@
     <field name="model">omni.account</field>
     <field name="inherit_id" ref="omni_channel.omni_account_form"/>
     <field name="arch" type="xml">
+      <xpath expr="//field[@name='credential_reference']" position="attributes">
+        <attribute name="invisible">is_telegram</attribute>
+      </xpath>
+      <xpath expr="//field[@name='company_id']" position="attributes">
+        <attribute name="domain">[('id', 'in', context.get('allowed_company_ids', []))]</attribute>
+      </xpath>
+      <xpath expr="//field[@name='external_account_key']" position="before">
+        <field name="company_id" position="move"/>
+        <field name="telegram_has_credentials" invisible="1"/>
+        <field name="telegram_bot_token" password="True" invisible="not is_telegram" readonly="telegram_sandbox_authorized"
+               required="is_telegram and not telegram_has_credentials" placeholder="Paste the bot token; saving verifies the bot"/>
+        <field name="telegram_webhook_secret" password="True" invisible="not is_telegram" readonly="telegram_sandbox_authorized"
+               placeholder="Generate automatically for a new connection"/>
+        <div colspan="2" class="text-muted mb-3" invisible="not is_telegram" groups="omni_channel.group_omni_manager">
+          Saving a new token verifies the bot with Telegram and securely stores its credentials.
+          The database is selected automatically. Leave the webhook secret blank to generate one for a new connection,
+          or keep the existing secret when replacing a token. To set your own, use 32–256 letters, digits, underscores or hyphens.
+          Existing credentials are never shown in these inputs. Verification does not enable delivery.
+        </div>
+        <field name="telegram_bot_name" string="Bot name" invisible="not is_telegram or not telegram_has_credentials"/>
+        <field name="telegram_bot_username" string="Bot username" invisible="not is_telegram or not telegram_has_credentials"/>
+        <field name="telegram_verified_at" invisible="not is_telegram or not telegram_has_credentials"/>
+        <div colspan="2" invisible="not is_telegram or not telegram_has_credentials" groups="omni_channel.group_omni_manager">
+          <button name="action_verify_telegram_bot" type="object" string="Verify bot" class="btn-primary"/>
+          <button name="action_show_telegram_webhook_secret" type="object" string="Webhook secret" class="btn-secondary ms-2"/>
+        </div>
+      </xpath>
       <xpath expr="//field[@name='external_account_key']" position="attributes">
         <attribute name="readonly">is_telegram</attribute>
-        <attribute name="help">Telegram: the public numeric bot ID, filled from your deployment-provisioned secret reference. It is not a username or token. Verification checks it against Telegram getMe.</attribute>
+        <attribute name="required">not is_telegram</attribute>
+        <attribute name="help">Telegram’s numeric bot ID, filled automatically after token verification. It is not the bot username or a recipient chat ID.</attribute>
       </xpath>
       <xpath expr="//field[@name='namespace']" position="attributes">
         <attribute name="readonly">is_telegram</attribute>
+        <attribute name="required">not is_telegram</attribute>
         <attribute name="help">Telegram uses the bot ID as its account scope. The system fills this automatically.</attribute>
       </xpath>
       <xpath expr="//sheet" position="inside">
@@ -42,6 +71,57 @@
       <xpath expr="//field[@name='dispatch_enabled']/ancestor::page/p" position="replace">
         <p invisible="not is_telegram">Telegram sandbox replies require explicit account authorization, a verified private conversation, current recipient consent and separate message approval. Pausing stops new claims; in-flight sends may finish.</p>
         <p invisible="is_telegram">Provider dispatch requires a verified adapter and explicit activation. Pausing stops new claims; in-flight sends may finish.</p>
+      </xpath>
+    </field>
+  </record>
+  <record id="telegram_webhook_secret_form" model="ir.ui.view">
+    <field name="name">omni.telegram.webhook.secret.form</field>
+    <field name="model">omni.telegram.webhook.secret</field>
+    <field name="arch" type="xml">
+      <form string="Webhook secret" create="0" edit="0">
+        <p>Copy this secret into the Telegram webhook registration. Keep it private. This does not register or enable a webhook.</p>
+        <group><field name="account_id"/><field name="webhook_secret" widget="CopyClipboardChar"/></group>
+        <footer><button string="Close" special="cancel" class="btn-secondary"/></footer>
+      </form>
+    </field>
+  </record>
+  <record id="telegram_channel_setup_form" model="ir.ui.view">
+    <field name="name">omni.channel.telegram.setup.form</field>
+    <field name="model">omni.channel</field>
+    <field name="inherit_id" ref="omni_channel.channel_setup_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside"><field name="is_telegram" invisible="1"/><field name="setup_bot_authorized" invisible="1"/></xpath>
+      <xpath expr="//p[@name='setup_provider_unavailable']" position="attributes"><attribute name="invisible">is_telegram</attribute></xpath>
+      <xpath expr="//div[@name='setup_credentials']" position="inside">
+        <group invisible="not is_telegram or setup_connection_mode != 'new'">
+          <field name="setup_bot_token" password="True" readonly="setup_bot_authorized" placeholder="Paste a new bot token here"/>
+          <field name="setup_webhook_secret" password="True" readonly="setup_bot_authorized" placeholder="Generate automatically for a new connection"/>
+        </group>
+        <group invisible="not is_telegram or not setup_account_id">
+          <field name="setup_bot_name" invisible="not setup_account_id"/><field name="setup_bot_username" invisible="not setup_account_id"/><field name="setup_bot_id" invisible="not setup_account_id"/><field name="setup_bot_verified_at" invisible="not setup_account_id"/>
+        </group>
+        <button name="action_setup_verify_bot" type="object" string="Verify bot" class="btn-primary" invisible="not is_telegram"/>
+      </xpath>
+      <xpath expr="//div[@name='setup_receiving_actions']" position="before">
+        <p invisible="not is_telegram or setup_bot_authorized or not setup_callback_url">Add and authorize your test users in Advanced settings before enabling receiving.</p>
+      </xpath>
+      <xpath expr="//button[@name='action_setup_enable_receiving']" position="attributes">
+        <attribute name="invisible">not setup_endpoint_id or not setup_callback_url or setup_endpoint_state == 'enabled' or (is_telegram and not setup_bot_authorized)</attribute>
+      </xpath>
+      <xpath expr="//div[@name='setup_receiving_actions']" position="inside">
+        <button name="action_setup_open_bot" type="object" string="Open Telegram to test" class="btn-secondary" invisible="not is_telegram or not setup_bot_username or setup_endpoint_state != 'enabled'"/>
+      </xpath>
+      <xpath expr="//div[@name='setup_provider_receiving']" position="inside">
+        <div invisible="not is_telegram">
+          <button name="action_setup_webhook_secret" type="object" string="Copy webhook secret" class="btn-secondary mb-3" invisible="not setup_account_id"/>
+          <p>Private-text testing supports up to ten consenting Telegram users. Enter their numeric user IDs and record their agreement below.</p>
+          <group><field name="setup_test_recipients" readonly="setup_bot_authorized" placeholder="Numeric Telegram user IDs, separated by commas"/><field name="setup_authorization_evidence" readonly="setup_bot_authorized"/></group>
+          <button name="action_setup_authorize_bot" type="object" string="Authorize sandbox users" class="btn-secondary mb-3" invisible="setup_bot_authorized or not setup_account_id" confirm="Verify this bot and authorize sandbox processing for the displayed users and evidence? Replies still require separate consent and message approval."/>
+          <p invisible="not setup_bot_authorized" class="text-success">Sandbox users authorized.</p>
+        </div>
+      </xpath>
+      <xpath expr="//div[@name='setup_provider_activation']" position="inside">
+        <button name="action_setup_activate" type="object" string="Activate Telegram sandbox replies" class="btn-primary mb-3" invisible="not is_telegram or dispatch_enabled" confirm="Select this verified sender and enable dispatch for approved sandbox replies? Only separately approved messages can be sent. Scheduler execution remains separately controlled."/>
       </xpath>
     </field>
   </record>

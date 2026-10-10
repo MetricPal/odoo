@@ -72,10 +72,10 @@ class PinnedHTTPSConnection(http.client.HTTPSConnection):
 
 
 class TelegramHTTP:
-    def call(self, token, method, payload):
-        if os.environ.get("OMNI_TELEGRAM_SANDBOX_NETWORK") != "1":
+    def call(self, token, method, payload, *, verify_only=False):
+        if os.environ.get("OMNI_TELEGRAM_SANDBOX_NETWORK") != "1" and not (verify_only and method in ("getMe", "getWebhookInfo")):
             raise TelegramTransportError()  # noqa: TRY301 - sanitized boundary validation
-        if method not in ("getMe", "getChat", "sendMessage"):
+        if method not in ("getMe", "getWebhookInfo", "getChat", "sendMessage"):
             raise TelegramTransportError()  # noqa: TRY301 - sanitized boundary validation
         # All input paths are constructed from a validated token and this enum.
         import re  # noqa: PLC0415

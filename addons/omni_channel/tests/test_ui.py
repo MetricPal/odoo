@@ -51,6 +51,79 @@ class TestOmniUI(HttpCase):
             },
         )
 
+    def test_guided_channel_creation_saves_without_activation(self):
+        self.browser_js('/odoo/action-omni_channel.action_channels', """
+            (async () => {
+                const waitFor = async predicate => {
+                    for (let i = 0; i < 150; i++) {
+                        if (predicate()) return;
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    throw new Error('Channel setup did not reach expected step');
+                };
+                await waitFor(() => document.querySelector('.o-kanban-button-new'));
+                document.querySelector('.o-kanban-button-new').click();
+                await waitFor(() => document.querySelector('.o_omni_setup[data-setup-step="0"]'));
+                if (!document.querySelector('.o_search_panel_resize') || !document.querySelector('.o-mail-ChatterContainer')) throw new Error('Setup layout missing');
+                const next = () => [...document.querySelectorAll('.o_omni_setup button')].find(el => el.textContent.trim().startsWith('Next:'));
+                next().click();
+                await waitFor(() => document.querySelector('.o_field_invalid'));
+                if (!document.querySelector('.o_omni_setup[data-setup-step="0"]')) throw new Error('Invalid details advanced');
+                const input = document.querySelector('.o_omni_setup [name="name"] input');
+                input.value = 'Guided setup test channel'; input.dispatchEvent(new Event('input', { bubbles: true }));
+                const choose = async (field, text) => {
+                    const input = document.querySelector('.o_omni_setup [name="' + field + '"] input');
+                    input.focus(); input.value = text; input.dispatchEvent(new Event('input', { bubbles: true }));
+                    await waitFor(() => [...document.querySelectorAll('.o-autocomplete--dropdown-item')].some(el => el.textContent.trim() === text));
+                    [...document.querySelectorAll('.o-autocomplete--dropdown-item')].find(el => el.textContent.trim() === text).click();
+                };
+                await choose('purpose_id', 'Customer care');
+                await choose('channel_type_id', 'WhatsApp Business');
+                next().click();
+                await waitFor(() => document.querySelector('.o_omni_setup[data-setup-step="1"]'));
+                if (!document.querySelector('.o-mail-Chatter-content').textContent.includes('needs an installed provider adapter')) throw new Error('Unavailable adapter not explained');
+                next().click();
+                await waitFor(() => document.querySelector('.o_error_dialog'));
+                if (!document.querySelector('.o_omni_setup[data-setup-step="1"]')) throw new Error('Unconfigured connection advanced');
+                console.log('test successful');
+            })();
+        """, login='omni_ui', timeout=90)
+        channel = self.env['omni.channel'].search([('name', '=', 'Guided setup test channel')])
+        self.assertEqual(len(channel), 1)
+        self.assertFalse(channel.selected_sender_id)
+        self.assertFalse(channel.dispatch_enabled)
+        self.assertFalse(channel.endpoint_ids)
+
+    def test_setup_responsive_form_and_guidance(self):
+        original_size = self.browser_size
+        try:
+            for size in ('390x844', '768x1024', '1024x768', '1440x900'):
+                with self.subTest(size=size):
+                    self.browser_size = size
+                    self.browser_js('/odoo/action-omni_channel.action_channel_setup', """
+                        (async () => {
+                            for (let i = 0; i < 100 && !document.querySelector('.o_omni_setup_form'); i++) {
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                            }
+                            const content = document.querySelector('.o_omni_setup_content');
+                            const form = document.querySelector('.o_omni_setup_form');
+                            const guide = document.querySelector('.o_omni_setup > .o-mail-ChatterContainer');
+                            if (!content || !form || !guide) throw new Error('Setup did not render');
+                            const width = content.clientWidth;
+                            const box = form.getBoundingClientRect();
+                            if (content.scrollWidth > width + 1) throw new Error('Setup overflows horizontally');
+                            if (box.width < Math.min(350, width - 32)) throw new Error('Form is squeezed');
+                            if (width <= 1200 && guide.getBoundingClientRect().top < box.bottom - 1) throw new Error('Guidance must stack below form');
+                            if (width <= 767 && box.top < document.querySelector('.o_omni_setup_steps').getBoundingClientRect().bottom - 1) throw new Error('Steps must sit above form');
+                            for (const button of document.querySelectorAll('.o_omni_setup_footer .btn')) {
+                                if (button.getBoundingClientRect().height > 60) throw new Error('Footer button stretched');
+                            }
+                            console.log('test successful');
+                        })().catch(error => console.error(error));
+                    """, login='omni_ui', timeout=60)
+        finally:
+            self.browser_size = original_size
+
     def test_channels_native_team_panel_and_view_switching(self):
         self.browser_js('/odoo/action-omni_channel.action_channels', """
             (async () => {

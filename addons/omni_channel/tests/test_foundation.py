@@ -88,10 +88,30 @@ class TestOmniFoundation(TransactionCase):
             },
         )
 
-    def test_unique_channel_including_archived(self):
+    def test_multiple_channels_per_team_and_type_including_archived(self):
+        values = {
+            'company_id': self.company.id,
+            'purpose_id': self.purpose.id,
+            'channel_type_id': self.type.id,
+        }
+        second = self.env['omni.channel'].with_user(self.manager).create(dict(values, name='Second team channel'))
         self.channel.active = False
+        third = self.env['omni.channel'].with_user(self.manager).create(dict(values, name='Third team channel'))
+        self.assertNotEqual(second, third)
+        self.assertEqual(second.purpose_id, self.channel.purpose_id)
+        self.assertEqual(third.channel_type_id, self.channel.channel_type_id)
+        self.assertFalse(self.channel.active)
+
+    def test_same_scope_channels_still_cannot_share_a_sending_identity(self):
+        second = self.env['omni.channel'].create({
+            'name': 'Another channel', 'company_id': self.company.id,
+            'purpose_id': self.purpose.id, 'channel_type_id': self.type.id,
+        })
         with self.assertRaises(IntegrityError), self.cr.savepoint():
-            self.channel.copy({'name': 'Duplicate'})
+            self.env['omni.outbound.sender'].create({
+                'name': 'Duplicate sender', 'channel_id': second.id,
+                'account_id': self.account.id, 'external_key': self.sender.external_key,
+            })
 
     def test_inbound_many_but_physical_identity_exclusive(self):
         model = self.env['omni.inbound.endpoint']
@@ -401,3 +421,63 @@ class TestOmniFoundation(TransactionCase):
         with patch('odoo.addons.omni_channel.models.foundation.get_adapter', return_value=ChangedAdapter()), self.assertRaises(UserError):
             self.sender.with_user(self.manager).action_activate(self.channel.generation)
         self.assertFalse(self.sender.is_selected)
+
+    def test_setup_progress_is_validated_persistent_and_resumable(self):
+        channel = self.channel.with_user(self.manager)
+        self.assertEqual(channel.setup_completed_steps, 0)
+        self.assertEqual(channel.action_setup_complete_step(0), 1)
+        self.assertEqual(channel.action_setup_complete_step(0), 1)
+        with self.assertRaises(UserError):
+            channel.action_setup_complete_step(2)
+        with self.assertRaises(UserError):
+            channel.action_setup_complete_step(1)  # No guided connection configured.
+        self.assertEqual(channel.setup_completed_steps, 1)
+        action = channel.action_continue_setup()
+        self.assertEqual(action['res_id'], channel.id)
+        self.assertEqual(action['context']['setup_completed_steps'], 1)
+        self.assertEqual(action['views'][0][0], self.env.ref('omni_channel.channel_setup_form').id)
+        with self.assertRaises(AccessError):
+            channel.write({'setup_completed_steps': 6})
+        for user in (self.operator, self.outsider, self.portal):
+            with self.assertRaises(AccessError):
+                channel.with_user(user).action_setup_complete_step(0)
+            with self.assertRaises(AccessError):
+                channel.with_user(user).action_continue_setup()
+        with patch.object(type(channel), 'action_setup_validate_step', return_value=True), patch.object(type(channel), '_is_setup_receiving_ready', return_value=True):
+            for step in range(1, 6):
+                channel.action_setup_complete_step(step)
+        self.assertEqual(channel.setup_completed_steps, 6)
+        self.assertFalse(channel.dispatch_enabled)
+        self.assertNotIn(channel, self.env['omni.channel'].search([('setup_completed_steps', '<', 6)]))
+
+    def test_receiving_can_be_deferred_without_false_completion(self):
+        channel = self.channel.with_user(self.manager)
+        with self.assertRaises(UserError):
+            channel.action_setup_defer_receiving()
+        with patch.object(type(channel), 'action_setup_validate_step', return_value=True):
+            channel.action_setup_complete_step(0)
+            channel.action_setup_complete_step(1)
+            channel.action_setup_defer_receiving()
+            channel.action_setup_complete_step(3)
+            channel.action_setup_complete_step(4)
+            self.assertEqual(channel.setup_completed_steps, 4)
+            self.assertEqual(channel._completed_setup_steps(), [0, 1, 3, 4])
+            self.assertTrue(channel.setup_receiving_deferred)
+            with self.assertRaises(UserError):
+                channel.action_setup_complete_step(5)
+            self.assertFalse(channel.dispatch_enabled)
+            self.assertEqual(channel.action_continue_setup()['context']['setup_completed_step_ids'], [0, 1, 3, 4])
+            channel.action_setup_complete_step(2)
+            self.assertFalse(channel.setup_receiving_deferred)
+            with self.assertRaises(UserError):
+                channel.action_setup_complete_step(5)  # A stale completed step is not readiness.
+            with patch.object(type(channel), '_is_setup_receiving_ready', return_value=True):
+                channel.action_setup_complete_step(5)
+            self.assertEqual(channel.setup_completed_steps, 6)
+            self.assertFalse(channel.dispatch_enabled)
+        for user in (self.operator, self.outsider, self.portal):
+            with self.assertRaises(AccessError):
+                channel.with_user(user).action_setup_defer_receiving()
+        for name, value in [('setup_receiving_deferred', True), ('setup_completed_step_ids', [0, 1, 2, 3, 4, 5])]:
+            with self.assertRaises(AccessError):
+                channel.write({name: value})

@@ -5,3 +5,5 @@ from . import dispatch
 from . import inbox
 from . import operations
 from . import administration
+
+from . import channel_setup
