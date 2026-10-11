@@ -1,0 +1,46 @@
+<odoo>
+<record id="connection_list" model="ir.ui.view"><field name="name">Social accounts</field><field name="model">omni.social.connection</field><field name="arch" type="xml"><list>
+<field name="name"/><field name="provider"/><field name="profile_name"/><field name="connected"/><field name="purpose_id" optional="show"/><field name="account_kind" optional="hide"/><field name="company_id" optional="hide"/><field name="synced_at" optional="hide"/><field name="sync_note" optional="hide"/><field name="active" optional="hide"/><field name="retention_days" optional="hide"/>
+</list></field></record>
+<record id="connection_form" model="ir.ui.view"><field name="name">Social account</field><field name="model">omni.social.connection</field><field name="arch" type="xml"><form>
+<header><button name="action_sync" type="object" string="Sync activity" class="btn-primary" invisible="not connected" groups="omni_channel.group_omni_manager"/><button name="action_new_post" type="object" string="New post" invisible="not connected"/></header>
+<sheet><div class="oe_title"><h1><field name="name" placeholder="Account name"/></h1></div><group><group>
+<field name="provider" readonly="connected"/><field name="account_kind" invisible="provider != 'linkedin'" readonly="connected"/><field name="purpose_id" readonly="connected"/><field name="company_id" readonly="connected" groups="base.group_multi_company"/>
+</group><group><field name="profile_name" invisible="not connected"/><field name="connected"/><field name="approval_type_id"/><field name="public_url" invisible="provider != 'instagram'" placeholder="https://your-public-server.example"/><field name="retention_days"/><field name="active" invisible="not connected"/>
+</group></group><field name="credentials_ui" widget="social_credentials" nolabel="1" groups="omni_channel.group_omni_manager"/>
+<div class="text-muted mt-3" invisible="provider != 'instagram'">Use a Page token for the Facebook Page linked to your professional Instagram account.</div>
+<div class="text-muted mt-3" invisible="provider != 'linkedin'">Personal activity reads require approved LinkedIn access. Publishing uses your account’s granted permissions.</div>
+<group invisible="not synced_at"><field name="synced_at"/><field name="sync_note"/></group>
+</sheet></form></field></record>
+<record id="activity_list" model="ir.ui.view"><field name="name">Social activity</field><field name="model">omni.social.activity</field><field name="arch" type="xml"><list create="0" delete="0">
+<field name="occurred_at"/><field name="connection_id"/><field name="kind"/><field name="author"/><field name="body"/><field name="likes" optional="show"/><field name="comments" optional="show"/><field name="permalink" widget="url" optional="hide"/><field name="provider" optional="hide"/><field name="consent" optional="hide"/><field name="company_id" optional="hide"/>
+</list></field></record>
+<record id="activity_form" model="ir.ui.view"><field name="name">Social activity</field><field name="model">omni.social.activity</field><field name="arch" type="xml"><form create="0" delete="0" edit="0"><header>
+<button name="action_reply" type="object" string="Reply" class="btn-primary"/>
+<button name="action_consent" type="object" string="Confirm reply agreement" confirm="This person agreed to receive private replies from this account." invisible="kind != 'message' or consent" groups="omni_channel.group_omni_manager"/>
+<button name="action_revoke" type="object" string="Revoke reply agreement" invisible="kind != 'message' or not consent" groups="omni_channel.group_omni_manager"/>
+</header><sheet><group><field name="connection_id"/><field name="kind"/><field name="author"/><field name="occurred_at"/><field name="consent" invisible="kind != 'message'"/></group><field name="body" nolabel="1"/><field name="permalink" widget="url" invisible="not permalink"/><group invisible="kind != 'post'"><field name="likes"/><field name="comments"/></group></sheet></form></field></record>
+<record id="publication_list" model="ir.ui.view"><field name="name">Social publishing</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><list>
+<field name="name"/><field name="connection_id"/><field name="operation"/><field name="state" widget="badge"/><field name="requester_id" optional="show"/><field name="create_date" optional="hide"/><field name="expires_at" optional="hide"/><field name="company_id" optional="hide"/><field name="result_note" optional="hide"/>
+</list></field></record>
+<record id="publication_form" model="ir.ui.view"><field name="name">Social publication</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><form>
+<header><button name="action_submit" type="object" string="Submit for approval" class="btn-primary" invisible="state != 'draft'"/>
+<button name="action_publish" type="object" string="Publish / send" class="btn-primary" invisible="state not in ('approved','waiting')" confirm="Publish or send this exact approved content to the displayed account and destination?"/>
+<button name="action_approval" type="object" string="View approval" invisible="not approval_request_id"/>
+<button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft','pending','approved','waiting','failed')"/><field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,sent"/></header>
+<sheet><div class="oe_title"><h1><field name="name" readonly="state != 'draft'" placeholder="Subject"/></h1></div>
+<group><field name="connection_id" readonly="state != 'draft'" domain="[('connected','=',True),('active','=',True)]"/><field name="provider" invisible="1"/><field name="operation" readonly="state != 'draft' or provider == 'linkedin'"/>
+<field name="target_id" readonly="state != 'draft'" invisible="operation == 'post'" domain="[('connection_id','=',connection_id)]" options="{'no_create': True}"/><field name="body" readonly="state != 'draft'"/>
+<field name="image" widget="image" readonly="state != 'draft'" invisible="provider != 'instagram' or operation != 'post'"/><field name="reason" readonly="state != 'draft'"/></group>
+<group invisible="not result_note"><field name="result_note"/><field name="result_key" invisible="not result_key"/></group><field name="approval_request_id" invisible="1"/>
+</sheet></form></field></record>
+<record id="approval_social_review" model="ir.ui.view"><field name="name">Social review content</field><field name="model">approval.center.request</field><field name="inherit_id" ref="approval_center.approval_center_request_view_form"/><field name="arch" type="xml"><xpath expr="//sheet" position="inside"><group string="Social content" invisible="not social_publication_id"><field name="social_publication_id"/><field name="social_account"/><field name="social_operation"/><field name="social_target" invisible="not social_target"/><field name="social_body"/><field name="social_image" widget="image" invisible="not social_image"/></group></xpath></field></record>
+<record id="accounts" model="ir.actions.act_window"><field name="name">Accounts</field><field name="res_model">omni.social.connection</field><field name="view_mode">list,form</field></record>
+<record id="activity" model="ir.actions.act_window"><field name="name">Activity</field><field name="res_model">omni.social.activity</field><field name="view_mode">list,form</field></record>
+<record id="publishing" model="ir.actions.act_window"><field name="name">Publishing</field><field name="res_model">omni.social.publication</field><field name="view_mode">list,form</field></record>
+<record id="cron_retention" model="ir.cron"><field name="name">Social: activity retention</field><field name="model_id" ref="model_omni_social_connection"/><field name="state">code</field><field name="code">model._cron_retention()</field><field name="interval_number">1</field><field name="interval_type">days</field><field name="active" eval="True"/></record>
+<menuitem id="menu_social" name="Social" sequence="35" web_icon="omni_social,static/description/icon.svg" groups="omni_channel.group_omni_user"/>
+<menuitem id="menu_activity" name="Activity" parent="menu_social" action="activity" sequence="10"/>
+<menuitem id="menu_publishing" name="Publishing" parent="menu_social" action="publishing" sequence="20"/>
+<menuitem id="menu_accounts" name="Accounts" parent="menu_social" action="accounts" sequence="30"/>
+</odoo>

@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,operation
+access_connection_user,Social connection,model_omni_social_connection,omni_channel.group_omni_user,r
+access_connection_manager,Social connection management,model_omni_social_connection,omni_channel.group_omni_manager,crud
+access_activity_user,Social activity,model_omni_social_activity,omni_channel.group_omni_user,r
+access_activity_manager,Social activity management,model_omni_social_activity,omni_channel.group_omni_manager,crud
+access_publication_user,Social publication,model_omni_social_publication,omni_channel.group_omni_user,crud

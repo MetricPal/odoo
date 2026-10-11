@@ -1447,3 +1447,30 @@ endorsement, service URL and configured tenant/bot. The server records routing
 only after authenticated text normalization, in the same transaction. Approval
 payloads include that protected route; no user-defined egress host is accepted.
 Single-tenant token acquisition uses the fixed Entra endpoint and Connector scope.
+
+## Social connectors — 2026-10-11
+
+Verified Odoo 20 `BaseModel.check_access`, `models.Constraint`, native `ir.access`
+CRUD domains, Owl `useProps` and `standardFieldProps`, company/team scope mixin,
+and Approval Center's request/approver methods in the checked-out source.
+Social public posts/comments cannot use the private-only `omni.inbound` contract:
+its processor intentionally drops non-private events. New addon models keep public
+activity and private social messages distinct without editing messaging modules.
+Approval Center is extended in the social addon to freeze review evidence.
+
+Primary provider references:
+- Meta-owned [Instagram API collection](https://www.postman.com/meta/workspace/instagram/documentation/23987686-9386f468-7714-490f-9bfc-9442db5c8f00): Facebook Login Page tokens, linked professional account, media/container publishing, comments.
+- Meta-owned [Conversations API](https://www.postman.com/meta/messenger-platform-api/folder/22794852-255610cd-47f5-4f4d-b3fa-71aec360be9a): Page-linked Instagram private conversation reads and access restrictions.
+- [LinkedIn Posts](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api): REST author finder, public text publication, version/Restli headers, separate member/organization permissions.
+- [LinkedIn Social Actions](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/network-update-social-actions): comments, nested replies, engagement counts and feed permissions.
+- [LinkedIn OIDC](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2): authenticated member subject/profile.
+- [LinkedIn access](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/community-management-overview): restricted member reads and vetted Community Management product.
+Meta developer pages returned HTTP 429; Meta's maintained primary Postman collection
+was used. Live provider interoperability must be checked with authorized accounts;
+synthetic fixtures do not establish app approval or production delivery.
+
+Photo tests verified the Odoo 20 binary contract in `odoo/orm/fields_binary.py`
+and `odoo/tools/binary.py`: Python reads return immutable `BinaryValue` objects
+with raw `.content`; RPC writes accept base64 strings/dicts, not Python bytes.
+The social photo hash and response use `.content`, and the native widget handles
+upload encoding. Do not reuse Odoo 18/19 base64-bytes assumptions here.

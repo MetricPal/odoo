@@ -146,3 +146,20 @@ Approval Center, sender generation, immutable payload, outbox claim and uncertai
 outcome controls apply. **Pause replies** stops new claims. The existing global
 dispatch scheduler remains separately administered; neither setup nor the channel
 reply button activates it.
+
+## Social publishing and private replies
+
+Instagram and LinkedIn outbound actions are reviewed in Approval Center through
+`omni_social`. Account, action, content, exact target context and photo bytes/hash
+are frozen. Explicit, separate internal team approvers are required; requester,
+company/team access, policy snapshot, connection revision and 24-hour review expiry
+are rechecked before an independent committed execution claim. Claims precede
+provider POSTs. Unknown or in-flight attempts cannot be repeated automatically.
+
+Private Instagram replies additionally require explicit manager-confirmed recipient
+agreement, an unblocked identity and a current incoming conversation within 24
+hours. Receiving a message alone is not consent. Public posts/comments are separate
+from private-message consent. Installing or connecting a provider never authorizes
+publishing. Approved photo URLs serve only the immutable JPEG during a current
+claim. The manager-selected activity retention policy authorizes daily pruning of
+imported snapshots; immutable review/execution evidence is retained separately.
