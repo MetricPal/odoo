@@ -43,4 +43,10 @@
 <menuitem id="menu_activity" name="Activity" parent="menu_social" action="activity" sequence="10"/>
 <menuitem id="menu_publishing" name="Publishing" parent="menu_social" action="publishing" sequence="20"/>
 <menuitem id="menu_accounts" name="Accounts" parent="menu_social" action="accounts" sequence="30"/>
-<record id="cron_webhooks" model="ir.cron"><field name="name">Social: webhook activity</field><field name="model_id" ref="model_omni_social_connection"/><field name="state">code</field><field name="code">model._cron_webhooks()</field><field name="interval_number">1</field><field name="interval_type">minutes</field><field name="active" eval="True"/></record></odoo>
+<record id="cron_webhooks" model="ir.cron"><field name="name">Social: webhook activity</field><field name="model_id" ref="model_omni_social_connection"/><field name="state">code</field><field name="code">model._cron_webhooks()</field><field name="interval_number">1</field><field name="interval_type">minutes</field><field name="active" eval="True"/></record>
+<!-- Shared feature addon: host applications will expose these actions later. -->
+<record id="menu_social" model="ir.ui.menu"><field name="active" eval="False"/></record>
+<record id="menu_activity" model="ir.ui.menu"><field name="active" eval="False"/></record>
+<record id="menu_publishing" model="ir.ui.menu"><field name="active" eval="False"/></record>
+<record id="menu_accounts" model="ir.ui.menu"><field name="active" eval="False"/></record>
+</odoo>

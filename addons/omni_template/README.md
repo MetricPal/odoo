@@ -1,10 +1,12 @@
 # Omnichannel Templates
 
-Open **Omnichannel Templates** from the app launcher. Channels and Inbox link to
-the existing scoped views; Templates opens the template library. Choose a channel, business
-record type and content type. Write the content, insert record fields, select a
-sample record and save. Optional header/footer/button fields expand only when
-added. Media rows can be reordered with the drag handle.
+This is a shared feature addon, not a standalone app. Its launcher and navigation
+menus are inactive. Other applications will expose the existing template actions
+later. The editor and scoped rendering API remain available for that integration.
+
+Choose a channel, business record type and content type. Write content, insert
+record fields, select a sample record and save. Optional header/footer/button
+fields expand only when added. Media rows can be reordered with the drag handle.
 
 The Content tab contains the editor and a record-based preview. Options contains
 team, company, content language and a suggested approval policy. Templates can be

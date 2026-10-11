@@ -1,5 +1,5 @@
 {'name': 'Social',
- 'version': '20.0.2.0.0',
+ 'version': '20.0.2.1.0',
  'summary': 'Review incoming social activity and publish approved content',
  'category': 'Marketing/Social Marketing',
  'author': 'metric.io',
@@ -10,7 +10,7 @@
  'assets': {'web.assets_backend': ['omni_social/static/src/credentials.js',
                                    'omni_social/static/src/credentials.xml']},
  'icon': '/omni_social/static/description/icon.svg',
- 'application': True,
+ 'application': False,
  'installable': True,
  'description': 'Read incoming social activity, review exact content in Approval Center, then '
                 'publish or reply from the correct account. Includes manual sync and separate '

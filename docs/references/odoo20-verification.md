@@ -1511,3 +1511,12 @@ Full browser verification revealed that the native Reference widget's
 a business-model Selection and a native Reference subclass whose relation comes
 from that selection, requiring no additional metadata permissions. Native form
 helpers alone do not exercise this browser RPC.
+
+
+### Shared feature navigation (2026-10-11)
+
+Verified `ir.ui.menu._visible_menu_ids()` and native menu active filtering in
+Odoo 20. `application=False` changes module classification; deactivating existing
+menu records also removes launcher/navigation entries during upgrade. Preserve
+XML IDs, actions and views for future host applications. Both local upgrades were
+checked for inactive menus, unchanged record counts and unchanged dispatch state.

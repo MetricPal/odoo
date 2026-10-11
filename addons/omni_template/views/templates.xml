@@ -34,4 +34,11 @@
 <menuitem id="menu_workspace_inbox" name="Inbox" parent="menu_templates_app" action="omni_channel.action_inbox" sequence="20"/>
 <menuitem id="menu_workspace_templates" name="Templates" parent="menu_templates_app" action="action_templates" sequence="30"/>
 <menuitem id="menu_templates" name="Templates" parent="omni_channel.menu_omni_technical" action="action_templates" sequence="15" groups="base.group_system"/>
+
+<!-- Shared feature addon: host applications will expose these actions later. -->
+<record id="menu_templates_app" model="ir.ui.menu"><field name="active" eval="False"/></record>
+<record id="menu_workspace_channels" model="ir.ui.menu"><field name="active" eval="False"/></record>
+<record id="menu_workspace_inbox" model="ir.ui.menu"><field name="active" eval="False"/></record>
+<record id="menu_workspace_templates" model="ir.ui.menu"><field name="active" eval="False"/></record>
+<record id="menu_templates" model="ir.ui.menu"><field name="active" eval="False"/></record>
 </odoo>

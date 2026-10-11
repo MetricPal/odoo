@@ -1,6 +1,6 @@
 {
     'name': 'Omnichannel Templates',
-    'version': '20.0.1.0.0',
+    'version': '20.0.1.1.0',
     'summary': 'Reusable channel content with record fields and a safe live preview',
     'author': 'metric.io', 'category': 'Productivity', 'license': 'LGPL-3',
     'depends': ['omni_channel'],
@@ -11,5 +11,5 @@
         'omni_template/static/src/editor.scss',
     ]},
     'icon': '/omni_template/static/description/icon.svg',
-    'application': True, 'installable': True,
+    'application': False, 'installable': True,
 }

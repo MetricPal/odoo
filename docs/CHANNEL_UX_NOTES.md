@@ -80,6 +80,16 @@ changing channel setup, forms, cards, lists or provider adapters.
 - Preserve approved policy/action boundaries, audit history and immutable retention
   versions. Never quietly enable business dispatch while simplifying setup.
 
+## Explain design from the user's perspective (2026-10-11)
+
+- Before implementing a design or navigation choice, explain which user role it
+  serves, what that person needs to do, and how the choice helps their work.
+- Separate system-admin configuration from staff's daily work in the explanation.
+- Technical addon boundaries do not justify separate user-facing apps. Explain
+  the user benefit of any new app entry or workspace before adding it.
+- State design choices as choices, not requirements. Keep explanations short,
+  direct and grounded in users' tasks; implementation convenience is not a reason.
+
 ## Template editor (2026-10-11)
 
 - Use the approved email-template-style editor for every channel catalogue type.
@@ -90,3 +100,10 @@ changing channel setup, forms, cards, lists or provider adapters.
   exists. Do not simulate provider approval in the installed UI.
 - Use business-record choices and native record search; template authoring must
   not grant operators access to technical `ir.model` records.
+
+## Shared features, not standalone apps (2026-10-11)
+
+- User decision: `omni_social` and `omni_template` are shared feature addons,
+  not standalone apps. Set application=False and deactivate their own menus.
+- Keep models, actions, views, data and permissions intact. Other applications
+  will provide user-facing access later; do not invent a replacement app now.

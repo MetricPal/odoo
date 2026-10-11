@@ -232,6 +232,9 @@ def main():
                 registry=Registry(database)
                 with registry.cursor() as cr:
                     env=api.Environment(cr,api.SUPERUSER_ID,{})
+                    assert not env.ref('base.module_omni_social').application
+                    hidden={env.ref('omni_social.'+name).id for name in ('menu_social','menu_activity','menu_publishing','menu_accounts')}
+                    assert hidden.isdisjoint(env['ir.ui.menu']._visible_menu_ids())
                     env.ref('omni_social.connection_form')._check_xml()
                     env['ir.module.module'].search([('name','in',['omni_instagram','omni_linkedin'])]).button_immediate_upgrade()
                 registry=Registry(database)

@@ -25,6 +25,14 @@ class TestTemplates(TransactionCase):
     def make(self, **values):
         return self.templates.create({'name':'Welcome', 'purpose_id':self.team.id, 'channel_type_id':self.telegram.id, **values})
 
+    def test_shared_feature_has_no_app_entry(self):
+        self.assertFalse(self.env.ref('base.module_omni_template').application)
+        menus = ['menu_templates_app', 'menu_workspace_channels', 'menu_workspace_inbox', 'menu_workspace_templates', 'menu_templates']
+        hidden = {self.env.ref('omni_template.' + name).id for name in menus}
+        self.assertTrue(hidden.isdisjoint(self.env['ir.ui.menu']._visible_menu_ids()))
+        for name in menus: self.assertFalse(self.env.ref('omni_template.' + name).active)
+        self.assertTrue(self.env.ref('omni_template.action_templates').exists())
+
     def test_all_channel_formats_native_form(self):
         for code, choices in FORMATS.items():
             channel = self.env['omni.channel.type'].search([('code','=',code)], limit=1)

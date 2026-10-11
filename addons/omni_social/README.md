@@ -1,7 +1,9 @@
 # Social
 
-A separate workspace for incoming social activity and approved publishing.
-Install `omni_instagram` and/or `omni_linkedin`, then open **Social → Accounts**.
+A shared feature addon for incoming social activity and approved publishing.
+It is not a standalone app; its own menus are inactive. Host applications will
+provide access to the existing Accounts, Activity and Publishing actions later.
+Install `omni_instagram` and/or `omni_linkedin` for provider capabilities.
 
 1. Choose the platform, team and approval type; connect the account.
 2. **Sync activity** imports the latest supported posts, comments and private text.

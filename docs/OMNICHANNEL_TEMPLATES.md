@@ -14,3 +14,7 @@ provider approval and ERP approval remain separate concerns.
 See `addons/omni_template/README.md` for formats, access boundaries, current limits
 and reproducible tests. The UI prototype remains the design reference; production
 controls must report actual capabilities rather than simulate Meta submission.
+
+User navigation decision: templates and Social are shared feature addons with
+`application=False` and inactive standalone menus. Their actions and views are
+retained for future host-application integration. No replacement app is added.
