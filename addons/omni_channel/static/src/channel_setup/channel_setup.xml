@@ -50,20 +50,16 @@
               <h3>About this step</h3><p t-out="this.steps[this.setupState.step].about"/>
               <t t-if="this.setupState.step === 1">
                 <t t-if="this.model.root.data.setup_connection_mode === 'new'">
-                  <p>Connect a new account using its credentials.</p>
-                  <ol t-if="this.model.root.data.is_telegram">
-                    <li>Paste the token from your bot’s administrator into <strong>Bot token</strong>.</li>
-                    <li>Leave <strong>Webhook secret</strong> empty to generate one.</li>
-                    <li>Click <strong>Verify bot</strong>. Check the bot details, then continue.</li>
-                  </ol>
-                  <p>The bot ID is filled automatically. You do not need to enter the database name.</p>
+                  <p t-if="this.model.root.data.is_telegram">Paste your bot token from <strong>BotFather</strong>, then click <strong>Verify bot</strong>. Bot details are filled automatically.</p>
+                  <p t-else="">Enter your provider’s credentials.</p>
                 </t>
                 <t t-else="">
-                  <p>Select a saved connection. Its token and webhook secret are reused; you do not need to enter them again.</p>
-                  <p>Click <strong>Verify bot</strong> to check a Telegram connection, then continue through the remaining steps.</p>
-                  <p>If the list shows <strong>No records</strong>, clear your search or choose <strong>Create new connection</strong>. The list only includes accounts for the selected company, team and channel type.</p>
+                  <p>Select a saved connection to reuse its credentials.</p>
+                  <p t-if="this.model.root.data.is_telegram">Click <strong>Verify bot</strong>, then continue.</p>
+                  <p><strong>No records</strong>? Clear your search or choose <strong>Create new connection</strong>.</p>
                 </t>
-                <p>A bot already assigned to another channel cannot be reused here. Switching choices clears unsaved credentials.</p>
+                <p t-if="this.model.root.data.is_telegram">A bot assigned to another channel cannot be reused.</p>
+                <p>Switching choices clears unsaved credentials.</p>
               </t>
               <t t-if="this.setupState.step === 2">
                 <p t-if="this.model.root.data.is_telegram">Enter a public HTTPS URL (e.g. Tailscale Funnel). Connect Telegram registers the webhook.</p>

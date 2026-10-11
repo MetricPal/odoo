@@ -36,7 +36,7 @@ export class ChannelSetupController extends FormController {
             completed: this.props.state?.setupCompleted || completed });
         this.steps = [
             { title: "Prepare", hint: "Choose the channel, company and team.", about: "Give the channel a name, choose its type, and select the company and team that will use it." },
-            { title: "Credentials", hint: "Connect and verify your account.", about: "Enter credentials here or choose an existing connection. For Telegram, paste the token from BotFather. Verification fills in the bot ID and public profile; you do not need to enter the bot ID or database name." },
+            { title: "Credentials", hint: "Connect and verify your account.", about: "Create a new connection or choose an existing one." },
             { title: "Connect & verify", hint: "Set up and check receiving.", about: "Enable receiving when the connection is ready, or choose Next: Branding to continue with a draft." },
             { title: "Branding", hint: "Choose how the channel appears.", about: "Set the channel's display name and internal description. Public bot names and pictures are managed by the provider, not by these internal labels." },
             { title: "Test & go live", hint: "Review a test and activate explicitly.", about: "Send a short test message to the displayed tester, then finish setup." },

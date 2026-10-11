@@ -27,6 +27,7 @@ Read:
 - Approvals: `docs/APPROVALS.md`
 - Security: `docs/SECURITY.md`
 - Design: `docs/DESIGN.md`
+- Channel UX: `docs/CHANNEL_UX_NOTES.md` for channel/provider work
 - Quality: `docs/QUALITY.md`
 
 For implementation tasks, also inspect the relevant skill in `.codex/skills/`.
