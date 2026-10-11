@@ -1,0 +1,17 @@
+.o_omni_template {
+    .ot_workspace { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr); gap: 32px; }
+    .ot_workspace .o_field_widget[name="body"] { display: block; width: 100%; }
+    .ot_editor { border: 1px solid #d8dadd; border-radius: 6px; overflow: hidden; }
+    .ot_toolbar { display: flex; align-items: center; padding: 4px 10px; border-bottom: 1px solid #e6e7e9; }
+    .ot_editor textarea { padding: 14px; border: 0; }
+    .ot_editor .o_field_input_buttons { display: none; }
+    .ot_preview { background: #f6f7f9; border-radius: 8px; padding: 20px; min-width: 0; }
+    .omni_template_message { background: white; border-radius: 8px; padding: 18px; margin: 12px 0 20px; box-shadow: 0 1px 3px #00000012; }
+    .ot_body { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .ot_title, .ot_header { font-weight: 600; margin-bottom: 8px; }
+    .ot_footer { color: #747b83; margin-top: 12px; font-size: 12px; }
+    .ot_button { color: #71639e; border-top: 1px solid #eee; margin-top: 16px; padding-top: 12px; text-align: center; }
+    .ot_media { background: #eef0f4; border-radius: 4px; margin-top: 10px; padding: 16px; overflow-wrap: anywhere; }
+    .ot_media_fields { margin-top: 18px; }
+    @media (max-width: 800px) { .ot_workspace { grid-template-columns: minmax(0,1fr); gap: 18px; } }
+}

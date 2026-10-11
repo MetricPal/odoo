@@ -79,3 +79,14 @@ changing channel setup, forms, cards, lists or provider adapters.
   rollback cannot retract externally sent mail.
 - Preserve approved policy/action boundaries, audit history and immutable retention
   versions. Never quietly enable business dispatch while simplifying setup.
+
+## Template editor (2026-10-11)
+
+- Use the approved email-template-style editor for every channel catalogue type.
+- Keep optional header/footer/link-button fields collapsed until explicitly added.
+- Show a record-based preview beside the content; no recipient or send button.
+- All formats can be authored, but authoring never implies connector availability.
+- WhatsApp template status remains “Not submitted” until real provider submission
+  exists. Do not simulate provider approval in the installed UI.
+- Use business-record choices and native record search; template authoring must
+  not grant operators access to technical `ir.model` records.

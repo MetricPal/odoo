@@ -1498,3 +1498,16 @@ The implementation uses a conservative Instagram 2–10 carousel limit and a loc
 `account_type` on the Facebook Login IGUser verification call: it is absent from
 that SDK's IGUser field schema. Meta enforces business eligibility when creating
 Stories; a known creator profile is rejected locally as well.
+
+### Omnichannel templates (2026-10-11)
+Verified Odoo 20 native mail template form/notebook, TextField dynamic placeholders,
+Reference sample-record selector, `parse_inline_template`, `ir.access` company/team
+rules, BinaryValue and Owl 3 useProps. Template rendering permits field paths only;
+it never invokes safe_eval or an external provider. The addon owns its models,
+assets and menus; existing connector sources and execution policies stay intact.
+
+Full browser verification revealed that the native Reference widget's
+`model_field` option reads restricted `ir.model` records. The template addon uses
+a business-model Selection and a native Reference subclass whose relation comes
+from that selection, requiring no additional metadata permissions. Native form
+helpers alone do not exercise this browser RPC.

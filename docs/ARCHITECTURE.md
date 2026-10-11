@@ -56,3 +56,12 @@ Use a mobile-first dashboard and navigation model. Preserve the same mental mode
 ## Evolution
 
 Architecture decisions must be recorded in `docs/design-decisions/`.
+
+### Reusable channel templates
+
+`omni_template` owns scoped authoring records, ordered media and read-only record
+rendering. It reuses native Odoo form/record-search/placeholder mechanisms without
+granting technical-model access or changing connector code. A rendered copy is
+content, not authorization: sending consumers must still apply their existing
+capability, consent and frozen-approval checks. See
+[Omnichannel templates](OMNICHANNEL_TEMPLATES.md).

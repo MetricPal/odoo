@@ -1,0 +1,4 @@
+<odoo>
+<record id="scope_template" model="ir.access"><field name="name">Template company and team</field><field name="model_id" ref="model_omni_template"/><field name="operation">crud</field><field name="domain">[('company_id','in',company_ids)] + ([] if user.has_group('base.group_system') else [('purpose_id.user_ids','in',[user.id])])</field></record>
+<record id="scope_media" model="ir.access"><field name="name">Template media company and team</field><field name="model_id" ref="model_omni_template_media"/><field name="operation">crud</field><field name="domain">[('company_id','in',company_ids)] + ([] if user.has_group('base.group_system') else [('purpose_id.user_ids','in',[user.id])])</field></record>
+</odoo>

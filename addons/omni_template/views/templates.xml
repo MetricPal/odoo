@@ -1,0 +1,37 @@
+<odoo>
+<record id="template_list" model="ir.ui.view"><field name="name">omni.template.list</field><field name="model">omni.template</field><field name="arch" type="xml">
+<list><field name="name"/><field name="channel_type_id"/><field name="content_type"/><field name="model_name"/><field name="purpose_id" optional="show"/><field name="company_id" optional="hide"/><field name="language_id" optional="hide"/><field name="approval_type_id" optional="hide"/><field name="write_date" optional="hide"/><field name="active" optional="hide"/></list>
+</field></record>
+<record id="template_search" model="ir.ui.view"><field name="name">omni.template.search</field><field name="model">omni.template</field><field name="arch" type="xml"><search><field name="name"/><field name="channel_type_id"/><field name="purpose_id"/><filter name="archived" string="Archived" domain="[('active','=',False)]"/><group><filter name="channel" string="Channel type" context="{'group_by':'channel_type_id'}"/><filter name="team" string="Communication team" context="{'group_by':'purpose_id'}"/></group></search></field></record>
+<record id="template_form" model="ir.ui.view"><field name="name">omni.template.form</field><field name="model">omni.template</field><field name="arch" type="xml">
+<form string="Template" class="o_omni_template"><sheet>
+<field name="active" invisible="1"/><field name="channel_code" invisible="1"/><field name="format_choices" invisible="1"/><field name="show_media" invisible="1"/><field name="show_button" invisible="1"/>
+<widget name="web_ribbon" text="Archived" bg_color="text-bg-danger" invisible="active"/>
+<div class="oe_title"><label for="name"/><h1><field name="name" placeholder="Template name"/></h1></div>
+<group><group><field name="channel_type_id" options="{'no_create':True,'no_open':True}"/><field name="model_name" options="{'no_create':True,'no_open':True}"/></group><group><field name="content_type" widget="omni_template_format"/><field name="language_id" invisible="content_type != 'wa_template'" required="content_type == 'wa_template'" options="{'no_create':True}"/></group></group>
+<notebook>
+<page string="Content" name="content"><div class="ot_workspace">
+<div>
+<group invisible="content_type != 'wa_template'"><field name="category"/></group>
+<div class="text-muted mb-3" invisible="content_type != 'wa_template'">Meta: Not submitted · Local draft only</div>
+<group invisible="channel_code not in ['youtube','pinterest']"><field name="title"/></group>
+<group invisible="content_type != 'wa_template' or not use_header"><field name="header" placeholder="Optional header"/></group>
+<field name="body" widget="omni_template_body" invisible="content_type == 'story'" options="{'dynamic_placeholder':True,'dynamic_placeholder_model_reference_field':'model_name'}" placeholder="Write your message…"/>
+<div class="d-flex mt-2 gap-2"><field name="use_header" widget="omni_template_optional" invisible="content_type != 'wa_template'"/><field name="use_footer" widget="omni_template_optional" invisible="content_type != 'wa_template'"/><field name="use_button" widget="omni_template_optional" invisible="not show_button"/></div>
+<group class="mt-3" invisible="content_type != 'wa_template' or not use_footer"><field name="footer" placeholder="Optional footer"/></group>
+<group class="mt-3" invisible="not show_button or not use_button"><field name="button_label" placeholder="Optional button"/><field name="button_url" placeholder="https://…"/></group>
+<div class="ot_media_fields" invisible="not show_media"><label for="media_ids" string="Media · in order"/><field name="media_ids"><list editable="bottom"><field name="sequence" widget="handle"/><field name="kind"/><field name="content" filename="name"/><field name="name" column_invisible="True"/></list></field></div>
+</div>
+<div class="ot_preview"><div class="d-flex align-items-center justify-content-between mb-3"><strong>Preview</strong><field name="channel_type_id" readonly="1" nolabel="1" options="{'no_open':True}"/></div><field name="preview_html" widget="html" readonly="1" nolabel="1"/><group><field name="resource_ref" widget="omni_template_record" options="{'no_create':True,'no_open':True}"/></group><field name="preview_note" readonly="1" nolabel="1" class="text-muted small"/></div>
+</div></page>
+<page string="Options" name="options"><group><group><field name="purpose_id" options="{'no_create':True}"/><field name="company_id" options="{'no_create':True}"/></group><group><field name="language_id" options="{'no_create':True}"/><field name="approval_type_id" options="{'no_create':True}"/></group></group><p class="text-muted">Saving does not send, publish or approve content.</p></page>
+</notebook>
+</sheet></form>
+</field></record>
+<record id="action_templates" model="ir.actions.act_window"><field name="name">Templates</field><field name="res_model">omni.template</field><field name="view_mode">list,form</field><field name="search_view_id" ref="template_search"/><field name="path">omnichannel-templates</field><field name="help" type="html"><p class="o_view_nocontent_smiling_face">Create your first channel template</p><p>Write once, fill record fields and preview before use.</p></field></record>
+<menuitem id="menu_templates_app" name="Omnichannel Templates" action="action_templates" sequence="36" groups="omni_channel.group_omni_user" web_icon="omni_template,static/description/icon.svg"/>
+<menuitem id="menu_workspace_channels" name="Channels" parent="menu_templates_app" action="omni_channel.action_channels" sequence="10"/>
+<menuitem id="menu_workspace_inbox" name="Inbox" parent="menu_templates_app" action="omni_channel.action_inbox" sequence="20"/>
+<menuitem id="menu_workspace_templates" name="Templates" parent="menu_templates_app" action="action_templates" sequence="30"/>
+<menuitem id="menu_templates" name="Templates" parent="omni_channel.menu_omni_technical" action="action_templates" sequence="15" groups="base.group_system"/>
+</odoo>

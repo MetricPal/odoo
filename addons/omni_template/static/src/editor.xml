@@ -1,0 +1,21 @@
+<templates xml:space="preserve">
+<t t-name="omni_template.Format">
+    <span t-if="this.props.readonly" t-out="this.choices.find(item => item[0] === this.props.record.data[this.props.name])?.[1] || ''"/>
+    <select t-else="" class="o_input" t-att-id="this.props.id" t-on-change="this.change">
+        <option t-if="!this.props.record.data[this.props.name]" value="">Choose content type</option>
+        <option t-foreach="this.choices" t-as="item" t-key="item[0]" t-att-value="item[0]" t-att-selected="item[0] === this.props.record.data[this.props.name]" t-out="item[1]"/>
+    </select>
+</t>
+<t t-name="omni_template.Body">
+    <div class="ot_editor">
+        <div t-if="!this.props.readonly" class="ot_toolbar">
+            <button type="button" class="btn btn-link" t-on-click="this.onDynamicPlaceholderOpen">Insert field</button>
+            <button t-if="this.canFormat" type="button" class="btn btn-link fw-bold" title="Bold" aria-label="Bold" t-on-click="() => this.format('bold')">B</button>
+            <button t-if="this.canFormat" type="button" class="btn btn-link fst-italic" title="Italic" aria-label="Italic" t-on-click="() => this.format('italic')">I</button>
+            <span class="ms-auto text-muted small"><t t-out="this.count"/> characters</span>
+        </div>
+        <t t-call="web.TextField"/>
+    </div>
+</t>
+<t t-name="omni_template.Optional"><button t-if="!this.props.readonly" type="button" class="btn btn-link" t-on-click="this.toggle"><t t-out="this.props.record.data[this.props.name] ? '− ' : '+ '"/><t t-out="this.label"/></button></t>
+</templates>
