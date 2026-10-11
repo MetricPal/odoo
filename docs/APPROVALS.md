@@ -116,3 +116,15 @@ Withdrawing receipt confirmation removes the final milestone and selected sender
 Changing connection configuration similarly clears completion. An unresolved
 attempt cannot be discarded to permit another send. A confirmed receipt permits
 a new configuration to start its own explicitly confirmed diagnostic.
+
+## Slack setup diagnostic
+
+A scoped manager's explicit **Send test message** confirmation permits one fixed
+`Slack connection test successful.` message to the displayed tester's verified
+private Slack conversation and attests agreement. A retained incoming message
+from that tester is required. Blocked identities remain blocked. An actor-audited
+claim commits before I/O; pending, accepted and uncertain results cannot repeat.
+Only a definitive not-sent rejection permits a fresh explicit attempt. Receipt
+confirmation is required to finish; withdrawing it clears completion and selected
+sender. Setup does not enable business dispatch. Normal private text replies use
+the existing recipient consent, Approval Center and dispatch governance.

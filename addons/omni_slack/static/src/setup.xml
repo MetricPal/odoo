@@ -1,0 +1,22 @@
+<templates xml:space="preserve">
+  <t t-name="omni_slack.Credentials">
+    <div class="w-100">
+      <div class="d-flex justify-content-between mb-3"><strong>Slack</strong><a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer">Create a Slack app ↗</a></div>
+      <div t-if="this.saved.workspace"><span t-out="this.saved.name"/><span class="text-success d-block mt-2">App connected</span></div>
+      <t t-else="">
+        <div class="mb-3"><label class="form-label" t-att-for="this.props.id + '_token'">Bot token</label><input class="form-control" type="password" autocomplete="off" t-att-id="this.props.id + '_token'" t-att-value="this.state.token" t-on-input="(ev) => this.state.token = ev.target.value" t-att-disabled="this.state.busy" placeholder="xoxb-…"/></div>
+        <div class="mb-3"><label class="form-label" t-att-for="this.props.id + '_secret'">Signing secret</label><input class="form-control" type="password" autocomplete="off" t-att-id="this.props.id + '_secret'" t-att-value="this.state.secret" t-on-input="(ev) => this.state.secret = ev.target.value" t-att-disabled="this.state.busy" placeholder="From Slack Basic Information"/></div>
+        <div class="mb-3"><label class="form-label" t-att-for="this.props.id + '_app'">App ID</label><input class="form-control" t-att-id="this.props.id + '_app'" t-att-value="this.state.app" t-on-input="(ev) => this.state.app = ev.target.value" t-att-disabled="this.state.busy" placeholder="A…"/></div>
+        <button class="btn btn-primary" type="button" t-on-click="this.connect" t-att-disabled="this.state.busy"><t t-if="this.state.busy">Connecting…</t><t t-else="">Connect Slack</t></button>
+      </t>
+    </div>
+  </t>
+  <t t-name="omni_slack.Guidance" t-inherit="omni_channel.ChannelSetup" t-inherit-mode="extension">
+    <xpath expr="//p[@t-out='this.steps[this.setupState.step].about']" position="replace">
+      <p t-if="this.model.root.data.is_slack">Connect your Slack app, enable receiving, then send a test.</p>
+      <p t-else="" t-out="this.steps[this.setupState.step].about"/>
+    </xpath>
+    <xpath expr="//t[@t-if='this.setupState.step === 1']" position="attributes"><attribute name="t-att-class">{'d-none': this.model.root.data.is_slack}</attribute></xpath>
+    <xpath expr="//t[@t-if='this.setupState.step === 4']" position="attributes"><attribute name="t-att-class">{'d-none': this.model.root.data.is_slack}</attribute></xpath>
+  </t>
+</templates>

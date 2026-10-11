@@ -1408,3 +1408,20 @@ the closed local `cr`. Resolve notification translations through `self.env._`
 before entering the independent diagnostic transactions and pass a scoped
 language/company context to them. Exercise this public action with empty caller
 context and separate real concurrent sessions in the disposable database.
+
+### Slack provider extension (2026-10-11)
+
+Checked the current Odoo 20 `omni.account`, sender/endpoint configuration,
+`verified_events`, native webhook controller, durable event worker, immutable
+`DispatchClaim`, setup milestones, `web_save`/Form and Owl `useProps` APIs.
+Inherited views use additive invisible modifiers; no core or Telegram source
+changes are needed. A field widget saves through the native record then calls
+scoped manager actions; credentials never become ORM fields. Independent claim
+transactions follow the verified WhatsApp execution boundary.
+
+Provider primary references: Slack request signing
+https://docs.slack.dev/authentication/verifying-requests-from-slack/,
+`auth.test`, `message.im`, `conversations.info` and `chat.postMessage` at
+https://docs.slack.dev/reference/. Original bytes and 300-second timestamps are
+verified. Only human IM text is normalized; outbound preflight verifies the DM's
+user identity. No automatic external-send retry is introduced.

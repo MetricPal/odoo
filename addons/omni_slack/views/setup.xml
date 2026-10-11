@@ -1,0 +1,31 @@
+<odoo>
+  <record id="slack_setup" model="ir.ui.view">
+    <field name="name">Slack setup</field><field name="model">omni.channel</field><field name="inherit_id" ref="omni_channel.channel_setup_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside"><field name="is_slack" invisible="1"/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_1')]/field[@name='setup_connection_mode']" position="attributes"><attribute name="invisible" add="is_slack" separator=" or "/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_1')]/group" position="attributes"><attribute name="invisible" add="is_slack" separator=" or "/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_2')]/*" position="attributes"><attribute name="invisible" add="is_slack" separator=" or "/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_4')]/*" position="attributes"><attribute name="invisible" add="is_slack" separator=" or "/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_1')]" position="inside"><field name="slack_credentials_ui" widget="omni_slack_credentials" nolabel="1" invisible="not is_slack" groups="omni_channel.group_omni_manager"/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_2')]" position="inside">
+        <div invisible="not is_slack" groups="omni_channel.group_omni_manager">
+          <group><field name="setup_callback_preview"/></group>
+          <p>Paste this URL into Slack Event Subscriptions. Subscribe to message.im.</p>
+          <p>Bot scopes: im:history, im:read and chat:write. Reinstall the app after changing scopes.</p>
+          <button name="action_setup_enable_receiving" type="object" string="Enable receiving" class="btn-primary" invisible="setup_endpoint_state == 'enabled'" confirm="Enable private text receiving with the displayed retention periods?"/>
+          <span class="text-success" invisible="setup_endpoint_state != 'enabled'">Receiving enabled</span>
+          <group string="Message retention" class="mt-3"><field name="setup_payload_days" readonly="setup_policy_state != 'draft'"/><field name="setup_message_days" readonly="setup_policy_state != 'draft'"/><field name="setup_blocked_days" readonly="setup_policy_state != 'draft'"/></group>
+        </div>
+      </xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_4')]" position="inside">
+        <div invisible="not is_slack" groups="omni_channel.group_omni_manager">
+          <group><field name="slack_tester_id" placeholder="U…" readonly="slack_test_state in ('pending','accepted','unknown')"/><field name="slack_test_text"/></group>
+          <p>Tester: copy your Slack member ID from your profile. Message the app first.</p>
+          <button name="action_slack_send_test" type="object" string="Send test message" class="btn-primary" invisible="slack_test_state in ('pending','accepted','unknown')" confirm="Send the displayed test to this tester? Confirm that the tester agreed."/>
+          <group class="mt-3"><field name="slack_test_state" invisible="not slack_test_state"/><field name="slack_test_received" invisible="slack_test_state not in ('accepted','unknown')"/></group>
+        </div>
+      </xpath>
+    </field>
+  </record>
+</odoo>
