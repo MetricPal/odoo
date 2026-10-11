@@ -1,0 +1,22 @@
+<templates xml:space="preserve">
+  <t t-name="omni_teams.Credentials">
+    <div class="w-100">
+      <div class="d-flex justify-content-between mb-3"><strong>Teams</strong><a href="https://portal.azure.com/#create/Microsoft.AzureBot" target="_blank" rel="noopener noreferrer">Create a Teams bot ↗</a></div>
+      <div t-if="this.saved.tenant"><span t-out="this.saved.name"/><span class="text-success d-block mt-2">App connected</span></div>
+      <t t-else="">
+        <div class="mb-3"><label class="form-label" t-att-for="this.props.id + '_tenant'">Tenant ID</label><input class="form-control" type="text" autocomplete="off" t-att-id="this.props.id + '_tenant'" t-att-value="this.state.tenant" t-on-input="(ev) => this.state.tenant = ev.target.value" t-att-disabled="this.state.busy" placeholder="Microsoft Entra tenant ID"/></div>
+        <div class="mb-3"><label class="form-label" t-att-for="this.props.id + '_secret'">Client secret</label><input class="form-control" type="password" autocomplete="off" t-att-id="this.props.id + '_secret'" t-att-value="this.state.secret" t-on-input="(ev) => this.state.secret = ev.target.value" t-att-disabled="this.state.busy" placeholder="From Microsoft Entra app credentials"/></div>
+        <div class="mb-3"><label class="form-label" t-att-for="this.props.id + '_app'">App ID</label><input class="form-control" t-att-id="this.props.id + '_app'" t-att-value="this.state.app" t-on-input="(ev) => this.state.app = ev.target.value" t-att-disabled="this.state.busy" placeholder="Bot Microsoft app ID"/></div>
+        <button class="btn btn-primary" type="button" t-on-click="this.connect" t-att-disabled="this.state.busy"><t t-if="this.state.busy">Connecting…</t><t t-else="">Connect Teams</t></button>
+      </t>
+    </div>
+  </t>
+  <t t-name="omni_teams.Guidance" t-inherit="omni_channel.ChannelSetup" t-inherit-mode="extension">
+    <xpath expr="//p[@t-out='this.steps[this.setupState.step].about']" position="replace">
+      <p t-if="this.model.root.data.is_teams">Connect your Teams app, enable receiving, then send a test.</p>
+      <p t-else="" t-out="this.steps[this.setupState.step].about"/>
+    </xpath>
+    <xpath expr="//t[@t-if='this.setupState.step === 1']" position="attributes"><attribute name="t-att-class">{'d-none': this.model.root.data.is_teams || this.model.root.data.is_slack}</attribute></xpath>
+    <xpath expr="//t[@t-if='this.setupState.step === 4']" position="attributes"><attribute name="t-att-class">{'d-none': this.model.root.data.is_teams || this.model.root.data.is_slack}</attribute></xpath>
+  </t>
+</templates>

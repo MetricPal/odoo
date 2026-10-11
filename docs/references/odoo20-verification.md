@@ -1425,3 +1425,25 @@ https://docs.slack.dev/authentication/verifying-requests-from-slack/,
 https://docs.slack.dev/reference/. Original bytes and 300-second timestamps are
 verified. Only human IM text is normalized; outbound preflight verifies the DM's
 user identity. No automatic external-send retry is introduced.
+
+### Microsoft Teams provider extension (2026-10-11)
+
+Verified current Odoo 20 source for registry-owned adapter loading, scoped account
+and sender configurations, the protected webhook event store/worker, conversation
+ownership, command `_extra_payload`, immutable `DispatchClaim`, native `Form`,
+`web_save`, additive XML view inheritance and Owl 3 `useProps`/event bindings.
+The Teams addon extends these mechanisms without changing Omnichannel, Telegram
+or WhatsApp source. The catalog entry belongs to the new addon.
+
+Microsoft primary references:
+- https://learn.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-authentication
+- https://learn.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-send-and-receive-messages
+- https://learn.microsoft.com/en-us/microsoftteams/platform/bots/build-conversational-capability
+
+The official personal-chat example includes a `text/html` attachment alongside
+`textFormat: plain`; use its plain text and ignore the alternate HTML. Incoming
+JWT verification checks RS256 signature, OpenID issuer/audience/validity, Teams
+endorsement, service URL and configured tenant/bot. The server records routing
+only after authenticated text normalization, in the same transaction. Approval
+payloads include that protected route; no user-defined egress host is accepted.
+Single-tenant token acquisition uses the fixed Entra endpoint and Connector scope.

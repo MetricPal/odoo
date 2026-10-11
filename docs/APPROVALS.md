@@ -128,3 +128,21 @@ Only a definitive not-sent rejection permits a fresh explicit attempt. Receipt
 confirmation is required to finish; withdrawing it clears completion and selected
 sender. Setup does not enable business dispatch. Normal private text replies use
 the existing recipient consent, Approval Center and dispatch governance.
+
+## Microsoft Teams setup diagnostic and approved replies
+
+A scoped manager's explicit **Send test message** confirmation permits one fixed
+`Teams connection test successful.` message to the selected, recent, authenticated
+personal chat and attests agreement. The tester is shown by name in the chat
+selector. Blocked identities remain blocked. An actor-audited claim commits before
+I/O; pending/accepted/uncertain attempts cannot repeat. A definite not-sent result
+permits a new explicit attempt. Receipt confirmation is required to finish;
+withdrawing it removes completion and deactivates the sender.
+
+For Slack and Teams, **Enable approved replies** authorizes new dispatch claims
+only on the current, tested connection with an active company approval policy.
+It does not grant recipient consent or approve any message. Existing consent,
+Approval Center, sender generation, immutable payload, outbox claim and uncertain
+outcome controls apply. **Pause replies** stops new claims. The existing global
+dispatch scheduler remains separately administered; neither setup nor the channel
+reply button activates it.

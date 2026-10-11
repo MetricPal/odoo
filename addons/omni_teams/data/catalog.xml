@@ -1,0 +1,1 @@
+<odoo noupdate="1"><record id="channel_type_teams" model="omni.channel.type"><field name="name">Microsoft Teams</field><field name="code">teams</field><field name="sequence">4</field><field name="category">messaging</field></record></odoo>

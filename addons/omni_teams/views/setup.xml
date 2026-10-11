@@ -1,0 +1,41 @@
+<odoo>
+  <record id="teams_setup" model="ir.ui.view">
+    <field name="name">Teams setup</field><field name="model">omni.channel</field><field name="inherit_id" ref="omni_channel.channel_setup_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside"><field name="is_teams" invisible="1"/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_1')]/field[@name='setup_connection_mode']" position="attributes"><attribute name="invisible" add="is_teams" separator=" or "/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_1')]/group" position="attributes"><attribute name="invisible" add="is_teams" separator=" or "/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_2')]/*" position="attributes"><attribute name="invisible" add="is_teams" separator=" or "/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_4')]/*" position="attributes"><attribute name="invisible" add="is_teams" separator=" or "/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_1')]" position="inside"><field name="teams_credentials_ui" widget="omni_teams_credentials" nolabel="1" invisible="not is_teams" groups="omni_channel.group_omni_manager"/></xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_2')]" position="inside">
+        <div invisible="not is_teams" groups="omni_channel.group_omni_manager">
+          <group><field name="setup_callback_preview"/></group>
+          <p>Paste this URL into the Azure bot’s Messaging endpoint. Enable its Microsoft Teams channel.</p>
+          <p>Install the Teams app in personal scope before testing.</p>
+          <button name="action_setup_enable_receiving" type="object" string="Enable receiving" class="btn-primary" invisible="setup_endpoint_state == 'enabled'" confirm="Enable private text receiving with the displayed retention periods?"/>
+          <span class="text-success" invisible="setup_endpoint_state != 'enabled'">Receiving enabled</span>
+          <group string="Message retention" class="mt-3"><field name="setup_payload_days" readonly="setup_policy_state != 'draft'"/><field name="setup_message_days" readonly="setup_policy_state != 'draft'"/><field name="setup_blocked_days" readonly="setup_policy_state != 'draft'"/></group>
+        </div>
+      </xpath>
+      <xpath expr="//div[contains(@class, 'o_omni_setup_stage_4')]" position="inside">
+        <div invisible="not is_teams" groups="omni_channel.group_omni_manager">
+          <group><field name="setup_conversation_id" string="Tester" domain="[('channel_id','=',id)]" options="{'no_create': True, 'no_open': True}" readonly="teams_test_state in ('pending','accepted','unknown')"/><field name="teams_test_text"/></group>
+          <p>Message the bot in Teams first, then choose that chat as the tester.</p>
+          <button name="action_teams_send_test" type="object" string="Send test message" class="btn-primary" invisible="teams_test_state in ('pending','accepted','unknown')" confirm="Send the displayed test to this tester? Confirm that the tester agreed."/>
+          <group class="mt-3"><field name="teams_test_state" invisible="not teams_test_state"/><field name="teams_test_received" invisible="teams_test_state not in ('accepted','unknown')"/></group>
+        </div>
+      </xpath>
+    </field>
+  </record>
+  <record id="teams_reply_controls" model="ir.ui.view">
+    <field name="name">Teams approved reply controls</field><field name="model">omni.channel</field><field name="inherit_id" ref="omni_channel.channel_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside"><field name="is_teams" invisible="1"/><field name="setup_completed_steps" invisible="1"/><field name="dispatch_enabled" invisible="1"/></xpath>
+      <xpath expr="//header" position="inside">
+        <button name="action_teams_enable_replies" type="object" string="Enable approved replies" class="btn-primary" groups="omni_channel.group_omni_manager" invisible="not is_teams or setup_completed_steps != 5 or dispatch_enabled" confirm="Enable approved private text replies for this channel? Recipient consent and message approval remain required."/>
+        <button name="action_pause_dispatch" type="object" string="Pause replies" groups="omni_channel.group_omni_manager" invisible="not is_teams or not dispatch_enabled"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>
