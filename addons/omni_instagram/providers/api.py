@@ -1,4 +1,5 @@
 """Instagram professional account through its linked Facebook Page token."""
+import json
 import re
 import time
 from datetime import datetime, timezone, timedelta
@@ -37,11 +38,19 @@ class Adapter:
         node(ig); node(page['id'])
         profile=get(token,ig,fields='id,username')
         if profile.get('id')!=ig or not profile.get('username'): raise ValueError('profile')
-        return {'id':ig,'page':page['id'],'name':'@'+profile['username'],'kind':'organization'}
+        return {'id':ig,'page':page['id'],'name':'@'+profile['username'],'kind':'organization','account_type':profile.get('account_type','')}
     def validate(self,doc):
         operation=doc['operation']; limit=1000 if operation=='message' else 2200
-        if not doc['body'].strip() or len(doc['body'])>limit: raise ValueError('content')
-        if operation=='post' and (not doc.get('image_digest') or not doc.get('media_url')): raise ValueError('photo_required')
+        if (not doc['body'].strip() and doc.get('format')!='story') or len(doc['body'])>limit: raise ValueError('content')
+        if operation=='post' and not doc.get('media') and (not doc.get('image_digest') or not doc.get('media_url')): raise ValueError('photo_required')
+        media=doc.get('media',[]); fmt=doc.get('format','standard')
+        if operation=='post' and media:
+            if fmt=='carousel' and not 2<=len(media)<=10: raise ValueError('count')
+            if fmt!='carousel' and len(media)!=1: raise ValueError('count')
+            if fmt=='standard' and media[0]['kind']!='image': raise ValueError('format')
+            if fmt=='reel' and media[0]['kind']!='video': raise ValueError('format')
+            if fmt not in ('standard','reel','story','carousel'): raise ValueError('format')
+            if fmt=='story' and doc['body'].strip(): raise ValueError('story_caption')
         if operation in ('reply','message'):
             node(doc['target']); node(doc['root'] if operation=='reply' else doc['recipient'])
         if operation not in ('post','reply','message'): raise ValueError('operation')
@@ -64,12 +73,12 @@ class Adapter:
         current=self.verify(token)
         if current['id']!=profile['id'] or current['page']!=profile['page']: raise ValueError('account')
         try:
-            posts=values(edge(token,profile['id'],'media',fields='id,caption,permalink,timestamp,like_count,comments_count',limit=20))
+            posts=values(edge(token,profile['id'],'media',fields='id,caption,permalink,timestamp,like_count,comments_count,media_type,media_product_type',limit=20))
             for media in posts:
                 if time.monotonic()-started>40: missing.append('remaining activity (time limit)'); break
                 node(media['id'])
                 result.append({'external_key':media['id'],'kind':'post','body':media.get('caption','')[:10000],
-                    'author':profile['name'],'permalink':media.get('permalink','') if urlsplit(media.get('permalink','')).scheme=='https' and urlsplit(media.get('permalink','')).hostname in ('instagram.com','www.instagram.com') else '', 'occurred_at':stamp(media.get('timestamp')),'likes':media.get('like_count',0),'comments':media.get('comments_count',0)})
+                    'format':media.get('media_product_type') or media.get('media_type',''), 'author':profile['name'],'permalink':media.get('permalink','') if urlsplit(media.get('permalink','')).scheme=='https' and urlsplit(media.get('permalink','')).hostname in ('instagram.com','www.instagram.com') else '', 'occurred_at':stamp(media.get('timestamp')),'likes':media.get('like_count',0),'comments':media.get('comments_count',0)})
                 try:
                     comments=values(edge(token,media['id'],'comments',fields='id,text,username,timestamp',limit=50))
                     for comment in comments:
@@ -79,6 +88,11 @@ class Adapter:
                 except ProviderError: missing.append('comments')
         except ProviderError: missing.append('posts')
         try:
+            for story in values(edge(token,profile['id'],'stories',fields='id,media_type,media_product_type,timestamp',limit=20)):
+                node(story['id'])
+                result.append({'external_key':story['id'],'kind':'post','format':'STORY','body':'Story','author':profile['name'],'occurred_at':stamp(story.get('timestamp'))})
+        except ProviderError: missing.append('stories')
+        try:
             chats=values(edge(token,profile['page'],'conversations',platform='instagram',limit=20))
             for chat in chats:
                 if time.monotonic()-started>40: missing.append('remaining chats (time limit)'); break
@@ -87,11 +101,44 @@ class Adapter:
         note='Latest 20 posts and chats; up to 50 comments per post and 25 messages per chat.'
         if missing: note+=' Access unavailable: '+', '.join(sorted(set(missing)))+'.'
         return result,note
+    def _publish_media(self,token,profile,doc,container):
+        # One mutation per durable claim. Child IDs and parent ID survive each commit.
+        stage=json.loads(container) if container else {'children':[],'parent':''}
+        media=doc['media']; carousel=doc['format']=='carousel'
+        if carousel and len(stage['children'])<len(media):
+            item=media[len(stage['children'])]
+            body={'image_url' if item['kind']=='image' else 'video_url':item['url'],'is_carousel_item':True}
+            if item['kind']=='video': body['media_type']='VIDEO'
+            stage['children'].append(result_id(post(token,profile['id'],'media',body)))
+            return 'waiting',json.dumps(stage),'Preparing media.'
+        if not stage['parent']:
+            if carousel:
+                for child in stage['children']:
+                    status=get(token,child,fields='id,status_code').get('status_code')
+                    if status=='IN_PROGRESS': return 'waiting',json.dumps(stage),'Media is processing. Continue when ready.'
+                    if status!='FINISHED': return 'failed','','A carousel item failed to process.'
+                body={'media_type':'CAROUSEL','children':','.join(stage['children']),'caption':doc['body']}
+            else:
+                item=media[0]; body={'image_url' if item['kind']=='image' else 'video_url':item['url']}
+                if doc['format']=='reel': body.update(media_type='REELS',share_to_feed=True,caption=doc['body'])
+                elif doc['format']=='story': body['media_type']='STORIES'
+                else: body['caption']=doc['body']
+            stage['parent']=result_id(post(token,profile['id'],'media',body))
+            return 'waiting',json.dumps(stage),'Preparing media.'
+        status=get(token,stage['parent'],fields='id,status_code').get('status_code')
+        if status=='IN_PROGRESS': return 'waiting',json.dumps(stage),'Media is processing. Continue when ready.'
+        if status in ('ERROR','EXPIRED'): return 'failed','','Media processing failed.'
+        if status!='FINISHED': return 'unknown','','Check Instagram before taking further action.'
+        key=result_id(post(token,profile['id'],'media_publish',{'creation_id':stage['parent']}))
+        return 'sent',key,'Instagram accepted the publication.'
     def execute(self,bundle,doc,container=''):
         token=bundle['token']; profile=bundle['profile']
         try:
             self.validate(doc); current=self.verify(token)
             if current['id']!=doc['account'] or current['page']!=profile['page']: raise ValueError('account')
+            if doc['operation']=='post' and doc.get('media'):
+                if doc['format']=='story' and current.get('account_type') not in (None,'','BUSINESS'): raise ValueError('business_required')
+                return self._publish_media(token,profile,doc,container)
             if doc['operation']=='post':
                 if not container:
                     created=post(token,profile['id'],'media',{'image_url':doc['media_url'],'caption':doc['body']})

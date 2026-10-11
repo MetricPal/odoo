@@ -1,7 +1,6 @@
 # Omnichannel Instagram
 
-Manage incoming public activity and private text, publish approved single-photo
-posts, and reply from **Social**.
+Manage incoming public activity and private text, publish approved photos, carousels, reels and stories, and reply from **Social**.
 
 Connect an existing professional Instagram account linked to a Facebook Page,
 using that Page's access token. [Create a Meta app](https://developers.facebook.com/apps/).
@@ -12,8 +11,10 @@ App review/Advanced Access and Page task permissions may be required for real us
 The connector derives the Instagram account from the token's linked Page; no bot
 ID or database name is requested. Graph API version: `v25.0`.
 
-For photo publishing, set the public HTTPS address of this Odoo server and upload
-a JPEG. Do not run a public test post to verify credentials. Connect and sync are
+For media publishing, set the public HTTPS address of this Odoo server and upload
+JPEG photos or MP4 videos. Stories require a business account; Meta enforces
+eligibility. Configure the app secret to receive signed webhooks, then register
+the callback/verify token and fields in the Meta developer portal. Do not run a public test post to verify credentials. Connect and sync are
 read-only provider operations. Every post or reply has its own review and explicit
 execution. Private replies need a recent received message and recipient agreement.
 

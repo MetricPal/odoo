@@ -139,6 +139,69 @@ def exercise(env, directory):
         fake.env=env(user=env.ref('base.public_user').id, su=False)
         with patch.object(media,'request',fake): check.assertEqual(media.SocialMedia().image(token).status_code,404)
         check.assertEqual(photo.approval_request_id.with_user(approver).action_execute()['res_id'],photo.id)
+        # Ordered carousel evidence freezes child rows as well as the parent.
+        carousel=Publications.create({'name':'Ordered carousel','connection_id':ig.id,'body':'Ordered caption','reason':'QA','format':'carousel',
+            'media_ids':[fields.Command.create({'sequence':seq,'name':f'photo{seq}.jpg','file':base64.b64encode(image.getvalue()).decode('ascii')}) for seq in (20,10)]})
+        check.assertEqual(carousel.media_ids.mapped('sequence'),[10,20])
+        for user in (outsider,portal):
+            with check.assertRaises(AccessError): carousel.media_ids.with_user(user).read(['file'])
+        carousel.action_submit(); carousel.approval_request_id.with_user(approver).action_approve()
+        check.assertEqual([m['name'] for m in carousel.payload['media']],['photo10.jpg','photo20.jpg'])
+        for vals in ({'sequence':99},{'file':base64.b64encode(b'forged').decode('ascii')},{'publication_id':pub.id}):
+            with check.assertRaises(AccessError): carousel.media_ids[:1].write(vals)
+        with check.assertRaises(AccessError): carousel.media_ids[:1].unlink()
+        with check.assertRaises(AccessError): env['omni.social.media'].with_user(operator).with_context(default_publication_id=carousel.id).create({'name':'forged.jpg','file':base64.b64encode(image.getvalue()).decode('ascii')})
+        token=carousel.sudo().media_token; env.cr.commit(); stages=[]
+        def multi_stage(bundle,doc,container):
+            stages.append(container or '')
+            with env.registry.cursor() as cr:
+                fresh=api.Environment(cr,api.SUPERUSER_ID,{})['omni.social.publication'].browse(carousel.id)
+                check.assertEqual(fresh.state,'executing');check.assertEqual(fresh.container_key or '',container or '')
+                fresh_public=api.Environment(cr,env.ref('base.public_user').id,{})
+                fake=SimpleNamespace(env=fresh_public,not_found=lambda:http.Response(status=404),make_response=lambda raw,headers:http.Response(raw,headers=headers))
+                with patch.object(media,'request',fake):
+                    check.assertEqual(media.SocialMedia().image(token,index=0).data,image.getvalue())
+                    check.assertEqual(media.SocialMedia().image(token,index=2).status_code,404)
+            if len(stages)<3:return 'waiting',str(len(stages)),'Preparing media.'
+            return 'sent','carousel-result','Accepted'
+        with patch.object(Instagram,'execute',side_effect=multi_stage):carousel.action_publish()
+        env.cr.rollback();carousel.invalidate_recordset();check.assertEqual(stages,['','1','2']);check.assertEqual(carousel.state,'sent')
+        fake.env=env(user=env.ref('base.public_user').id,su=False)
+        with patch.object(media,'request',fake):check.assertEqual(media.SocialMedia().image(token,index=0).status_code,404)
+        # Probe real MP4 bytes rather than trusting a filename or browser MIME hint.
+        import subprocess
+        video_path=Path(directory)/'qa-reel.mp4'
+        subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','color=c=blue:s=180x320:r=24:d=3','-c:v','libx264','-pix_fmt','yuv420p','-y',str(video_path)],check=True,timeout=20)
+        reel=Publications.create({'name':'Reel QA','connection_id':ig.id,'format':'reel','body':'Video caption','reason':'QA','media_ids':[fields.Command.create({'kind':'video','name':'qa-reel.mp4','file':base64.b64encode(video_path.read_bytes()).decode('ascii')})]})
+        reel.action_submit();check.assertEqual(reel.payload['media'][0]['mime'],'video/mp4');check.assertEqual(reel.payload['media'][0]['duration'],3.0)
+        broken=Publications.create({'name':'Broken MP4','connection_id':ig.id,'format':'reel','body':'Caption','reason':'QA','media_ids':[fields.Command.create({'kind':'video','name':'fake.mp4','file':base64.b64encode(image.getvalue()).decode('ascii')})]})
+        with check.assertRaises(UserError):broken.action_submit()
+        story=Publications.create({'name':'Story QA','connection_id':ig.id,'format':'story','reason':'QA','media_ids':[fields.Command.create({'name':'qa-story.jpg','file':base64.b64encode(image.getvalue()).decode('ascii')})]})
+        story.action_submit();check.assertEqual(story.payload['body'],'');check.assertEqual(story.payload['format'],'story')
+        # Webhook credentials stay in the vault; public requests cannot forge receipts.
+        ig.action_configure_webhook('synthetic-app-secret-123456')
+        check.assertIn('/omni/social/webhook/',ig.webhook_url)
+        check.assertEqual(ig._bundle()['webhook_secret'],'synthetic-app-secret-123456')
+        with check.assertRaises(AccessError):ig.with_user(operator).action_configure_webhook('synthetic-app-secret-123456')
+        with check.assertRaises(AccessError):ig.write({'webhook_pending':True})
+        route=ig.sudo().webhook_route
+        from odoo.addons.omni_social.controllers import webhook as hook_controller
+        import hashlib,hmac,json
+        raw=json.dumps({'object':'instagram','entry':[{'id':'1000','time':123,'changes':[{'field':'comments'}]}]}).encode()
+        header='sha256='+hmac.new(b'synthetic-app-secret-123456',raw,hashlib.sha256).hexdigest()
+        def webhook_request(body,signature):
+            return SimpleNamespace(env=env(user=env.ref('base.public_user').id,su=False),httprequest=SimpleNamespace(method='POST',stream=io.BytesIO(body),headers={'X-Hub-Signature-256':signature}),not_found=lambda:http.Response(status=404),make_response=lambda raw='',headers=None,status=200:http.Response(raw,headers=headers,status=status))
+        with patch.object(hook_controller,'request',webhook_request(raw,'wrong')):check.assertEqual(hook_controller.SocialWebhook().incoming(route).status_code,403)
+        for repeat in range(2):
+            with patch.object(hook_controller,'request',webhook_request(raw,header)):check.assertEqual(hook_controller.SocialWebhook().incoming(route).status_code,200)
+        check.assertEqual(env['omni.social.webhook.receipt'].search_count([('connection_id','=',ig.id)]),1)
+        check.assertTrue(ig.webhook_pending)
+        with patch.object(Instagram,'read',return_value=([incoming],'Webhook fixture')),patch.object(Instagram,'execute',side_effect=AssertionError('Webhook must never publish')):
+            env['omni.social.connection']._cron_webhooks()
+        ig.invalidate_recordset();check.assertFalse(ig.webhook_pending)
+        check.assertEqual(env['omni.social.activity'].search_count([('connection_id','=',ig.id),('external_key','=','mid.QA')]),1)
+        ig.action_disable_webhook()
+        with patch.object(hook_controller,'request',webhook_request(raw,header)):check.assertEqual(hook_controller.SocialWebhook().incoming(route).status_code,404)
         ancient=internal(env['omni.social.activity']).create({'connection_id':ig.id,'external_key':'ancient','kind':'post','body':'Old','occurred_at':fields.Datetime.now()-timedelta(days=100)})
         ig._purge_activity(); check.assertFalse(ancient.exists())
         another=env['res.company'].create({'name':'Other Social Company'})
@@ -152,7 +215,7 @@ def exercise(env, directory):
         check.assertTrue(ig.exists()); check.assertFalse(ig.active); check.assertFalse(ig.connected); check.assertEqual(ig.provider,'unavailable')
         check.assertTrue(photo.exists())
         for row in env['ir.ui.view'].search([('model','in',['omni.social.connection','omni.social.activity','omni.social.publication'])]): row._check_xml()
-        print('PASS: install/upgrade/views, native form, scopes, evidence forgery, distinct approver, immutable payload, committed claim, no duplicate or uncertain retry, stale account, private consent revocation',flush=True)
+        print('PASS: install/upgrade/views, native form, scopes, evidence forgery, distinct approver, immutable payload, committed claim, no duplicate or uncertain retry, stale account, private consent revocation, ordered media immutability, durable automatic stages, real MP4/JPEG validation, signed webhook dedup/disable/inbound-only cron',flush=True)
 
 def main():
     database='social_qa_'+uuid.uuid4().hex

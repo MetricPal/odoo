@@ -1474,3 +1474,27 @@ and `odoo/tools/binary.py`: Python reads return immutable `BinaryValue` objects
 with raw `.content`; RPC writes accept base64 strings/dicts, not Python bytes.
 The social photo hash and response use `.content`, and the native widget handles
 upload encoding. Do not reuse Odoo 18/19 base64-bytes assumptions here.
+
+## Social media and webhook extension — 2026-10-11
+
+Verified native Odoo 20 `fields.Binary` / `BinaryValue.content`, related One2many,
+`fields.Command.create`, row locking, `ir.access` company/team domains, native
+editable list handles, image previews, public HTTP responses and private cron
+methods against this checkout. Media is a scoped child model, not public generic
+attachments. Child edits/reordering/unlink are refused once review starts.
+
+Primary provider references:
+- [Meta's generated IGUser SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/iguser.py): `create_media` supports ordered children, carousel item flag, image/video URLs, media type and share-to-feed; `get_stories` is a distinct edge.
+- [Meta's Instagram collection](https://www.postman.com/meta/workspace/instagram/documentation/23987686-9386f468-7714-490f-9bfc-9442db5c8f00): Facebook Login, Reel create/status/publish flow, business-only Stories and public media fetch.
+- [LinkedIn MultiImage](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/multiimage-post-api?view=li-lms-2026-09): ordered 2–20 owned images through Posts. Organic MultiImage is distinct from sponsored Carousel content.
+- [LinkedIn Images](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api?view=li-lms-2026-09): initialize upload, provider-issued `www.linkedin.com/dms-uploads/` URLs, ownership/status verification; write-only member scope may not allow versioned image GET.
+- [LinkedIn webhooks](https://learn.microsoft.com/en-us/linkedin/shared/api-guide/webhook-validation): GET challenge response and exact raw-body `hmacsha256=` prefix in POST signatures.
+- [LinkedIn Page notifications](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/organizations/organization-social-action-notifications?view=li-lms-2026-09): Page/subscriber-bound notifications, subscription registration and notification ID/modification deduplication.
+
+Meta developer web pages returned HTTP 429/unavailable. Parameter names were
+cross-checked with Meta's official generated SDK and official Postman collection.
+The implementation uses a conservative Instagram 2–10 carousel limit and a local
+64 MB video cap. Live provider acceptance remains unverified. Do not request
+`account_type` on the Facebook Login IGUser verification call: it is absent from
+that SDK's IGUser field schema. Meta enforces business eligibility when creating
+Stories; a known creator profile is rejected locally as well.

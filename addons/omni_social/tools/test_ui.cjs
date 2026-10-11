@@ -12,7 +12,7 @@ const strip=s=>s.replace(/^import .*;\n/gm,'').replace(/\bexport /g,'');
  await page.addScriptTag({content:strip(fs.readFileSync(path.join(root,'addons/omni_social/static/src/credentials.js'),'utf8'))});
  await page.evaluate(async xml=>{
   let calls=0,saves=0,loads=0;
-  window.fakeOrm={call:async(...args)=>{calls++;if(args[1]!=='action_connect')throw Error('Wrong RPC');}};
+  window.fakeOrm={call:async(...args)=>{calls++;if(!['action_connect','action_configure_webhook'].includes(args[1]))throw Error('Wrong RPC');}};
   const record={resId:1,data:proxy({provider:'linkedin',account_kind:'organization'}),save:async()=>{saves++;return true;},model:{load:async()=>{loads++;}}};
   const app=new owl.App({templates:xml,dev:true});
   const component=await app.createRoot(SocialCredentials,{props:{id:'social',name:'credentials_ui',record,readonly:false}}).mount(document.getElementById('mount'));
@@ -20,6 +20,10 @@ const strip=s=>s.replace(/^import .*;\n/gm,'').replace(/\bexport /g,'');
   await component.connect();if(calls!==1||saves!==1||loads!==1||component.state.token)throw Error('Secure save lifecycle failed');
   component.state.token='synthetic';record.save=async()=>false;await component.connect();if(calls!==1)throw Error('RPC after failed save');
   record.data.account_kind='person';await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));if(document.querySelectorAll('input').length!==1)throw Error('Personal profile inputs: '+document.querySelectorAll('input').length+'; '+document.getElementById('mount').innerHTML);
+  record.save=async()=>true;record.data.connected=true;record.data.provider='instagram';component.state.secret='synthetic-app-secret';
+  await component.webhook();if(calls!==2||component.state.secret)throw Error('Webhook secret lifecycle failed');
+  record.data.account_kind='person';record.data.provider='linkedin';await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));if(document.querySelector('[id$="_secret"]'))throw Error('Personal LinkedIn webhook exposed');
+  record.data.account_kind='organization';record.data.connected=false;
   window.socialComponent=component;window.socialRecord=record;
  },fs.readFileSync(path.join(root,'addons/omni_social/static/src/credentials.xml'),'utf8'));
  for(const width of [1200,360]){await page.setViewportSize({width,height:800});if(await page.locator('#mount').evaluate(el=>el.scrollWidth>el.clientWidth))throw Error('Overflow at '+width);}

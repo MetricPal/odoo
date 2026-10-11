@@ -9,20 +9,20 @@ Install `omni_instagram` and/or `omni_linkedin`, then open **Social → Accounts
 4. An assigned, different team member reviews the exact content in Approval Center.
 5. **Publish / send** executes the approved action once.
 
-Instagram photos use a public HTTPS server address. Upload a JPEG; the approved
-photo is served to Meta through an expiring token URL. If processing is pending,
-Publish resumes that same container without uploading a second photo.
+Choose a format and add files in order. Approval shows the exact files and order.
+Instagram uses the account’s public HTTPS address for expiring media URLs.
+Publish prepares media automatically and resumes saved IDs if processing is pending.
 
 | Connector | Incoming | Outgoing |
 |---|---|---|
-| Instagram | Latest posts, comments, engagement counts, private text | Single JPEG photo with caption; public/private text replies |
-| LinkedIn company Page | Permitted posts, comments, engagement counts | Public text posts and replies |
-| LinkedIn personal profile | Same reads only with approved restricted access | Public text posts and permitted replies |
+| Instagram | Latest posts/reels, active stories, comments, engagement counts, private text | Photos, mixed carousels, reels, business-only stories; public/private text replies |
+| LinkedIn company Page | Permitted posts, comments, engagement counts | Public text/image/multi-image posts and replies |
+| LinkedIn personal profile | Same reads only with approved restricted access | Public text/image/multi-image posts and permitted replies |
 
-Sync is manual and bounded: latest 20 posts/chats, up to 50 comments per post and
+Sync is manual or triggered by signed webhooks, and bounded: latest 20 posts/chats, up to 50 comments per post and
 25 messages per Instagram chat, with a time limit. The account reports unavailable
 read access. It does not scrape data or bypass app approval. LinkedIn private
-messages, reels/stories/carousels, attachments, ads, full analytics and scheduled
+messages, LinkedIn stories/reels, private media replies, ads, full analytics and scheduled
 publishing are not implemented in this version.
 
 Private Instagram replies require manager-confirmed recipient agreement, a fresh
@@ -45,3 +45,19 @@ reported as acceptance, not proof of audience delivery. A crashed in-flight clai
 requires checking the platform; no unsafe reset button is offered.
 
 No Omnichannel, Telegram, WhatsApp, Slack or Teams source files are changed.
+
+Media limits: JPEG under 8 MB, MP4 under 64 MB (H.264/HEVC, 23–60 fps). Reels
+are 3–900 seconds; story/carousel videos 3–60 seconds. Instagram carousels use
+2–10 files; LinkedIn uses 2–20 photos. Stories have no caption. `ffprobe` is required.
+LinkedIn image publishing requires permission to read asset ownership/status.
+
+For webhooks, set the public HTTPS address, enter **App secret**, then configure.
+Register the shown callback in the developer portal; Meta also needs the shown
+verify token and selected fields. LinkedIn requires approved webhook access and
+a Page social-action event subscription. These registrations are external. The
+receiver verifies signatures, deduplicates, and queues account-scoped read-only
+sync each minute. It does not dispatch or infer private-message agreement.
+Webhook hints coalesce bounded snapshots, not a full event/deletion archive.
+Callbacks are account-scoped: use a dedicated app/subscription for each account
+when the platform provides only one callback per app. Disable stops local receiving; remove external subscriptions in the portal.
+Live delivery and publishing still need account-based verification.

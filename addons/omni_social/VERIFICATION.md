@@ -1,7 +1,7 @@
 # Verification
 
 Offline checks, 2026-10-11:
-- 30 transport/provider tests: fixed hosts, bounded responses, TLS/no redirects or
+- 44 transport/provider/webhook tests: fixed hosts, bounded responses, TLS/no redirects or
   ambient proxies, token injection, scoped encrypted vault, profile/Page ownership,
   restricted LinkedIn reads, exact actor/destination, Instagram 24-hour private
   window, photo processing stages, no second upload, ambiguous-result handling.
@@ -11,14 +11,18 @@ Offline checks, 2026-10-11:
   distinct approver, frozen content, stale account, revoked private agreement,
   committed claim visible before simulated POST, no duplicate/unknown retry,
   immutable photo hash, staged photo continuation and activity retention.
+- Ordered-media extension: exact child order/hash, frozen child CRUD/defaults,
+  scoped file access, per-index public serving only during claims, automatic staged
+  continuation with committed IDs, real MP4 probing and disguised-JPEG rejection, signed endpoint rejects tampering, duplicates
+  produce one receipt, inbound cron imports without calling execute, disable works.
 - Actual Owl 3 widget test: rendering, conditional Page ID, save/RPC/reload,
-  transient token clearing, failed-save guard, desktop/mobile bounds.
+  transient token/app-secret clearing, failed-save guard, desktop/mobile bounds.
 - Existing connector regressions: 18 Slack, 19 Teams, 44 WhatsApp, 6 Omnichannel
   view and 4 Telegram view tests.
 
 Commands:
 ```
-.venv/bin/python -m unittest discover -s addons/omni_social/tests -p test_protocol.py
+.venv/bin/python -m unittest discover -s addons/omni_social/tests -p 'test_*.py'
 .venv/bin/python addons/omni_social/tools/check_install.py
 OMNI_NODE_MODULES=/path/to/node_modules node addons/omni_social/tools/test_ui.cjs
 ```
@@ -26,4 +30,6 @@ OMNI_NODE_MODULES=/path/to/node_modules node addons/omni_social/tools/test_ui.cj
 The install tool blocks `requests.Session.request/get/post`, SMTP and account
 invitations and deletes its disposable database. Provider fixtures are synthetic;
 they do not prove Meta/LinkedIn app approval, real payload compatibility, public
-media URL reachability, live publication or delivery. No live content was sent.
+media URL reachability, live publication or delivery. No live content was sent. Final regression total: 135 pure tests (44 social,
+18 Slack, 19 Teams, 44 WhatsApp, 6 Omnichannel views, 4 Telegram views), plus
+the real Odoo database and Owl browser checks.

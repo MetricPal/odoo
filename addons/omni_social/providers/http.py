@@ -36,3 +36,20 @@ def call(host, path, token, *, method='GET', params=None, body=None, headers=Non
     finally:
         if response is not None: response.close()
         session.close()
+
+
+def upload_linkedin(url, token, raw):
+    """Only provider-issued LinkedIn image upload URLs. Never follow redirects."""
+    from urllib.parse import urlsplit
+    p=urlsplit(url)
+    if p.scheme!='https' or p.hostname!='www.linkedin.com' or p.port not in (None,443) or p.username or p.password or p.fragment or not p.path.startswith('/dms-uploads/') or len(url)>4096 or not 0<len(raw)<=8*1024*1024:
+        raise ValueError('upload_endpoint')
+    if not isinstance(token,str) or not token or '\r' in token or '\n' in token: raise ValueError('token')
+    session=requests.Session(); session.trust_env=False; response=None
+    try:
+        response=session.request('PUT',url,data=raw,headers={'Authorization':'Bearer '+token,'Content-Type':'image/jpeg'},timeout=(5,30),allow_redirects=False,verify=True,stream=True)
+        if not 200<=response.status_code<300: raise ProviderError('upload',True)
+    except requests.RequestException: raise ProviderError('upload',True) from None
+    finally:
+        if response is not None: response.close()
+        session.close()

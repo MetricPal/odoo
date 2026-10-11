@@ -44,3 +44,41 @@ A process crash leaves Publishing and requires platform inspection. No automatic
 retry, scheduler or public test post is enabled. Rejected actions remain retained;
 a new draft needs new review. Approval/configuration/consent changes invalidate
 future claims, but cannot recall an already claimed external request.
+
+## Media and webhook extension
+
+Supported formats now include Instagram JPEG photos, mixed 2–10 item carousels,
+MP4 reels and photo/video stories (business accounts), plus LinkedIn single JPEG
+and 2–20 image organic MultiImage posts. Files and order are included in approval.
+Existing single-photo drafts remain supported. Ads, LinkedIn Instagram-style
+stories/reels, scheduling and unsolicited private messaging remain outside scope.
+
+```mermaid
+flowchart LR
+  Format[Format and ordered files] --> Review[Exact media review]
+  Review --> Claim[Committed claim]
+  Claim --> Upload[One media mutation]
+  Upload --> Save[Commit returned asset/container ID]
+  Save --> Claim
+  Save --> Processing[Processing: resume same IDs]
+  Claim --> Publish[Final approved publication]
+  Signature[Signed account-bound webhook] --> Dedup[Deduplicate hints]
+  Dedup --> Sync[Bounded provider reads]
+  Sync --> Activity
+```
+
+Preparation proceeds automatically within the explicit Publish action, with each
+stage committed separately; it stops on processing, uncertainty or a 40-second
+budget between stages. There is no outbound scheduler. Media URLs cease serving
+after sent/failed/cancelled/expired or account revision changes. Reels are also
+identified in incoming media; active stories are read from the stories edge.
+
+Webhooks: manager enters the app secret in an ephemeral password input; it goes
+into the encrypted account vault. The callback/verify token is shown for developer
+portal registration. Registration/subscription creation remains external, not an
+automatic promise. LinkedIn supports approved Page social-action notifications,
+not personal profile webhooks. Signed notifications are account/subscriber scoped,
+deduplicated, and queue bounded read-only sync. The queue retains only digests,
+not raw private payloads, for 90 days. It coalesces events; it is not a complete
+historical event archive and does not reconcile deleted comments. Manual sync
+remains available for recovery. Tokens or app permission loss can stop reads.

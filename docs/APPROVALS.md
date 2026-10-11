@@ -163,3 +163,14 @@ from private-message consent. Installing or connecting a provider never authoriz
 publishing. Approved photo URLs serve only the immutable JPEG during a current
 claim. The manager-selected activity retention policy authorizes daily pruning of
 imported snapshots; immutable review/execution evidence is retained separately.
+
+Social media review freezes the chosen format and ordered media IDs, filenames,
+MIME types, descriptions and SHA-256 digests. Child media cannot be added, edited,
+removed or reordered after submission. Instagram image/video URLs expose only
+these frozen bytes during a current approved claim. LinkedIn uploads go only to
+validated provider-issued upload endpoints; asset ownership and AVAILABLE status
+are checked before publishing. Each accepted preparation result commits before
+the next mutation. Uncertain attempts stop without retry. One Publish action
+continues preparation for a bounded period; pending processing resumes saved IDs.
+Signed webhook hints authorize read-only inbound synchronization only. They never
+create recipient agreement, approve a publication, or invoke provider dispatch.

@@ -15,7 +15,7 @@ ig=load('social_test_ig','addons/omni_instagram/providers/api.py')
 li=load('social_test_li','addons/omni_linkedin/providers/api.py')
 PROFILE={'id':'urn:li:person:SELF','name':'QA','member':'urn:li:person:SELF','kind':'person'}
 DOC={'account':PROFILE['id'],'operation':'post','body':'Hello','image_digest':''}
-IG={'id':'100','page':'200','name':'@qa','kind':'organization'}
+IG={'id':'100','page':'200','name':'@qa','kind':'organization','account_type':''}
 IGDOC={'account':'100','operation':'post','body':'Caption','image_digest':'hash','media_url':'https://social.example/image'}
 
 class Protocol(unittest.TestCase):

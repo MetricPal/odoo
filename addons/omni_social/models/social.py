@@ -3,6 +3,7 @@ import hashlib
 import io
 import secrets
 import uuid
+import time
 from datetime import timedelta
 from urllib.parse import urlsplit
 from PIL import Image
@@ -120,7 +121,7 @@ class Connection(models.Model):
             'provider':self.provider,'account_key':profile['id'],'token':token,'profile':profile})
         self.env.cr.postrollback.add(lambda: vault.remove(ref,self.env.cr.dbname))
         internal(self).write({'credential_reference':ref,'connected':True,'account_key':profile['id'],
-            'profile_name':profile['name'],'profile':profile,'revision':self.revision+1})
+            'profile_name':profile['name'],'profile':profile,'revision':self.revision+1,'webhook_enabled':False,'webhook_pending':False,'webhook_route':False,'webhook_verify':False})
         self._audit('social.connected',_('Social account verified; publishing still requires approval.'))
         return True
 
@@ -181,7 +182,8 @@ class Activity(models.Model):
     likes=fields.Integer()
     comments=fields.Integer()
     consent=fields.Boolean(readonly=True,copy=False,string='Recipient agreed to replies')
-    _provider_fields={'external_key','root_key','kind','body','author','recipient_key','thread_key','occurred_at','likes','comments','permalink'}
+    format=fields.Char(readonly=True,string='Format')
+    _provider_fields={'format','external_key','root_key','kind','body','author','recipient_key','thread_key','occurred_at','likes','comments','permalink'}
     @api.depends('author','body','kind')
     def _compute_display_name(self):
         for row in self: row.display_name=(row.author or dict(self._fields['kind'].selection).get(row.kind,'Activity'))+': '+(row.body or '')[:80]
@@ -223,12 +225,14 @@ class Publication(models.Model):
     provider=fields.Selection(related='connection_id.provider')
     operation=fields.Selection([('post','Post'),('reply','Public reply'),('message','Private reply')],string='Action',default='post',required=True)
     target_id=fields.Many2one('omni.social.activity',string='Reply to',ondelete='set null',check_company=True)
-    body=fields.Text(string='Content',required=True)
+    body=fields.Text(string='Content')
     image=fields.Binary(string='Photo',attachment=False)
+    format=fields.Selection([('standard','Post'),('carousel','Carousel'),('reel','Reel'),('story','Story')],default='standard',required=True)
+    media_ids=fields.One2many('omni.social.media','publication_id',string='Media',copy=True)
     reason=fields.Text(string='Reason',required=True)
     requester_id=fields.Many2one('res.users',default=lambda self:self.env.user,readonly=True,required=True)
     state=fields.Selection([('draft','Draft'),('pending','In review'),('approved','Approved'),('executing','Publishing'),
-        ('waiting','Processing photo'),('sent','Published'),('failed','Not sent'),('unknown','Check platform'),('cancelled','Cancelled')],default='draft',readonly=True,copy=False)
+        ('waiting','Processing media'),('sent','Published'),('failed','Not sent'),('unknown','Check platform'),('cancelled','Cancelled')],default='draft',readonly=True,copy=False)
     approval_request_id=fields.Many2one('approval.center.request',readonly=True,copy=False,ondelete='restrict')
     payload=fields.Json(readonly=True,copy=False)
     payload_hash=fields.Char(readonly=True,copy=False)
@@ -240,11 +244,15 @@ class Publication(models.Model):
     media_token=fields.Char(readonly=True,copy=False,groups='omni_channel.group_omni_manager')
     claim_key=fields.Char(readonly=True,copy=False)
     _protected={'company_id','purpose_id','requester_id','state','approval_request_id','payload','payload_hash','policy_hash','expires_at','container_key','result_key','result_note','media_token','claim_key'}
+    @api.onchange('format')
+    def _onchange_format(self):
+        if self.format=='story': self.body=False
+        if self.connection_id.provider=='linkedin' and self.format in ('reel','story'): self.format='standard'
+
     @api.onchange('connection_id')
     def _onchange_account(self):
         if self.target_id and self.target_id.connection_id!=self.connection_id: self.target_id=False
         if self.connection_id.provider=='linkedin':
-            self.image=False
             if self.operation=='message': self.operation='post'
 
     @api.model_create_multi
@@ -268,7 +276,9 @@ class Publication(models.Model):
     def copy(self,default=None):
         self.ensure_one(); self.check_access('read')
         return self.create({'name':self.name,'connection_id':self.connection_id.id,'operation':self.operation,
-            'target_id':self.target_id.id,'body':self.body,'image':self.image,'reason':self.reason,**(default or {})})
+            'target_id':self.target_id.id,'body':self.body,'image':self.image,'format':self.format,
+            'media_ids':[fields.Command.create({'sequence':m.sequence,'name':m.name,'kind':m.kind,'file':m.file,'alt_text':m.alt_text}) for m in self.media_ids],
+            'reason':self.reason,**(default or {})})
     def _lock(self):
         self.ensure_one(); self.connection_id._lock(); self.flush_recordset()
         self.env.cr.execute('SELECT id FROM omni_social_publication WHERE id=%s FOR UPDATE',[self.id]); self.invalidate_recordset()
@@ -290,16 +300,16 @@ class Publication(models.Model):
             'sequence':policy.approver_sequence,'approvers':[(l.user_id.id,l.sequence,l.required) for l in lines]}
     def _document(self,media_token):
         target=self.target_id
-        if not self.body or not self.body.strip() or not self.reason or not self.reason.strip(): raise UserError(_('Enter content and a reason.'))
+        if (self.format!='story' and (not self.body or not self.body.strip())) or not self.reason or not self.reason.strip(): raise UserError(_('Enter content and a reason.'))
         if self.operation!='post' and not target: raise UserError(_('Choose the received activity to reply to.'))
         if self.operation=='message':
             if self.env['omni.blocked.identity']._matches(self.connection_id,self.connection_id.account_key,target.recipient_key): raise UserError(_('This recipient is blocked.'))
             if target.kind!='message' or not target.consent or not target.occurred_at or target.occurred_at < fields.Datetime.now()-timedelta(hours=24):
                 raise UserError(_('A recent incoming message and recipient agreement are required.'))
-        elif self.operation=='reply' and target.kind not in ('post','comment'): raise UserError(_('Choose a public post or comment.'))
+        elif self.operation=='reply' and (target.kind not in ('post','comment') or target.format=='STORY'): raise UserError(_('Choose a public post or comment.'))
         image_digest=''; media_url=''
         if self.image:
-            if self.provider!='instagram' or self.operation!='post': raise UserError(_('Photos are supported for Instagram posts.'))
+            if self.provider!='instagram' or self.operation!='post' or self.format!='standard' or self.media_ids: raise UserError(_('Use Media for this format; remove the separate photo.'))
             raw=self.image.content
             if len(raw)>8*1024*1024: raise UserError(_('Use a JPEG photo smaller than 8 MB.'))
             try:
@@ -310,12 +320,18 @@ class Publication(models.Model):
             if not self.connection_id.public_url: raise UserError(_('Set the account’s public HTTPS address for photo publishing.'))
             image_digest=hashlib.sha256(raw).hexdigest()
             media_url=self.connection_id.public_url.rstrip('/')+'/omni/social/media/'+media_token
-        doc={'connection':self.connection_id.id,'revision':self.connection_id.revision,'provider':self.provider,
-            'account':self.connection_id.account_key,'operation':self.operation,'body':self.body,
+        media=[m._manifest(media_token,index) for index,m in enumerate(self.media_ids.sorted(lambda m:(m.sequence,m.id)))]
+        if media and (self.operation!='post' or self.image): raise UserError(_('Media belongs to posts only.'))
+        if self.format!='standard' and self.operation!='post': raise UserError(_('Choose Post for replies.'))
+        doc={'format':self.format,'media':media,'connection':self.connection_id.id,'revision':self.connection_id.revision,'provider':self.provider,
+            'account':self.connection_id.account_key,'operation':self.operation,'body':self.body or '',
             'target_content':target.body or '', 'target_author':target.author or '',
             'target':target.external_key or '', 'root':target.root_key or target.external_key or '',
             'thread':target.thread_key or '', 'recipient':target.recipient_key or '',
             'media_url':media_url,'image_digest':image_digest}
+        # Preserve the already-reviewed legacy single-photo/text document shape.
+        if self.payload and 'format' not in self.payload and self.format=='standard' and not media:
+            doc.pop('format'); doc.pop('media')
         try: self.connection_id._provider().validate(doc)
         except ValueError: raise UserError(_('This platform does not support the selected action or content. Check the content and photo.')) from None
         return doc
@@ -357,8 +373,18 @@ class Publication(models.Model):
         key=uuid.uuid4().hex
         internal(self).write({'state':'executing','claim_key':key,'result_note':False})
         self._audit('social.claimed',_('Publishing attempt recorded before contacting the platform.'))
-        return key,self.payload,self.connection_id._bundle(),self.container_key
+        bundle=self.connection_id._bundle()
+        if self.provider=='linkedin': bundle={**bundle,'media_bytes':{m.id:m.file.content for m in self.media_ids}}
+        return key,self.payload,bundle,self.container_key
     def action_publish(self):
+        # Commit each accepted preparation stage before starting the next provider mutation.
+        started=time.monotonic()
+        for unused in range(45):
+            result=self._publish_step()
+            if not result.pop('_social_continue',False) or time.monotonic()-started>40: break
+        return result
+
+    def _publish_step(self):
         """Independent committed claim prevents duplicate POST after outer RPC rollback."""
         self.ensure_one(); self.check_access('read')
         uid=self.env.uid; context={'allowed_company_ids':self.env.companies.ids,'lang':self.env.lang}
@@ -379,4 +405,4 @@ class Publication(models.Model):
             request._audit('executed' if outcome=='sent' else 'failed' if outcome in ('failed','unknown') else 'submitted',_('Social platform result recorded.'),result=outcome)
             row._audit('social.'+outcome,_('Platform result recorded.')); cr.commit()
         self.invalidate_recordset()
-        return {'type':'ir.actions.client','tag':'reload'}
+        return {'type':'ir.actions.client','tag':'reload','_social_continue':outcome=='waiting' and note=='Preparing media.'}

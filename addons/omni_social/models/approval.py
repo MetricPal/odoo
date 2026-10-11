@@ -9,6 +9,8 @@ class Request(models.Model):
     social_purpose_id=fields.Many2one(related='social_publication_id.purpose_id',store=True)
     social_body=fields.Text(related='social_publication_id.body',string='Exact content')
     social_image=fields.Binary(related='social_publication_id.image',string='Approved photo')
+    social_format=fields.Selection(related='social_publication_id.format',string='Format')
+    social_media_ids=fields.One2many(related='social_publication_id.media_ids',string='Media order')
     social_account=fields.Char(related='social_publication_id.connection_id.profile_name',string='Publishing account')
     social_operation=fields.Selection(related='social_publication_id.operation',string='Action')
     social_target=fields.Text(compute='_compute_social_target',string='Reply to')
