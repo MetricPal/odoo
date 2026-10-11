@@ -1,5 +1,5 @@
 {
-    'name': 'Omni-Channel',
+    'name': 'Omnichannel',
     'version': '20.0.1.23.0',
     'summary': 'Manage communication channels, sender readiness and ownership in one governed workspace',
     'category': 'Productivity',

@@ -5,6 +5,15 @@ changing channel setup, forms, cards, lists or provider adapters.
 
 ## Scope and simplicity
 
+- WhatsApp work (2026-10-11): create a separate `omni_whatsapp` addon. Do not
+  edit `omni_channel` or `omni_telegram`, or change their behavior through
+  inheritance, without first presenting a short clear explanation, concrete
+  evidence, a UI mock and a diagram. Record the proposed boundary explicitly.
+- Initial WhatsApp onboarding connects an existing Meta Cloud API account and
+  provides a link for creating a new Meta app; do not build embedded signup first.
+- By default report what is being implemented, the next task and the remaining
+  work. State unfinished capabilities explicitly; do not stop after a foundation
+  and let the user infer that the integration is complete.
 - This is a multi-provider channel module, not a Telegram-only product.
 - The catalog includes WhatsApp Business, Telegram, Slack, Discord, LinkedIn,
   Facebook, Instagram, X, TikTok, YouTube, Threads and Pinterest. A catalog entry

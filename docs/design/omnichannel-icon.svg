@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224" role="img" aria-labelledby="title description">
+  <title id="title">Omnichannel</title>
+  <desc id="description">Six vibrant channel circles arranged evenly around a solid black central hub. Transparent background.</desc>
+  <circle cx="112" cy="40" r="27" fill="#9D5282"/>
+  <circle cx="174.35" cy="76" r="27" fill="#FF878C"/>
+  <circle cx="174.35" cy="148" r="27" fill="#FF474F"/>
+  <circle cx="112" cy="184" r="27" fill="#00AE8B"/>
+  <circle cx="49.65" cy="148" r="27" fill="#00D2BC"/>
+  <circle cx="49.65" cy="76" r="27" fill="#008DEF"/>
+  <circle cx="112" cy="112" r="32" fill="#000000"/>
+</svg>

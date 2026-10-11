@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="176" height="164" viewBox="0 0 176 164" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">Workflow</title>
+  <desc id="description">Three steps connected by alternating arrows, ending with a completion check.</desc>
+  <g stroke="#343A40" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="62" y="20" width="50" height="32" rx="3" fill="#2563EB" stroke="none"/>
+    <rect x="62" y="65" width="50" height="32" rx="3" fill="#7C3AED" stroke="none"/>
+    <rect x="62" y="110" width="50" height="32" rx="3" fill="#0D9488" stroke="none"/>
+    <path d="M18 36H52M45 30L53 36L45 42"/>
+    <path d="M121 36C160 36 160 81 121 81M128 75L121 81L128 87"/>
+    <path d="M53 81C12 81 12 126 53 126M46 120L53 126L46 132"/>
+    <circle cx="135" cy="126" r="14" fill="#16A34A" stroke="none"/>
+    <path d="M128 126L133 131L142 121" stroke="#FFFFFF"/>
+  </g>
+</svg>

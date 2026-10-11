@@ -1386,3 +1386,25 @@ both the core setup form and the Telegram extension using Odoo's
 Draft binding preparation reuses the existing account, sender, endpoint and
 policy ORM mechanisms. Enable/activate/test actions delegate to existing
 permission, approval and audit actions rather than assigning final states.
+
+### WhatsApp unchecked receipt on draft creation (2026-10-11)
+
+Verified `addons/web/static/src/model/relational_model/record.js::_getChanges`:
+new records merge initial values into save changes and omit readonly fields,
+but include editable Boolean defaults even when invisible. Verified
+`addons/web/models/models.py::web_save` calls `create(vals)` for a new record.
+The WhatsApp receipt field's unchecked `False` is therefore normal draft input.
+The WhatsApp create guard allows that neutral value and default, while rejecting
+receipt confirmation, diagnostic state/fingerprint input and forged context
+defaults. Regression checks use native `web_save` and roll back all records.
+
+### WhatsApp committed diagnostic notification (2026-10-11)
+
+Verified `odoo/modules/db.py::create/drop` for disposable clean-install checks,
+`odoo/tests/form.py` for native default/onchange/save testing, and
+`odoo/tools/translate.py::_get_lang` for implicit translation fallback. If the
+caller context has no language, `_()` after nested cursor closure may inspect
+the closed local `cr`. Resolve notification translations through `self.env._`
+before entering the independent diagnostic transactions and pass a scoped
+language/company context to them. Exercise this public action with empty caller
+context and separate real concurrent sessions in the disposable database.

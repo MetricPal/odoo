@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect x="4" y="4" width="72" height="72" rx="18" fill="#245b68"/><path d="M24 26L40 40 58 23M40 40L59 57M40 40L22 57" stroke="#b8e5da" stroke-width="5" stroke-linecap="round"/><circle cx="40" cy="40" r="11" fill="#fff"/><circle cx="23" cy="24" r="7" fill="#8ad5c1"/><circle cx="59" cy="23" r="7" fill="#f1bb70"/><circle cx="60" cy="58" r="7" fill="#8ad5c1"/><circle cx="21" cy="58" r="7" fill="#f1bb70"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224" role="img" aria-labelledby="title description">
+  <title id="title">Omnichannel</title>
+  <desc id="description">Six vibrant channel circles arranged evenly around a solid black central hub. Transparent background.</desc>
+  <circle cx="112" cy="40" r="27" fill="#9D5282"/>
+  <circle cx="174.35" cy="76" r="27" fill="#FF878C"/>
+  <circle cx="174.35" cy="148" r="27" fill="#FF474F"/>
+  <circle cx="112" cy="184" r="27" fill="#00AE8B"/>
+  <circle cx="49.65" cy="148" r="27" fill="#00D2BC"/>
+  <circle cx="49.65" cy="76" r="27" fill="#008DEF"/>
+  <circle cx="112" cy="112" r="32" fill="#000000"/>
+</svg>

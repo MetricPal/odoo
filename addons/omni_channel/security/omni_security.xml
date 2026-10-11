@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <odoo>
   <record id="privilege_omni" model="res.groups.privilege">
-    <field name="name">Omni-Channel</field>
+    <field name="name">Omnichannel</field>
     <field name="category_id" ref="base.module_category_productivity"/>
   </record>
   <record id="group_omni_user" model="res.groups">

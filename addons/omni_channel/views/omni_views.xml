@@ -505,7 +505,7 @@
       <p class="o_view_nocontent_smiling_face">Audit</p>
     </field>
   </record>
-  <menuitem id="menu_omni_technical" name="Omni-Channel" parent="base.menu_custom" groups="base.group_system" sequence="2"/>
+  <menuitem id="menu_omni_technical" name="Omnichannel" parent="base.menu_custom" groups="base.group_system" sequence="2"/>
   <menuitem id="menu_channels" name="Channels" parent="menu_omni_technical" action="action_channels" sequence="10" groups="base.group_system"/>
   <record id="command_list" model="ir.ui.view">
     <field name="name">omni.command.list</field>

@@ -1,16 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50">
-    <rect x="3" y="3" width="44" height="44" rx="10" fill="url(#home-background)"/>
-    <path d="M13 4h24a10 10 0 0 1 10 10v2C34 10 21 12 3 25V14A10 10 0 0 1 13 4Z" fill="#FFF" opacity=".08"/>
-    <g fill="#8B6684">
-        <rect x="10" y="10" width="8" height="8" rx="2"/>
-        <rect x="21" y="10" width="8" height="8" rx="2" opacity=".9"/>
-        <rect x="32" y="10" width="8" height="8" rx="2"/>
-        <rect x="10" y="21" width="8" height="8" rx="2" opacity=".9"/>
-        <rect x="32" y="21" width="8" height="8" rx="2" opacity=".9"/>
-        <rect x="10" y="32" width="8" height="8" rx="2"/>
-        <rect x="21" y="32" width="8" height="8" rx="2" opacity=".9"/>
-        <rect x="32" y="32" width="8" height="8" rx="2"/>
-    </g>
-    <rect x="21" y="21" width="8" height="8" rx="2" fill="#75DDC8"/>
-    <rect x="3.75" y="3.75" width="42.5" height="42.5" rx="9.25" fill="none" stroke="#FFF" stroke-opacity=".14" stroke-width="1.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" role="img" aria-labelledby="title">
+  <title id="title">AI Home</title>
+  <rect x="16" y="16" width="136" height="136" rx="22" fill="#9D5282"/>
+  <rect x="168" y="16" width="136" height="136" rx="22" fill="#FF474F"/>
+  <rect x="16" y="168" width="136" height="136" rx="22" fill="#008DEF"/>
+  <rect x="168" y="168" width="136" height="136" rx="22" fill="#00D2BC"/>
 </svg>

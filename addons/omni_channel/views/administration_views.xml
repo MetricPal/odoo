@@ -71,7 +71,7 @@
   </record>
   <menuitem id="menu_commands" name="Messages" parent="menu_omni_technical" action="action_message_monitoring" sequence="20" groups="base.group_system"/>
   <record id="action_workspace" model="ir.actions.server">
-    <field name="name">Omni-Channel</field>
+    <field name="name">Omnichannel</field>
     <field name="model_id" ref="model_omni_channel"/>
     <field name="group_ids" eval="[(6, 0, [ref('group_omni_user')])]"/>
     <field name="state">code</field>
@@ -79,6 +79,7 @@
   </record>
   <!-- Replace legacy menu groups on upgrade; menuitem groups only adds groups. -->
   <record id="menu_omni_technical" model="ir.ui.menu">
+    <field name="web_icon">omni_channel,static/description/icon.svg</field>
     <field name="group_ids" eval="[(6, 0, [ref('base.group_system')])]"/>
   </record>
   <record id="menu_channels" model="ir.ui.menu">

@@ -94,3 +94,25 @@ pending, successful or uncertain claim cannot be repeated. Only a confirmed
 not-sent outcome permits another explicit attempt. Provider errors are sanitized;
 no automatic retry occurs. Finish setup requires a confirmed successful test and
 selects the verified bot as runtime sender; it does not enable business dispatch.
+
+## WhatsApp setup diagnostic
+
+A scoped manager's explicit **Send test message** confirmation authorizes one
+fixed message (`WhatsApp connection test successful.`) to the displayed tester
+phone number and attests that the tester agreed to receive it. No arbitrary text,
+group, template, business reply, automation or dispatch activation is authorized.
+The tester must have sent a verified private message to this exact endpoint within
+the last 24 hours under the current intake policy. Blocked testers stay blocked.
+
+An actor-audited attempt is committed before the POST. Pending, accepted and
+uncertain attempts cannot repeat. Only a confirmed provider rejection permits
+another explicit attempt. No automatic POST retry is allowed. Provider acceptance
+does not prove delivery: the manager must confirm that the tester received it.
+Finish setup checks the current credential/callback/tester fingerprint and selects
+the sender through its existing public activation action. Business dispatch and
+the scheduler remain disabled. Normal business replies still need their own
+consent and Approval Center policy; this diagnostic grants no permission for them.
+Withdrawing receipt confirmation removes the final milestone and selected sender.
+Changing connection configuration similarly clears completion. An unresolved
+attempt cannot be discarded to permit another send. A confirmed receipt permits
+a new configuration to start its own explicitly confirmed diagnostic.
