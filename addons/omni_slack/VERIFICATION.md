@@ -14,3 +14,7 @@
 
 Live workspace credentials, HTTPS callback routing and real Slack delivery cannot
 be certified by mocks. A real app is required for that final deployment check.
+
+Reply activation/pause controls additionally check manager/team/company access,
+current sender and generation, complete tested setup and active approval policy.
+They never approve an individual message or activate the global scheduler.

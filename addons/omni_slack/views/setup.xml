@@ -28,4 +28,14 @@
       </xpath>
     </field>
   </record>
+  <record id="slack_reply_controls" model="ir.ui.view">
+    <field name="name">Slack approved reply controls</field><field name="model">omni.channel</field><field name="inherit_id" ref="omni_channel.channel_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside"><field name="is_slack" invisible="1"/><field name="setup_completed_steps" invisible="1"/><field name="dispatch_enabled" invisible="1"/></xpath>
+      <xpath expr="//header" position="inside">
+        <button name="action_slack_enable_replies" type="object" string="Enable approved replies" class="btn-primary" groups="omni_channel.group_omni_manager" invisible="not is_slack or setup_completed_steps != 5 or dispatch_enabled" confirm="Enable approved private text replies for this channel? Recipient consent and message approval remain required."/>
+        <button name="action_pause_dispatch" type="object" string="Pause replies" groups="omni_channel.group_omni_manager" invisible="not is_slack or not dispatch_enabled"/>
+      </xpath>
+    </field>
+  </record>
 </odoo>

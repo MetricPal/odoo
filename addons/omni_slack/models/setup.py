@@ -202,3 +202,19 @@ class SlackChannel(models.Model):
             self.env['omni.inbound.policy'].create({'name': self.name, 'channel_id': self.id})
         self.invalidate_recordset()
         return True
+
+    def action_slack_enable_replies(self):
+        self._require_slack_setup()
+        sender,generation=self.selected_sender_id,self.generation
+        if not sender or sender!=self.setup_sender_id or not sender._check_health():
+            raise UserError(_('Finish setup and verify the connected sender first.'))
+        self._lock()
+        self.invalidate_recordset()
+        if (self.selected_sender_id!=sender or self.generation!=generation or self.setup_completed_steps!=5
+                or not self._is_setup_receiving_ready() or not self.slack_test_received
+                or self.sudo().slack_test_fingerprint!=self._slack_test_fingerprint()
+                or not self.approval_type_id.active or self.approval_type_id.company_id!=self.company_id):
+            raise UserError(_('Complete setup and select an active message approval policy for this company.'))
+        internal(self).write({'dispatch_enabled':True})
+        self._audit('slack.approved_replies_enabled',_('Approved private text replies enabled. Recipient consent and message approval remain required.'))
+        return True

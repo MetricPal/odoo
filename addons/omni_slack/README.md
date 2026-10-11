@@ -41,3 +41,11 @@ forms, security, callback, inbox, reply binding and committed diagnostic behavio
 `OMNI_NODE_MODULES=<bundled node_modules> node addons/omni_slack/tools/test_ui.cjs`
 renders the actual Owl 3 field and compiles setup inheritance on desktop/mobile.
 Live Slack authentication/delivery still requires a real workspace and app.
+
+## Approved replies
+
+Select a Message approval type in channel settings, then explicitly click **Enable
+approved replies**. Each recipient still needs confirmed consent and each message
+still passes Approval Center. **Pause replies** stops new claims. A system
+administrator separately enables the existing `omni_channel.cron_dispatch`
+scheduled action; setup and reply activation do not change this global scheduler.
