@@ -1,3 +1,7 @@
 .o_form_view .o_form_sheet_bg:not(:has(.o_form_statusbar)) {
     padding-bottom: var(--formView-sheetBg-padding-top, 8px);
 }
+
+.o_card_record {
+    border-radius: var(--Card-border-radius, 8px);
+}

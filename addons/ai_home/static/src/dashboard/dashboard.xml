@@ -186,7 +186,9 @@
                     class="o_ai_home_section o_ai_home_automations"
                     aria-labelledby="ai_home_automations_title"
                 >
-                    <h2 id="ai_home_automations_title">Automations</h2>
+                    <div class="o_ai_home_section_heading">
+                        <h2 id="ai_home_automations_title">Automations</h2>
+                    </div>
                     <div class="o_ai_home_automation_grid">
                         <button
                             t-foreach="this.automationItems"
