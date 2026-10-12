@@ -1,0 +1,10 @@
+<odoo>
+  <menuitem id="menu_root" name="AI Agent" action="action_agents" web_icon="ai_agent,static/description/icon.svg" groups="ai_agent.group_user" sequence="35"/>
+  <menuitem id="menu_agents" name="Agents" parent="menu_root" action="action_agents" sequence="10"/>
+  <menuitem id="menu_conversations" name="Conversations" parent="menu_root" action="action_conversations" sequence="20"/>
+  <menuitem id="menu_skills" name="Skills" parent="menu_root" action="action_skills" groups="ai_agent.group_manager" sequence="30"/>
+  <menuitem id="menu_sources" name="Sources" parent="menu_root" action="action_sources" groups="ai_agent.group_manager" sequence="40"/>
+  <menuitem id="menu_activity" name="Activity" parent="menu_root" action="action_activity" sequence="60"/>
+  <menuitem id="menu_configuration" name="Configuration" parent="menu_root" groups="ai_agent.group_manager" sequence="70"/>
+  <menuitem id="menu_engines" name="Hermes engines" parent="menu_configuration" action="action_engines" sequence="10"/>
+</odoo>

@@ -1,0 +1,151 @@
+# AI Agent
+
+Supervised Hermes assistants for Odoo 20 Community. Technical module: `ai_agent`.
+Odoo owns identity, data selection, permission enforcement and run evidence;
+Hermes supplies inference through its HTTP run API. No NATS or custom broker.
+
+## Delivered first increment
+
+- Native Agents cards/list/forms, Skills, Sources, Conversations, Activity and
+  Configuration menus; manager and staff experiences have separate permissions.
+- Explicit internal-user audience, selected-company restrictions, bounded reads
+  as the requester, stored scalar-field allowlists and JSON record filters.
+- Reviewed instructions, source preparation for PDF/UTF-8 text, source-reader
+  allowlists and bounded lexical excerpt selection with source names/revisions.
+- Explicit inference request, durable submission claim, unique session/request
+  identifiers, polling, stop requests, append-only evidence and usage attribution.
+- HTTPS or numeric-loopback HTTP host/port allowlist, validated/pinned IP, TLS hostname verification,
+  bounded responses, sanitized errors, no redirects or automatic POST retries.
+- Dedicated tool-free and memory-free Hermes profile readiness checks, provider/
+  model overrides and read-only engine model/tool/capability discovery.
+- Exact-color transparent SVG app icon based on the supplied reference. The
+  image-generated PNG is retained as an alternative, not the exact-color source.
+
+## Setup
+
+1. Provision a dedicated Hermes profile. Disable every agent-callable toolset.
+   Set `memory.memory_enabled: false`, `memory.user_profile_enabled: false`, and
+   disable external memory providers. Start/restart its gateway after applying
+   configuration. Do not use this profile for other applications or users' CLI
+   sessions. The host administrator remains a trusted execution boundary.
+2. Expose its run API and authenticated management API behind HTTPS, or numeric
+   loopback HTTP when Odoo and Hermes run on the same host. These are
+   distinct Hermes surfaces and may have different addresses/credentials. The
+   management API must describe this exact profile; omitted profile scope must
+   not accidentally refer to another profile. Provision separate per-profile
+   origins for this increment; multiplexed profile prefixes are not supported.
+3. Set `AI_AGENT_ENDPOINTS=hermes.example.com:443,management.example.com:443`
+   on the Odoo process. Only deployment-approved origins may be contacted;
+   HTTP is accepted only for `127.0.0.1` or `::1` and is pinned to loopback.
+   Private addresses are permitted over HTTPS for explicitly provisioned endpoints,
+   while link-local, unspecified and multicast addresses are denied.
+4. Provision credentials as `AI_AGENT_SECRET_<NAME>` environment variables.
+   Odoo stores their references only. Never paste keys into records or chat.
+5. Install `ai_agent`, grant AI Agent / User or Manager, add an engine and choose
+   **Check connection**. Read-only live acceptance was verified against the local Hermes installation;
+   an actual model inference test is still outstanding.
+6. Create an agent, choose allowed users, skills, sources and optional data
+   scopes. Prepare sources and approve skills. **Activate** confirms the audience,
+   data disclosure and request limits. **Chat → Send** authorizes one inference
+   request. It authorizes no record change, message or publication.
+
+The worker is installed active but has no work until an explicit user request
+queues a run. It polls at one-minute cron cadence, with bounded batches. Inference exceeding
+15 minutes requests cancellation. Daily request quotas use UTC calendar days. Refresh
+Conversation/Activity to see updated results. Pause blocks new admission and
+requests cooperative cancellation; it cannot retract already submitted context,
+undo remote actions or guarantee that accepted inference stops incurring cost.
+
+## Safety and recovery
+
+The model has no business execution tools in this increment. This is enforced by
+Hermes tool discovery, not an instruction alone. Sources, skills and field/domain
+settings influence inference but never grant execution permissions. Fresh
+requester/company/configuration checks precede each submission and accepting
+results. Configuration changes require renewed activation. Managers supervise
+run evidence in their selected companies; staff see their own conversations.
+
+Claims commit before remote submission. Unknown acceptance is **Needs
+reconciliation** and retains a concurrency slot. No automatic resubmission
+occurs, even when Hermes supports idempotency keys. With a returned remote ID,
+**Check remote outcome** performs a read-only reconciliation. Without an ID,
+inspect Hermes using the request key; no guessed success or retry is offered.
+Stopping is shown separately from confirmed terminal status. Stop POSTs also
+have one committed claim and are not repeated automatically.
+
+No credentials or raw remote errors enter run evidence. Approved source/record
+content is retained in the manager-only request payload; authorized managers
+can inspect it. Evidence retention is currently indefinite and normal RPC
+cannot edit/delete it. Define a reviewed retention policy before production.
+
+## Explicit remaining scope
+
+This is the first internal assistant increment, not Enterprise feature parity.
+Not implemented yet: in-place streaming chat, prior-turn context, contextual
+systray/Discuss/chatter entry points, conversation attachments, semantic/vector
+indexing, website URLs and Documents/Knowledge bridges, writable Odoo MCP tools,
+frozen action approvals, customer channels, engine configuration/model/service
+mutations, external MCP services, runtime skills sync, schedules/workflow/event
+bindings, financial budgets, retention jobs and deployment upgrade migrations.
+These capabilities must remain unavailable until their enforcement and tests
+exist. A source marked Ready has prepared text; it does not claim an embedding
+index. Source-only prompting is guidance, not a guarantee against unsupported
+model claims; evaluate grounded answers and require human review.
+
+## Test
+
+On an isolated database, with Chrome and websocket-client for browser tests:
+
+```sh
+PYTHONPATH=/tmp/ai-agent-test-deps .venv/bin/python odoo-bin \
+  -d ai_agent_test --db_host=/tmp/ai-agent-socket --db_port=55439 \
+  --db_user=moshkou --addons-path=addons -u ai_agent --without-demo \
+  --test-enable --test-tags=/ai_agent --stop-after-init --http-port=8089 \
+  --max-cron-threads=0 --data-dir=/tmp/ai-agent-data
+```
+
+API tests use synthetic responses and provisioned dummy credentials. They send
+no model requests or external messages. Browser tests exercise real Odoo views.
+
+## Verification evidence (2026-10-12)
+
+`/tmp/ai-agent-verified-tests.log`: **39 tests, zero failures/errors**, including
+two real Chrome browser tests, readable PDF extraction, source/record isolation,
+immutable history, transport restrictions and worker recovery. Screenshots were
+visually reviewed. Final clean-install evidence is in
+`/tmp/ai-agent-clean-install.log`, followed by the final Apps-description
+upgrade check in `/tmp/ai-agent-clean-final.log`. No live Hermes acceptance has
+been performed.
+
+Icon asset workflow: the built-in image editor was prompted to preserve the
+supplied border, AI lettering and three stars, remove the background, and use
+`#004692`, `#00bdf6`, `#ffb855` respectively. Its PNG preview has alpha transparency;
+the app uses the faithful SVG reconstruction for exact solid palette values.
+
+## Located local Hermes (2026-10-12)
+
+Read-only inspection found the dashboard at `http://127.0.0.1:9119`, reporting
+version `0.21.3`, source commit `6cd2502`, under `/mnt/agent/hermes-agent`.
+The active home is `/mnt/agent`. Dashboard health/capability paths return HTML;
+it is not the run API. No separate API listener was found. Source contains the
+required run, discovery and model-option routes. The current profile has memory
+and user-profile stores enabled and no explicit disabled toolsets.
+
+A new `odoo-internal` profile is proposed, with run API at
+`http://127.0.0.1:8643` and management at `http://127.0.0.1:9120`.
+`deployment/local-profile.yaml` is a reviewed configuration draft only.
+The user explicitly approved creation/startup. The new profile is running on
+these ports and its readiness was verified through the actual Odoo adapter.
+The existing profile configuration was not changed; no live inference request
+was sent.
+The desired model/provider must be provisioned separately, with no reuse of
+current messaging sessions, scheduled jobs, memory or channel credentials.
+
+Read-only live adapter result: **Ready**, zero enabled callable toolsets, both
+shared memory stores disabled. Verified engine record exists only in the isolated
+`ai_agent_test` database. The existing Odoo service on port 8069 has not been
+reconfigured, restarted or upgraded. To provision its engine later, load the
+private new-profile credential references into that Odoo process environment;
+do not copy keys through chat or expose them in database records. The two new
+Hermes services are detached processes, not systemd units; persistence across
+reboot is not configured. Their PIDs are recorded in the new profile directory.

@@ -1520,3 +1520,44 @@ Odoo 20. `application=False` changes module classification; deactivating existin
 menu records also removes launcher/navigation entries during upgrade. Preserve
 XML IDs, actions and views for future host applications. Both local upgrades were
 checked for inactive menus, unchanged record counts and unchanged dispatch state.
+
+### AI Agent initial internal assistant (2026-10-12)
+
+Checked Community source at `aba6e2a3ab49`, release `20.0`:
+
+- `odoo/addons/base/models/ir_access.py`: Odoo 20 unified `ir.access` permissions
+  and restrictions; group-less company restrictions intersect group permissions.
+- `odoo/orm/models.py`: `check_access`, `check_field_access`, requester-bound
+  `search` and `read(..., load=None)`; explicit stored scalar-field selection.
+- `odoo/orm/fields_binary.py` and `odoo/tools/binary.py`: binary fields return
+  `BinaryValue`; read uploaded bytes through `.content` / `.size`; tests create
+  `BinaryBytes`. Odoo 19 base64 byte assumptions are invalid.
+- `odoo/addons/base/models/ir_cron.py`: `_trigger()` and `_commit_progress()` for
+  explicit queue activation and committed claims before remote POSTs.
+- Native kanban/list/form patterns in `odoo/addons/base/views/res_partner_views.xml`;
+  groups privilege conventions and readonly history in existing project addons.
+- Actual module installation validates native XML and field references. Chrome
+  tests exercise manager configuration and staff-only chat entry points.
+
+Official references checked: Odoo 20 agent documentation source
+`https://github.com/odoo/documentation/blob/20.0/content/applications/productivity/ai/agents.rst`
+and Odoo ORM changelog's version-20 section. Enterprise AI modules are not copied
+or treated as Community dependencies. Hermes API/dashboard/memory documentation
+supports the proposed contracts; a pinned live Hermes version is not yet tested.
+
+Local Hermes source verification: `/mnt/agent/hermes-agent` at `6cd2502`;
+`gateway/platforms/api_server.py` verifies run_submission/run_status discovery,
+run/model/toolset routes and dedicated API listener; `gateway/readiness.py`
+returns `ok`/`degraded`; `hermes_cli/web_routers/config_env.py` confirms the
+management config response shape. Existing dashboard version is 0.21.3 on
+127.0.0.1:9119. No runtime/profile configuration was changed. Numeric-loopback
+HTTP support is explicitly allowlisted and separately tested; HTTPS remains
+mandatory for all non-loopback endpoints.
+
+After explicit user approval, an isolated `odoo-internal` profile was created
+using native Hermes profile/config/env helpers and started as detached processes
+on 127.0.0.1:8643 and 127.0.0.1:9120. The actual Odoo adapter confirms Ready,
+zero callable toolsets and disabled shared/user-profile memory. This Hermes
+version returns toolsets as `{object: list, data: [...]}`; the adapter validates
+that envelope as well as the older documented bare-list contract. A regression
+test covers the actual response. No model inference or business action was sent.

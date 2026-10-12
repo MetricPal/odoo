@@ -1,5 +1,8 @@
 # Workflows implementation and verification
 
+Plan status: **Complete — current scope closed by the user on 2026-10-12.**
+Remaining limitations below are preserved for future work.
+
 Implemented in `addons/workflow_center`, 2026-10-09.
 Entry point: **App menu → Workflows** (administrators).
 

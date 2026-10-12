@@ -1,5 +1,8 @@
 # WhatsApp addon — 2026-10-11
 
+Plan status: **Complete — current scope closed by the user on 2026-10-12.**
+Deferred work and verification gaps below remain recorded for future plans.
+
 Current status: offline verification of the implemented inbound/test v1 is
 complete. See `addons/omni_whatsapp/VERIFICATION.md` for exact evidence and gaps.
 The complete two-way WhatsApp integration remains unfinished; business dispatch

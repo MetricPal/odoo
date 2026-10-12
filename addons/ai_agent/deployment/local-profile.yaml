@@ -1,0 +1,22 @@
+# Reviewable configuration for a NEW profile named odoo-internal.
+# Not applied to /mnt/agent or any running Hermes process.
+# Provider/model and credentials must be explicitly provisioned before startup.
+platform_toolsets:
+  api_server: []
+  cli: []
+  dashboard: []
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+  provider: ""
+skills:
+  write_approval: true
+mcp_servers: {}
+gateway:
+  api_server:
+    enabled: true
+    host: 127.0.0.1
+    port: 8643
+    max_concurrent_runs: 2
+agent:
+  max_turns: 20

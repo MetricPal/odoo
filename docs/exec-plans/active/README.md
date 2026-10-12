@@ -10,5 +10,4 @@ Plans are scoped milestones, not permission to activate external effects.
   implemented. Production activation remains gated. After rollout, P4 covers
   media/business bridges; P5 adds providers and bulk messaging.
 
-- [Workflows](Workflows/Workflows.md): automation home, builder and run history;
-  [implementation and verification](Workflows/implementation.md).
+- [AI Agent](ai_agent/implementation.md): Hermes-backed internal assistant and governed integration roadmap; development is active.
