@@ -78,3 +78,88 @@ class TestAgentUI(HttpCase):
                 console.log('test successful');
             })();
         """, login='ai_ui_staff', timeout=90)
+
+    def test_connection_form_masks_keys_and_hides_references(self):
+        self._capture()
+        self.browser_js('/odoo/action-ai_agent.action_engines', """
+            (async () => {
+                const wait = async p => { for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Connection form missing: '+document.body.innerText.slice(-1000));};
+                await wait(()=>document.querySelector('.o_list_button_add'));
+                document.querySelector('.o_list_button_add').click();
+                await wait(()=>document.querySelector('.o_form_sheet [name="connection_mode"]'));
+                const label=[...document.querySelectorAll('.o_form_sheet label')].find(l=>l.textContent.trim()==='Connection name');
+                if(!label)throw new Error('Connection name label missing');
+                const name=document.querySelector('.o_form_sheet [name="name"] input');
+                if(!name?.placeholder || name.value!=='Local Hermes')throw new Error('Local name/default placeholder missing');
+                if(document.querySelector('[name="secret_reference"], [name="management_secret_reference"]'))throw new Error('Internal credential reference exposed');
+                console.log('ai_agent_capture_local_connection');
+                document.querySelector('[name="connection_mode"] input[data-value="remote"]').click();
+                await wait(()=>document.querySelector('[name="api_key"] input'));
+                const key=document.querySelector('[name="api_key"] input');
+                if(key.type!=='password')throw new Error('API key not masked');
+                if(!document.querySelector('[name="url"] input')?.placeholder?.startsWith('https://'))throw new Error('URL placeholder missing');
+                const advanced=[...document.querySelectorAll('.o_notebook .nav-link')].find(t=>t.textContent.includes('Advanced settings'));
+                advanced.click();
+                await wait(()=>document.querySelector('[name="management_same_connection"] input'));
+                const same=document.querySelector('[name="management_same_connection"] input');
+                if(!same.checked)throw new Error('Same management connection must default on for new remote connection');
+                if(document.querySelector('[name="management_api_key"] input'))throw new Error('Separate key shown while sharing connection');
+                same.click();
+                await wait(()=>document.querySelector('[name="management_api_key"] input'));
+                if(document.querySelector('[name="management_api_key"] input').type!=='password')throw new Error('Management key not masked');
+                console.log('ai_agent_capture_remote_connection');
+                document.querySelector('.o_form_button_cancel').click();
+                await wait(()=>!!document.querySelector('.o_list_button_add'));
+                console.log('test successful');
+            })();
+        """, login='admin', timeout=90)
+
+    def test_source_and_skill_forms_have_clear_names_and_content(self):
+        source = self.env['ai.agent.source'].create({'name': 'UI Product Guide', 'text': 'Prepared reference content for browser verification.'})
+        skill = self.env['ai.agent.skill'].create({'name': 'UI Summarize', 'instructions': 'Summarize permitted records.'})
+        self._capture()
+        self.browser_js(f'/odoo/action-ai_agent.action_sources/{source.id}', """
+            (async () => {
+                const wait = async p => {for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Source form missing: '+document.body.innerText.slice(-1000));};
+                await wait(()=>document.querySelector('.o_form_sheet [name="name"]'));
+                if(![...document.querySelectorAll('label')].some(l=>l.textContent.trim()==='Source name'))throw new Error('Source name label missing');
+                if(document.querySelector('[name="user_ids"]'))throw new Error('Per-person reader selector exposed');
+                if(!document.body.innerText.includes('Content is ready'))throw new Error('Source status unclear');
+                if(!document.body.innerText.includes('Extracted content'))throw new Error('Prepared preview tab not named clearly');
+                console.log('ai_agent_capture_source');
+                console.log('test successful');
+            })();
+        """, login='admin', timeout=90)
+        self.browser_js(f'/odoo/action-ai_agent.action_skills/{skill.id}', """
+            (async () => {
+                const wait=async p=>{for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Skill form missing');};
+                await wait(()=>document.querySelector('.o_form_sheet [name="instructions"]'));
+                if(![...document.querySelectorAll('label')].some(l=>l.textContent.trim()==='Skill name'))throw new Error('Skill name label missing');
+                if(!document.body.innerText.includes('Instructions'))throw new Error('Instructions heading missing');
+                console.log('ai_agent_capture_skill');
+                console.log('test successful');
+            })();
+        """, login='admin', timeout=90)
+
+    def test_conversation_and_request_forms_show_full_answer(self):
+        conversation = internal(self.env['ai.agent.conversation']).create({'name': 'UI conversation', 'agent_id': self.agent.id, 'user_id': self.env.user.id})
+        run = internal(self.env['ai.agent.run']).create({'name': 'UI request', 'conversation_id': conversation.id, 'prompt': 'Explain permitted context', 'answer': 'A full answer for form verification.', 'state': 'completed'})
+        self._capture()
+        self.browser_js(f'/odoo/action-ai_agent.action_conversations/{conversation.id}', """
+            (async()=>{
+                const wait=async p=>{for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Conversation form missing');};
+                await wait(()=>document.body.innerText.includes('A full answer for form verification.'));
+                if(!document.body.textContent.includes('Questions & answers'))throw new Error('Readable conversation heading missing');
+                console.log('ai_agent_capture_conversation');
+                console.log('test successful');
+            })();
+        """, login='admin', timeout=90)
+        self.browser_js(f'/odoo/action-ai_agent.action_activity/{run.id}', """
+            (async()=>{
+                const wait=async p=>{for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Request form missing');};
+                await wait(()=>document.body.innerText.includes('A full answer for form verification.'));
+                if(!document.body.textContent.includes('Your question'))throw new Error('Request question heading missing');
+                console.log('ai_agent_capture_request');
+                console.log('test successful');
+            })();
+        """, login='admin', timeout=90)

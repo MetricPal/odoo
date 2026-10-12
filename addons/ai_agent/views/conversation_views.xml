@@ -1,9 +1,180 @@
 <odoo>
-  <record id="conversation_list" model="ir.ui.view"><field name="name">ai.agent.conversation.list</field><field name="model">ai.agent.conversation</field><field name="arch" type="xml"><list create="0" edit="0" delete="0"><field name="name"/><field name="agent_id"/><field name="user_id" optional="hide"/><field name="write_date" optional="hide"/><field name="company_id" groups="base.group_multi_company" optional="hide"/></list></field></record>
-  <record id="conversation_form" model="ir.ui.view"><field name="name">ai.agent.conversation.form</field><field name="model">ai.agent.conversation</field><field name="arch" type="xml"><form create="0" edit="0" delete="0"><header><button name="action_ask" string="Ask AI" type="object" class="btn-primary"/></header><sheet><h1><field name="name"/></h1><group><field name="agent_id"/><field name="user_id"/><field name="company_id" groups="base.group_multi_company"/></group><field name="run_ids"><list create="0" edit="0" delete="0"><field name="prompt"/><field name="state"/><field name="answer" optional="show"/><field name="error_message" optional="hide"/></list></field></sheet></form></field></record>
-  <record id="action_conversations" model="ir.actions.act_window"><field name="name">Conversations</field><field name="res_model">ai.agent.conversation</field><field name="view_mode">list,form</field><field name="domain">[('user_id', '=', uid)]</field></record>
-  <record id="run_list" model="ir.ui.view"><field name="name">ai.agent.run.list</field><field name="model">ai.agent.run</field><field name="arch" type="xml"><list create="0" edit="0" delete="0"><field name="name"/><field name="agent_id"/><field name="state"/><field name="create_date"/><field name="user_id" optional="hide"/><field name="input_tokens" optional="hide"/><field name="output_tokens" optional="hide"/><field name="runtime_model" optional="hide"/><field name="runtime_provider" optional="hide"/><field name="company_id" optional="hide" groups="base.group_multi_company"/></list></field></record>
-  <record id="run_form" model="ir.ui.view"><field name="name">ai.agent.run.form</field><field name="model">ai.agent.run</field><field name="arch" type="xml"><form create="0" edit="0" delete="0"><header><button name="action_stop" string="Stop" type="object" invisible="state not in ['queued', 'running', 'submitting']" confirm="Stop this request? Hermes stops cooperatively; already accepted work may incur cost."/><button name="action_reconcile" string="Check remote outcome" type="object" groups="ai_agent.group_manager" invisible="state != 'uncertain'"/><field name="state" widget="statusbar"/></header><sheet><h1><field name="name"/></h1><group><field name="agent_id"/><field name="user_id"/><field name="conversation_id"/><field name="error_message" invisible="not error_message"/></group><notebook><page string="Conversation"><h3>Question</h3><field name="prompt"/><h3>Answer</h3><field name="answer"/></page><page string="Activity"><field name="event_ids"><list create="0" edit="0" delete="0"><field name="create_date"/><field name="kind"/><field name="detail"/></list></field><group><field name="started_at"/><field name="finished_at"/><field name="input_tokens"/><field name="output_tokens"/><field name="runtime_provider"/><field name="runtime_model"/></group></page><page string="Technical evidence" groups="ai_agent.group_manager"><group><field name="request_key"/><field name="remote_id"/><field name="configuration_hash"/><field name="context_hash"/></group><field name="request_payload"/></page></notebook></sheet></form></field></record>
-  <record id="run_search" model="ir.ui.view"><field name="name">ai.agent.run.search</field><field name="model">ai.agent.run</field><field name="arch" type="xml"><search><field name="name"/><field name="agent_id"/><filter name="pending" string="In progress" domain="[('state', 'in', ['queued', 'running', 'submitting'])]"/><filter name="attention" string="Needs attention" domain="[('state', 'in', ['failed', 'uncertain'])]"/><filter name="completed" string="Completed" domain="[('state', '=', 'completed')]"/><group><filter name="by_agent" string="Agent" context="{'group_by': 'agent_id'}"/><filter name="by_state" string="Status" context="{'group_by': 'state'}"/></group></search></field></record>
-  <record id="action_activity" model="ir.actions.act_window"><field name="name">Activity</field><field name="res_model">ai.agent.run</field><field name="view_mode">list,form</field></record>
+  <record id="conversation_list" model="ir.ui.view">
+    <field name="name">ai.agent.conversation.list</field>
+    <field name="model">ai.agent.conversation</field>
+    <field name="arch" type="xml">
+      <list create="0" edit="0" delete="0">
+        <field name="name" />
+        <field name="agent_id" />
+        <field name="user_id" optional="hide" />
+        <field name="write_date" optional="hide" />
+        <field name="company_id" groups="base.group_multi_company" optional="hide" />
+      </list>
+    </field>
+  </record>
+  <record id="conversation_form" model="ir.ui.view">
+    <field name="name">ai.agent.conversation.form</field>
+    <field name="model">ai.agent.conversation</field>
+    <field name="arch" type="xml">
+      <form string="Conversation" create="0" edit="0" delete="0">
+        <header>
+          <button name="action_ask" string="Ask AI" type="object" class="btn-primary" />
+        </header>
+        <sheet>
+          <div class="oe_title">
+            <label for="name" string="Conversation" />
+            <h1>
+              <field name="name" />
+            </h1>
+          </div>
+          <group>
+            <field name="agent_id" string="Assistant" />
+            <field name="user_id" string="Requested by" />
+            <field name="company_id" groups="base.group_multi_company" />
+          </group>
+          <separator string="Questions &amp; answers" />
+          <p class="text-muted">Open a request to read its full answer or inspect progress. Refresh this page while a request is processing.</p>
+          <field name="run_ids">
+            <kanban create="0" edit="0" delete="0">
+              <field name="state" />
+              <field name="answer" />
+              <field name="error_message" />
+              <templates>
+                <t t-name="card">
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="fw-bold">Your question</span>
+                    <field name="state" widget="label_selection" />
+                  </div>
+                  <field name="prompt" />
+                  <div class="mt-3" t-if="record.answer.raw_value">
+                    <div class="fw-bold mb-2">Assistant</div>
+                    <field name="answer" />
+                  </div>
+                  <div class="text-warning mt-2" t-if="record.error_message.raw_value">
+                    <field name="error_message" />
+                  </div>
+                </t>
+              </templates>
+            </kanban>
+          </field>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_conversations" model="ir.actions.act_window">
+    <field name="name">Conversations</field>
+    <field name="res_model">ai.agent.conversation</field>
+    <field name="view_mode">list,form</field>
+    <field name="domain">[('user_id', '=', uid)]</field>
+  </record>
+  <record id="run_list" model="ir.ui.view">
+    <field name="name">ai.agent.run.list</field>
+    <field name="model">ai.agent.run</field>
+    <field name="arch" type="xml">
+      <list create="0" edit="0" delete="0">
+        <field name="name" />
+        <field name="agent_id" />
+        <field name="state" />
+        <field name="create_date" />
+        <field name="user_id" optional="hide" />
+        <field name="input_tokens" optional="hide" />
+        <field name="output_tokens" optional="hide" />
+        <field name="runtime_model" optional="hide" />
+        <field name="runtime_provider" optional="hide" />
+        <field name="company_id" optional="hide" groups="base.group_multi_company" />
+      </list>
+    </field>
+  </record>
+  <record id="run_form" model="ir.ui.view">
+    <field name="name">ai.agent.run.form</field>
+    <field name="model">ai.agent.run</field>
+    <field name="arch" type="xml">
+      <form string="Request details" create="0" edit="0" delete="0">
+        <header>
+          <button name="action_stop" string="Stop request" type="object" invisible="state not in ['queued', 'running', 'submitting']" confirm="Request cancellation? Hermes stops cooperatively; accepted work may incur cost." />
+          <button name="action_reconcile" string="Check remote outcome" type="object" groups="ai_agent.group_manager" invisible="state != 'uncertain'" />
+          <field name="state" widget="statusbar" />
+        </header>
+        <sheet>
+          <div class="oe_title">
+            <label for="name" string="Request" />
+            <h1>
+              <field name="name" />
+            </h1>
+          </div>
+          <group>
+            <group string="Context">
+              <field name="agent_id" string="Assistant" />
+              <field name="user_id" string="Requested by" />
+              <field name="conversation_id" />
+            </group>
+            <group string="Timing">
+              <field name="create_date" string="Requested at" />
+              <field name="started_at" />
+              <field name="finished_at" />
+            </group>
+          </group>
+          <div class="alert alert-info" role="status" invisible="state not in ['queued', 'submitting', 'running', 'stop_requested']">This request is processing. Refresh to see its latest state.</div>
+          <div class="alert alert-warning" role="alert" invisible="not error_message">
+            <field name="error_message" nolabel="1" />
+          </div>
+          <notebook>
+            <page string="Question &amp; answer">
+              <separator string="Your question" />
+              <field name="prompt" nolabel="1" />
+              <separator string="Assistant's answer" invisible="not answer" />
+              <field name="answer" nolabel="1" invisible="not answer" />
+            </page>
+            <page string="Activity">
+              <field name="event_ids">
+                <list create="0" edit="0" delete="0">
+                  <field name="create_date" string="Time" />
+                  <field name="kind" string="Event" />
+                  <field name="detail" />
+                </list>
+              </field>
+              <group string="Model usage">
+                <field name="input_tokens" />
+                <field name="output_tokens" />
+                <field name="runtime_provider" string="Provider used" />
+                <field name="runtime_model" string="Model used" />
+              </group>
+            </page>
+            <page string="Technical evidence" groups="base.group_system">
+              <group>
+                <field name="request_key" />
+                <field name="remote_id" />
+                <field name="configuration_hash" />
+                <field name="context_hash" />
+              </group>
+              <separator string="Frozen request payload" />
+              <field name="request_payload" nolabel="1" />
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="run_search" model="ir.ui.view">
+    <field name="name">ai.agent.run.search</field>
+    <field name="model">ai.agent.run</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name" />
+        <field name="agent_id" />
+        <filter name="pending" string="In progress" domain="[('state', 'in', ['queued', 'running', 'submitting'])]" />
+        <filter name="attention" string="Needs attention" domain="[('state', 'in', ['failed', 'uncertain'])]" />
+        <filter name="completed" string="Completed" domain="[('state', '=', 'completed')]" />
+        <group>
+          <filter name="by_agent" string="Agent" context="{'group_by': 'agent_id'}" />
+          <filter name="by_state" string="Status" context="{'group_by': 'state'}" />
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="action_activity" model="ir.actions.act_window">
+    <field name="name">Activity</field>
+    <field name="res_model">ai.agent.run</field>
+    <field name="view_mode">list,form</field>
+  </record>
 </odoo>

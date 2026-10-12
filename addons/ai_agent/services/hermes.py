@@ -19,18 +19,32 @@ class HermesUncertain(UserError):
 
 
 def target(url, resolve=True):
+    if not isinstance(url, str) or not url.strip():
+        raise UserError(_('Enter the Hermes server URL, for example https://hermes.example.com.'))
+    if url != url.strip() or any(character.isspace() or ord(character) < 32 for character in url):
+        raise UserError(_('The Hermes URL must not contain spaces or control characters.'))
     try:
-        parsed = urlsplit(url or '')
-        port = parsed.port or (80 if parsed.scheme == 'http' else 443)
+        parsed = urlsplit(url)
+        port = parsed.port
+        if port is None:
+            port = 80 if parsed.scheme == 'http' else 443
+        if not 1 <= port <= 65535:
+            raise ValueError('invalid port')
     except ValueError:
-        raise UserError(_('Enter a valid Hermes HTTPS address.')) from None
+        raise UserError(_('Enter a valid server URL with a port between 1 and 65535.')) from None
+    if not parsed.scheme or not parsed.hostname:
+        raise UserError(_('Enter a complete Hermes server URL, for example https://hermes.example.com.'))
+    if parsed.username is not None or parsed.password is not None:
+        raise UserError(_('Remove the username or password from the URL. Enter credentials in the API key field.'))
+    loopback_http = parsed.scheme == 'http' and parsed.hostname in ('127.0.0.1', '::1')
+    if parsed.scheme != 'https' and not loopback_http:
+        raise UserError(_('Remote Hermes requires HTTPS. HTTP is allowed only for 127.0.0.1 or ::1 on the Odoo server.'))
+    if parsed.path not in ('', '/') or parsed.query or parsed.fragment:
+        raise UserError(_('Enter the Hermes server base URL only, for example https://hermes.example.com. Remove page paths, search parameters and fragments.'))
     allowed = {v.strip().lower() for v in os.getenv('AI_AGENT_ENDPOINTS', '').split(',') if v.strip()}
     authority = f'{parsed.hostname}:{port}'.lower()
-    loopback_http = parsed.scheme == 'http' and parsed.hostname in ('127.0.0.1', '::1')
-    if (parsed.scheme != 'https' and not loopback_http or not parsed.hostname or parsed.username or parsed.password
-            or parsed.query or parsed.fragment or parsed.path not in ('', '/')
-            or authority not in allowed):
-        raise UserError(_('Use HTTPS, or numeric localhost HTTP, on an origin provisioned in AI_AGENT_ENDPOINTS.'))
+    if authority not in allowed:
+        raise UserError(_('This server (%s) is not approved for AI Agent connections. Ask your system administrator to add this host and port to the deployment endpoint allowlist (AI_AGENT_ENDPOINTS), then restart Odoo.', authority))
     addresses = []
     if resolve:
         try:
@@ -53,11 +67,13 @@ def credential(reference):
     return key
 
 
-def request(url, secret_reference, method, path, payload=None, headers=None):
+def request(url, secret_reference, method, path, payload=None, headers=None, *, credential_value=None):
     if method not in ('GET', 'POST') or not re.fullmatch(r'/[a-zA-Z0-9_./-]+', path) or '..' in path:
         raise UserError(_('Unsupported Hermes operation.'))
     parsed, addresses, port = target(url)
-    key = credential(secret_reference)
+    key = credential_value if credential_value is not None else credential(secret_reference)
+    if not isinstance(key, str) or not key or len(key) > 4096 or '\n' in key or '\r' in key:
+        raise UserError(_('Configure a valid API key.'))
     options = {'port': port, 'timeout': urllib3.Timeout(connect=5, read=20), 'retries': False}
     if parsed.scheme == 'https':
         options.update(assert_hostname=parsed.hostname, server_hostname=parsed.hostname)

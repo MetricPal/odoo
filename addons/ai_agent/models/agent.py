@@ -142,7 +142,13 @@ class Agent(models.Model):
             context['records'].append({'model': access.model_name, 'records': records.read(names, load=None)})
         terms = set(prompt.lower().split())
         for source in self.sudo().source_ids:
-            if self.env.user not in source.user_ids or source.state != 'ready' or not source.active:
+            permitted = source.with_user(self.env.user).sudo(False).with_context(allowed_company_ids=[self.company_id.id])
+            try:
+                permitted.check_access('read')
+            except AccessError:
+                continue
+            source = permitted
+            if source.state != 'ready' or not source.active:
                 continue
             paragraphs = [p.strip() for p in source.extracted_text.split('\n') if p.strip()]
             paragraphs.sort(key=lambda p: len(terms & set(p.lower().split())), reverse=True)

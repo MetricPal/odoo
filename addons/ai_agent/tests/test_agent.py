@@ -92,7 +92,8 @@ class TestAgent(TransactionCase):
         source.write({'text': 'New content'})
         with self.assertRaises(UserError):
             self.agent.with_user(self.user)._usable()
-        self.assertFalse(source.extracted_text)
+        self.assertEqual(source.state, 'ready')
+        self.assertEqual(source.extracted_text, 'New content')
 
     def test_skill_revision_requires_review(self):
         skill = self.env['ai.agent.skill'].create({'name': 'Summarize', 'instructions': 'Explain evidence.'})
@@ -374,3 +375,115 @@ class TestAgent(TransactionCase):
             'memory': {'memory_enabled': False, 'user_profile_enabled': False}}):
             _, tools = self.engine._inspect()
         self.assertEqual(tools[0]['name'], 'terminal')
+
+    def test_masked_keys_are_encrypted_and_never_read_back(self):
+        key = 'synthetic-run-key-for-form-test'
+        engine = self.env['ai.agent.engine'].create({'name': 'Remote connection',
+            'url': 'https://hermes.example.com', 'api_key': key})
+        self.assertFalse(engine.read(['api_key'])[0]['api_key'])
+        self.assertFalse(engine.management_api_key)
+        self.assertTrue(engine.api_key_saved)
+        self.assertEqual(engine._credential('run'), key)
+        self.assertEqual(engine._credential('management'), key)
+        from ..services import secrets
+        path = secrets._root(self.cr.dbname) / (engine.sudo().secret_reference + '.bin')
+        self.assertNotIn(key.encode(), path.read_bytes())
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
+
+    def test_non_system_manager_can_save_key_without_reading_reference(self):
+        manager_user = mail_new_test_user(self.env, login='ai_form_manager', groups='ai_agent.group_manager', notification_type='inbox')
+        engine = self.env['ai.agent.engine'].with_user(manager_user).create({'name': 'Manager connection',
+            'url': 'https://hermes.example.com', 'api_key': 'synthetic-manager-key'})
+        self.assertTrue(engine.api_key_saved)
+        with self.assertRaises(AccessError):
+            engine.read(['secret_reference'])
+        self.assertFalse(engine.read(['api_key'])[0]['api_key'])
+
+    def test_replacing_key_requires_recheck_and_does_not_return_plaintext(self):
+        self.engine.write({'api_key': 'synthetic-replacement'})
+        self.assertEqual(self.engine.state, 'unchecked')
+        self.assertFalse(self.engine.api_key)
+        self.assertEqual(self.engine._credential('run'), 'synthetic-replacement')
+        self.engine.write({'api_key': False, 'name': 'Renamed engine'})
+        self.assertEqual(self.engine._credential('run'), 'synthetic-replacement')
+
+    def test_credentials_bound_to_engine_origin(self):
+        self.engine.write({'api_key': 'synthetic-bound-key'})
+        with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443,second.example.com:443'}):
+            self.engine.write({'url': 'https://second.example.com'})
+        with self.assertRaises(UserError):
+            self.engine._credential('run')
+
+    def test_local_connect_imports_without_key_fields(self):
+        with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': '127.0.0.1:8643,127.0.0.1:9120'}):
+            engine = self.env['ai.agent.engine'].create({'name': 'Local Hermes', 'connection_mode': 'local'})
+        with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': '127.0.0.1:8643,127.0.0.1:9120'}), \
+             patch('odoo.addons.ai_agent.services.secrets.local_keys', return_value={
+                 'API_SERVER_KEY': 'synthetic-local-run', 'HERMES_DASHBOARD_SESSION_TOKEN': 'synthetic-local-management'}), \
+             patch.object(type(engine), '_inspect', return_value=({}, [])), \
+             patch.object(type(engine), '_request', return_value={}):
+            engine.action_check()
+        self.assertEqual(engine.state, 'ready')
+        self.assertEqual(engine._credential('run'), 'synthetic-local-run')
+        self.assertEqual(engine._credential('management'), 'synthetic-local-management')
+
+    def test_source_automatically_prepares_saved_content(self):
+        source = self.env['ai.agent.source'].create({'name': 'Saved content', 'text': 'Automatic preparation'})
+        self.assertEqual(source.state, 'ready')
+        self.assertEqual(source.extracted_text, 'Automatic preparation')
+        source.write({'text': 'Updated knowledge'})
+        self.assertEqual(source.state, 'ready')
+        self.assertEqual(source.extracted_text, 'Updated knowledge')
+
+    def test_sources_follow_native_odoo_group_permissions(self):
+        self.agent.action_pause()
+        source = self.env['ai.agent.source'].create({'name': 'Company policy', 'text': 'Permitted through native Odoo security'})
+        self.agent.write({'source_ids': [Command.set(source.ids)]})
+        self.agent.action_activate()
+        self.assertEqual(self.agent.with_user(self.user)._context_for('Policy')['sources'], [])
+        self.env['ir.access'].create({'name': 'Read company policy', 'model_id': self.env['ir.model']._get('ai.agent.source').id,
+            'group_id': self.env.ref('base.group_user').id, 'operation': 'r', 'domain': "[('id', '=', %s)]" % source.id})
+        context = self.agent.with_user(self.user)._context_for('Policy')
+        self.assertEqual(context['sources'][0]['name'], 'Company policy')
+        self.assertFalse(source.user_ids)
+        self.assertEqual(source.create_uid, self.env.user)
+
+    def test_source_security_shortcut_is_system_only(self):
+        source = self.env['ai.agent.source'].create({'name': 'Access source', 'text': 'Content', 'user_ids': [Command.set(self.user.ids)]})
+        with self.assertRaises(AccessError):
+            source.with_user(self.user).action_access_rights()
+        action = source.action_access_rights()
+        self.assertEqual(action['res_model'], 'ir.access')
+
+    def test_management_checkbox_reuses_run_connection(self):
+        with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443,management.example.com:443'}):
+            engine = self.env['ai.agent.engine'].create({'name': 'Shared connection',
+                'url': 'https://hermes.example.com', 'management_url': 'https://management.example.com',
+                'api_key': 'synthetic-run', 'management_api_key': 'synthetic-management'})
+            self.assertEqual(engine._credential('management'), 'synthetic-management')
+            revision = engine.revision
+            engine.write({'management_same_connection': True})
+            self.assertEqual(engine._credential('management'), 'synthetic-run')
+            self.assertGreater(engine.revision, revision)
+            self.assertEqual(engine.state, 'unchecked')
+            engine.write({'management_same_connection': False})
+            self.assertEqual(engine._credential('management'), 'synthetic-management')
+
+    def test_connection_errors_explain_the_rejected_url(self):
+        cases = [('', 'Enter the Hermes server URL'),
+            ('hermes.example.com', 'complete Hermes server URL'),
+            ('https://hermes.example.com:0', 'port between'),
+            ('https://hermes.example.com:bad', 'port between'),
+            ('https://user:password@hermes.example.com', 'Remove the username'),
+            ('http://remote.example.com', 'Remote Hermes requires HTTPS'),
+            ('https://www.google.com/search/example', 'base URL only'),
+            ('https://hermes.example.com?query=test', 'base URL only'),
+            ('https://hermes.example.com#fragment', 'base URL only'),
+            ('https://hermes.example.com ', 'must not contain spaces'),
+            ('https://unapproved.example.com', 'not approved')]
+        with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443'}):
+            for url, message in cases:
+                with self.subTest(url=url), self.assertRaisesRegex(UserError, message):
+                    hermes.target(url, resolve=False)
+            self.assertEqual(hermes.target('https://hermes.example.com/', resolve=False)[2], 443)

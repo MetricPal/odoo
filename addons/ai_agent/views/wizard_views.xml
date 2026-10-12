@@ -1,1 +1,12 @@
-<odoo><record id="ask_form" model="ir.ui.view"><field name="name">ai.agent.ask.form</field><field name="model">ai.agent.ask</field><field name="arch" type="xml"><form string="Ask AI"><group><field name="agent_id"/><field name="conversation_id" invisible="1"/></group><field name="prompt" placeholder="Ask a question or request a draft…"/><p class="text-muted">Send shares your question and permitted context with the configured model provider. The assistant can explain and draft; it cannot change records or send messages.</p><footer><button name="action_send" type="object" string="Send" class="btn-primary"/><button string="Cancel" special="cancel"/></footer></form></field></record></odoo>
+<odoo>
+  <record id="ask_form" model="ir.ui.view">
+    <field name="name">ai.agent.ask.form</field><field name="model">ai.agent.ask</field>
+    <field name="arch" type="xml"><form string="Ask AI">
+      <group><field name="agent_id" string="Assistant" options="{'no_create': true, 'no_open': true}"/><field name="conversation_id" invisible="1"/></group>
+      <separator string="Your question"/>
+      <field name="prompt" nolabel="1" placeholder="e.g. Summarize my open opportunities and suggest the next follow-up."/>
+      <p class="text-muted mt-3">Send shares your question and permitted context with the configured model provider. The assistant can explain and draft; it cannot change records or send messages.</p>
+      <footer><button name="action_send" type="object" string="Send" class="btn-primary"/><button string="Cancel" special="cancel"/></footer>
+    </form></field>
+  </record>
+</odoo>

@@ -1,11 +1,12 @@
 import io
+import json
 import re
 
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.pdf import PdfReader
 
-from ..services import hermes
+from ..services import hermes, secrets
 from .common import internal, manager, trusted
 
 
@@ -43,12 +44,19 @@ class Engine(models.Model):
     _description = 'Hermes Engine'
     _inherit = 'ai.agent.configuration.mixin'
 
-    name = fields.Char(required=True)
-    url = fields.Char(string='Hermes address', required=True, help='HTTPS origin of a dedicated Hermes profile.')
-    secret_reference = fields.Char(required=True, groups='ai_agent.group_manager',
-                                   help='Provisioned credential reference; never paste a key here.')
-    management_url = fields.Char(required=True, groups='ai_agent.group_manager', string='Hermes management address')
-    management_secret_reference = fields.Char(required=True, groups='ai_agent.group_manager', string='Management credential reference')
+    name = fields.Char(required=True, string='Connection name')
+    connection_mode = fields.Selection([('local', 'Local Hermes'), ('remote', 'Remote Hermes')], default='remote', required=True)
+    url = fields.Char(string='Hermes URL', required=True, help='HTTPS for remote servers; HTTP is permitted only on numeric loopback addresses.')
+    secret_reference = fields.Char(required=True, default='AI_AGENT_SECRET_UNSET', groups=fields.NO_ACCESS, copy=False)
+    management_same_connection = fields.Boolean(string='Management uses the same URL and API key',
+        help='Use the Hermes URL and API key above for management requests as well.')
+    management_url = fields.Char(groups='ai_agent.group_manager', string='Management URL',
+                                 help='Leave blank when management uses the same URL.')
+    management_secret_reference = fields.Char(required=True, default='AI_AGENT_SECRET_UNSET', groups=fields.NO_ACCESS, copy=False)
+    api_key = fields.Char(string='API key', compute='_compute_keys', inverse='_inverse_keys', groups='ai_agent.group_manager', copy=False)
+    management_api_key = fields.Char(string='Management API key', compute='_compute_keys', inverse='_inverse_keys', groups='ai_agent.group_manager', copy=False)
+    api_key_saved = fields.Boolean(compute='_compute_keys', groups='ai_agent.group_manager')
+    management_key_saved = fields.Boolean(compute='_compute_keys', groups='ai_agent.group_manager')
     state = fields.Selection([('unchecked', 'Not checked'), ('ready', 'Ready'), ('blocked', 'Needs attention')],
                              default='unchecked', readonly=True)
     revision = fields.Integer(default=1, readonly=True)
@@ -58,29 +66,127 @@ class Engine(models.Model):
     models_catalog = fields.Json(readonly=True, groups='ai_agent.group_manager')
     status_message = fields.Char(readonly=True)
 
-    @api.constrains('url', 'secret_reference', 'management_url', 'management_secret_reference')
+    @api.depends('secret_reference', 'management_secret_reference')
+    def _compute_keys(self):
+        for engine in self:
+            engine.api_key = False
+            engine.management_api_key = False
+            engine.api_key_saved = bool(engine.sudo().secret_reference and engine.sudo().secret_reference != 'AI_AGENT_SECRET_UNSET')
+            engine.management_key_saved = bool(engine.sudo().management_secret_reference and engine.sudo().management_secret_reference != 'AI_AGENT_SECRET_UNSET')
+
+    def _inverse_keys(self):
+        # create/write consume the submitted values before the ORM can store them.
+        pass
+
+    @api.onchange('connection_mode')
+    def _onchange_connection_mode(self):
+        if self.connection_mode == 'local':
+            self.name = self.name or _('Local Hermes')
+            self.url = 'http://127.0.0.1:8643'
+            self.management_url = 'http://127.0.0.1:9120'
+            self.management_same_connection = False
+        else:
+            if self.url == 'http://127.0.0.1:8643':
+                self.url = False
+            if self.management_url == 'http://127.0.0.1:9120':
+                self.management_url = False
+                self.management_same_connection = True
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        pending = []
+        clean = []
+        for values in vals_list:
+            values = dict(values)
+            pending.append((values.pop('api_key', False), values.pop('management_api_key', False)))
+            if values.get('connection_mode') == 'local':
+                values.setdefault('url', 'http://127.0.0.1:8643')
+                values.setdefault('management_url', 'http://127.0.0.1:9120')
+            else:
+                values.setdefault('management_same_connection', not values.get('management_url') and not values.get('management_secret_reference'))
+            clean.append(values)
+        engines = super().create(clean)
+        for engine, keys in zip(engines, pending):
+            engine._save_keys(*keys)
+        return engines
+
+    def _save_keys(self, api_key=False, management_api_key=False):
+        self.ensure_one()
+        for purpose, token in (('run', api_key), ('management', management_api_key)):
+            if not token:
+                continue
+            if not isinstance(token, str) or len(token) > 4096 or '\n' in token or '\r' in token:
+                raise UserError(_('Enter a valid API key.'))
+            try:
+                if self._credential(purpose) == token:
+                    continue
+            except UserError:
+                pass
+            try:
+                reference = secrets.store({'database': self.env.cr.dbname, 'engine_id': self.id,
+                    'company_id': self.company_id.id, 'purpose': purpose,
+                    'url': self.url if purpose == 'run' else (self.management_url or self.url), 'token': token})
+            except (ValueError, OSError):
+                raise UserError(_('Odoo could not securely save the API key. Ask your system administrator to check private credential storage.')) from None
+            internal(self.sudo()).write({'secret_reference' if purpose == 'run' else 'management_secret_reference': reference})
+
+    def _credential(self, purpose):
+        self.ensure_one()
+        engine = self.sudo()
+        reference = engine.secret_reference if purpose == 'run' else engine.management_secret_reference
+        if purpose == 'management' and self.management_same_connection:
+            return self._credential('run')
+        if purpose == 'management' and reference == 'AI_AGENT_SECRET_UNSET' and (self.management_url or self.url) == self.url:
+            return self._credential('run')
+        if reference.startswith(secrets.PREFIX):
+            try:
+                bundle = json.loads(secrets.load(reference, self.env.cr.dbname))
+                expected = {'database': self.env.cr.dbname, 'engine_id': self.id,
+                            'company_id': self.company_id.id, 'purpose': purpose,
+                            'url': self.url if purpose == 'run' else (self.management_url or self.url)}
+                if any(bundle.get(k) != v for k, v in expected.items()):
+                    raise ValueError('credential binding mismatch')
+                return bundle['token']
+            except Exception:
+                raise UserError(_('Saved credentials do not match this connection. Enter the API key again.')) from None
+        return hermes.credential(reference)
+
+    @api.constrains('url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection')
     def _validate_connection(self):
         for engine in self:
             hermes.target(engine.url, resolve=False)
-            hermes.target(engine.management_url, resolve=False)
+            hermes.target(engine.url if engine.management_same_connection else (engine.management_url or engine.url), resolve=False)
+            if engine.connection_mode == 'local' and engine.management_same_connection:
+                raise ValidationError(_('The local profile uses a separate management connection.'))
+            if engine.connection_mode == 'local' and (engine.url != 'http://127.0.0.1:8643' or engine.management_url != 'http://127.0.0.1:9120'):
+                raise ValidationError(_('Local Hermes uses the provisioned loopback connection. Select Remote Hermes for another server.'))
             if any(not re.fullmatch(r'AI_AGENT_SECRET_[A-Z0-9_]{1,80}', value or '')
-                   for value in (engine.secret_reference, engine.management_secret_reference)):
+                   for value in (engine.sudo().secret_reference, engine.sudo().management_secret_reference)):
                 raise ValidationError(_('Use a provisioned credential reference, not a secret.'))
 
     def write(self, vals):
+        if not trusted(self):
+            manager(self)
+        vals = dict(vals)
+        keys = (vals.pop('api_key', False), vals.pop('management_api_key', False))
         if not trusted(self) and {'state', 'revision', 'checked_at', 'capabilities', 'toolsets', 'models_catalog', 'status_message'} & vals.keys():
             raise AccessError(_('Use Check connection to update readiness.'))
-        if {'url', 'secret_reference', 'management_url', 'management_secret_reference'} & vals.keys():
+        if {'url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection'} & vals.keys():
             for engine in self:
                 super(Engine, engine).write({**vals, 'state': 'unchecked', 'checked_at': False,
                     'capabilities': False, 'toolsets': False, 'models_catalog': False,
                     'revision': engine.revision + 1})
+                engine._save_keys(*keys)
             return True
-        return super().write(vals)
+        result = super().write(vals) if vals else True
+        for engine in self:
+            engine._save_keys(*keys)
+        self.invalidate_recordset(['api_key', 'management_api_key', 'api_key_saved', 'management_key_saved'])
+        return result
 
     def _request(self, method, path, payload=None, headers=None):
         self.ensure_one()
-        return hermes.request(self.url, self.secret_reference, method, path, payload, headers)
+        return hermes.request(self.url, None, method, path, payload, headers, credential_value=self._credential('run'))
 
     def _inspect(self):
         """Fresh inspection before every submission; discovery never grants execution."""
@@ -91,7 +197,7 @@ class Engine(models.Model):
         # Older documented contracts return a bare list; validate both shapes.
         if isinstance(tools, dict) and tools.get('object') == 'list':
             tools = tools.get('data')
-        config = hermes.request(self.management_url, self.management_secret_reference, 'GET', '/api/config')
+        config = hermes.request(self.url if self.management_same_connection else (self.management_url or self.url), None, 'GET', '/api/config', credential_value=self._credential('management'))
         memory = config.get('memory', {}) if isinstance(config, dict) else {}
         if (memory.get('memory_enabled') is not False or memory.get('user_profile_enabled') is not False
                 or memory.get('provider') not in (None, '', 'none')):
@@ -113,6 +219,12 @@ class Engine(models.Model):
         manager(self)
         for engine in self:
             try:
+                if engine.connection_mode == 'local':
+                    try:
+                        keys = secrets.local_keys()
+                    except (OSError, ValueError):
+                        raise UserError(_('Local Hermes credentials are unavailable. Ask your system administrator to provision the isolated local profile.')) from None
+                    engine._save_keys(keys['API_SERVER_KEY'], keys['HERMES_DASHBOARD_SESSION_TOKEN'])
                 capabilities, tools = engine._inspect()
                 catalog = engine._request('GET', '/api/model/options')
                 values = {'state': 'ready', 'status_message': _('Connection verified; tool-free assistant profile.'),
@@ -160,12 +272,32 @@ class Source(models.Model):
     text = fields.Text(string='Content')
     file = fields.Binary(attachment=False)
     filename = fields.Char()
-    extracted_text = fields.Text(readonly=True, groups='ai_agent.group_manager')
+    extracted_text = fields.Text(readonly=True)
     state = fields.Selection([('draft', 'Draft'), ('ready', 'Ready'), ('failed', 'Needs attention')], default='draft', readonly=True)
     active = fields.Boolean(default=True)
-    user_ids = fields.Many2many('res.users', string='Allowed readers', required=True)
+    # Retained only to preserve existing per-reader grants during migration.
+    # Current access is evaluated by native ir.access, not a retrieval allowlist.
+    user_ids = fields.Many2many('res.users', string='Legacy readers', copy=False)
     revision = fields.Integer(default=1, readonly=True)
     status_message = fields.Char(readonly=True)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records.filtered(lambda s: s.text or s.file).action_prepare()
+        return records
+
+    def action_access_rights(self):
+        self.ensure_one()
+        self.check_access('read')
+        if not self.env.user.has_group('base.group_system'):
+            raise AccessError(_('Odoo security settings require a system administrator.'))
+        action = self.env['ir.actions.actions']._for_xml_id('base.ir_access_action')
+        model = self.env['ir.model']._get(self._name)
+        action.update({'domain': [('model_id', '=', model.id)],
+                       'context': {'default_model_id': model.id, 'default_operation': 'r',
+                                   'default_domain': "[('id', '=', %s)]" % self.id}})
+        return action
 
     @api.constrains('user_ids')
     def _check_users(self):
@@ -180,6 +312,8 @@ class Source(models.Model):
             for source in self:
                 super(Source, source).write({**vals, 'state': 'draft', 'extracted_text': False,
                                            'revision': source.revision + 1})
+                if {'text', 'file', 'filename', 'kind'} & vals.keys() and (source.text or source.file):
+                    source.action_prepare()
             return True
         return super().write(vals)
 

@@ -10,8 +10,8 @@ Hermes supplies inference through its HTTP run API. No NATS or custom broker.
   Configuration menus; manager and staff experiences have separate permissions.
 - Explicit internal-user audience, selected-company restrictions, bounded reads
   as the requester, stored scalar-field allowlists and JSON record filters.
-- Reviewed instructions, source preparation for PDF/UTF-8 text, source-reader
-  allowlists and bounded lexical excerpt selection with source names/revisions.
+- Reviewed instructions, source preparation for PDF/UTF-8 text, native Odoo source access
+  rules and bounded lexical excerpt selection with source names/revisions.
 - Explicit inference request, durable submission claim, unique session/request
   identifiers, polling, stop requests, append-only evidence and usage attribution.
 - HTTPS or numeric-loopback HTTP host/port allowlist, validated/pinned IP, TLS hostname verification,
@@ -39,13 +39,20 @@ Hermes supplies inference through its HTTP run API. No NATS or custom broker.
    HTTP is accepted only for `127.0.0.1` or `::1` and is pinned to loopback.
    Private addresses are permitted over HTTPS for explicitly provisioned endpoints,
    while link-local, unspecified and multicast addresses are denied.
-4. Provision credentials as `AI_AGENT_SECRET_<NAME>` environment variables.
-   Odoo stores their references only. Never paste keys into records or chat.
+4. Choose **Local Hermes** for the approved profile on this host; **Connect**
+   imports its private deployment credentials without asking users for variable
+   names. For **Remote Hermes**, enter its HTTPS URL and masked API key. Under Advanced settings, select **Management uses the same URL and API key**
+   to reuse the run connection; clear it to enter separate management details.
+   The approved local profile uses separate management credentials automatically. Saved keys never read back;
+   encrypted files in the Odoo data directory hold them, bound to the database,
+   engine, company, purpose and endpoint. Legacy environment references still work.
+   Back up `ai_agent_credentials` securely with the database; all Odoo workers
+   require access to the same private storage. Host administrators are trusted.
 5. Install `ai_agent`, grant AI Agent / User or Manager, add an engine and choose
    **Check connection**. Read-only live acceptance was verified against the local Hermes installation;
    an actual model inference test is still outstanding.
 6. Create an agent, choose allowed users, skills, sources and optional data
-   scopes. Prepare sources and approve skills. **Activate** confirms the audience,
+   scopes. Sources prepare automatically after saving text or a supported file; approve skills. **Activate** confirms the audience,
    data disclosure and request limits. **Chat → Send** authorizes one inference
    request. It authorizes no record change, message or publication.
 
@@ -109,13 +116,12 @@ no model requests or external messages. Browser tests exercise real Odoo views.
 
 ## Verification evidence (2026-10-12)
 
-`/tmp/ai-agent-verified-tests.log`: **39 tests, zero failures/errors**, including
-two real Chrome browser tests, readable PDF extraction, source/record isolation,
+`/tmp/ai-agent-forms-v3.log`: **50 tests, zero failures/errors**, including
+five real Chrome browser test methods, readable PDF extraction, source/record isolation,
 immutable history, transport restrictions and worker recovery. Screenshots were
 visually reviewed. Final clean-install evidence is in
 `/tmp/ai-agent-clean-install.log`, followed by the final Apps-description
-upgrade check in `/tmp/ai-agent-clean-final.log`. No live Hermes acceptance has
-been performed.
+upgrade check in `/tmp/ai-agent-clean-final.log`. Live read-only Hermes readiness was verified separately; no inference was sent.
 
 Icon asset workflow: the built-in image editor was prompted to preserve the
 supplied border, AI lettering and three stars, remove the background, and use
@@ -144,8 +150,32 @@ current messaging sessions, scheduled jobs, memory or channel credentials.
 Read-only live adapter result: **Ready**, zero enabled callable toolsets, both
 shared memory stores disabled. Verified engine record exists only in the isolated
 `ai_agent_test` database. The existing Odoo service on port 8069 has not been
-reconfigured, restarted or upgraded. To provision its engine later, load the
-private new-profile credential references into that Odoo process environment;
-do not copy keys through chat or expose them in database records. The two new
+reconfigured, restarted or upgraded. After an approved upgrade, Local Hermes setup imports the approved profile
+credentials privately. The Odoo process still requires the approved endpoint
+allowlist; keys must never be copied through chat. The two new
 Hermes services are detached processes, not systemd units; persistence across
 reboot is not configured. Their PIDs are recorded in the new profile directory.
+
+## Form refinement (2026-10-12)
+
+All configuration and working forms use explicit names, useful placeholders,
+native sheets and role-sensitive technical details. Conversation cards and request
+forms show full question/answer text. Source uploads prepare on save; extracted
+content appears only when available, and errors explain unsupported/scanned PDFs.
+New sources use native creator access and manager permissions; existing legacy
+reader grants remain compatible. Additional group access is configured through
+Odoo 20 `ir.access`, scoped by company and checked as the actual requester.
+No invented department/company audience selector grants access. Documents and
+Knowledge permissions are not bridged in this increment.
+
+Replacing connection credentials or changing endpoints invalidates readiness.
+Stored credentials are write-only through normal ORM access, and opaque storage
+references are inaccessible to normal users. Private encrypted files can outlive
+a rolled-back transaction or replaced key; automatic cleanup is not implemented.
+
+Final conversation spacing verification: `/tmp/ai-agent-forms-final.log`, one
+browser test method passed after the final layout correction.
+
+Connection validation reports missing/invalid URLs, insecure remote HTTP,
+embedded credentials, paths/query strings, and deployment approval separately.
+Errors never display a submitted password, API key, path or query value.

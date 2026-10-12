@@ -7,8 +7,10 @@ and simplicity with direct APIs instead of broker infrastructure.
 Odoo owns business identity, scoped context, approved configuration and execution
 governance. Hermes owns inference/runtime. Runtime integration uses HTTPS APIs,
 with a distinct management surface when required. No NATS or custom host bridge
-is introduced for the first increment. Credentials are provisioned environment
-references, not stored plaintext database fields. Deployment controls allowed
+is introduced for the first increment. Credentials use masked write-only setup fields and encrypted private runtime
+files; only inaccessible opaque references enter database records. Legacy
+deployment environment references remain supported. Local setup imports the
+approved profile credentials privately. Deployment controls allowed
 origins; transport pins resolved IP and validates TLS against the configured host.
 
 Start with a dedicated tool-free, memory-free internal profile. Odoo supplies

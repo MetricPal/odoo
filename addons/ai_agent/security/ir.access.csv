@@ -1,9 +1,10 @@
 id,name,model_id:id,group_id:id,operation,domain
-agent_user,Permitted agents,model_ai_agent,group_user,r,"[('user_ids', 'in', [user.id])]"
+agent_user,Permitted agents,model_ai_agent,group_user,r,"['|', ('create_uid', '=', user.id), ('user_ids', 'in', [user.id])]"
 agent_manager,Agent managers,model_ai_agent,group_manager,crud,
 engine_manager,Engine managers,model_ai_agent_engine,group_manager,crud,
 engine_user,Engine labels,model_ai_agent_engine,group_user,r,
 skill_manager,Skill managers,model_ai_agent_skill,group_manager,crud,
+source_reader,Source readers,model_ai_agent_source,group_user,r,"['|', ('create_uid', '=', user.id), ('user_ids', 'in', [user.id])]"
 source_manager,Source managers,model_ai_agent_source,group_manager,crud,
 access_manager,Data access managers,model_ai_agent_access,group_manager,crud,
 conversation_owner,Conversation owner,model_ai_agent_conversation,group_user,r,"[('user_id', '=', user.id)]"
