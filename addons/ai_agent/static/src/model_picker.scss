@@ -1,0 +1,11 @@
+.o_field_ai_agent_model_picker { display: block; width: 100%; }
+.o_ai_model_picker {
+    width: 100%;
+    .o_ai_picker_columns { display: grid; grid-template-columns: minmax(180px, 32%) minmax(0, 1fr); border: 1px solid var(--border-color, #dee2e6); }
+    .o_ai_picker_providers, .o_ai_picker_models { max-height: 420px; overflow-y: auto; min-width: 0; }
+    .o_ai_picker_providers { border-right: 1px solid var(--border-color, #dee2e6); }
+    .o_ai_picker_row { display: block; width: 100%; border: 0; background: transparent; text-align: start; padding: 10px 14px; overflow-wrap: anywhere; color: inherit; }
+    .o_ai_picker_row:disabled { cursor: default; }
+    .o_ai_selected { background: rgba(113, 99, 158, .15); }
+    @media (max-width: 575px) { .o_ai_picker_columns { grid-template-columns: 1fr; } .o_ai_picker_providers { max-height: 180px; border-right: 0; } }
+}

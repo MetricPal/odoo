@@ -98,8 +98,6 @@ class TestAgentUI(HttpCase):
                 const key=document.querySelector('[name="api_key"] input');
                 if(key.type!=='password')throw new Error('API key not masked');
                 if(!document.querySelector('[name="url"] input')?.placeholder?.startsWith('https://'))throw new Error('URL placeholder missing');
-                const advanced=[...document.querySelectorAll('.o_notebook .nav-link')].find(t=>t.textContent.includes('Advanced settings'));
-                advanced.click();
                 await wait(()=>document.querySelector('[name="management_same_connection"] input'));
                 const same=document.querySelector('[name="management_same_connection"] input');
                 if(!same.checked)throw new Error('Same management connection must default on for new remote connection');
@@ -163,3 +161,62 @@ class TestAgentUI(HttpCase):
                 console.log('test successful');
             })();
         """, login='admin', timeout=90)
+
+
+    def test_persistent_catalog_enables_multiple_models(self):
+        catalog = {'provider': 'nous', 'model': 'example/current', 'providers': [
+            {'slug': 'nous', 'name': 'Nous Portal', 'authenticated': True, 'models': ['example/current', 'example/other']},
+            {'slug': 'anthropic', 'name': 'Anthropic', 'authenticated': False, 'models': []}]}
+        internal(self.engine).write({'models_catalog': catalog})
+        self._capture()
+        with patch.object(type(self.engine), '_request', return_value=catalog):
+            self.browser_js(f'/odoo/action-ai_agent.action_engines/{self.engine.id}', """
+                (async()=>{
+                    const wait=async p=>{for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Catalog flow missing: '+document.body.innerText);};
+                    await wait(()=>document.querySelector('.o_notebook'));
+                    if(document.querySelector('button[name="action_models"]'))throw new Error('Popup entry still present');
+                    if(!document.querySelector('[name="management_same_connection"]'))throw new Error('Management not in main setup');
+                    [...document.querySelectorAll('.o_notebook .nav-link')].find(t=>t.textContent.includes('Providers & models')).click();
+                    await wait(()=>document.querySelectorAll('.o_ai_picker_models input[type="checkbox"]').length===2);
+                    const first=()=>document.querySelectorAll('.o_ai_picker_models input[type="checkbox"]')[0];
+                    first().click();
+                    await wait(()=>document.querySelectorAll('[name="enabled_model_ids"] .o_data_row').length===1 &amp;&amp; !first().disabled);
+                    document.querySelectorAll('.o_ai_picker_models input[type="checkbox"]')[1].click();
+                    await wait(()=>document.querySelectorAll('[name="enabled_model_ids"] .o_data_row').length===2 &amp;&amp; !first().disabled);
+                    if(document.querySelectorAll('[name="enabled_model_ids"] .o_data_row').length!==2)throw new Error('Enabled models not persisted in list');
+                    document.querySelector('.o_ai_model_picker').scrollIntoView({block:'start'});
+                    console.log('ai_agent_capture_persistent_models');
+                    [...document.querySelectorAll('.o_ai_picker_providers button')].find(b=>b.textContent.includes('Anthropic')).click();
+                    await wait(()=>document.body.innerText.includes('Authenticate this provider'));
+                    console.log('test successful');
+                })();
+            """.replace('&amp;', '&'), login='admin', timeout=90)
+        self.engine.invalidate_recordset(['enabled_model_ids'])
+        self.assertEqual(len(self.engine.enabled_model_ids), 2)
+
+    def test_agent_selects_from_enabled_models(self):
+        self.agent.action_pause()
+        catalog = {'provider': 'nous', 'model': 'example/current', 'providers': [
+            {'slug': 'nous', 'name': 'Nous Portal', 'authenticated': True, 'models': ['example/current', 'example/other']}]}
+        with patch.object(type(self.engine), '_request', return_value=catalog):
+            self.engine.set_model_enabled('nous', 'example/other', True)
+        self.browser_js(f'/odoo/action-ai_agent.action_agents/{self.agent.id}', """
+            (async()=>{
+                const wait=async p=>{for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Agent model selection missing');};
+                await wait(()=>document.querySelector('.o_notebook'));
+                [...document.querySelectorAll('.o_notebook .nav-link')].find(t=>t.textContent.includes('Engine & limits')).click();
+                await wait(()=>document.querySelector('[name="engine_model_id"] input'));
+                const input=document.querySelector('[name="engine_model_id"] input');
+                input.click();input.value='example/other';input.dispatchEvent(new Event('input',{bubbles:true}));
+                await wait(()=>[...document.querySelectorAll('.o-autocomplete--dropdown-item')].some(e=>e.textContent.includes('example/other')));
+                [...document.querySelectorAll('.o-autocomplete--dropdown-item')].find(e=>e.textContent.includes('example/other')).click();
+                await wait(()=>document.querySelector('.o_form_dirty'));
+                document.querySelector('.o_form_button_save').click();
+                await wait(()=>!document.querySelector('.o_form_dirty'));
+                document.querySelector('[data-menu-xmlid="ai_agent.menu_agents"]').click();
+                await wait(()=>document.querySelector('.o_kanban_record'));
+                console.log('test successful');
+            })();
+        """, login='admin', timeout=90)
+        self.agent.invalidate_recordset(['engine_model_id', 'model'])
+        self.assertEqual(self.agent.model, 'example/other')

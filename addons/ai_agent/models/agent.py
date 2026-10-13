@@ -23,6 +23,7 @@ class Agent(models.Model):
     state = fields.Selection([('draft', 'Draft'), ('active', 'Active'), ('paused', 'Paused')],
                              default='draft', readonly=True, tracking=True)
     engine_id = fields.Many2one('ai.agent.engine', required=True, ondelete='restrict', check_company=True)
+    engine_model_id = fields.Many2one('ai.agent.engine.model', string='AI model', ondelete='restrict', check_company=True)
     user_ids = fields.Many2many('res.users', string='Allowed users', required=True)
     system_prompt = fields.Text(required=True, default='Explain permitted business context, draft and recommend. State uncertainty. Never claim to have performed a business action.')
     response_style = fields.Selection([('standard', 'Standard'), ('nuanced', 'Nuanced'),
@@ -40,7 +41,48 @@ class Agent(models.Model):
     activation_hash = fields.Char(readonly=True, groups='ai_agent.group_manager')
     run_ids = fields.One2many('ai.agent.run', 'agent_id', readonly=True)
 
-    @api.constrains('user_ids', 'skill_ids', 'source_ids', 'engine_id', 'max_concurrent', 'max_requests_per_day', 'provider', 'model')
+    @api.onchange('engine_id')
+    def _onchange_engine_model(self):
+        if self.engine_model_id and self.engine_model_id.engine_id != self.engine_id:
+            self.engine_model_id = False
+            self.provider = False
+            self.model = False
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        return super().create([self._model_values(dict(values)) for values in vals_list])
+
+    def _model_values(self, values):
+        if 'engine_model_id' not in values and {'provider', 'model'} & values.keys():
+            if not values.get('provider') and not values.get('model'):
+                values['engine_model_id'] = False
+            else:
+                engine_id = values.get('engine_id') or (self.engine_id.id if len(self) == 1 else False)
+                option = self.env['ai.agent.engine.model'].search([('engine_id', '=', engine_id),
+                    ('provider', '=', values.get('provider')), ('model', '=', values.get('model')), ('enabled', '=', True)], limit=1)
+                if not option:
+                    raise UserError(_('Enable this model on the Hermes connection before selecting it for an agent.'))
+                values['engine_model_id'] = option.id
+        if 'engine_model_id' in values:
+            option = self.env['ai.agent.engine.model'].browse(values['engine_model_id']).exists() if values['engine_model_id'] else False
+            if option:
+                option.check_access('read')
+                if not option.enabled:
+                    raise UserError(_('Choose a model enabled on the Hermes connection.'))
+                values.update(provider=option.provider, model=option.model)
+            else:
+                values.update(provider=False, model=False)
+        return values
+
+    def _check_enabled_model(self):
+        self.ensure_one()
+        option = self.sudo().engine_model_id
+        if self.provider and not option:
+            raise UserError(_('Select an enabled model from the Hermes connection before using this agent.'))
+        if option and (not option.enabled or option.engine_id != self.engine_id):
+            raise UserError(_('The selected AI model is no longer enabled on this connection. Ask an AI Agent manager to select another model.'))
+
+    @api.constrains('user_ids', 'skill_ids', 'source_ids', 'engine_id', 'max_concurrent', 'max_requests_per_day', 'provider', 'model', 'engine_model_id')
     def _check_configuration(self):
         for agent in self:
             if any(u.share or agent.company_id not in u.company_ids for u in agent.user_ids):
@@ -51,10 +93,14 @@ class Agent(models.Model):
                 raise ValidationError(_('Engine and sources must belong to the agent company.'))
             if not 1 <= agent.max_concurrent <= 10 or not 1 <= agent.max_requests_per_day <= 1000:
                 raise ValidationError(_('Use 1–10 concurrent requests and 1–1000 requests per day.'))
+            agent._check_enabled_model()
+            if agent.engine_model_id and (agent.provider != agent.engine_model_id.provider or agent.model != agent.engine_model_id.model):
+                raise ValidationError(_('Provider and model must match the selected enabled model.'))
             if bool(agent.provider) != bool(agent.model):
                 raise ValidationError(_('Set both provider and model, or leave both blank.'))
 
     def write(self, vals):
+        vals = self._model_values(dict(vals))
         if not trusted(self):
             if {'state', 'revision', 'activation_hash'} & vals.keys():
                 raise AccessError(_('Use the activation and pause buttons.'))
@@ -74,9 +120,21 @@ class Agent(models.Model):
                        'sources': [(s.id, s.revision, s.state, s.active) for s in self.source_ids],
                        'access': [(a.id, a.model_name, a.field_names, a.domain_json, a.limit) for a in self.access_ids]})
 
+    def action_choose_model(self):
+        manager(self)
+        self.ensure_one()
+        if self.state == 'active':
+            raise UserError(_('Pause the agent before changing its model.'))
+        picker = self.env['ai.agent.model.picker'].create({'engine_id': self.engine_id.id,
+            'agent_id': self.id, 'catalog': self.engine_id._model_catalog(),
+            'provider': self.provider, 'model': self.model, 'use_default': not self.provider})
+        return {'type': 'ir.actions.act_window', 'res_model': picker._name, 'res_id': picker.id,
+                'view_mode': 'form', 'target': 'new', 'name': _('Choose provider and model')}
+
     def action_activate(self):
         manager(self)
         for agent in self:
+            agent._check_enabled_model()
             if not agent.user_ids:
                 raise UserError(_('Choose who may use this agent.'))
             if agent.skill_ids.filtered(lambda s: s.state != 'approved'):
@@ -110,6 +168,7 @@ class Agent(models.Model):
             raise AccessError(_('Only authorized internal users may use this assistant.'))
         if self.env.user not in self.user_ids or self.company_id not in self.env.companies:
             raise AccessError(_('You are not in this agent’s permitted audience.'))
+        self._check_enabled_model()
         if not self.active or self.state != 'active':
             raise UserError(_('This agent is not active.'))
         if self.engine_id.sudo().state != 'ready':

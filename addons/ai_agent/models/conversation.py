@@ -167,6 +167,9 @@ class Run(models.Model):
         self.ensure_one()
         # Fresh inspection before every network submission; no cached-ready bypass.
         self.agent_id.engine_id._inspect()
+        if self.agent_id.engine_model_id:
+            self.agent_id._check_enabled_model()
+            self.agent_id.engine_id._validate_catalog_model(self.agent_id.provider, self.agent_id.model)
         payload, context_hash = self._prepare_payload()
         internal(self).write({'request_payload': payload, 'context_hash': context_hash,
                               'state': 'submitting', 'started_at': fields.Datetime.now()})

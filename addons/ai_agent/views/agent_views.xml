@@ -130,9 +130,9 @@
               <group>
                 <group string="Connection">
                   <field name="engine_id" string="Hermes connection" domain="[('company_id', '=', company_id)]" readonly="state == 'active'" />
-                  <div class="text-muted" colspan="2">Leave the provider and model blank to use the engine's configured default.</div>
-                  <field name="provider" placeholder="Engine default" readonly="state == 'active'" />
-                  <field name="model" placeholder="Engine default" readonly="state == 'active'" />
+                  <field name="engine_model_id" domain="[('engine_id', '=', engine_id), ('enabled', '=', True)]" options="{'no_create': True, 'no_open': True}" placeholder="Use engine default" readonly="state == 'active'"/>
+                  <div class="text-muted" colspan="2">Choose a model enabled on this connection, or leave blank to use Hermes's default.</div>
+                  <field name="provider" invisible="1"/><field name="model" invisible="1"/>
                 </group>
                 <group string="Request limits">
                   <field name="max_concurrent" string="Requests at the same time" readonly="state == 'active'" />

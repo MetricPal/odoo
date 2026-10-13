@@ -1,0 +1,35 @@
+<templates xml:space="preserve">
+  <t t-name="ai_agent.ModelPicker">
+    <div class="o_ai_model_picker">
+      <div class="text-muted mb-2">Current engine default: <t t-out="this.defaultProviderName"/> / <t t-out="this.catalog.model || 'Not reported'"/></div>
+      <input type="search" class="form-control mb-3" placeholder="Filter providers and models&#8230;" aria-label="Filter providers and models" t-att-value="this.state.query" t-on-input="(event) =&gt; { this.state.query = event.target.value; }"/>
+      <div class="o_ai_picker_columns">
+        <div class="o_ai_picker_providers" aria-label="Providers">
+          <div class="text-muted px-3 py-2">Providers (<t t-out="this.providers.length"/>)</div>
+          <t t-foreach="this.providers" t-as="p" t-key="p.slug">
+            <button type="button" class="o_ai_picker_row" t-att-class="{'o_ai_selected': this.selected &amp;&amp; this.selected.slug === p.slug}" t-att-aria-pressed="this.selected &amp;&amp; this.selected.slug === p.slug ? 'true' : 'false'" t-on-click="() =&gt; this.selectProvider(p)">
+              <div><t t-out="p.name"/><span class="badge text-bg-secondary ms-2" t-if="p.slug === this.catalog.provider">Current</span></div>
+              <small class="text-muted"><t t-out="p.models.length"/> models &#183; <t t-out="p.authenticated ? 'Connected' : 'Setup required'"/></small>
+            </button>
+          </t>
+          <p t-if="!this.providers.length" class="p-3 text-muted">No matching providers or models.</p>
+        </div>
+        <div class="o_ai_picker_models" aria-label="Models">
+          <t t-if="this.selected">
+            <div class="text-muted px-3 py-2"><t t-out="this.selected.name"/></div>
+            <div class="alert alert-warning m-2" t-if="!this.selected.authenticated">Authenticate this provider in Hermes, then refresh the catalog.</div>
+            <t t-foreach="this.models" t-as="m" t-key="m">
+              <label t-if="this.isEngine" class="o_ai_picker_row d-flex align-items-center gap-2">
+                <input type="checkbox" class="form-check-input flex-shrink-0" t-att-checked="this.isEnabled(m)" t-att-disabled="this.state.busy || (!this.selected.authenticated &amp;&amp; !this.isEnabled(m))" t-on-change="() =&gt; this.toggleModel(m)"/>
+                <span><t t-out="m"/></span><span class="badge text-bg-secondary ms-auto" t-if="this.isEnabled(m)">Enabled</span>
+              </label>
+              <button t-else="" type="button" class="o_ai_picker_row" t-att-class="{'o_ai_selected': this.props.record.data.provider === this.selected.slug &amp;&amp; this.props.record.data.model === m &amp;&amp; !this.props.record.data.use_default}" t-att-disabled="!this.selected.authenticated || !this.props.record.data.agent_id" t-on-click="() =&gt; this.selectModel(m)"><t t-out="m"/></button>
+            </t>
+            <p t-if="!this.models.length" class="p-3 text-muted">Hermes returned no models for this selection. Check provider setup or change your search.</p>
+          </t>
+        </div>
+      </div>
+      <div class="mt-3" aria-live="polite" t-if="this.props.record.data.agent_id">Selected: <t t-if="this.props.record.data.use_default">Engine default</t><t t-else=""><t t-out="this.props.record.data.provider || 'Choose a provider'"/> / <t t-out="this.props.record.data.model || 'Choose a model'"/></t></div>
+    </div>
+  </t>
+</templates>

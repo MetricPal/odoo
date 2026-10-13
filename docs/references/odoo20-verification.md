@@ -1561,3 +1561,19 @@ zero callable toolsets and disabled shared/user-profile memory. This Hermes
 version returns toolsets as `{object: list, data: [...]}`; the adapter validates
 that envelope as well as the older documented bare-list contract. A regression
 test covers the actual response. No model inference or business action was sent.
+
+### AI Agent provider picker — 2026-10-13
+
+Verified current Odoo 20 JsonField/standardFieldProps/registry and native
+Many2ManyTagsField: Owl uses `useProps` and `proxy`, not older `useState`.
+Picker uses TransientModel owner isolation, native act_window target=new,
+act_url target=new and module backend assets. Official 20.0 JavaScript field
+page was requested but timed out; checked-out Community source is authoritative.
+Hermes 0.21.3 source GET `/api/model/options` returns providers/authenticated/
+models and default provider/model. Native dashboard `/models` provides setup;
+no provider OAuth or environment writes are proxied by this implementation.
+
+Persistent model registry uses native `models.UniqueIndex` (verified against
+mail_message_reaction), related stored company boundaries, One2many domain/list,
+Many2one no-create dropdown and Owl field record `isDirty()`/`load()` APIs.
+Management uses ordinary paired native groups rather than an advanced tab.

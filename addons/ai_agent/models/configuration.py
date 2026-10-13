@@ -66,6 +66,19 @@ class Engine(models.Model):
     models_catalog = fields.Json(readonly=True, groups='ai_agent.group_manager')
     status_message = fields.Char(readonly=True)
 
+    enabled_model_ids = fields.One2many('ai.agent.engine.model', 'engine_id', domain=[('enabled', '=', True)])
+    provider_catalog = fields.Json(compute='_compute_provider_catalog', groups='ai_agent.group_manager')
+
+    @api.depends('models_catalog', 'enabled_model_ids', 'enabled_model_ids.enabled')
+    def _compute_provider_catalog(self):
+        for engine in self:
+            raw = engine.models_catalog or {'providers': []}
+            catalog = engine._normalize_model_catalog(raw)
+            for provider in catalog['providers']:
+                provider['enabled_models'] = engine.enabled_model_ids.filtered(
+                    lambda m: m.provider == provider['slug'] and m.enabled).mapped('model')
+            engine.provider_catalog = catalog
+
     @api.depends('secret_reference', 'management_secret_reference')
     def _compute_keys(self):
         for engine in self:
@@ -215,6 +228,73 @@ class Engine(models.Model):
             raise UserError(_('Use a dedicated profile with all agent-callable toolsets disabled for this release.'))
         return capabilities, tools
 
+    def _model_catalog(self):
+        self.ensure_one()
+        return self._normalize_model_catalog(self._request('GET', '/api/model/options'))
+
+    def _normalize_model_catalog(self, raw):
+        if not isinstance(raw, dict) or not isinstance(raw.get('providers'), list) or len(raw['providers']) > 200:
+            raise UserError(_('Hermes returned an invalid provider catalog.'))
+        providers = []
+        for item in raw['providers']:
+            if not isinstance(item, dict) or not isinstance(item.get('slug'), str) or not re.fullmatch(r'[a-zA-Z0-9_.:-]{1,100}', item['slug']):
+                raise UserError(_('Hermes returned an invalid provider catalog.'))
+            models = item.get('models') or []
+            if not isinstance(models, list) or any(not isinstance(m, str) or len(m) > 300 for m in models):
+                raise UserError(_('Hermes returned an invalid model catalog.'))
+            providers.append({'slug': item['slug'], 'name': str(item.get('name') or item['slug'])[:150],
+                'models': list(dict.fromkeys(models)), 'authenticated': item.get('authenticated') is True,
+                'total_models': len(models)})
+        return {'providers': providers, 'provider': raw.get('provider') if isinstance(raw.get('provider'), str) else '',
+                'model': raw.get('model') if isinstance(raw.get('model'), str) else ''}
+
+    def _validate_catalog_model(self, provider, model):
+        catalog = self._model_catalog()
+        entry = next((p for p in catalog['providers'] if p['slug'] == provider), None)
+        if not entry or not entry['authenticated']:
+            raise UserError(_('Authenticate this provider in Hermes, then refresh the catalog.'))
+        if model not in entry['models']:
+            raise UserError(_('Select a model returned by this provider in the current Hermes catalog.'))
+        return catalog
+
+    def set_model_enabled(self, provider, model, enabled):
+        manager(self)
+        self.ensure_one()
+        if not isinstance(enabled, bool):
+            raise UserError(_('Choose whether to enable this model.'))
+        # Serialize double clicks and concurrent configuration on this engine.
+        self.env.cr.execute('SELECT id FROM ai_agent_engine WHERE id = %s FOR UPDATE', [self.id])
+        records = self.env['ai.agent.engine.model']
+        record = records.search([('engine_id', '=', self.id), ('provider', '=', provider), ('model', '=', model)], limit=1)
+        if enabled:
+            catalog = self._validate_catalog_model(provider, model)
+            if record:
+                internal(record).write({'enabled': True})
+            else:
+                internal(records).create({'engine_id': self.id, 'provider': provider, 'model': model})
+            internal(self).write({'models_catalog': catalog})
+        elif record:
+            record.write({'enabled': False})
+        return True
+
+    def action_refresh_models(self):
+        manager(self)
+        self.ensure_one()
+        internal(self).write({'models_catalog': self._model_catalog()})
+        return True
+
+    def action_models(self):
+        self.action_refresh_models()
+        return {'type': 'ir.actions.act_window', 'res_model': self._name, 'res_id': self.id,
+                'view_mode': 'form', 'target': 'current'}
+
+    def action_provider_setup(self):
+        manager(self)
+        self.ensure_one()
+        url = self.url if self.management_same_connection else (self.management_url or self.url)
+        hermes.target(url, resolve=False)
+        return {'type': 'ir.actions.act_url', 'url': url.rstrip('/') + '/models', 'target': 'new'}
+
     def action_check(self):
         manager(self)
         for engine in self:
@@ -226,7 +306,7 @@ class Engine(models.Model):
                         raise UserError(_('Local Hermes credentials are unavailable. Ask your system administrator to provision the isolated local profile.')) from None
                     engine._save_keys(keys['API_SERVER_KEY'], keys['HERMES_DASHBOARD_SESSION_TOKEN'])
                 capabilities, tools = engine._inspect()
-                catalog = engine._request('GET', '/api/model/options')
+                catalog = engine._model_catalog()
                 values = {'state': 'ready', 'status_message': _('Connection verified; tool-free assistant profile.'),
                           'capabilities': capabilities, 'toolsets': tools, 'models_catalog': catalog}
             except UserError as error:

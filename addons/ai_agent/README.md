@@ -41,7 +41,7 @@ Hermes supplies inference through its HTTP run API. No NATS or custom broker.
    while link-local, unspecified and multicast addresses are denied.
 4. Choose **Local Hermes** for the approved profile on this host; **Connect**
    imports its private deployment credentials without asking users for variable
-   names. For **Remote Hermes**, enter its HTTPS URL and masked API key. Under Advanced settings, select **Management uses the same URL and API key**
+   names. For **Remote Hermes**, enter its HTTPS URL and masked API key. In Management connection, select **Management uses the same URL and API key**
    to reuse the run connection; clear it to enter separate management details.
    The approved local profile uses separate management credentials automatically. Saved keys never read back;
    encrypted files in the Odoo data directory hold them, bound to the database,
@@ -179,3 +179,49 @@ browser test method passed after the final layout correction.
 Connection validation reports missing/invalid URLs, insecure remote HTTP,
 embedded credentials, paths/query strings, and deployment approval separately.
 Errors never display a submitted password, API key, path or query value.
+
+### Local endpoint deployment prerequisite
+
+Load `deployment/odoo-local.env.example` into the Odoo process environment
+(preserve any other explicitly approved endpoints). This is not an `odoo.conf`
+option. Restart every Odoo worker after changing its environment. Terminal
+launchers may prefix their existing command with
+`AI_AGENT_ENDPOINTS=127.0.0.1:8643,127.0.0.1:9120`. For systemd, use the service
+Environment/EnvironmentFile configuration; for containers, use the container
+environment. This approves only the previously reviewed local API surfaces.
+
+## Providers, models and authentication
+
+On each saved Hermes engine, **Providers & models** is a persistent tab with
+one search field, providers on the left and model checkboxes on the right.
+**Refresh catalog** reads the installed Hermes inventory. Enable multiple
+models; they remain visible in the **Enabled models** list below the catalog.
+Enabling is idempotent, company-scoped and records native creator/editor history.
+Unconfigured providers cannot be enabled. Connection edits must be saved before
+model changes. Disabling a selected model blocks further use by its agents.
+
+Agent **Engine & limits → AI model** is a native dropdown filtered to that
+connection's enabled models. Leave blank for Hermes's configured default.
+Active agents must be paused before changing their model. Legacy provider/model
+overrides must be enabled and reselected; arbitrary identifiers are rejected.
+The provider/model mapping is derived server-side, checked against the engine,
+and authentication is checked again before submitting an override to Hermes.
+
+**Management connection** is part of the main setup, next to the run API.
+It supplies the memory safety check and the reviewed profile's setup dashboard.
+The shared URL/key checkbox controls whether separate management fields appear;
+local endpoints and credentials remain automatic. **Provider setup in Hermes**
+opens that management dashboard `/models`; Hermes owns API-key, OAuth and custom
+server authentication and engine-default changes. Odoo never copies provider
+secrets or dashboard credentials into browser URLs. The dashboard requires its
+own authorized login. Browser loopback addresses refer to the browser machine;
+remote users need a reachable, reviewed management endpoint.
+
+Module 20.0.1.3.0 requires an upgrade and restart for schema/views/assets.
+No running business database or real Hermes provider was changed by these tests.
+
+Verification: `/tmp/ai-agent-enabled-models-final.log` — **60 tests passed**,
+including persistent multi-model enabling and saving an agent's native model
+selection in Chrome. Authentication revocation, disabled-model blocking,
+idempotency, manager permissions and regression tests passed. Screenshots were
+reviewed and `git diff --check` passed.

@@ -22,3 +22,7 @@ access_company,Data scope company boundary,model_ai_agent_access,,crud,"[('compa
 conversation_company,Conversation company boundary,model_ai_agent_conversation,,crud,"[('company_id', 'in', company_ids)]"
 run_company,Run company boundary,model_ai_agent_run,,crud,"[('company_id', 'in', company_ids)]"
 event_company,Evidence company boundary,model_ai_agent_event,,crud,"[('company_id', 'in', company_ids)]"
+picker_manager,Model picker managers,model_ai_agent_model_picker,group_manager,crud,
+engine_model_manager,Enabled model managers,model_ai_agent_engine_model,group_manager,crud,
+engine_model_user,Enabled model labels,model_ai_agent_engine_model,group_user,r,
+engine_model_company,Enabled model company boundary,model_ai_agent_engine_model,,crud,"[('company_id', 'in', company_ids)]"

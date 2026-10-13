@@ -422,7 +422,7 @@ class TestAgent(TransactionCase):
              patch('odoo.addons.ai_agent.services.secrets.local_keys', return_value={
                  'API_SERVER_KEY': 'synthetic-local-run', 'HERMES_DASHBOARD_SESSION_TOKEN': 'synthetic-local-management'}), \
              patch.object(type(engine), '_inspect', return_value=({}, [])), \
-             patch.object(type(engine), '_request', return_value={}):
+             patch.object(type(engine), '_request', return_value={'providers': []}):
             engine.action_check()
         self.assertEqual(engine.state, 'ready')
         self.assertEqual(engine._credential('run'), 'synthetic-local-run')
@@ -487,3 +487,92 @@ class TestAgent(TransactionCase):
                 with self.subTest(url=url), self.assertRaisesRegex(UserError, message):
                     hermes.target(url, resolve=False)
             self.assertEqual(hermes.target('https://hermes.example.com/', resolve=False)[2], 443)
+
+    def _picker_catalog(self, authenticated=True):
+        return {'provider': 'nous', 'model': 'example/current', 'providers': [
+            {'slug': 'nous', 'name': 'Nous Portal', 'authenticated': authenticated,
+             'models': ['example/current', 'example/other'], 'api_key': 'must-never-leave-hermes'}]}
+
+    def test_picker_catalog_drops_credentials_and_checks_types(self):
+        with patch.object(type(self.engine), '_request', return_value=self._picker_catalog()):
+            catalog = self.engine._model_catalog()
+            self.assertNotIn('api_key', catalog['providers'][0])
+            self.assertEqual(catalog['providers'][0]['models'], ['example/current', 'example/other'])
+        with patch.object(type(self.engine), '_request', return_value={'providers': [{'slug': '../unsafe', 'models': []}]}):
+            with self.assertRaises(UserError):
+                self.engine._model_catalog()
+
+    def test_picker_requires_fresh_authenticated_model(self):
+        self.agent.action_pause()
+        picker = self.env['ai.agent.model.picker'].create({'engine_id': self.engine.id,
+            'agent_id': self.agent.id, 'provider': 'nous', 'model': 'example/other'})
+        with patch.object(type(self.engine), '_request', return_value=self._picker_catalog(False)):
+            with self.assertRaises(UserError):
+                picker.action_apply()
+        with patch.object(type(self.engine), '_request', return_value=self._picker_catalog()):
+            picker.write({'model': 'invented/model'})
+            with self.assertRaises(UserError):
+                picker.action_apply()
+            self.engine.set_model_enabled('nous', 'example/other', True)
+            picker.write({'model': 'example/other'})
+            picker.action_apply()
+        self.assertEqual(self.agent.provider, 'nous')
+        self.assertEqual(self.agent.model, 'example/other')
+        picker.write({'use_default': True})
+        picker.action_apply()
+        self.assertFalse(self.agent.provider)
+        self.assertFalse(self.agent.model)
+
+    def test_picker_access_and_engine_binding(self):
+        with self.assertRaises(AccessError):
+            self.engine.with_user(self.user).action_models()
+        self.agent.action_pause()
+        picker = self.env['ai.agent.model.picker'].create({'engine_id': self.engine.id, 'agent_id': self.agent.id})
+        self.assertEqual(picker.action_setup()['url'], 'https://hermes.example.com/models')
+        with self.assertRaises(AccessError):
+            picker.with_user(self.user).action_setup()
+        self.agent.action_activate()
+        picker.write({'use_default': True})
+        with self.assertRaises(UserError):
+            picker.action_apply()
+
+    def test_engine_supports_multiple_enabled_models(self):
+        with patch.object(type(self.engine), '_request', return_value=self._picker_catalog()):
+            self.engine.set_model_enabled('nous', 'example/current', True)
+            self.engine.set_model_enabled('nous', 'example/other', True)
+            self.engine.set_model_enabled('nous', 'example/other', True)
+            self.assertEqual(len(self.engine.enabled_model_ids), 2)
+            self.assertEqual(self.engine.provider_catalog['providers'][0]['enabled_models'], ['example/current', 'example/other'])
+            self.agent.action_pause()
+            option = self.engine.enabled_model_ids.filtered(lambda m: m.model == 'example/other')
+            self.agent.write({'engine_model_id': option.id})
+            self.assertEqual(self.agent.model, 'example/other')
+            self.agent.action_activate()
+            option.action_disable()
+            with self.assertRaises(UserError):
+                self.agent.with_user(self.user)._usable()
+            with self.assertRaises(AccessError):
+                self.engine.with_user(self.user).set_model_enabled('nous', 'example/current', False)
+
+    def test_enabled_models_cannot_bypass_authentication(self):
+        with patch.object(type(self.engine), '_request', return_value=self._picker_catalog(False)):
+            with self.assertRaises(UserError):
+                self.engine.set_model_enabled('nous', 'example/current', True)
+            with self.assertRaises(UserError):
+                self.env['ai.agent.engine.model'].create({'engine_id': self.engine.id, 'provider': 'nous', 'model': 'example/current'})
+        self.agent.action_pause()
+        with self.assertRaises(UserError):
+            self.agent.write({'provider': 'nous', 'model': 'example/unregistered'})
+
+    def test_provider_authentication_is_rechecked_before_submission(self):
+        with patch.object(type(self.engine), '_request', return_value=self._picker_catalog()):
+            self.engine.set_model_enabled('nous', 'example/other', True)
+        self.agent.action_pause()
+        self.agent.write({'engine_model_id': self.engine.enabled_model_ids.id})
+        self.agent.action_activate()
+        run = self._queue()
+        with patch.object(type(self.engine), '_inspect', return_value=({}, [])), \
+             patch.object(type(self.engine), '_request', return_value=self._picker_catalog(False)) as request:
+            with self.assertRaises(UserError):
+                run._submit()
+            self.assertTrue(all(call.args[0] == 'GET' for call in request.call_args_list))

@@ -14,17 +14,13 @@
           <group string="Local connection" invisible="connection_mode != 'local'">
             <div class="text-muted" colspan="2">Connect the isolated Hermes profile on this computer. Its addresses and credentials are managed automatically.</div>
           </group>
+          <group>
           <group string="Remote connection" invisible="connection_mode != 'remote'">
             <field name="url" widget="url" placeholder="https://hermes.example.com"/>
             <field name="api_key_saved" invisible="1"/>
             <field name="api_key" password="True" placeholder="Enter API key, or leave blank to keep the saved key" autocomplete="new-password"/>
             <div class="text-muted" invisible="not api_key_saved" colspan="2">An API key is saved securely. Its value is never shown here.</div>
           </group>
-          <div class="alert alert-info" role="status" invisible="not status_message or state == 'blocked'"><field name="status_message" nolabel="1"/></div>
-          <div class="alert alert-warning" role="alert" invisible="state != 'blocked'"><field name="status_message" nolabel="1"/></div>
-          <group invisible="not checked_at"><field name="checked_at" string="Last checked"/></group>
-          <notebook>
-            <page string="Advanced settings">
               <group string="Management connection">
                 <field name="management_same_connection" invisible="connection_mode != 'remote'"/>
                 <field name="management_url" widget="url" placeholder="https://management.example.com" invisible="management_same_connection" readonly="connection_mode == 'local'"/>
@@ -33,7 +29,21 @@
                 <div class="text-muted" invisible="not management_key_saved or connection_mode == 'local' or management_same_connection" colspan="2">A separate management key is saved securely.</div>
                 <field name="url" string="Agent API URL" widget="url" readonly="1" invisible="connection_mode != 'local'"/>
               </group>
-              <p class="text-muted">This release requires tools and shared memory to be disabled on the connected profile. Connection checks enforce this before use.</p>
+
+          </group>
+          <p class="text-muted">Management is required for provider/model setup and safety checks. Tools and shared memory must be disabled on this profile.</p>
+          <div class="alert alert-info" role="status" invisible="not status_message or state == 'blocked'"><field name="status_message" nolabel="1"/></div>
+          <div class="alert alert-warning" role="alert" invisible="state != 'blocked'"><field name="status_message" nolabel="1"/></div>
+          <group invisible="not checked_at"><field name="checked_at" string="Last checked"/></group>
+          <notebook>
+            <page string="Providers &amp; models">
+              <div class="mb-3"><button name="action_refresh_models" string="Refresh catalog" type="object" invisible="not id"/><button name="action_provider_setup" string="Provider setup in Hermes" type="object" invisible="not id"/></div>
+              <p class="text-muted">Enable the models your agents may select. This does not change Hermes's default model.</p>
+              <div class="w-100"><field name="provider_catalog" widget="ai_agent_model_picker" nolabel="1"/></div>
+              <separator string="Enabled models"/>
+              <field name="enabled_model_ids" nolabel="1" readonly="1">
+                <list create="0" delete="0"><field name="provider"/><field name="model"/><field name="create_uid" string="Enabled by" optional="hide"/><field name="write_date" string="Last changed" optional="hide"/><button name="action_disable" string="Remove" type="object" confirm="Disable this model for agents on this connection? Agents using it will be blocked until another model is selected."/></list>
+              </field>
             </page>
             <page string="Diagnostics" groups="base.group_system">
               <p class="text-muted">Read-only discovery from Hermes. This does not enable or change its configuration.</p>

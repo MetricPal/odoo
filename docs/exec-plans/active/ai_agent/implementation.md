@@ -77,3 +77,55 @@ boundaries remain enforced; submitted URL secrets are not echoed in errors.
 
 Validation verification: `/tmp/ai-agent-url-errors.log`, 52 tests passed with
 zero failures/errors, including 11 specific URL error cases.
+
+## Provider/model picker delivery — 2026-10-13
+
+Implemented a native manager-only dialog under Hermes engines and paused/draft
+agent configuration. Unified provider/model search, current default markers,
+connected/setup-required status, empty catalog guidance and source-sensitive
+model selection follow the inspected Hermes inventory contract. Credentials and
+unrecognized metadata are excluded from the dialog payload. Agent selection
+re-fetches the catalog before saving; unauthenticated providers and absent models
+are rejected. Existing activation/selected-company checks remain enforced.
+
+Authentication and engine-main-model changes use the connected profile's native
+Hermes `/models` dashboard. No OAuth/token exchange, generic environment writes,
+remote model mutation, automatic sign-in or inferred authorization is introduced
+in Odoo. Provider-specific setup stays under Hermes's management permissions;
+Odoo managers need their own authorized Hermes dashboard login. A browser on
+another machine needs a reachable reviewed management URL, not its own loopback.
+
+Verification: `/tmp/ai-agent-picker-final.log` reports 56 tests with zero failures
+or errors. After final dialog layout correction,
+`/tmp/ai-agent-picker-dialog-final.log` passed the engine-button/modal/search
+check, with screenshot reviewed. `/tmp/ai-agent-picker-save-browser.log` passed
+a separate full agent selection/save browser test. These use synthetic catalog
+data and never mutate a real Hermes provider or submit inference. Python/XML
+parsing and `git diff --check` passed. The running application database still
+requires an approved addon upgrade and debugger restart.
+
+## Persistent engine model workflow — 2026-10-13
+
+Supersedes the temporary popup workflow above. Management is now in main
+connection setup, beside the run API. Providers & models is a persistent engine
+tab with selectable model checkboxes and a stored Enabled models list. Multiple
+models can be enabled without changing Hermes's main model. Agent configuration
+uses a native dropdown restricted to its engine's enabled entries.
+
+The registry has a unique engine/provider/model identity, native company rules,
+manager-only mutations, immutable identity and creator/editor audit fields.
+Enabling rechecks discovery/authentication and serializes concurrent clicks;
+disabling a selected model blocks further agent use. An override's provider
+authentication is rechecked before inference. Legacy overrides must be enabled
+and reselected. Hermes still owns provider secrets and its native setup flow.
+
+Final verification: `/tmp/ai-agent-enabled-models-final.log`, **60 tests, zero
+failures/errors**. Includes real Chrome multi-model persistence and native agent
+dropdown/save/navigation flows, runtime auth revocation, duplicate enable and
+disabled-model/staff access rejection. Native screenshots reviewed;
+`git diff --check` passed. No live provider change or inference was submitted.
+Version 20.0.1.3.0 requires an application upgrade and restart.
+
+Saved enabled-model rows also have a confirmed Remove action, so managers can
+disable entries no longer present in discovery. Final targeted verification:
+`/tmp/ai-agent-model-removal-final.log`, two tests passed.
