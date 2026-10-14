@@ -85,7 +85,7 @@
           <div class="text-muted mb-3" invisible="state != 'active'" groups="ai_agent.group_manager">Pause this agent before editing its configuration. Changes require another activation review.</div>
           <notebook groups="ai_agent.group_manager">
             <page string="Instructions">
-              <p class="text-muted">Define the role, goals and expected answers. Instructions never override Odoo permissions.</p>
+              <p class="text-muted">Define the role, goals and expected answers. Instructions never override permissions.</p>
               <field name="system_prompt" nolabel="1" readonly="state == 'active'" placeholder="Describe what the agent should help with, how it should answer, and when it should ask for clarification." />
             </page>
             <page string="Skills &amp; sources">
@@ -97,13 +97,13 @@
                 <group string="Knowledge">
                   <field name="source_ids" string="Knowledge sources" widget="many2many_tags" domain="[('company_id', '=', company_id), ('state', '=', 'ready')]" readonly="state == 'active'" />
                   <field name="restrict_sources" string="Ground answers in sources" readonly="state == 'active'" />
-                  <div class="text-muted" colspan="2">Each source is checked against the requesting person's Odoo access rights.</div>
+                  <div class="text-muted" colspan="2">Each source is checked against the requesting person's access rights.</div>
                 </group>
               </group>
             </page>
             <page string="Data access">
-              <p class="text-muted">Reads use the requesting person's Odoo permissions. Business changes and external actions are disabled in this release.</p>
-              <p class="text-muted">Choose which business data may be supplied as context. These scopes narrow access; they never grant extra Odoo permissions.</p>
+              <p class="text-muted">Reads use the requesting person's permissions. Business changes and external actions are disabled in this release.</p>
+              <p class="text-muted">Choose which business data may be supplied as context. These scopes narrow access; they never grant extra permissions.</p>
               <field name="access_ids" readonly="state == 'active'">
                 <list editable="bottom">
                   <field name="model_name" string="Business document" />
@@ -120,7 +120,7 @@
                     </group>
                     <group string="Advanced record filter">
                       <field name="domain_json" placeholder="[]" />
-                      <p class="text-muted">JSON Odoo domain. Leave [] to use the requester's existing record permissions without an additional filter.</p>
+                      <p class="text-muted">JSON record filter. Leave [] to use the requester's existing record permissions without an additional filter.</p>
                     </group>
                   </sheet>
                 </form>

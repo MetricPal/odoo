@@ -151,7 +151,7 @@ class Engine(models.Model):
                     'company_id': self.company_id.id, 'purpose': purpose,
                     'url': self.url if purpose == 'run' else (self.management_url or self.url), 'token': token})
             except (ValueError, OSError):
-                raise UserError(_('Odoo could not securely save the API key. Ask your system administrator to check private credential storage.')) from None
+                raise UserError(_('The API key could not be saved securely. Ask your system administrator to check private credential storage.')) from None
             internal(self.sudo()).write({'secret_reference' if purpose == 'run' else 'management_secret_reference': reference})
 
     def _credential(self, purpose):
@@ -388,7 +388,7 @@ class Source(models.Model):
         self.ensure_one()
         self.check_access('read')
         if not self.env.user.has_group('base.group_system'):
-            raise AccessError(_('Odoo security settings require a system administrator.'))
+            raise AccessError(_('Security settings require a system administrator.'))
         action = self.env['ir.actions.actions']._for_xml_id('base.ir_access_action')
         model = self.env['ir.model']._get(self._name)
         action.update({'domain': [('model_id', '=', model.id)],

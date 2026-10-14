@@ -228,7 +228,7 @@ class Access(models.Model):
     model_name = fields.Selection(selection=lambda s: [(n, s.env[n]._description) for n in sorted(SAFE_MODELS) if n in s.env],
                                   required=True, string='Business data')
     field_names = fields.Char(required=True, string='Fields', default='name', help='Explicit scalar field allowlist, separated by commas.')
-    domain_json = fields.Text(default='[]', required=True, string='Record filter', help='JSON Odoo domain; no Python expressions.')
+    domain_json = fields.Text(default='[]', required=True, string='Record filter', help='JSON record filter; no Python expressions.')
     limit = fields.Integer(default=10, required=True)
 
     def _fields_allowed(self, model):

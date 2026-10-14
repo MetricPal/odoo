@@ -38,13 +38,13 @@ def target(url, resolve=True):
         raise UserError(_('Remove the username or password from the URL. Enter credentials in the API key field.'))
     loopback_http = parsed.scheme == 'http' and parsed.hostname in ('127.0.0.1', '::1')
     if parsed.scheme != 'https' and not loopback_http:
-        raise UserError(_('Remote Hermes requires HTTPS. HTTP is allowed only for 127.0.0.1 or ::1 on the Odoo server.'))
+        raise UserError(_('Remote Hermes requires HTTPS. HTTP is allowed only for 127.0.0.1 or ::1 on the application server.'))
     if parsed.path not in ('', '/') or parsed.query or parsed.fragment:
         raise UserError(_('Enter the Hermes server base URL only, for example https://hermes.example.com. Remove page paths, search parameters and fragments.'))
     allowed = {v.strip().lower() for v in os.getenv('AI_AGENT_ENDPOINTS', '').split(',') if v.strip()}
     authority = f'{parsed.hostname}:{port}'.lower()
     if authority not in allowed:
-        raise UserError(_('This server (%s) is not approved for AI Agent connections. Ask your system administrator to add this host and port to the deployment endpoint allowlist (AI_AGENT_ENDPOINTS), then restart Odoo.', authority))
+        raise UserError(_('This server (%s) is not approved for AI Agent connections. Ask your system administrator to add this host and port to the deployment endpoint allowlist (AI_AGENT_ENDPOINTS), then restart the application server.', authority))
     addresses = []
     if resolve:
         try:

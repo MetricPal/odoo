@@ -79,17 +79,17 @@
   <record id="source_form" model="ir.ui.view">
     <field name="name">ai.agent.source.form</field><field name="model">ai.agent.source</field>
     <field name="arch" type="xml"><form string="Knowledge source">
-      <header><button name="action_prepare" string="Reprocess content" type="object" invisible="not id or (not text and not file)"/><button name="action_access_rights" string="Odoo access rights" type="object" groups="base.group_system" invisible="not id"/><field name="state" widget="statusbar"/></header>
+      <header><button name="action_prepare" string="Reprocess content" type="object" invisible="not id or (not text and not file)"/><button name="action_access_rights" string="Access rights" type="object" groups="base.group_system" invisible="not id"/><field name="state" widget="statusbar"/></header>
       <sheet>
         <div class="oe_title"><label for="name" string="Source name"/><h1><field name="name" placeholder="e.g. Employee handbook"/></h1></div>
         <group><group string="Source"><field name="kind" string="Source type" widget="radio" options="{'horizontal': true}"/><field name="filename" invisible="1"/><field name="file" string="Upload file" filename="filename" invisible="kind != 'file'"/><field name="active" string="Available"/></group><group string="Ownership"><field name="company_id" groups="base.group_multi_company" readonly="id"/><field name="create_uid" string="Created by" invisible="not id"/></group></group>
         <p class="text-muted" invisible="kind != 'file'">Upload a text-based PDF, TXT, Markdown or CSV file. Content is prepared when you save. Scanned PDFs require OCR, which is not available yet.</p>
         <separator string="Reference content" invisible="kind != 'text'"/><field name="text" nolabel="1" invisible="kind != 'text'" placeholder="Paste the reference information the agent should use."/>
         <div class="alert alert-warning" role="alert" invisible="state != 'failed'"><field name="status_message" nolabel="1"/></div>
-        <div class="alert alert-success" role="status" invisible="state != 'ready'">Content is ready. Assigned agents can use it only when Odoo allows the requesting user to read this source.</div>
+        <div class="alert alert-success" role="status" invisible="state != 'ready'">Content is ready. Assigned agents can use it only when the requesting user has permission to read this source.</div>
         <notebook>
           <page string="Extracted content" invisible="not extracted_text"><p class="text-muted">Check that the file was read correctly. This preview is read-only.</p><field name="extracted_text" nolabel="1"/></page>
-          <page string="Access &amp; details"><p class="text-muted">Odoo access rights and record rules control who can read this source. System administrators can grant access to existing Odoo groups or add record restrictions through Odoo's security settings.</p><group><field name="revision" string="Content revision"/><field name="write_date" string="Last updated" invisible="not id"/></group></page>
+          <page string="Access &amp; details"><p class="text-muted">Access rights and record rules control who can read this source. System administrators can grant access to existing user groups or add restrictions through security settings.</p><group><field name="revision" string="Content revision"/><field name="write_date" string="Last updated" invisible="not id"/></group></page>
         </notebook>
       </sheet>
     </form></field>

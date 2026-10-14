@@ -150,3 +150,8 @@ purpose, model selection and diagnostics messages. Failed checks retain their
 specific error. Connection edits clear stale verification.
 `/tmp/ai-agent-status-pill.log`: 62 tests passed, including header geometry and
 backend stale-message regression. Screenshot reviewed. Version 20.0.1.3.2.
+
+2026-10-14: removed framework branding from visible instructions, source access
+labels/help, provider setup copy and connection errors. Permission enforcement
+and technical identifiers remain unchanged. XML/Python parsing, visible-string
+checks and `git diff --check` passed; no behavioral changes or full-suite rerun.
