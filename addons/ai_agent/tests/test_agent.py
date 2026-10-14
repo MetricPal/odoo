@@ -55,10 +55,11 @@ class TestAgent(TransactionCase):
         employee = self.env['hr.employee'].create({'name': 'Staff', 'user_id': self.other.id,
             'company_id': self.env.company.id, 'department_id': sales.id})
         self.agent.action_pause()
-        self.agent.write({'access_scope': 'departments', 'department_ids': [Command.set(sales.ids)]})
+        self.agent.write({'access_scope': 'users', 'department_ids': [Command.set(sales.ids)]})
         self.agent.action_activate()
         self.agent.with_user(self.other)._usable()
         self.assertIn(self.agent, self.env['ai.agent'].with_user(self.other).search([]))
+        self.agent.with_user(self.user)._usable()
         employee.department_id = finance
         self.assertNotIn(self.agent, self.env['ai.agent'].with_user(self.other).search([]))
         with self.assertRaises(AccessError):
@@ -70,7 +71,7 @@ class TestAgent(TransactionCase):
 
     def test_department_scope_requires_selection(self):
         self.agent.action_pause()
-        self.agent.write({'access_scope': 'departments'})
+        self.agent.write({'access_scope': 'users', 'user_ids': [Command.clear()]})
         with self.assertRaises(UserError):
             self.agent.action_activate()
 

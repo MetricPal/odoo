@@ -61,7 +61,7 @@ class TestAgentUI(HttpCase):
     def test_agent_audience_form(self):
         self.agent.action_pause()
         department = self.env['hr.department'].create({'name': 'Sales', 'company_id': self.env.company.id})
-        self.agent.write({'access_scope': 'departments', 'department_ids': [Command.set(department.ids)]})
+        self.agent.write({'access_scope': 'users', 'department_ids': [Command.set(department.ids)]})
         self._capture()
         self.browser_js(f'/odoo/action-ai_agent.action_agents/{self.agent.id}', """
             (async () => {
@@ -73,11 +73,11 @@ class TestAgentUI(HttpCase):
                 if (!scope) throw new Error('Audience selector missing');
                 scope.querySelector('.o_select_menu_toggler').click();
                 await new Promise(r=>setTimeout(r,300));
-                for (const label of ['Company', 'Departments', 'Selected users']) {
+                for (const label of ['Company', 'Departments & users']) {
                     if (!document.body.innerText.includes(label)) throw new Error('Missing scope '+label);
                 }
                 if (!document.querySelector('[name="department_ids"]')) throw new Error('Department selector missing');
-                if (document.querySelector('[name="user_ids"]')) throw new Error('Individual users shown for department scope');
+                if (!document.querySelector('[name="user_ids"]')) throw new Error('Additional users selector missing');
                 if (document.querySelectorAll('[name="response_style"] input[type="radio"]').length !== 4) throw new Error('Response styles must be radio choices');
                 if (!document.body.innerText.includes('Concise, engaging, and dynamic.')) throw new Error('Style description missing');
                 console.log('ai_agent_capture_department_scope');

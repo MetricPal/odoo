@@ -24,7 +24,7 @@ class Agent(models.Model):
                              default='draft', readonly=True, tracking=True)
     engine_id = fields.Many2one('ai.agent.engine', required=True, ondelete='restrict', check_company=True)
     engine_model_id = fields.Many2one('ai.agent.engine.model', string='AI model', ondelete='restrict', check_company=True)
-    access_scope = fields.Selection([('company', 'Company'), ('departments', 'Departments'), ('users', 'Selected users')], default='users', required=True, string='Access scope')
+    access_scope = fields.Selection([('company', 'Company'), ('users', 'Departments & users')], default='users', required=True, string='Access scope')
     department_ids = fields.Many2many('hr.department', string='Departments', check_company=True)
     user_ids = fields.Many2many('res.users', string='Users')
     can_chat = fields.Boolean(compute='_compute_can_chat', search='_search_can_chat')
@@ -54,8 +54,7 @@ class Agent(models.Model):
         departments = employees.filtered(lambda e: e.department_id.company_id == e.company_id).mapped('department_id').ids
         return Domain('company_id', 'in', user.company_ids.ids) & (
             Domain('access_scope', '=', 'company') |
-            (Domain('access_scope', '=', 'departments') & Domain('department_ids', 'in', departments)) |
-            (Domain('access_scope', '=', 'users') & Domain('user_ids', 'in', [user.id])))
+            (Domain('access_scope', '=', 'users') & (Domain('department_ids', 'in', departments) | Domain('user_ids', 'in', [user.id]))))
 
     def _search_can_chat(self, operator, value):
         if operator not in ('=', '!=') or not isinstance(value, bool):
@@ -165,10 +164,8 @@ class Agent(models.Model):
         manager(self)
         for agent in self:
             agent._check_enabled_model()
-            if agent.access_scope == 'users' and not agent.user_ids:
-                raise UserError(_('Select users who may use this agent.'))
-            if agent.access_scope == 'departments' and not agent.department_ids:
-                raise UserError(_('Select departments who may use this agent.'))
+            if agent.access_scope == 'users' and not (agent.department_ids or agent.user_ids):
+                raise UserError(_('Select at least one department or user.'))
             if agent.skill_ids.filtered(lambda s: s.state != 'approved'):
                 raise UserError(_('Approve every assigned skill revision first.'))
             if agent.source_ids.filtered(lambda s: not s.active or s.state != 'ready'):
