@@ -60,7 +60,7 @@
     <field name="arch" type="xml">
       <form string="AI Agent">
         <header>
-          <button name="action_pause" string="Pause / Edit" type="object" groups="ai_agent.group_manager" invisible="state != 'active'" confirm="Block new requests and request cancellation of active runs? Accepted inference may still incur cost." />
+          <button name="action_pause" string="Pause / Edit" type="object" groups="ai_agent.group_manager" invisible="state != 'active'" confirm="New requests are blocked and active ones are canceled, but you may still be billed for work already started." />
           <button name="action_chat" string="Chat" type="object" class="btn-primary" invisible="state != 'active'" />
           <button name="action_activate" string="Activate" type="object" groups="ai_agent.group_manager" invisible="state == 'active'" confirm="Selected users will be able to chat using your configured data settings and limits." />
           <field name="state" widget="statusbar" />
