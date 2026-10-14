@@ -576,3 +576,14 @@ class TestAgent(TransactionCase):
             with self.assertRaises(UserError):
                 run._submit()
             self.assertTrue(all(call.args[0] == 'GET' for call in request.call_args_list))
+
+    def test_local_setup_opens_profile_scoped_browser_dashboard(self):
+        with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': '127.0.0.1:8643,127.0.0.1:9120'}):
+            engine = self.env['ai.agent.engine'].create({'name': 'Local setup', 'connection_mode': 'local'})
+            action = engine.action_provider_setup()
+            self.assertEqual(action['url'], 'http://127.0.0.1:9119/models?profile=odoo-internal')
+            self.assertEqual(engine.management_url, 'http://127.0.0.1:9120')
+            picker = self.env['ai.agent.model.picker'].create({'engine_id': engine.id})
+            self.assertEqual(picker.action_setup(), action)
+            with self.assertRaises(AccessError):
+                engine.with_user(self.user).action_provider_setup()

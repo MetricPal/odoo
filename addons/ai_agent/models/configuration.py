@@ -291,6 +291,11 @@ class Engine(models.Model):
     def action_provider_setup(self):
         manager(self)
         self.ensure_one()
+        if self.connection_mode == 'local':
+            # hermes serve on 9120 is headless; the browser dashboard on 9119
+            # multiplexes profiles. Keep the approved profile explicit.
+            return {'type': 'ir.actions.act_url',
+                    'url': 'http://127.0.0.1:9119/models?profile=odoo-internal', 'target': 'new'}
         url = self.url if self.management_same_connection else (self.management_url or self.url)
         hermes.target(url, resolve=False)
         return {'type': 'ir.actions.act_url', 'url': url.rstrip('/') + '/models', 'target': 'new'}

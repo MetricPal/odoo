@@ -211,7 +211,9 @@ and authentication is checked again before submitting an override to Hermes.
 It supplies the memory safety check and the reviewed profile's setup dashboard.
 The shared URL/key checkbox controls whether separate management fields appear;
 local endpoints and credentials remain automatic. **Provider setup in Hermes**
-opens that management dashboard `/models`; Hermes owns API-key, OAuth and custom
+opens the browser dashboard; locally this is
+`http://127.0.0.1:9119/models?profile=odoo-internal`. Port 9120 runs headless
+`hermes serve` and remains the management API, not a browser UI. Hermes owns API-key, OAuth and custom
 server authentication and engine-default changes. Odoo never copies provider
 secrets or dashboard credentials into browser URLs. The dashboard requires its
 own authorized login. Browser loopback addresses refer to the browser machine;

@@ -129,3 +129,10 @@ Version 20.0.1.3.0 requires an application upgrade and restart.
 Saved enabled-model rows also have a confirmed Remove action, so managers can
 disable entries no longer present in discovery. Final targeted verification:
 `/tmp/ai-agent-model-removal-final.log`, two tests passed.
+
+2026-10-14: corrected local provider setup handoff. `hermes serve` on 9120
+is headless; the browser link now uses dashboard 9119 with the explicit
+`odoo-internal` profile. The API management endpoint remains 9120.
+Targeted method checks passed for the local profile URL, manager-guard
+invocation and unchanged remote endpoint validation. An Odoo regression test
+was added; the full database suite was not rerun for this URL-only correction.

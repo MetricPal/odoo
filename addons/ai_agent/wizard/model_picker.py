@@ -2,7 +2,6 @@ from odoo import fields, models, _
 from odoo.exceptions import UserError
 
 from ..models.common import manager
-from ..services import hermes
 
 
 class ModelPicker(models.TransientModel):
@@ -34,11 +33,7 @@ class ModelPicker(models.TransientModel):
 
     def action_setup(self):
         engine = self._engine()
-        # Hermes owns provider credentials, OAuth sessions and setup requirements.
-        # Never append secrets, profile names or untrusted catalog URLs.
-        url = engine.url if engine.management_same_connection else (engine.management_url or engine.url)
-        hermes.target(url, resolve=False)
-        return {'type': 'ir.actions.act_url', 'url': url.rstrip('/') + '/models', 'target': 'new'}
+        return engine.action_provider_setup()
 
     def action_apply(self):
         engine = self._engine()
