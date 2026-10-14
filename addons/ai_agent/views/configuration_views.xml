@@ -7,7 +7,7 @@
     <field name="name">ai.agent.engine.form</field><field name="model">ai.agent.engine</field>
     <field name="arch" type="xml">
       <form string="Hermes connection">
-        <header><button name="action_check" string="Connect" type="object" class="btn-primary" invisible="state == 'ready'"/><button name="action_check" string="Check connection" type="object" invisible="state != 'ready'"/><field name="state" widget="ai_agent_connection_status" class="ms-auto me-2"/><field name="state" widget="statusbar"/></header>
+        <header><button name="action_check" string="Connect" type="object" class="btn-primary" invisible="state == 'ready'"/><button name="action_check" string="Check connection" type="object" invisible="state != 'ready'"/><field name="state" invisible="1"/></header>
         <sheet>
           <div class="oe_title"><label for="name" string="Connection name"/><h1><field name="name" placeholder="e.g. Local Hermes"/></h1></div>
           <group><field name="company_id" groups="base.group_multi_company" readonly="id"/><field name="connection_mode" string="Connection" widget="radio" options="{'horizontal': true}"/></group>

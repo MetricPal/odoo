@@ -229,8 +229,6 @@ selection in Chrome. Authentication revocation, disabled-model blocking,
 idempotency, manager permissions and regression tests passed. Screenshots were
 reviewed and `git diff --check` passed.
 
-Connection verification is now an Employee-style outline pill immediately
-before the engine statusbar: Not verified, Verified or Needs attention. It
-reflects the last check, not continuous monitoring. The redundant success
-banner is removed; failed checks retain their specific error. Connection/key
-changes clear the prior verification message and timestamp.
+Connection checks show no badge, statusbar or success banner. A failed check
+shows its specific warning below the connection fields; successful checks hide
+that warning. Internal readiness and permission checks remain enforced.

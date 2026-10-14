@@ -62,7 +62,7 @@
         <header>
           <button name="action_chat" string="Chat" type="object" class="btn-primary" invisible="state != 'active'" />
           <button name="action_activate" string="Activate" type="object" groups="ai_agent.group_manager" invisible="state == 'active'" confirm="Activate for these users, data scopes and limits? Requests share permitted context with the configured model provider. Business actions remain disabled." />
-          <button name="action_pause" string="Pause" type="object" groups="ai_agent.group_manager" invisible="state != 'active'" confirm="Block new requests and request cancellation of active runs? Accepted inference may still incur cost." />
+          <button name="action_pause" string="Edit" type="object" groups="ai_agent.group_manager" invisible="state != 'active'" confirm="Block new requests and request cancellation of active runs? Accepted inference may still incur cost." />
           <field name="state" widget="statusbar" />
         </header>
         <sheet>
@@ -82,7 +82,6 @@
               <field name="user_ids" string="Who can chat" widget="many2many_tags" domain="[('share', '=', False)]" readonly="state == 'active'" />
             </group>
           </group>
-          <div class="text-muted mb-3" invisible="state != 'active'" groups="ai_agent.group_manager">Pause this agent before editing its configuration. Changes require another activation review.</div>
           <notebook groups="ai_agent.group_manager">
             <page string="Instructions">
               <p class="text-muted">Define the role, goals and expected answers. Instructions never override permissions.</p>

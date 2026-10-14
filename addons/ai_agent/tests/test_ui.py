@@ -174,10 +174,7 @@ class TestAgentUI(HttpCase):
                 (async()=>{
                     const wait=async p=>{for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Catalog flow missing: '+document.body.innerText);};
                     await wait(()=>document.querySelector('.o_notebook'));
-                    const pill=document.querySelector('.o_form_statusbar .o_ai_connection_status');
-                    if(!pill || pill.textContent.trim()!=='Verified')throw new Error('Verification pill missing');
-                    const statusbar=document.querySelector('.o_form_statusbar .o_statusbar_status');
-                    if(pill.getBoundingClientRect().right > statusbar.getBoundingClientRect().left+4)throw new Error('Pill must precede the statusbar');
+                    if(document.querySelector('.o_form_statusbar .o_ai_connection_status, .o_form_statusbar .o_statusbar_status'))throw new Error('Connection status decoration still present');
                     if(document.querySelector('.o_form_sheet .alert-info'))throw new Error('Success banner still present');
                     console.log('ai_agent_capture_engine_status');
                     if(!document.querySelector('button[name="action_models"]'))throw new Error('Add model missing');

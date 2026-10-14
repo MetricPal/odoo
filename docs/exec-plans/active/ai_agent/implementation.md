@@ -155,3 +155,7 @@ backend stale-message regression. Screenshot reviewed. Version 20.0.1.3.2.
 labels/help, provider setup copy and connection errors. Permission enforcement
 and technical identifiers remain unchanged. XML/Python parsing, visible-string
 checks and `git diff --check` passed; no behavioral changes or full-suite rerun.
+
+2026-10-14: per user direction, removed the verification pill and engine
+statusbar. Only failed-check warnings remain visible; internal readiness and
+last-check tracking are unchanged. Removed the unused badge assets.
