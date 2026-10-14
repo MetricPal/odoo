@@ -90,7 +90,6 @@
         <p class="text-muted" invisible="kind != 'file'">Upload a text-based PDF, TXT, Markdown or CSV file. Content is prepared when you save. Scanned PDFs require OCR, which is not available yet.</p>
         <separator string="Reference content" invisible="kind != 'text'"/><field name="text" nolabel="1" invisible="kind != 'text'" placeholder="Paste the reference information the agent should use."/>
         <div class="alert alert-warning" role="alert" invisible="state != 'failed'"><field name="status_message" nolabel="1"/></div>
-        <div class="alert alert-success" role="status" invisible="state != 'ready'">Content is ready. Assigned agents can use it only when the requesting user has permission to read this source.</div>
         <notebook>
           <page string="Extracted content" invisible="not extracted_text"><p class="text-muted">Check that the file was read correctly. This preview is read-only.</p><field name="extracted_text" nolabel="1"/></page>
           <page string="Access &amp; details"><p class="text-muted">Access rights and record rules control who can read this source. System administrators can grant access to existing user groups or add restrictions through security settings.</p><group><field name="revision" string="Content revision"/><field name="write_date" string="Last updated" invisible="not id"/></group></page>

@@ -1,6 +1,6 @@
 {
     'name': 'AI Agent',
-    'version': '20.0.1.3.3',
+    'version': '20.0.1.4.0',
     'category': 'Productivity',
     'summary': 'Work with supervised Hermes assistants using permitted business context',
     'description': 'Configure supervised Hermes assistants, choose permitted knowledge and '
@@ -9,7 +9,7 @@
                    'changes and external actions remain disabled.',
     'author': 'metric.io',
     'license': 'LGPL-3',
-    'depends': ['mail', 'web', 'approval_center'],
+    'depends': ['mail', 'web', 'approval_center', 'hr'],
     'data': ['security/security.xml', 'security/ir.access.csv',
              'data/cron.xml', 'views/agent_views.xml', 'views/configuration_views.xml',
              'views/conversation_views.xml', 'views/wizard_views.xml', 'views/model_picker_views.xml', 'views/menus.xml'],

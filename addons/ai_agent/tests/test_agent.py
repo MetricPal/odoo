@@ -39,6 +39,41 @@ class TestAgent(TransactionCase):
             self.agent.with_user(self.other)._usable()
         self.agent.with_user(self.user)._usable()
 
+    def test_company_audience_is_dynamic(self):
+        self.agent.action_pause()
+        self.agent.write({'access_scope': 'company', 'user_ids': [Command.clear()]})
+        self.agent.action_activate()
+        self.agent.with_user(self.other)._usable()
+        self.assertIn(self.agent, self.env['ai.agent'].with_user(self.other).search([]))
+        self.other.active = False
+        with self.assertRaises(AccessError):
+            self.agent.with_user(self.other)._usable()
+
+    def test_department_audience_tracks_membership(self):
+        sales = self.env['hr.department'].create({'name': 'Sales', 'company_id': self.env.company.id})
+        finance = self.env['hr.department'].create({'name': 'Finance', 'company_id': self.env.company.id})
+        employee = self.env['hr.employee'].create({'name': 'Staff', 'user_id': self.other.id,
+            'company_id': self.env.company.id, 'department_id': sales.id})
+        self.agent.action_pause()
+        self.agent.write({'access_scope': 'departments', 'department_ids': [Command.set(sales.ids)]})
+        self.agent.action_activate()
+        self.agent.with_user(self.other)._usable()
+        self.assertIn(self.agent, self.env['ai.agent'].with_user(self.other).search([]))
+        employee.department_id = finance
+        self.assertNotIn(self.agent, self.env['ai.agent'].with_user(self.other).search([]))
+        with self.assertRaises(AccessError):
+            self.agent.with_user(self.other)._usable()
+        employee.department_id = sales
+        employee.active = False
+        with self.assertRaises(AccessError):
+            self.agent.with_user(self.other)._usable()
+
+    def test_department_scope_requires_selection(self):
+        self.agent.action_pause()
+        self.agent.write({'access_scope': 'departments'})
+        with self.assertRaises(UserError):
+            self.agent.action_activate()
+
     def test_portal_denied_even_when_groups_forged(self):
         portal = mail_new_test_user(self.env, login='ai_portal', groups='base.group_portal', notification_type='email')
         self.agent.action_pause()

@@ -24,10 +24,13 @@ class Agent(models.Model):
                              default='draft', readonly=True, tracking=True)
     engine_id = fields.Many2one('ai.agent.engine', required=True, ondelete='restrict', check_company=True)
     engine_model_id = fields.Many2one('ai.agent.engine.model', string='AI model', ondelete='restrict', check_company=True)
-    user_ids = fields.Many2many('res.users', string='Allowed users', required=True)
+    access_scope = fields.Selection([('company', 'Company'), ('departments', 'Departments'), ('users', 'Selected users')], default='users', required=True, string='Access scope')
+    department_ids = fields.Many2many('hr.department', string='Departments', check_company=True)
+    user_ids = fields.Many2many('res.users', string='Users')
+    can_chat = fields.Boolean(compute='_compute_can_chat', search='_search_can_chat')
     system_prompt = fields.Text(required=True, default='Explain permitted business context, draft and recommend. State uncertainty. Never claim to have performed a business action.')
-    response_style = fields.Selection([('standard', 'Standard'), ('nuanced', 'Nuanced'),
-                                       ('creative', 'Snappy & Creative'), ('rigorous', 'Slow & Rigorous')],
+    response_style = fields.Selection([('standard', 'Standard — Balanced, direct responses.'), ('nuanced', 'Nuanced — Context-aware and detailed.'),
+                                       ('creative', 'Snappy & Creative — Concise, engaging, and dynamic.'), ('rigorous', 'Slow & Rigorous — Deeply analyzed and checked.')],
                                       default='standard', required=True)
     provider = fields.Char(help='Hermes provider slug. Leave blank to use its configured default.')
     model = fields.Char(string='Model', help='Verified Hermes model ID; leave blank for its default.')
@@ -40,6 +43,31 @@ class Agent(models.Model):
     revision = fields.Integer(default=1, readonly=True)
     activation_hash = fields.Char(readonly=True, groups='ai_agent.group_manager')
     run_ids = fields.One2many('ai.agent.run', 'agent_id', readonly=True)
+
+    def _audience_domain(self, user):
+        if not user.active or user.share or not user.has_group('ai_agent.group_user'):
+            return Domain.FALSE
+        # Privileged identity lookup only; no employee data enters AI context.
+        employees = self.env['hr.employee'].sudo().search([
+            ('user_id', '=', user.id), ('active', '=', True), ('company_id', 'in', user.company_ids.ids),
+            ('department_id.active', '=', True)])
+        departments = employees.filtered(lambda e: e.department_id.company_id == e.company_id).mapped('department_id').ids
+        return Domain('company_id', 'in', user.company_ids.ids) & (
+            Domain('access_scope', '=', 'company') |
+            (Domain('access_scope', '=', 'departments') & Domain('department_ids', 'in', departments)) |
+            (Domain('access_scope', '=', 'users') & Domain('user_ids', 'in', [user.id])))
+
+    def _search_can_chat(self, operator, value):
+        if operator not in ('=', '!=') or not isinstance(value, bool):
+            return NotImplemented
+        domain = self._audience_domain(self.env.user)
+        return domain if (value if operator == '=' else not value) else ~domain
+
+    @api.depends_context('uid')
+    def _compute_can_chat(self):
+        permitted = self.filtered_domain(self._audience_domain(self.env.user))
+        for agent in self:
+            agent.can_chat = agent in permitted
 
     @api.onchange('engine_id')
     def _onchange_engine_model(self):
@@ -82,9 +110,11 @@ class Agent(models.Model):
         if option and (not option.enabled or option.engine_id != self.engine_id):
             raise UserError(_('The selected AI model is no longer enabled on this connection. Ask an AI Agent manager to select another model.'))
 
-    @api.constrains('user_ids', 'skill_ids', 'source_ids', 'engine_id', 'max_concurrent', 'max_requests_per_day', 'provider', 'model', 'engine_model_id')
+    @api.constrains('access_scope', 'department_ids', 'user_ids', 'skill_ids', 'source_ids', 'engine_id', 'max_concurrent', 'max_requests_per_day', 'provider', 'model', 'engine_model_id')
     def _check_configuration(self):
         for agent in self:
+            if any(d.company_id != agent.company_id for d in agent.department_ids):
+                raise ValidationError(_('Choose departments in this company.'))
             if any(u.share or agent.company_id not in u.company_ids for u in agent.user_ids):
                 raise ValidationError(_('Choose internal users authorized for this company.'))
             if any(r.company_id != agent.company_id for r in agent.skill_ids):
@@ -135,8 +165,10 @@ class Agent(models.Model):
         manager(self)
         for agent in self:
             agent._check_enabled_model()
-            if not agent.user_ids:
-                raise UserError(_('Choose who may use this agent.'))
+            if agent.access_scope == 'users' and not agent.user_ids:
+                raise UserError(_('Select users who may use this agent.'))
+            if agent.access_scope == 'departments' and not agent.department_ids:
+                raise UserError(_('Select departments who may use this agent.'))
             if agent.skill_ids.filtered(lambda s: s.state != 'approved'):
                 raise UserError(_('Approve every assigned skill revision first.'))
             if agent.source_ids.filtered(lambda s: not s.active or s.state != 'ready'):
@@ -166,7 +198,7 @@ class Agent(models.Model):
         self.check_access('read')
         if self.env.user.share or not self.env.user.has_group('ai_agent.group_user'):
             raise AccessError(_('Only authorized internal users may use this assistant.'))
-        if self.env.user not in self.user_ids or self.company_id not in self.env.companies:
+        if not self.sudo().filtered_domain(self._audience_domain(self.env.user)) or self.company_id not in self.env.companies:
             raise AccessError(_('You are not in this agent’s permitted audience.'))
         self._check_enabled_model()
         if not self.active or self.state != 'active':

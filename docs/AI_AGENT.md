@@ -57,3 +57,9 @@ What happened?
 Why?
 What do you recommend?
 What needs my approval?
+
+## Agent chat audience
+
+The agent form offers Company, Departments, and Selected users. Company includes active internal users with AI Agent user access and membership in the agent's company. Departments uses active employee membership in the exact selected departments, within the same company; membership changes apply immediately. Selected users preserves existing explicit audiences. Portal/public users are excluded. Chat access never expands data permissions or company boundaries. Department matching uses a privileged identity lookup only; employee data is not sent to the model. The module depends on HR for native department membership.
+
+Response style is presented as four radio choices with short descriptions. These guide answer presentation; they do not certify model verification or change permissions.

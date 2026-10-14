@@ -58,6 +58,33 @@ class TestAgentUI(HttpCase):
             })();
         """, login='admin', timeout=90)
 
+    def test_agent_audience_form(self):
+        self.agent.action_pause()
+        department = self.env['hr.department'].create({'name': 'Sales', 'company_id': self.env.company.id})
+        self.agent.write({'access_scope': 'departments', 'department_ids': [Command.set(department.ids)]})
+        self._capture()
+        self.browser_js(f'/odoo/action-ai_agent.action_agents/{self.agent.id}', """
+            (async () => {
+                for (let i=0;i<150;i++) {
+                    if (document.querySelector('[name="access_scope"]')) break;
+                    await new Promise(r=>setTimeout(r,100));
+                }
+                const scope = document.querySelector('[name="access_scope"]');
+                if (!scope) throw new Error('Audience selector missing');
+                scope.querySelector('.o_select_menu_toggler').click();
+                await new Promise(r=>setTimeout(r,300));
+                for (const label of ['Company', 'Departments', 'Selected users']) {
+                    if (!document.body.innerText.includes(label)) throw new Error('Missing scope '+label);
+                }
+                if (!document.querySelector('[name="department_ids"]')) throw new Error('Department selector missing');
+                if (document.querySelector('[name="user_ids"]')) throw new Error('Individual users shown for department scope');
+                if (document.querySelectorAll('[name="response_style"] input[type="radio"]').length !== 4) throw new Error('Response styles must be radio choices');
+                if (!document.body.innerText.includes('Concise, engaging, and dynamic.')) throw new Error('Style description missing');
+                console.log('ai_agent_capture_department_scope');
+                console.log('test successful');
+            })();
+        """, login='admin', timeout=90)
+
     def test_staff_chat_has_no_configuration(self):
         self._capture()
         self.browser_js('/odoo/action-ai_agent.action_agents', """
@@ -122,7 +149,7 @@ class TestAgentUI(HttpCase):
                 await wait(()=>document.querySelector('.o_form_sheet [name="name"]'));
                 if(![...document.querySelectorAll('label')].some(l=>l.textContent.trim()==='Source name'))throw new Error('Source name label missing');
                 if(document.querySelector('[name="user_ids"]'))throw new Error('Per-person reader selector exposed');
-                if(!document.body.innerText.includes('Content is ready'))throw new Error('Source status unclear');
+                if(document.querySelector('.o_form_sheet .alert-success'))throw new Error('Source success banner still present');
                 if(!document.body.innerText.includes('Extracted content'))throw new Error('Prepared preview tab not named clearly');
                 console.log('ai_agent_capture_source');
                 console.log('test successful');

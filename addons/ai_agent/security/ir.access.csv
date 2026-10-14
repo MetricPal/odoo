@@ -1,5 +1,5 @@
 id,name,model_id:id,group_id:id,operation,domain
-agent_user,Permitted agents,model_ai_agent,group_user,r,"['|', ('create_uid', '=', user.id), ('user_ids', 'in', [user.id])]"
+agent_user,Permitted agents,model_ai_agent,group_user,r,"[('can_chat', '=', True)]"
 agent_manager,Agent managers,model_ai_agent,group_manager,crud,
 engine_manager,Engine managers,model_ai_agent_engine,group_manager,crud,
 engine_user,Engine labels,model_ai_agent_engine,group_user,r,
