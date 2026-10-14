@@ -142,3 +142,11 @@ Add model replaces Refresh catalog and opens the searchable provider/model
 popup. Checkbox changes retain manager/company/fresh-authentication checks;
 closing reloads the engine Enabled models list. Full clean-install suite in
 `/tmp/ai-agent-add-model-popup.log`: 63 tests, zero failures/errors.
+
+2026-10-14 status refinement: replaced the success banner with an outline status
+pill before the statusbar, using the checked-out HR EmployeeUserStatus visual
+pattern without adding an HR dependency. Simplified local setup, saved-key, API
+purpose, model selection and diagnostics messages. Failed checks retain their
+specific error. Connection edits clear stale verification.
+`/tmp/ai-agent-status-pill.log`: 62 tests passed, including header geometry and
+backend stale-message regression. Screenshot reviewed. Version 20.0.1.3.2.

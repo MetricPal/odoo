@@ -7,32 +7,31 @@
     <field name="name">ai.agent.engine.form</field><field name="model">ai.agent.engine</field>
     <field name="arch" type="xml">
       <form string="Hermes connection">
-        <header><button name="action_check" string="Connect" type="object" class="btn-primary" invisible="state == 'ready'"/><button name="action_check" string="Check connection" type="object" invisible="state != 'ready'"/><field name="state" widget="statusbar"/></header>
+        <header><button name="action_check" string="Connect" type="object" class="btn-primary" invisible="state == 'ready'"/><button name="action_check" string="Check connection" type="object" invisible="state != 'ready'"/><field name="state" widget="ai_agent_connection_status" class="ms-auto me-2"/><field name="state" widget="statusbar"/></header>
         <sheet>
           <div class="oe_title"><label for="name" string="Connection name"/><h1><field name="name" placeholder="e.g. Local Hermes"/></h1></div>
           <group><field name="company_id" groups="base.group_multi_company" readonly="id"/><field name="connection_mode" string="Connection" widget="radio" options="{'horizontal': true}"/></group>
           <group string="Local connection" invisible="connection_mode != 'local'">
-            <div class="text-muted" colspan="2">Connect the isolated Hermes profile on this computer. Its addresses and credentials are managed automatically.</div>
+            <div class="text-muted" colspan="2">Local addresses and credentials are configured automatically.</div>
           </group>
           <group>
           <group string="Remote connection" invisible="connection_mode != 'remote'">
             <field name="url" widget="url" placeholder="https://hermes.example.com"/>
             <field name="api_key_saved" invisible="1"/>
             <field name="api_key" password="True" placeholder="Enter API key, or leave blank to keep the saved key" autocomplete="new-password"/>
-            <div class="text-muted" invisible="not api_key_saved" colspan="2">An API key is saved securely. Its value is never shown here.</div>
+            <div class="text-muted" invisible="not api_key_saved" colspan="2">API key saved securely. Leave blank to keep it.</div>
           </group>
               <group string="Management connection">
                 <field name="management_same_connection" invisible="connection_mode != 'remote'"/>
                 <field name="management_url" widget="url" placeholder="https://management.example.com" invisible="management_same_connection" readonly="connection_mode == 'local'"/>
                 <field name="management_api_key" password="True" placeholder="Enter a separate management API key if required" invisible="connection_mode == 'local' or management_same_connection" autocomplete="new-password"/>
                 <field name="management_key_saved" invisible="1"/>
-                <div class="text-muted" invisible="not management_key_saved or connection_mode == 'local' or management_same_connection" colspan="2">A separate management key is saved securely.</div>
+                <div class="text-muted" invisible="not management_key_saved or connection_mode == 'local' or management_same_connection" colspan="2">Management API key saved securely. Leave blank to keep it.</div>
                 <field name="url" string="Agent API URL" widget="url" readonly="1" invisible="connection_mode != 'local'"/>
               </group>
 
           </group>
-          <p class="text-muted">Management is required for provider/model setup and safety checks. Tools and shared memory must be disabled on this profile.</p>
-          <div class="alert alert-info" role="status" invisible="not status_message or state == 'blocked'"><field name="status_message" nolabel="1"/></div>
+          <p class="text-muted">The Agent API runs requests. The Management API checks this profile's configuration. Hermes tools and shared memory must be disabled for this release.</p>
           <div class="alert alert-warning" role="alert" invisible="state != 'blocked'"><field name="status_message" nolabel="1"/></div>
           <group invisible="not checked_at"><field name="checked_at" string="Last checked"/></group>
           <notebook>
@@ -41,14 +40,14 @@
                 <button name="action_models" string="Add model" type="object" class="btn-primary" invisible="not id"/>
                 <field name="model_settings_url" widget="url" text="Model Settings" readonly="1" nolabel="1"/>
               </div>
-              <p class="text-muted">Add models your agents may select. This does not change Hermes's default model.</p>
+              <p class="text-muted">Add models for your agents. Hermes's default model stays unchanged.</p>
               <separator string="Enabled models"/>
               <field name="enabled_model_ids" nolabel="1" readonly="1">
                 <list create="0" delete="0"><field name="provider"/><field name="model"/><field name="create_uid" string="Enabled by" optional="hide"/><field name="write_date" string="Last changed" optional="hide"/><button name="action_disable" string="Remove" type="object" confirm="Disable this model for agents on this connection? Agents using it will be blocked until another model is selected."/></list>
               </field>
             </page>
             <page string="Diagnostics" groups="base.group_system">
-              <p class="text-muted">Read-only discovery from Hermes. This does not enable or change its configuration.</p>
+              <p class="text-muted">Read-only data reported by Hermes. Viewing it does not change engine settings.</p>
               <group><field name="revision" string="Connection revision"/></group>
               <separator string="Available models"/><field name="models_catalog" nolabel="1"/>
               <separator string="Tool discovery"/><field name="toolsets" nolabel="1"/>

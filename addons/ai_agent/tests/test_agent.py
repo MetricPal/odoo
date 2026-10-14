@@ -587,3 +587,10 @@ class TestAgent(TransactionCase):
             self.assertEqual(picker.action_setup(), action)
             with self.assertRaises(AccessError):
                 engine.with_user(self.user).action_provider_setup()
+
+    def test_connection_changes_clear_previous_verification(self):
+        internal(self.engine).write({'state': 'ready', 'status_message': 'Connection verified.'})
+        self.engine.write({'management_same_connection': True})
+        self.assertEqual(self.engine.state, 'unchecked')
+        self.assertFalse(self.engine.status_message)
+        self.assertFalse(self.engine.checked_at)

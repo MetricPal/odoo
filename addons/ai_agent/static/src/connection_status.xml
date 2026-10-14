@@ -1,0 +1,8 @@
+<templates xml:space="preserve">
+  <t t-name="ai_agent.ConnectionStatus">
+    <span class="o_ai_connection_status btn btn-sm rounded-pill d-inline-flex align-items-center gap-1" t-att-class="'btn-outline-' + this.status.color" role="status">
+      <i class="oi" t-att-data-icon="this.status.icon" aria-hidden="true"/>
+      <span t-out="this.status.label"/>
+    </span>
+  </t>
+</templates>

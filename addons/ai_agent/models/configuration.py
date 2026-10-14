@@ -198,7 +198,7 @@ class Engine(models.Model):
         if {'url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection'} & vals.keys():
             for engine in self:
                 super(Engine, engine).write({**vals, 'state': 'unchecked', 'checked_at': False,
-                    'capabilities': False, 'toolsets': False, 'models_catalog': False,
+                    'capabilities': False, 'toolsets': False, 'models_catalog': False, 'status_message': False,
                     'revision': engine.revision + 1})
                 engine._save_keys(*keys)
             return True
@@ -324,7 +324,7 @@ class Engine(models.Model):
                     engine._save_keys(keys['API_SERVER_KEY'], keys['HERMES_DASHBOARD_SESSION_TOKEN'])
                 capabilities, tools = engine._inspect()
                 catalog = engine._model_catalog()
-                values = {'state': 'ready', 'status_message': _('Connection verified; tool-free assistant profile.'),
+                values = {'state': 'ready', 'status_message': _('Connection verified.'),
                           'capabilities': capabilities, 'toolsets': tools, 'models_catalog': catalog}
             except UserError as error:
                 values = {'state': 'blocked', 'status_message': str(error), 'capabilities': False,
