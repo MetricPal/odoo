@@ -91,7 +91,7 @@
             <page string="Skills &amp; sources">
               <group>
                 <group string="Skills">
-                  <field name="skill_ids" string="Approved skills" widget="many2many_tags" domain="[('company_id', '=', company_id), ('state', '=', 'approved')]" readonly="state == 'active'" />
+                  <field name="skill_ids" string="Approved skills" placeholder="Select approved skills…" widget="many2many_tags" domain="[('company_id', '=', company_id), ('state', '=', 'approved')]" readonly="state == 'active'" />
                   <div class="text-muted" colspan="2">Skills define how the agent reasons and prepares work.</div>
                 </group>
                 <group string="Knowledge">
@@ -129,7 +129,7 @@
             <page string="Engine &amp; limits">
               <group>
                 <group string="Connection">
-                  <field name="engine_id" string="Hermes connection" domain="[('company_id', '=', company_id)]" readonly="state == 'active'" />
+                  <field name="engine_id" string="Hermes connection" placeholder="Select a Hermes connection…" domain="[('company_id', '=', company_id)]" readonly="state == 'active'" />
                   <field name="engine_model_id" domain="[('engine_id', '=', engine_id), ('enabled', '=', True)]" options="{'no_create': True, 'no_open': True}" placeholder="Use engine default" readonly="state == 'active'"/>
                   <div class="text-muted" colspan="2">Choose a model enabled on this connection, or leave blank to use Hermes's default.</div>
                   <field name="provider" invisible="1"/><field name="model" invisible="1"/>
