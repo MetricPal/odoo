@@ -71,8 +71,8 @@ class TestAgentUI(HttpCase):
                 }
                 const scope = document.querySelector('[name="access_scope"]');
                 if (!scope) throw new Error('Audience selector missing');
-                scope.querySelector('.o_select_menu_toggler').click();
-                await new Promise(r=>setTimeout(r,300));
+                if (scope.querySelectorAll('input[type="radio"]').length !== 2) throw new Error('Audience must have two radio choices');
+                if (!scope.querySelector('.o_horizontal')) throw new Error('Audience radios must be horizontal');
                 for (const label of ['Company', 'Departments & users']) {
                     if (!document.body.innerText.includes(label)) throw new Error('Missing scope '+label);
                 }

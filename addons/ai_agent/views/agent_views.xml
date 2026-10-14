@@ -79,7 +79,7 @@
             </group>
             <group string="People &amp; company">
               <field name="company_id" groups="base.group_multi_company" readonly="id" />
-              <field name="access_scope" string="Who can chat" readonly="state == 'active'"/>
+              <field name="access_scope" string="Who can chat" widget="radio" options="{'horizontal': true}" readonly="state == 'active'"/>
               <field name="department_ids" widget="many2many_tags" placeholder="Select departments…" domain="[('company_id', '=', company_id), ('active', '=', True)]" options="{'no_create': True}" invisible="access_scope == 'company'" readonly="state == 'active'"/>
               <field name="user_ids" widget="many2many_tags" placeholder="Select users…" domain="[('share', '=', False), ('active', '=', True), ('company_ids', 'in', [company_id])]" invisible="access_scope == 'company'" readonly="state == 'active'"/>
             </group>
