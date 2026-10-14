@@ -1,6 +1,6 @@
 {
     'name': 'AI Agent',
-    'version': '20.0.1.3.0',
+    'version': '20.0.1.3.1',
     'category': 'Productivity',
     'summary': 'Work with supervised Hermes assistants using permitted business context',
     'description': 'Configure supervised Hermes assistants, choose permitted knowledge and '

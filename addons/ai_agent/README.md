@@ -192,10 +192,11 @@ environment. This approves only the previously reviewed local API surfaces.
 
 ## Providers, models and authentication
 
-On each saved Hermes engine, **Providers & models** is a persistent tab with
-one search field, providers on the left and model checkboxes on the right.
-**Refresh catalog** reads the installed Hermes inventory. Enable multiple
-models; they remain visible in the **Enabled models** list below the catalog.
+On each saved Hermes engine, **Providers & models** shows the persisted
+**Enabled models** list. **Add model** fetches the Hermes catalog and opens a
+popup with one search field, providers on the left and model checkboxes on the
+right. Enable multiple models, then close the popup; the engine list refreshes
+automatically. **Model Settings** is a hyperlink to the Hermes dashboard.
 Enabling is idempotent, company-scoped and records native creator/editor history.
 Unconfigured providers cannot be enabled. Connection edits must be saved before
 model changes. Disabling a selected model blocks further use by its agents.
@@ -210,7 +211,7 @@ and authentication is checked again before submitting an override to Hermes.
 **Management connection** is part of the main setup, next to the run API.
 It supplies the memory safety check and the reviewed profile's setup dashboard.
 The shared URL/key checkbox controls whether separate management fields appear;
-local endpoints and credentials remain automatic. **Provider setup in Hermes**
+local endpoints and credentials remain automatic. **Model Settings**
 opens the browser dashboard; locally this is
 `http://127.0.0.1:9119/models?profile=odoo-internal`. Port 9120 runs headless
 `hermes serve` and remains the management API, not a browser UI. Hermes owns API-key, OAuth and custom
@@ -219,7 +220,7 @@ secrets or dashboard credentials into browser URLs. The dashboard requires its
 own authorized login. Browser loopback addresses refer to the browser machine;
 remote users need a reachable, reviewed management endpoint.
 
-Module 20.0.1.3.0 requires an upgrade and restart for schema/views/assets.
+Module 20.0.1.3.1 requires an upgrade and restart for schema/views/assets.
 No running business database or real Hermes provider was changed by these tests.
 
 Verification: `/tmp/ai-agent-enabled-models-final.log` — **60 tests passed**,

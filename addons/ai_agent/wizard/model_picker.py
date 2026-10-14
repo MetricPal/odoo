@@ -11,6 +11,7 @@ class ModelPicker(models.TransientModel):
     name = fields.Char(default='Providers and models', readonly=True)
     engine_id = fields.Many2one('ai.agent.engine', required=True)
     agent_id = fields.Many2one('ai.agent')
+    model_settings_url = fields.Char(related='engine_id.model_settings_url', readonly=True)
     catalog = fields.Json(readonly=True)
     provider = fields.Char()
     model = fields.Char()
@@ -30,6 +31,14 @@ class ModelPicker(models.TransientModel):
         self.write({'catalog': engine._model_catalog()})
         return {'type': 'ir.actions.act_window', 'res_model': self._name, 'res_id': self.id,
                 'view_mode': 'form', 'target': 'new', 'name': _('Providers and models')}
+
+    def set_model_enabled(self, provider, model, enabled):
+        engine = self._engine()
+        if self.agent_id:
+            raise UserError(_('Enable models from the connection, not from an agent selection.'))
+        engine.set_model_enabled(provider, model, enabled)
+        self.write({'catalog': engine.provider_catalog})
+        return True
 
     def action_setup(self):
         engine = self._engine()

@@ -8,11 +8,11 @@
         <field name="use_default" invisible="not agent_id"/>
         <div class="w-100"><field name="catalog" widget="ai_agent_model_picker" nolabel="1"/></div>
         <p class="text-muted">Provider authentication follows Hermes. Complete API-key, OAuth or server setup in Hermes, then refresh here. Credentials are not copied into Odoo. A reported connection does not guarantee access to every model.</p>
-        <p class="text-muted" invisible="agent_id">To change this engine's main model, use provider setup in Hermes, then refresh. This catalog is read-only.</p>
+        <field name="model_settings_url" widget="url" text="Model Settings" readonly="1" nolabel="1"/>
         <footer>
           <button name="action_apply" string="Use selected model" type="object" class="btn-primary" invisible="not agent_id"/>
-          <button name="action_setup" string="Provider setup in Hermes" type="object"/>
-          <button name="action_refresh" string="Refresh catalog" type="object"/>
+
+
           <button string="Close" special="cancel"/>
         </footer>
       </form>

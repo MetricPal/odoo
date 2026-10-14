@@ -136,3 +136,9 @@ is headless; the browser link now uses dashboard 9119 with the explicit
 Targeted method checks passed for the local profile URL, manager-guard
 invocation and unchanged remote endpoint validation. An Odoo regression test
 was added; the full database suite was not rerun for this URL-only correction.
+
+2026-10-14 UI refinement: Model Settings is now a native URL hyperlink.
+Add model replaces Refresh catalog and opens the searchable provider/model
+popup. Checkbox changes retain manager/company/fresh-authentication checks;
+closing reloads the engine Enabled models list. Full clean-install suite in
+`/tmp/ai-agent-add-model-popup.log`: 63 tests, zero failures/errors.

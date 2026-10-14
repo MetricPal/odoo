@@ -174,20 +174,25 @@ class TestAgentUI(HttpCase):
                 (async()=>{
                     const wait=async p=>{for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Catalog flow missing: '+document.body.innerText);};
                     await wait(()=>document.querySelector('.o_notebook'));
-                    if(document.querySelector('button[name="action_models"]'))throw new Error('Popup entry still present');
+                    if(!document.querySelector('button[name="action_models"]'))throw new Error('Add model missing');
                     if(!document.querySelector('[name="management_same_connection"]'))throw new Error('Management not in main setup');
                     [...document.querySelectorAll('.o_notebook .nav-link')].find(t=>t.textContent.includes('Providers & models')).click();
-                    await wait(()=>document.querySelectorAll('.o_ai_picker_models input[type="checkbox"]').length===2);
+                    document.querySelector('button[name="action_models"]').click();
+                    await wait(()=>document.querySelectorAll('.modal .o_ai_picker_models input[type="checkbox"]').length===2);
                     const first=()=>document.querySelectorAll('.o_ai_picker_models input[type="checkbox"]')[0];
                     first().click();
-                    await wait(()=>document.querySelectorAll('[name="enabled_model_ids"] .o_data_row').length===1 &amp;&amp; !first().disabled);
+                    await wait(()=>document.querySelectorAll('.modal .o_ai_picker_models .badge').length===1 &amp;&amp; !first().disabled);
                     document.querySelectorAll('.o_ai_picker_models input[type="checkbox"]')[1].click();
-                    await wait(()=>document.querySelectorAll('[name="enabled_model_ids"] .o_data_row').length===2 &amp;&amp; !first().disabled);
-                    if(document.querySelectorAll('[name="enabled_model_ids"] .o_data_row').length!==2)throw new Error('Enabled models not persisted in list');
+                    await wait(()=>document.querySelectorAll('.modal .o_ai_picker_models .badge').length===2 &amp;&amp; !first().disabled);
+
                     document.querySelector('.o_ai_model_picker').scrollIntoView({block:'start'});
                     console.log('ai_agent_capture_persistent_models');
                     [...document.querySelectorAll('.o_ai_picker_providers button')].find(b=>b.textContent.includes('Anthropic')).click();
                     await wait(()=>document.body.innerText.includes('Authenticate this provider'));
+                    [...document.querySelectorAll('.modal footer button')].find(b=>b.textContent.trim()==='Close').click();
+                    await wait(()=>!document.querySelector('.modal .o_ai_model_picker'));
+                    await wait(()=>document.querySelectorAll('[name="enabled_model_ids"] .o_data_row').length===2);
+                    if(![...document.querySelectorAll('a')].some(a=>a.textContent.trim()==='Model Settings'))throw new Error('Settings hyperlink missing');
                     console.log('test successful');
                 })();
             """.replace('&amp;', '&'), login='admin', timeout=90)

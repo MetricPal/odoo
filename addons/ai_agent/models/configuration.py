@@ -69,6 +69,17 @@ class Engine(models.Model):
     enabled_model_ids = fields.One2many('ai.agent.engine.model', 'engine_id', domain=[('enabled', '=', True)])
     provider_catalog = fields.Json(compute='_compute_provider_catalog', groups='ai_agent.group_manager')
 
+    model_settings_url = fields.Char(compute='_compute_model_settings_url', groups='ai_agent.group_manager')
+
+    @api.depends('connection_mode', 'url', 'management_url', 'management_same_connection')
+    def _compute_model_settings_url(self):
+        for engine in self:
+            if engine.connection_mode == 'local':
+                engine.model_settings_url = 'http://127.0.0.1:9119/models?profile=odoo-internal'
+            else:
+                base = engine.url if engine.management_same_connection else (engine.management_url or engine.url)
+                engine.model_settings_url = base.rstrip('/') + '/models' if base else False
+
     @api.depends('models_catalog', 'enabled_model_ids', 'enabled_model_ids.enabled')
     def _compute_provider_catalog(self):
         for engine in self:
@@ -285,8 +296,9 @@ class Engine(models.Model):
 
     def action_models(self):
         self.action_refresh_models()
-        return {'type': 'ir.actions.act_window', 'res_model': self._name, 'res_id': self.id,
-                'view_mode': 'form', 'target': 'current'}
+        picker = self.env['ai.agent.model.picker'].create({'engine_id': self.id, 'catalog': self.provider_catalog})
+        return {'type': 'ir.actions.act_window', 'res_model': picker._name, 'res_id': picker.id,
+                'view_mode': 'form', 'target': 'new', 'name': _('Add model')}
 
     def action_provider_setup(self):
         manager(self)

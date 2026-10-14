@@ -25,7 +25,7 @@ export class HermesModelPicker extends Component {
         return p.models.filter(m => !term || `${p.name} ${p.slug}`.toLowerCase().includes(term) || m.toLowerCase().includes(term));
     }
     selectProvider(p) { this.state.slug = p.slug; }
-    get isEngine() { return this.props.record.resModel === "ai.agent.engine"; }
+    get isEngine() { return this.props.record.resModel === "ai.agent.engine" || (this.props.record.resModel === "ai.agent.model.picker" && !this.props.record.data.agent_id); }
     isEnabled(model) { return (this.selected?.enabled_models || []).includes(model); }
     async toggleModel(model) {
         if (this.state.busy) { return; }
@@ -37,7 +37,7 @@ export class HermesModelPicker extends Component {
                 this.notification.add("Save the connection before enabling models.", { type: "warning" });
                 return;
             }
-            await this.orm.call("ai.agent.engine", "set_model_enabled", [[this.props.record.resId], provider, model, enabled]);
+            await this.orm.call(this.props.record.resModel, "set_model_enabled", [[this.props.record.resId], provider, model, enabled]);
             await this.props.record.load();
         } finally { this.state.busy = false; }
     }
