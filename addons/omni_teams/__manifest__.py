@@ -1,5 +1,5 @@
 {
- "name": "Omnichannel Microsoft Teams", "version": "20.0.1.0.0",
+ "name": "Omnichannel Microsoft Teams", "version": "20.0.1.0.1",
  "summary": "Receive Teams personal chats and send approved replies in Odoo",
  "description": "Connect a single-tenant Teams bot to the shared Omnichannel inbox. Receive private text, send a confirmed setup test and reply through human approval. Group chats, channels and attachments are not supported.",
  "category": "Productivity", "author": "metric.io", "license": "LGPL-3",

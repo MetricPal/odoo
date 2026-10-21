@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Shipped defaults: loaded once, then owned by the admin (upgrades never reset them). -->
+    <data noupdate="1">
     <record id="approval_type_business_trip" model="approval.center.policy">
         <field name="name">Business Trip</field>
         <field name="description">Approve travel requests before employees make arrangements.</field>
@@ -21,6 +23,7 @@
         <field name="has_period">optional</field>
         <field name="has_items">required</field>
         <field name="has_quantity">required</field>
+        <field name="manager_approval">1</field>
         <field name="approval_minimum">1</field>
     </record>
 
@@ -30,6 +33,7 @@
         <field name="sequence">30</field>
         <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_general_approval.svg"/>
         <field name="has_document">optional</field>
+        <field name="manager_approval">1</field>
         <field name="approval_minimum">1</field>
     </record>
 
@@ -41,6 +45,7 @@
         <field name="has_document">required</field>
         <field name="has_partner">optional</field>
         <field name="has_reference">optional</field>
+        <field name="manager_approval">1</field>
         <field name="approval_minimum">1</field>
     </record>
 
@@ -53,6 +58,7 @@
         <field name="has_amount">required</field>
         <field name="has_reference">optional</field>
         <field name="has_payment">required</field>
+        <field name="manager_approval">1</field>
         <field name="approval_minimum">1</field>
     </record>
 
@@ -64,6 +70,7 @@
         <field name="has_document">optional</field>
         <field name="has_period">required</field>
         <field name="has_location">required</field>
+        <field name="manager_approval">1</field>
         <field name="approval_minimum">1</field>
     </record>
 
@@ -74,6 +81,7 @@
         <field name="image_128" type="bytes" file="approval_center/static/img/approval_type_job_referral_award.svg"/>
         <field name="has_document">optional</field>
         <field name="has_partner">required</field>
+        <field name="manager_approval">1</field>
         <field name="approval_minimum">1</field>
     </record>
 
@@ -86,6 +94,8 @@
         <field name="has_items">required</field>
         <field name="has_quantity">optional</field>
         <field name="has_amount">optional</field>
+        <field name="manager_approval">1</field>
         <field name="approval_minimum">1</field>
     </record>
+    </data>
 </odoo>

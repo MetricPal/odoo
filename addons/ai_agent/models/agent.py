@@ -9,7 +9,26 @@ from .common import digest, internal, manager, trusted
 SAFE_MODELS = {'res.partner', 'crm.lead', 'sale.order', 'product.product', 'product.template',
                'stock.quant', 'purchase.order', 'project.task'}
 SCALAR_TYPES = {'char', 'text', 'integer', 'float', 'monetary', 'boolean', 'date', 'datetime', 'selection'}
+CONTEXT_BUDGET = 60000  # characters of JSON context sent with one question
+SOURCE_EXCERPT_MAX = 8000
 
+
+
+def boolean_search_values(operator, value):
+    """Booleans a search on a computed Boolean field asks for, or None if unsupported.
+
+    Odoo 20 passes ``in``/``not in`` with a set of values (``= True`` becomes
+    ``in {True}``); older callers may still pass ``=``/``!=``.
+    """
+    if operator in ('=', '!='):
+        values = {bool(value)}
+    elif operator in ('in', 'not in'):
+        values = {bool(item) for item in value}
+    else:
+        return None
+    if operator in ('!=', 'not in'):
+        values = {True, False} - values
+    return values
 
 class Agent(models.Model):
     _name = 'ai.agent'
@@ -40,6 +59,9 @@ class Agent(models.Model):
     restrict_sources = fields.Boolean(string='Ground knowledge answers in sources', default=True)
     max_concurrent = fields.Integer(default=2, required=True, string='Concurrent requests')
     max_requests_per_day = fields.Integer(default=50, required=True, string='Daily request limit')
+    max_requests_per_user_day = fields.Integer(
+        default=20, required=True, string='Daily limit per user',
+        help='Questions one person may ask this agent per day (UTC). 0 means no per-person limit.')
     revision = fields.Integer(default=1, readonly=True)
     activation_hash = fields.Char(readonly=True, groups='ai_agent.group_manager')
     run_ids = fields.One2many('ai.agent.run', 'agent_id', readonly=True)
@@ -57,10 +79,15 @@ class Agent(models.Model):
             (Domain('access_scope', '=', 'users') & (Domain('department_ids', 'in', departments) | Domain('user_ids', 'in', [user.id]))))
 
     def _search_can_chat(self, operator, value):
-        if operator not in ('=', '!=') or not isinstance(value, bool):
+        values = boolean_search_values(operator, value)
+        if values is None:
             return NotImplemented
+        if values == {True, False}:
+            return []
+        if not values:
+            return [('id', 'in', [])]
         domain = self._audience_domain(self.env.user)
-        return domain if (value if operator == '=' else not value) else ~domain
+        return domain if True in values else ~domain
 
     @api.depends_context('uid')
     def _compute_can_chat(self):
@@ -109,7 +136,7 @@ class Agent(models.Model):
         if option and (not option.enabled or option.engine_id != self.engine_id):
             raise UserError(_('The selected AI model is no longer enabled on this connection. Ask an AI Agent manager to select another model.'))
 
-    @api.constrains('access_scope', 'department_ids', 'user_ids', 'skill_ids', 'source_ids', 'engine_id', 'max_concurrent', 'max_requests_per_day', 'provider', 'model', 'engine_model_id')
+    @api.constrains('access_scope', 'department_ids', 'user_ids', 'skill_ids', 'source_ids', 'engine_id', 'max_concurrent', 'max_requests_per_day', 'max_requests_per_user_day', 'provider', 'model', 'engine_model_id')
     def _check_configuration(self):
         for agent in self:
             if any(d.company_id != agent.company_id for d in agent.department_ids):
@@ -122,6 +149,8 @@ class Agent(models.Model):
                 raise ValidationError(_('Engine and sources must belong to the agent company.'))
             if not 1 <= agent.max_concurrent <= 10 or not 1 <= agent.max_requests_per_day <= 1000:
                 raise ValidationError(_('Use 1–10 concurrent requests and 1–1000 requests per day.'))
+            if not 0 <= agent.max_requests_per_user_day <= agent.max_requests_per_day:
+                raise ValidationError(_('The per-user limit must be between 0 and the agent daily limit.'))
             agent._check_enabled_model()
             if agent.engine_model_id and (agent.provider != agent.engine_model_id.provider or agent.model != agent.engine_model_id.model):
                 raise ValidationError(_('Provider and model must match the selected enabled model.'))
@@ -147,7 +176,9 @@ class Agent(models.Model):
                        'engine_revision': self.engine_id.revision,
                        'skills': [(s.id, s.revision, s.state) for s in self.skill_ids],
                        'sources': [(s.id, s.revision, s.state, s.active) for s in self.source_ids],
-                       'access': [(a.id, a.model_name, a.field_names, a.domain_json, a.limit) for a in self.access_ids]})
+                       'access': [(a.id, a.model_name, a.field_names, a.domain_json, a.limit)
+                                  + ((a.record_order,) if a.record_order != 'recent' else ())
+                                  for a in self.access_ids]})
 
     def action_choose_model(self):
         manager(self)
@@ -205,6 +236,20 @@ class Agent(models.Model):
         if self.sudo().activation_hash != self.sudo()._configuration_hash():
             raise UserError(_('Agent configuration changed. A manager must review and activate it again.'))
 
+    @api.model
+    def _chat_options(self):
+        """Active agents the current user can ask right now, for pickers in other apps."""
+        if not self.env.user.has_group('ai_agent.group_user'):
+            return []
+        options = []
+        for agent in self.search([('state', '=', 'active'), ('can_chat', '=', True)]):
+            try:
+                agent._usable()
+            except (AccessError, UserError):
+                continue
+            options.append({'id': agent.id, 'name': agent.name, 'description': agent.description or ''})
+        return options
+
     def action_chat(self):
         self._usable()
         return {'type': 'ir.actions.act_window', 'res_model': 'ai.agent.ask', 'view_mode': 'form',
@@ -226,9 +271,10 @@ class Agent(models.Model):
             domain = Domain(json.loads(access.domain_json))
             if 'company_id' in model._fields:
                 domain &= Domain.OR([Domain('company_id', '=', False), Domain('company_id', '=', self.company_id.id)])
-            records = model.search(domain, limit=access.limit, order='id')
+            records = model.search(domain, limit=access.limit, order=access._search_order(model))
             context['records'].append({'model': access.model_name, 'records': records.read(names, load=None)})
-        terms = set(prompt.lower().split())
+        terms = {term.strip('.,;:!?()[]"\'').lower() for term in prompt.split()} - {''}
+        candidates = []
         for source in self.sudo().source_ids:
             permitted = source.with_user(self.env.user).sudo(False).with_context(allowed_company_ids=[self.company_id.id])
             try:
@@ -239,11 +285,25 @@ class Agent(models.Model):
             if source.state != 'ready' or not source.active:
                 continue
             paragraphs = [p.strip() for p in source.extracted_text.split('\n') if p.strip()]
-            paragraphs.sort(key=lambda p: len(terms & set(p.lower().split())), reverse=True)
-            context['sources'].append({'name': source.name, 'revision': source.revision,
-                                       'excerpt': '\n'.join(paragraphs)[:8000]})
-        if len(json.dumps(context, default=str)) > 60000:
-            raise UserError(_('Reduce the selected record fields or source scope before asking.'))
+            scored = [(len(terms & {w.strip('.,;:!?()[]"\'').lower() for w in p.split()}), p) for p in paragraphs]
+            scored.sort(key=lambda item: item[0], reverse=True)
+            candidates.append((source, scored))
+        # Records are the approved scope and are never trimmed. Sources share
+        # what remains of the budget, best-matching paragraphs first.
+        used = len(json.dumps(context, default=str))
+        if used > CONTEXT_BUDGET:
+            raise UserError(_('Reduce the selected record fields or limits before asking.'))
+        if candidates:
+            share = max(500, min(SOURCE_EXCERPT_MAX, (CONTEXT_BUDGET - used - 200 * len(candidates)) // len(candidates)))
+            for source, scored in candidates:
+                excerpt, size = [], 0
+                for _score, paragraph in scored:
+                    if size + len(paragraph) + 1 > share:
+                        continue
+                    excerpt.append(paragraph)
+                    size += len(paragraph) + 1
+                context['sources'].append({'name': source.name, 'revision': source.revision,
+                                           'excerpt': '\n'.join(excerpt)})
         return context
 
 
@@ -259,6 +319,19 @@ class Access(models.Model):
     field_names = fields.Char(required=True, string='Fields', default='name', help='Explicit scalar field allowlist, separated by commas.')
     domain_json = fields.Text(default='[]', required=True, string='Record filter', help='JSON record filter; no Python expressions.')
     limit = fields.Integer(default=10, required=True)
+    record_order = fields.Selection([
+        ('recent', 'Recently updated first'),
+        ('newest', 'Newest first'),
+        ('oldest', 'Oldest first'),
+    ], default='recent', required=True, string='Which records first',
+        help='When more records match than the limit, which ones the agent sees.')
+
+    def _search_order(self, model):
+        order = {'recent': 'write_date desc, id desc', 'newest': 'create_date desc, id desc',
+                 'oldest': 'id'}[self.record_order]
+        if self.record_order != 'oldest' and order.split()[0] not in model._fields:
+            return 'id desc'
+        return order
 
     def _fields_allowed(self, model):
         names = [n.strip() for n in self.field_names.split(',') if n.strip()]
@@ -271,7 +344,7 @@ class Access(models.Model):
             model.check_field_access(field, 'read')
         return names
 
-    @api.constrains('model_name', 'field_names', 'domain_json', 'limit', 'agent_id')
+    @api.constrains('model_name', 'field_names', 'domain_json', 'limit', 'agent_id', 'record_order')
     def _validate_scope(self):
         for access in self:
             if access.model_name not in SAFE_MODELS or access.model_name not in self.env:

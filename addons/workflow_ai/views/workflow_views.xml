@@ -1,0 +1,14 @@
+<odoo>
+  <record id="workflow_form_ai" model="ir.ui.view">
+    <field name="name">workflow.definition.form.ai</field>
+    <field name="model">workflow.definition</field>
+    <field name="inherit_id" ref="workflow_center.workflow_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <group string="AI suggestion" invisible="not ai_suggestion">
+          <field name="ai_suggestion" nolabel="1" colspan="2"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+</odoo>

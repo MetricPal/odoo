@@ -15,7 +15,7 @@
           <p>Install the Teams app in personal scope before testing.</p>
           <button name="action_setup_enable_receiving" type="object" string="Enable receiving" class="btn-primary" invisible="setup_endpoint_state == 'enabled'" confirm="Enable private text receiving with the displayed retention periods?"/>
           <span class="text-success" invisible="setup_endpoint_state != 'enabled'">Receiving enabled</span>
-          <group string="Message retention" class="mt-3"><field name="setup_payload_days" readonly="setup_policy_state != 'draft'"/><field name="setup_message_days" readonly="setup_policy_state != 'draft'"/><field name="setup_blocked_days" readonly="setup_policy_state != 'draft'"/></group>
+          <group string="How long messages are kept" class="mt-3"><field name="setup_payload_days" readonly="setup_policy_state != 'draft'"/><field name="setup_message_days" readonly="setup_policy_state != 'draft'"/><field name="setup_blocked_days" readonly="setup_policy_state != 'draft'"/></group>
         </div>
       </xpath>
       <xpath expr="//div[contains(@class, 'o_omni_setup_stage_4')]" position="inside">

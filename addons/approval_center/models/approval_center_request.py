@@ -1,6 +1,22 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
+from .common import approval_internal, approval_token_present
+
+# Fields that only the review/execution actions may change.
+DECISION_FIELDS = {
+    'state', 'requester_id', 'approver_id', 'approved_at', 'executed_at',
+    'refused_at', 'failure_reason', 'review_minimum', 'review_sequence',
+}
+# Business content frozen once a request leaves "To Submit".
+CONTENT_FIELDS = {
+    'name', 'policy_id', 'company_id', 'date_start', 'date_end', 'date',
+    'partner_id', 'document_ids', 'item', 'quantity', 'amount', 'reference',
+    'payment', 'location', 'reason', 'approver_ids',
+}
+# Technical execution target: set by integrations or Approval Center administrators.
+TARGET_FIELDS = {'target_model', 'target_res_id'}
+
 
 class ApprovalCenterRequest(models.Model):
     _name = 'approval.center.request'
@@ -9,21 +25,30 @@ class ApprovalCenterRequest(models.Model):
     _order = 'create_date desc, id desc'
 
     name = fields.Char(string='Approval Subject', required=True, tracking=True)
+    active = fields.Boolean(default=True)
     state = fields.Selection([
         ('to_submit', 'To Submit'),
         ('submitted', 'Submitted'),
         ('approved', 'Approved'),
         ('refused', 'Refused'),
-    ], default='to_submit', required=True, tracking=True, index=True)
+    ], default='to_submit', required=True, tracking=True, index=True, readonly=True)
     policy_id = fields.Many2one(
         'approval.center.policy',
-        string='Category',
+        string='Approval type',
         required=True,
         tracking=True,
         domain="[('active', '=', True)]",
     )
     approval_minimum = fields.Integer(related='policy_id.approval_minimum', readonly=True)
     approver_sequence = fields.Boolean(related='policy_id.approver_sequence', readonly=True)
+    review_minimum = fields.Integer(
+        readonly=True, copy=False,
+        help='Minimum approvals frozen when the request was submitted.',
+    )
+    review_sequence = fields.Boolean(
+        readonly=True, copy=False,
+        help='Whether approvers must decide in order, frozen when the request was submitted.',
+    )
     action_name = fields.Char(related='policy_id.action_name', store=True, readonly=True)
     has_document = fields.Selection(related='policy_id.has_document', readonly=True)
     has_partner = fields.Selection(related='policy_id.has_partner', readonly=True)
@@ -58,6 +83,11 @@ class ApprovalCenterRequest(models.Model):
     )
     approved_count = fields.Integer(compute='_compute_approval_counts')
     refused_count = fields.Integer(compute='_compute_approval_counts')
+    waiting_for = fields.Char(
+        compute='_compute_waiting_for',
+        help='Approvers whose decision is still needed.',
+    )
+    can_review = fields.Boolean(compute='_compute_can_review')
     company_id = fields.Many2one(
         'res.company',
         default=lambda self: self.env.company,
@@ -82,6 +112,60 @@ class ApprovalCenterRequest(models.Model):
     failure_reason = fields.Text(readonly=True)
     audit_ids = fields.One2many('approval.center.audit', 'request_id', readonly=True)
     audit_count = fields.Integer(compute='_compute_audit_count')
+
+    # ------------------------------------------------------------------
+    # Trust boundary
+    # ------------------------------------------------------------------
+
+    def _approval_trusted(self):
+        """Whether the current call may perform governed state changes.
+
+        Integrations (Workflows, Omnichannel, Social) extend this with their own
+        server-side capability. ``sudo`` is server code only and stays trusted.
+        """
+        return self.env.su or approval_token_present(self)
+
+    def _is_approval_manager(self):
+        return self.env.user.has_group('approval_center.group_approval_center_manager')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        if not self._approval_trusted():
+            for vals in vals_list:
+                decided = {name for name in DECISION_FIELDS - {'requester_id', 'state'} if vals.get(name)}
+                if decided or vals.get('state', 'to_submit') != 'to_submit':
+                    raise AccessError(_('Submit the request and use its review actions to change its status.'))
+                if vals.get('requester_id', self.env.uid) != self.env.uid:
+                    raise AccessError(_('You can only create approval requests for yourself.'))
+                if TARGET_FIELDS & vals.keys() and not self._is_approval_manager():
+                    policy = self.env['approval.center.policy'].browse(vals.get('policy_id')).exists()
+                    # The category model is the only target a requester may imply.
+                    if vals.get('target_res_id') or (vals.get('target_model') and vals['target_model'] != policy.model):
+                        raise AccessError(_('Only an Approval Center administrator can link a request to a record.'))
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if not self._approval_trusted():
+            if DECISION_FIELDS & vals.keys():
+                raise AccessError(_('Use Submit, Approve, Refuse or Cancel. Request status cannot be edited directly.'))
+            if (CONTENT_FIELDS | TARGET_FIELDS) & vals.keys():
+                for request in self:
+                    if request.state != 'to_submit':
+                        raise UserError(_('Submitted requests are frozen. Cancel the request to change it.'))
+            if TARGET_FIELDS & vals.keys() and not self._is_approval_manager():
+                raise AccessError(_('Only an Approval Center administrator can link a request to a record.'))
+        return super().write(vals)
+
+    def unlink(self):
+        if not self.env.su:
+            for request in self:
+                if request.state != 'to_submit' or request.sudo().audit_ids:
+                    raise UserError(_('Requests with review history are kept for the audit trail. Archive it instead.'))
+        return super().unlink()
+
+    # ------------------------------------------------------------------
+    # Defaults and computes
+    # ------------------------------------------------------------------
 
     @api.model
     def default_get(self, fields_list):
@@ -111,6 +195,28 @@ class ApprovalCenterRequest(models.Model):
         for request in self:
             request.selected_approver_user_ids = request.approver_ids.user_id
 
+    @api.depends('state', 'approver_ids.status', 'approver_ids.required', 'approver_ids.sequence', 'review_sequence')
+    def _compute_waiting_for(self):
+        for request in self:
+            if request.state != 'submitted':
+                request.waiting_for = False
+                continue
+            pending = request._ordered_lines().filtered(lambda line: line.status == 'submitted')
+            if request.review_sequence:
+                pending = pending[:1]
+            request.waiting_for = ', '.join(pending.user_id.mapped('name')) or False
+
+    @api.depends_context('uid')
+    @api.depends('state', 'approver_ids.status', 'approver_ids.user_id', 'requester_id')
+    def _compute_can_review(self):
+        for request in self:
+            try:
+                request._check_can_review()
+            except (AccessError, UserError):
+                request.can_review = False
+            else:
+                request.can_review = request.state == 'submitted'
+
     @api.onchange('policy_id')
     def _onchange_policy_id(self):
         for request in self:
@@ -118,17 +224,37 @@ class ApprovalCenterRequest(models.Model):
                 request.target_model = request.policy_id.model
             request.approver_ids = [(5, 0, 0)] + request._get_policy_approver_commands()
 
+    # ------------------------------------------------------------------
+    # Actions
+    # ------------------------------------------------------------------
+
     def action_submit(self):
         for request in self:
             if request.state != 'to_submit':
                 raise UserError(_('Only requests to submit can be submitted.'))
-            request._prepare_request_approvers()
+            if request.requester_id != self.env.user and not request._is_approval_manager() and not request._approval_trusted():
+                raise AccessError(_('Only the requester can submit this request.'))
+            governed = approval_internal(request)
+            governed._prepare_request_approvers()
             if not request.approver_ids:
-                raise UserError(_('This category has no approvers. Ask an Approval Center manager to configure the category.'))
+                raise UserError(_(
+                    'Nobody can approve "%s" requests for you yet: it has no approvers, and no manager is set '
+                    'on your employee record. Ask an Approvals manager to add approvers.', request.policy_id.display_name))
             request._check_required_fields()
             request._check_policy_matches_target()
-            request.write({
+            minimum = request.policy_id.approval_minimum
+            if len(request.approver_ids) < minimum:
+                raise UserError(_(
+                    '"%(type)s" needs %(needed)s approvals but only %(count)s approver(s) are available for you. '
+                    'Ask an Approvals manager to add approvers.',
+                    type=request.policy_id.display_name, needed=minimum, count=len(request.approver_ids)))
+            governed.write({
                 'state': 'submitted',
+                'review_minimum': minimum,
+                'review_sequence': request.policy_id.approver_sequence,
+                'approved_at': False,
+                'refused_at': False,
+                'failure_reason': False,
                 'approver_ids': [(1, approver.id, {'status': 'submitted'}) for approver in request.approver_ids],
             })
             request._audit('submitted', _('Approval request submitted.'))
@@ -138,55 +264,48 @@ class ApprovalCenterRequest(models.Model):
     def action_approve(self):
         for request in self:
             request._check_can_review()
-            if request.state != 'submitted':
-                raise UserError(_('Only submitted approval requests can be approved.'))
             approver = request._get_current_user_approver()
-            if not approver and self.env.user.has_group('approval_center.group_approval_center_manager'):
-                approver = self.env['approval.center.approver'].create({
+            override = not approver
+            if override:
+                # Administrator decision outside the designated approver list.
+                approver = approval_internal(self.env['approval.center.approver']).create({
                     'request_id': request.id,
                     'user_id': self.env.user.id,
-                    'required': True,
+                    'sequence': max(request.approver_ids.mapped('sequence') or [0]) + 1,
+                    'required': False,
                     'status': 'submitted',
                 })
-            approver.write({'status': 'approved'})
-            approved_count = self.env['approval.center.approver'].search_count([
-                ('request_id', '=', request.id),
-                ('status', '=', 'approved'),
-            ])
-            values = {
-                'approver_id': self.env.user.id,
-                'failure_reason': False,
-            }
-            if approved_count >= request.approval_minimum:
-                values.update({
-                    'state': 'approved',
-                    'approved_at': fields.Datetime.now(),
-                })
-            request.write(values)
-            request.activity_feedback(['approval_center.mail_act_approval_review'])
-            request._audit('approved', _('Approval request approved.'))
+            approval_internal(approver).write({'status': 'approved'})
+            values = {'approver_id': self.env.user.id, 'failure_reason': False}
+            if request._approval_complete():
+                values.update({'state': 'approved', 'approved_at': fields.Datetime.now()})
+            approval_internal(request).write(values)
+            request.activity_feedback(['approval_center.mail_act_approval_review'], user_id=self.env.uid)
+            if request.state == 'approved':
+                request.activity_unlink(['approval_center.mail_act_approval_review'])
+            request._audit('approved', _('Administrator override: approval recorded.') if override else _('Approval recorded.'))
 
     def action_refuse(self):
         for request in self:
             request._check_can_review()
-            if request.state != 'submitted':
-                raise UserError(_('Only submitted requests can be refused.'))
             approver = request._get_current_user_approver()
-            if not approver and self.env.user.has_group('approval_center.group_approval_center_manager'):
-                approver = self.env['approval.center.approver'].create({
+            override = not approver
+            if override:
+                approver = approval_internal(self.env['approval.center.approver']).create({
                     'request_id': request.id,
                     'user_id': self.env.user.id,
-                    'required': True,
+                    'sequence': max(request.approver_ids.mapped('sequence') or [0]) + 1,
+                    'required': False,
                     'status': 'submitted',
                 })
-            approver.write({'status': 'refused'})
-            request.write({
+            approval_internal(approver).write({'status': 'refused'})
+            approval_internal(request).write({
                 'state': 'refused',
                 'approver_id': self.env.user.id,
                 'refused_at': fields.Datetime.now(),
             })
-            request.activity_feedback(['approval_center.mail_act_approval_review'])
-            request._audit('refused', _('Approval request refused.'))
+            request.activity_unlink(['approval_center.mail_act_approval_review'])
+            request._audit('refused', _('Administrator override: request refused.') if override else _('Approval request refused.'))
 
     def action_reject(self):
         return self.action_refuse()
@@ -195,15 +314,24 @@ class ApprovalCenterRequest(models.Model):
         for request in self:
             if request.state == 'to_submit':
                 raise UserError(_('Requests to submit do not need to be cancelled.'))
-            if request.requester_id != self.env.user and not self.env.user.has_group('approval_center.group_approval_center_manager'):
+            if request.executed_at:
+                raise UserError(_('This request was already executed and cannot be cancelled.'))
+            if request.requester_id != self.env.user and not request._is_approval_manager():
                 raise AccessError(_('Only the requester or an Approval Center manager can cancel this request.'))
-            request.write({'state': 'to_submit'})
-            request.activity_feedback(['approval_center.mail_act_approval_review'])
+            approval_internal(request).write({
+                'state': 'to_submit',
+                'approved_at': False,
+                'refused_at': False,
+                'approver_ids': [(1, line.id, {'status': 'new'}) for line in request.approver_ids],
+            })
+            request.activity_unlink(['approval_center.mail_act_approval_review'])
             request._audit('cancelled', _('Approval request cancelled.'))
 
     def action_execute(self):
+        result = True
         for request in self:
-            request._execute_approved_action()
+            result = request._execute_approved_action()
+        return result
 
     def action_view_audits(self):
         self.ensure_one()
@@ -216,36 +344,49 @@ class ApprovalCenterRequest(models.Model):
             'context': {'default_request_id': self.id},
         }
 
+    # ------------------------------------------------------------------
+    # Execution
+    # ------------------------------------------------------------------
+
     def _execute_approved_action(self):
         self.ensure_one()
+        self._check_execution_policy()
+        if self.requester_id != self.env.user and not self._is_approval_manager():
+            raise AccessError(_('Only the requester or an Approval Center manager can execute this request.'))
+        governed = approval_internal(self)
+        if not self.target_model or not self.target_res_id or not self.action_name:
+            governed.write({'executed_at': fields.Datetime.now(), 'failure_reason': False})
+            self._audit('executed', _('Approval completed without a linked backend action.'))
+            return True
         try:
-            self._check_execution_policy()
-            if not self.target_model or not self.target_res_id or not self.action_name:
-                self.write({
-                    'state': 'approved',
-                    'executed_at': fields.Datetime.now(),
-                    'failure_reason': False,
-                })
-                self._audit('executed', _('Approval completed without a linked backend action.'))
-                return True
-            record = self.env[self.target_model].browse(self.target_res_id).exists()
-            if not record:
-                raise UserError(_('Target record no longer exists.'))
-            action = getattr(record, self.action_name, None)
-            if not action or self.action_name.startswith('_'):
-                raise UserError(_('Configured action is not available on the target record.'))
-            result = action()
-        except Exception as error:
+            # The savepoint undoes partial business writes; the failure is then
+            # recorded in the outer transaction so the audit is not rolled back.
+            with self.env.cr.savepoint():
+                record = self.env[self.target_model].browse(self.target_res_id).exists()
+                if not record:
+                    raise UserError(_('Target record no longer exists.'))
+                action = getattr(record, self.action_name, None)
+                if not callable(action) or not self.env['approval.center.policy']._valid_action_name(self.action_name):
+                    raise UserError(_('Configured action is not available on the target record.'))
+                result = action()
+        except (UserError, AccessError, ValueError) as error:
+            self.env.invalidate_all()
             message = str(error)
-            self.write({'failure_reason': message})
+            governed.write({'failure_reason': message})
             self._audit('failed', _('Approval execution failed.'), result=message)
-            raise
-        self.write({
-            'state': 'approved',
-            'executed_at': fields.Datetime.now(),
-            'failure_reason': False,
-        })
-        self._audit('executed', _('Approved action executed.'), result=repr(result))
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'type': 'danger',
+                    'title': _('Execution failed'),
+                    'message': message,
+                    'sticky': True,
+                    'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
+                },
+            }
+        governed.write({'executed_at': fields.Datetime.now(), 'failure_reason': False})
+        self._audit('executed', _('Approved action executed.'), result=repr(result)[:2000])
         return result
 
     def _check_execution_policy(self):
@@ -253,22 +394,57 @@ class ApprovalCenterRequest(models.Model):
         if self.state != 'approved':
             self._audit('blocked', _('Execution blocked: request is not approved.'))
             raise UserError(_('Only approved requests can be executed.'))
+        if self.executed_at:
+            self._audit('blocked', _('Execution blocked: request was already executed.'))
+            raise UserError(_('This request was already executed.'))
         self._check_policy_matches_target()
 
     def _check_policy_matches_target(self):
         self.ensure_one()
         if not self.policy_id.active:
-            raise UserError(_('Approval category is not active.'))
+            raise UserError(_('This approval type is archived.'))
+        if self.policy_id.action_name and not self.policy_id.model:
+            raise UserError(_('This approval type runs an action but has no target model. Ask an administrator to fix the approval type.'))
         if self.target_model and self.policy_id.model and self.policy_id.model != self.target_model:
-            raise UserError(_('Approval category target model does not match the request target.'))
+            raise UserError(_('The approval type\'s target model does not match the request target.'))
+
+    # ------------------------------------------------------------------
+    # Review rules
+    # ------------------------------------------------------------------
+
+    def _ordered_lines(self):
+        self.ensure_one()
+        return self.approver_ids.sorted(lambda line: (line.sequence, line.id))
 
     def _check_can_review(self):
+        """Raise unless the current user may decide now. Integrations override."""
         self.ensure_one()
-        if self.env.user.has_group('approval_center.group_approval_center_manager'):
-            return True
-        if self._get_current_user_approver():
-            return True
-        raise AccessError(_('You are not allowed to approve this request.'))
+        if self.state != 'submitted':
+            raise UserError(_('Only submitted requests can be reviewed.'))
+        user = self.env.user
+        if self.requester_id == user and not self.policy_id.allow_self_approval:
+            raise AccessError(_('You cannot approve or refuse your own request.'))
+        line = self._get_current_user_approver()
+        if not line:
+            if self._is_approval_manager():
+                return True
+            raise AccessError(_('You are not allowed to approve this request.'))
+        if line.status != 'submitted':
+            raise UserError(_('You already recorded your decision on this request.'))
+        if self.review_sequence and self._ordered_lines().filtered(
+            lambda other: (other.sequence, other.id) < (line.sequence, line.id) and other.status != 'approved'
+        ):
+            raise UserError(_('An earlier approver must decide first.'))
+        return True
+
+    def _approval_complete(self):
+        """Minimum count reached and every required approver approved."""
+        self.ensure_one()
+        lines = self.approver_ids
+        minimum = self.review_minimum or self.policy_id.approval_minimum or 1
+        approved = lines.filtered(lambda line: line.status == 'approved')
+        missing_required = lines.filtered(lambda line: line.required and line.status != 'approved')
+        return len(approved) >= minimum and not missing_required
 
     def _get_current_user_approver(self):
         self.ensure_one()
@@ -279,9 +455,16 @@ class ApprovalCenterRequest(models.Model):
         if self.approver_ids:
             return
         commands = self._get_policy_approver_commands()
+        if not commands:
+            raise UserError(_(
+                'Nobody can approve "%s" requests for you yet: it has no approvers, and no manager is set '
+                'on your employee record. Ask an Approvals manager to add approvers.', self.policy_id.display_name))
         if len(commands) < self.approval_minimum:
-            raise UserError(_('This request has fewer approvers than the category minimum approval.'))
-        self.write({'approver_ids': commands})
+            raise UserError(_(
+                '"%(type)s" needs %(needed)s approvals but only %(count)s approver(s) are available for you. '
+                'Ask an Approvals manager to add approvers.',
+                type=self.policy_id.display_name, needed=self.approval_minimum, count=len(commands)))
+        approval_internal(self).write({'approver_ids': commands})
 
     def _get_policy_approver_commands(self):
         self.ensure_one()
@@ -370,3 +553,11 @@ class ApprovalCenterRequest(models.Model):
             'message': message,
             'result': result or False,
         })
+
+
+    @api.model
+    def action_pick_type(self):
+        """New request: choose the approval type first."""
+        action = self.env['ir.actions.act_window']._for_xml_id('approval_center.action_approval_center_dashboard')
+        action['name'] = _('New request: choose a type')
+        return action

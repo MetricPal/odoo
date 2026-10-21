@@ -1,0 +1,14 @@
+<odoo>
+  <record id="approval_request_form_ai_explain" model="ir.ui.view">
+    <field name="name">approval.center.request.form.ai.explain</field>
+    <field name="model">approval.center.request</field>
+    <field name="inherit_id" ref="approval_center.approval_center_request_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/field[@name='state']" position="before">
+        <button name="action_ai_explain" type="object" string="Ask AI" icon="fa-magic"
+                groups="ai_agent.group_user" invisible="state == 'to_submit'"
+                help="Get an explanation of this request. Nothing is sent until you click Send, and AI cannot decide for you."/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

@@ -59,8 +59,9 @@ Unsupported providers remain saved drafts with a clear explanation in Credential
 Messages and Connections are available from the channel header. Operations →
 Technical Details links to delivery logs, intake logs, purpose audit history and
 recipient authorization. Purpose/team records remain editable through their
-relational field. No separate Overview, Inbox menu,
-configuration tree or app launcher is installed. Existing inbox actions and
+relational field. Settings administrators open these screens from the
+Omnichannel app (Channels, Outgoing messages, Receiving rules, Blocklist;
+decision 2026-10-21). No separate Overview or Inbox menu is installed. Existing inbox actions and
 business integration APIs remain available to consuming applications.
 
 The catalog and configuration are generic for all channel types. Provider
@@ -333,3 +334,20 @@ Card headers stack channel type and communication-team tags at the right, follow
 by readiness. Cards omit the receiving-status wording and extra progress spacing.
 Setup forms omit the duplicate central step number/title; the left step navigation
 identifies the current step.
+
+## Shared building blocks for provider addons (2026-10-20)
+
+- `providers/vault.py` — `CredentialVault(prefix, folder, scope_keys)`: encrypted,
+  owner-only credential files with scope binding. Slack, Teams, WhatsApp and Social
+  use it through thin wrappers. Set `OMNI_VAULT_KEY` to keep the Fernet key outside
+  the data directory; bundles written with the old key file stay readable.
+- `models/test_diagnostic.py` — the manager-confirmed setup test message: claim in
+  its own transaction, send, record the outcome, confirm receipt, complete step 4.
+  Providers declare a `DiagnosticSpec` and four small hooks (texts, tester check,
+  prepare). Telegram keeps its own variant for now.
+
+Run a provider's stand-alone protocol tests with
+`python -m unittest discover -s addons/<addon>/tests` and its install check with
+`python addons/<addon>/tools/check_install.py`. Note: `omni_slack/tests` and
+`omni_teams/tests` have empty `__init__.py` files, so Odoo's test runner does not
+run their protocol tests; use the commands above.

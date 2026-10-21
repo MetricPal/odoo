@@ -1,4 +1,53 @@
 <odoo>
+  <!-- Decision 2026-10-21 (setup UX review, batch 9): department admins operate their
+       department's workflows. Settings administrators keep authoring. -->
+  <record id="group_workflow_department_manager" model="res.groups">
+    <field name="name">Department workflow manager</field>
+    <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    <field name="comment">Sees workflows and runs of the departments they manage in Employees. Can preview, activate and pause those that run as them.</field>
+  </record>
+  <record id="workflow_department_read" model="ir.access">
+    <field name="name">Workflows: departments I manage</field>
+    <field name="model_id" ref="model_workflow_definition"/>
+    <field name="group_id" ref="group_workflow_department_manager"/>
+    <field name="operation">r</field>
+    <field name="domain">[('managed_by_me', '=', True)]</field>
+  </record>
+  <record id="step_department_read" model="ir.access">
+    <field name="name">Workflow steps: departments I manage</field>
+    <field name="model_id" ref="model_workflow_step"/>
+    <field name="group_id" ref="group_workflow_department_manager"/>
+    <field name="operation">r</field>
+    <field name="domain">[('workflow_id.managed_by_me', '=', True)]</field>
+  </record>
+  <record id="value_department_read" model="ir.access">
+    <field name="name">Workflow field mappings: departments I manage</field>
+    <field name="model_id" ref="model_workflow_value"/>
+    <field name="group_id" ref="group_workflow_department_manager"/>
+    <field name="operation">r</field>
+    <field name="domain">[('step_id.workflow_id.managed_by_me', '=', True)]</field>
+  </record>
+  <record id="run_department_read" model="ir.access">
+    <field name="name">Workflow runs: departments I manage</field>
+    <field name="model_id" ref="model_workflow_run"/>
+    <field name="group_id" ref="group_workflow_department_manager"/>
+    <field name="operation">r</field>
+    <field name="domain">[('workflow_id.managed_by_me', '=', True)]</field>
+  </record>
+  <record id="log_department_read" model="ir.access">
+    <field name="name">Workflow history: departments I manage</field>
+    <field name="model_id" ref="model_workflow_run_log"/>
+    <field name="group_id" ref="group_workflow_department_manager"/>
+    <field name="operation">r</field>
+    <field name="domain">[('run_id.workflow_id.managed_by_me', '=', True)]</field>
+  </record>
+  <record id="test_department" model="ir.access">
+    <field name="name">Workflow previews: departments I manage</field>
+    <field name="model_id" ref="model_workflow_test"/>
+    <field name="group_id" ref="group_workflow_department_manager"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('workflow_id.managed_by_me', '=', True)]</field>
+  </record>
   <record id="workflow_company_rule" model="ir.access">
     <field name="name">Workflows: selected companies</field>
     <field name="model_id" ref="model_workflow_definition"/>

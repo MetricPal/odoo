@@ -280,7 +280,94 @@ class TestMagicLinkHttp(HttpCase):
             },
         )
         response.raise_for_status()
-        self.assertIn(
-            b"If an account exists for that email, a login link has been sent.",
-            response.content,
-        )
+        self.assertIn(b"If an account exists for that email, a sign-in link is on its way.", response.content)
+        spoofed = self.url_open("/web/login?auth_view=magic&message=Call+us+now")
+        self.assertNotIn(b"Call us now", spoofed.content)
+
+
+@tagged("post_install", "-at_install")
+class TestMagicLinkHardening(MagicLinkCase):
+    def test_safe_redirect(self):
+        from odoo.addons.auth_magic_link.controllers.magic_link import safe_redirect
+        self.assertEqual(safe_redirect("/odoo/action-1?x=1"), "/odoo/action-1?x=1")
+        for unsafe in ("//evil.example", "/\\evil.example", "/\\/evil.example", "https://evil.example",
+                       "evil.example", "/ok\nLocation: x", "/\t/evil.example", "", None):
+            self.assertIsNone(safe_redirect(unsafe), unsafe)
+
+    def test_throttle_per_account_and_address(self):
+        Link = self.env["auth.magic.link"]
+        for _i in range(3):
+            self.assertTrue(Link.request_allowed("10.0.0.1", self.user))
+            Link.record_attempt("10.0.0.1", self.user)
+        self.assertFalse(Link.request_allowed("10.0.0.2", self.user))
+        nobody = self.env["res.users"]
+        for _i in range(7):
+            Link.record_attempt("10.0.0.9", nobody)
+        self.assertTrue(Link.request_allowed("10.0.0.9", nobody))
+        Link.record_attempt("10.0.0.9", nobody)
+        Link.record_attempt("10.0.0.9", nobody)
+        Link.record_attempt("10.0.0.9", nobody)
+        self.assertFalse(Link.request_allowed("10.0.0.9", nobody))
+
+    def test_send_login_link_queues_mail(self):
+        self._make_email_ready()
+        self.user.email = "magic-user@example.invalid"
+        mails = self.env["mail.mail"].sudo().search_count([])
+        self.assertTrue(self.env["auth.magic.link"].send_login_link(self.user, db=self.env.cr.dbname, redirect="/odoo"))
+        self.assertEqual(self.env["mail.mail"].sudo().search_count([]), mails + 1)
+        mail = self.env["mail.mail"].sudo().search([], order="id desc", limit=1)
+        self.assertEqual(mail.state, "outgoing")
+        self.assertIn("/auth/magic-login?token=", mail.body_html)
+
+
+@tagged("post_install", "-at_install")
+class TestMagicLinkHttpHardening(HttpCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = new_test_user(cls.env, login="magic-http@example.invalid", groups="base.group_user",
+                                 email="magic-http@example.invalid")
+        cls.env.ref("base.user_admin").sudo().email = "admin@example.invalid"
+        cls.env["ir.mail_server"].sudo().create({"name": "Magic Link HTTP SMTP", "smtp_host": "localhost"})
+        cls.env["ir.config_parameter"].sudo().set_str("auth_magic_link.login_method", "both")
+
+    def _csrf(self):
+        page = self.url_open("/web/login?auth_view=magic")
+        return html.fromstring(page.content).xpath("//input[@name='csrf_token']")[0].get("value")
+
+    def test_user_email_endpoint_removed(self):
+        response = self.url_open("/auth/magic-link/user-email", data="{}",
+                                 headers={"Content-Type": "application/json"})
+        self.assertEqual(response.status_code, 404)
+
+    def test_wildcard_email_does_not_match(self):
+        before = self.env["auth.magic.link"].sudo().search_count([("user_id", "=", self.user.id)])
+        self.url_open("/web/login", data={"csrf_token": self._csrf(), "email_login": "magic-http%",
+                                          "type": "magic_link"})
+        self.assertEqual(self.env["auth.magic.link"].sudo().search_count([("user_id", "=", self.user.id)]), before)
+        self.url_open("/web/login", data={"csrf_token": self._csrf(), "email_login": "MAGIC-HTTP@example.invalid",
+                                          "type": "magic_link"})
+        self.assertEqual(self.env["auth.magic.link"].sudo().search_count([("user_id", "=", self.user.id)]), before + 1)
+
+    def test_get_confirms_and_post_consumes(self):
+        link, token = self.env["auth.magic.link"].sudo().create_login_token(
+            self.user, fields.Datetime.add(fields.Datetime.now(), minutes=10))
+        page = self.url_open(f"/auth/magic-login?token={token}&redirect=/\\evil.example")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"Continue to sign in", page.content)
+        self.assertEqual(page.headers.get("Cache-Control"), "no-store")
+        self.assertFalse(link.used_at, "GET must not consume the token")
+        document = html.fromstring(page.content)
+        self.assertFalse(document.xpath("//input[@name='redirect']"), "unsafe redirect dropped")
+        csrf = document.xpath("//input[@name='csrf_token']")[0].get("value")
+        response = self.url_open("/auth/magic-login", data={"csrf_token": csrf, "token": token,
+                                                            "redirect": "//evil.example"}, allow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertTrue(response.headers["Location"].endswith("/odoo"))
+        link.invalidate_recordset()
+        self.assertTrue(link.used_at)
+        self.url_open("/web/session/logout")
+        replay = self.url_open("/auth/magic-login", data={"csrf_token": self._csrf(), "token": token},
+                               allow_redirects=False)
+        self.assertEqual(replay.status_code, 303)
+        self.assertIn("/web/login", replay.headers["Location"])

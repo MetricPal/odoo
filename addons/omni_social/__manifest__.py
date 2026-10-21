@@ -1,5 +1,5 @@
 {'name': 'Social',
- 'version': '20.0.2.1.0',
+ 'version': '20.0.2.1.1',
  'summary': 'Review incoming social activity and publish approved content',
  'category': 'Marketing/Social Marketing',
  'author': 'metric.io',

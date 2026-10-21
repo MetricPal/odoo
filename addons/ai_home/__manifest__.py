@@ -1,8 +1,8 @@
 {
     'name': 'AI Home',
-    'version': '1.1',
+    'version': '1.3',
     'category': 'Productivity',
-    'summary': 'AI Home, Responsive work, favorites, automation, and recent activity dashboard',
+    'summary': 'AI Home: my work, items needing attention, automations, workflow runs and recent activity',
     'icon': '/ai_home/static/description/icon.svg',
     'depends': ['web', 'website'],
     'data': [

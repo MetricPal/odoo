@@ -16,9 +16,11 @@ class TestChannelViews(unittest.TestCase):
         self.assertEqual(panel.get('view_types'), 'kanban,list')
         self.assertEqual(panel.find('field').get('name'), 'purpose_id')
         self.assertEqual(panel.find('field').get('enable_counters'), '1')
-        self.assertEqual([f.get('name') for f in panel.findall('field')], ['purpose_id', 'channel_type_id'])
-        self.assertEqual(panel.findall('field')[1].get('string'), 'Channel types')
-        self.assertEqual(panel.findall('field')[1].get('select'), 'one')
+        # Channel types without a connector are not listed (setup UX review 2026-10-21);
+        # grouping by channel type stays available in the search options.
+        self.assertEqual([f.get('name') for f in panel.findall('field')], ['purpose_id'])
+        picker = root.xpath('//field[@name="channel_type_id" and @readonly="setup_has_bindings"]')[0]
+        self.assertIn("('adapter_ready', '=', True)", picker.get('domain'))
         kanban = root.xpath('//record[@id="channel_kanban"]//kanban')[0]
         self.assertEqual(kanban.get('records_draggable'), 'false')
         self.assertFalse(kanban.get('class'))

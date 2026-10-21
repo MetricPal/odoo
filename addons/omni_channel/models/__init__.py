@@ -7,3 +7,4 @@ from . import operations
 from . import administration
 
 from . import channel_setup
+from . import test_diagnostic

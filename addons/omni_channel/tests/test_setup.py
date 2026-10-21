@@ -14,19 +14,17 @@ class TestOmniAdministration(TestOmniFoundation):
         super().setUpClass()
         cls.admin = new_test_user(cls.env, login='omni_technical_admin', groups='base.group_system')
 
-    def test_technical_navigation_and_no_launcher(self):
+    def test_administrator_app_navigation(self):
+        # Decision 2026-10-21: administrators get an Omnichannel launcher instead of
+        # Settings > Technical (developer mode only). Staff do not see it.
         root = self.env.ref('omni_channel.menu_omni_technical')
-        email = self.env.ref('base.menu_email')
-        self.assertEqual(root.parent_id, email.parent_id)
-        self.assertEqual(root.parent_id, self.env.ref('base.menu_custom'))
-        siblings = root.parent_id.child_id.sorted(lambda menu: (menu.sequence, menu.id))
-        position = siblings.ids.index(root.id)
-        self.assertEqual(siblings[position + 1], email)
-        self.assertLess(siblings.ids.index(self.env.ref('mail.mail_menu_technical').id), position)
-        self.assertLess(siblings.ids.index(self.env.ref('mail.menu_mail_activities_section').id), position)
+        self.assertFalse(root.parent_id)
+        self.assertEqual(root.web_icon, 'omni_channel,static/description/icon.svg')
         self.assertEqual(root.child_id.sorted('sequence').mapped('name'),
-                         ['Channels', 'Messages', 'Policies', 'Blocklist'])
-        self.assertNotIn(root, self.env['ir.ui.menu'].with_user(self.admin).get_user_roots())
+                         ['Channels', 'Outgoing messages', 'Receiving rules', 'Blocklist'])
+        self.assertIn(root, self.env['ir.ui.menu'].with_user(self.admin).get_user_roots())
+        for user in (self.manager, self.operator):
+            self.assertNotIn(root, self.env['ir.ui.menu'].with_user(user).get_user_roots())
         visible = self.env['ir.ui.menu'].with_user(self.admin)._visible_menu_ids(debug=True)
         self.assertTrue(set((root | root.child_id).ids) <= visible)
         for user in (self.manager, self.operator):
@@ -39,6 +37,12 @@ class TestOmniAdministration(TestOmniFoundation):
         self.assertNotIn('omni.setup', self.env.registry.models)
         for xmlid in ('menu_omni_root', 'menu_setup', 'menu_configuration', 'action_setup', 'action_overview'):
             self.assertFalse(self.env.ref('omni_channel.' + xmlid, raise_if_not_found=False))
+
+    def test_channel_type_connector_filter_accepts_odoo20_operators(self):
+        Type = self.env['omni.channel.type']
+        ready = Type.search([('adapter_ready', 'in', [True])])
+        self.assertEqual(Type.web_search_read([('adapter_ready', '=', True)], {'name': {}})['length'], len(ready))
+        self.assertEqual(ready | Type.search([('adapter_ready', 'not in', [True])]), Type.search([]))
 
     def test_channel_shortcuts_scoped_and_authorized(self):
         channel = self.channel.with_user(self.admin)

@@ -1,22 +1,20 @@
 {
     'name': 'metric.io Branding',
-    'version': '20.0.1.1.0',
+    'version': '20.0.1.2.1',
     'category': 'Hidden',
     'summary': 'Apply the metric.io identity to company, website, and authentication emails',
     'author': 'metric.io',
     'icon': '/branding/static/src/img/metric_io_favicon.png',
     'depends': [
+        # Mail templates of other apps are branded through data-only overrides
+        # applied when those apps install; no hard dependency on them.
         'auth_magic_link',
         'auth_signup',
-        'auth_totp_mail',
-        'calendar',
-        'crm_iap_mine',
         'digest',
-        'event',
-        'hr_recruitment',
         'website',
     ],
     'data': [
+        'security/ir.access.csv',
         'data/res_company_data.xml',
         'data/website_data.xml',
         'data/mail_layout_data.xml',

@@ -9,6 +9,86 @@ Format:
 - affected areas
 - migration/compatibility notes
 
+## 2026-10-21
+
+Setup UX review of Approval Center, Workflows and Omnichannel (see the review
+document); all nine batches. Upgrade the listed modules and restart.
+
+- **Approval Center 20.0.1.2.0**: cards show "Needs approvers" with a Set up
+  button; the approval type form opens on "Who approves" with plain labels and a
+  summary; one name ("approval type"), app label "Approvals"; New opens the type
+  picker; clearer submit errors; shipped types are `noupdate` and default to the
+  requester's manager on new databases.
+- **Workflows 20.0.1.1.0**: "Ready to use" templates by default, others dimmed
+  under "Needs an app"; settings appear after choosing how to start; department
+  workflow managers (ADR 0009) see their departments' workflows and runs and
+  can preview, activate and pause those that run as them; depends on `hr`
+  (already installed through Approval Center).
+- **Workflows: AI drafting (new, auto-installs)** and **Omnichannel: AI reply
+  drafts (new, auto-installs)**: drafts proposed by an AI Agent, always reviewed
+  by a person. **AI Agent**: runs can notify the record that asked.
+- **Omnichannel 20.0.1.24.0**: administrator app launcher; only channel types
+  with a connector are offered; "Outgoing messages" and "Receiving rules" names;
+  plain retention wording (also Slack, Teams, WhatsApp setup).
+- **Telegram 20.0.1.16.0**: the guided wizard stays until setup is complete;
+  README describes the in-app bot token as the normal path.
+
+## 2026-10-20
+
+Review and hardening of the custom modules (see the review document). Upgrade
+every listed module and restart.
+
+- **Approval Center 20.0.1.1.0**: status, decisions, targets and timestamps change
+  only through Submit/Approve/Refuse/Cancel/Execute; submitted content is frozen;
+  no self-approval unless the category enables it; sequence and required approvers
+  enforced; minimum frozen at submission; audit is append-only and requests with
+  history are archived, not deleted; approved actions must be `action_*`/`button_*`
+  methods of the category model, run once, and failures are audited. Approvers lose
+  create/delete on others' requests; multi-company record rules added. First
+  behaviour tests (19). Workflows, Omnichannel and Social extend the new trust hook.
+  See ADR 0008. Compatibility: users must cancel a submitted request to edit it.
+- **Magic Link Authentication 20.0.1.1.0**: removed the public
+  `/auth/magic-link/user-email` lookup (the user switch now keeps each user's own
+  email in their browser); same-site redirect check rejects `/\host` forms; exact
+  normalized email match (no wildcards); per-address and per-account throttling;
+  link emails are queued; the link opens a "Continue" page and only the POST signs
+  in; the "check your email" text is set by the server.
+- **AI Agent 20.0.1.5.0**: failed status checks retry with backoff instead of
+  needing a manager; answers prepared while configuration or access changed are
+  discarded; definite 4xx rejections fail instead of "uncertain"; record context
+  defaults to recently updated records (configurable per scope); sources share a
+  context budget instead of raising; per-user daily limit (default 20); "Ask AI"
+  on approval requests prefills an explanation question (nothing is sent until Send).
+- **Workflows**: automatic triggers skip records the run-as user cannot read instead
+  of failing the editing user's save; manual runs still report the access error;
+  webhook request target fixed for URLs with a query and no path.
+- **Omnichannel**: one shared credential vault (`OMNI_VAULT_KEY` keeps the key
+  outside the data directory, old bundles stay readable); one shared setup-test
+  state machine for Slack, Teams and WhatsApp; empty verify tokens rejected for
+  social webhooks; Social 20.0.2.1.1 no longer hides approval-category approver
+  lines and policy audits (rows with no request) from users; compressed one-line code in the omni addons reformatted (no
+  behaviour change, verified by AST comparison).
+- **metric.io Branding 20.0.1.2.1**: template overrides are now actually applied,
+  when branding installs and whenever an app loads a targeted template later; the
+  hard dependencies on Calendar, Events, Recruitment, CRM lead mining and TOTP mail
+  were removed (already-installed apps stay installed). An override whose app has
+  not loaded yet during an upgrade waits and is applied once all modules are loaded.
+- **AI Home 1.2**: My Work history (left), live Needs Your Attention, Automations
+  with status filters and Recent (right), composer anchored at the bottom of the
+  center; favorites stored per user.
+- **AI Home 1.3**: Favorites and the navbar search placeholder removed; the
+  composer no longer moves when scrolling (columns scroll on their own); My Work
+  fills the screen instead of a "Show more" button; the right column uses readable
+  list panels and adds the latest workflow runs.
+- **AI Home 1.3 (continued)**: section titles stay fixed while their items scroll;
+  the right column shares its height fairly between Automations, Workflow runs and
+  Recent with hidden scrollbars; agent picker showing only usable agents; files
+  can be attached to a question.
+- **AI Agent 20.0.1.6.0**: questions accept up to five attached PDF, text,
+  Markdown or CSV files (text extracted in Odoo, files linked to the run); the
+  question dialog has a Files field. Sources and attachments share one text
+  reader.
+
 ## 2026-10-07
 
 - Introduced separate Omni setup-administrator and operator journeys: a five-step

@@ -12,6 +12,12 @@ Private text and text edits become the core inbox DTOs. Unsupported groups, topi
 
 `accepted` records the returned bot/chat/message key. It does not assert delivery or reading. Timeouts, malformed success, redirects and server failures are unknown outcomes and must not automatically resend. Valid API rejections are definite no-send outcomes; only a bounded 429 `retry_after` can request the worker's existing capped retry policy. Manual reconciliation never resends.
 
+## Credentials
+
+In the channel wizard's Credentials step, paste the bot token from BotFather. Saving verifies the bot with read-only `getMe` and stores the token and webhook secret encrypted in a private folder under the Odoo data directory (`omni_telegram_credentials`); records keep only an opaque `OMNI_SECRET_RUNTIME_...` reference. Back that folder up with the filestore. The guided wizard stays open until all five steps are complete; then the channel shows its compact overview.
+
+Replies to Telegram users stay behind the deployment switch `OMNI_TELEGRAM_SANDBOX_NETWORK=1` until live certification: setup checks (verify bot, register webhook, test message) work without it.
+
 ## Legacy deployment-controlled secrets
 
 A deployment owner provisions a process environment variable named by the connection's `OMNI_SECRET_...` reference. The value is a JSON bundle with this shape (placeholders, not working credentials):

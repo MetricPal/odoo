@@ -10,17 +10,11 @@ from odoo.exceptions import AccessError, UserError
 
 from .foundation import protected_input
 
+from odoo.addons.approval_center.models.common import capability
+
 # Identity comparison makes the internal capability impossible to forge using
 # JSON-RPC context, unlike a boolean 'approved' / 'skip_security' flag.
-_INTERNAL = object()
-
-
-def internal(records):
-    return records.with_context(_omni_internal=_INTERNAL)
-
-
-def is_internal(records):
-    return records.env.context.get('_omni_internal') is _INTERNAL
+internal, is_internal = capability('_omni_internal')
 
 
 def digest(payload):
@@ -431,6 +425,9 @@ class OmniApprovalRequest(models.Model):
 
     omni_sender_key = fields.Char(related='omni_command_id.sender_id.external_key', string='External sender identity')
     omni_expires_at = fields.Datetime(related='omni_command_id.expires_at', string='Approval expires')
+
+    def _approval_trusted(self):
+        return is_internal(self) or super()._approval_trusted()
 
     @api.model_create_multi
     def create(self, vals_list):

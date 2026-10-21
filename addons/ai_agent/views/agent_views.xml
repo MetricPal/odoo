@@ -111,6 +111,7 @@
                   <field name="field_names" string="Fields to share" placeholder="name, email" />
                   <field name="domain_json" string="Record filter" optional="hide" />
                   <field name="limit" string="Maximum records" />
+                  <field name="record_order" optional="show" />
                 </list>
                 <form string="Permitted business data">
                   <sheet>
@@ -118,6 +119,7 @@
                       <field name="model_name" string="Business document" />
                       <field name="field_names" string="Fields to share" placeholder="name, email" />
                       <field name="limit" string="Maximum records" />
+                      <field name="record_order" widget="radio" />
                     </group>
                     <group string="Advanced record filter">
                       <field name="domain_json" placeholder="[]" />
@@ -138,6 +140,7 @@
                 <group string="Request limits">
                   <field name="max_concurrent" string="Requests at the same time" readonly="state == 'active'" />
                   <field name="max_requests_per_day" string="Requests per day" readonly="state == 'active'" />
+                  <field name="max_requests_per_user_day" string="Requests per person per day" readonly="state == 'active'" />
                   <field name="revision" string="Configuration revision" />
                 </group>
               </group>

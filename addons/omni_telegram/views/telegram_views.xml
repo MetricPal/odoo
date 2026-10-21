@@ -141,17 +141,19 @@
     <field name="inherit_id" ref="channel_telegram_form"/>
     <field name="priority">99</field>
     <field name="arch" type="xml">
-      <xpath expr="//header" position="attributes"><attribute name="invisible">is_telegram and not context.get('omni_technical')</attribute></xpath>
-      <xpath expr="//sheet/*[1]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
-      <xpath expr="//sheet/*[2]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
-      <xpath expr="//sheet/*[3]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
-      <xpath expr="//sheet/*[4]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
-      <xpath expr="//sheet/*[5]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
-      <xpath expr="//sheet/*[6]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
-      <xpath expr="//sheet/*[7]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
-      <xpath expr="//sheet/*[8]" position="attributes"><attribute name="invisible" add="is_telegram and not context.get('omni_technical')" separator=" or "/></xpath>
+      <xpath expr="//header" position="attributes"><attribute name="invisible">is_telegram and setup_completed_steps == 5 and not context.get('omni_technical')</attribute></xpath>
+      <xpath expr="//sheet/*[1]" position="attributes"><attribute name="invisible" add="(is_telegram and setup_completed_steps == 5 and not context.get('omni_technical'))" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[2]" position="attributes"><attribute name="invisible" add="(is_telegram and setup_completed_steps == 5 and not context.get('omni_technical'))" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[3]" position="attributes"><attribute name="invisible" add="(is_telegram and setup_completed_steps == 5 and not context.get('omni_technical'))" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[4]" position="attributes"><attribute name="invisible" add="(is_telegram and setup_completed_steps == 5 and not context.get('omni_technical'))" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[5]" position="attributes"><attribute name="invisible" add="(is_telegram and setup_completed_steps == 5 and not context.get('omni_technical'))" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[6]" position="attributes"><attribute name="invisible" add="(is_telegram and setup_completed_steps == 5 and not context.get('omni_technical'))" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[7]" position="attributes"><attribute name="invisible" add="(is_telegram and setup_completed_steps == 5 and not context.get('omni_technical'))" separator=" or "/></xpath>
+      <xpath expr="//sheet/*[8]" position="attributes"><attribute name="invisible" add="(is_telegram and setup_completed_steps == 5 and not context.get('omni_technical'))" separator=" or "/></xpath>
       <xpath expr="//sheet" position="inside">
-        <div name="telegram_channel_overview" invisible="not is_telegram or context.get('omni_technical')">
+        <!-- Compact page only once setup is complete; the guided wizard stays until then. -->
+        <field name="setup_completed_steps" invisible="1"/>
+        <div name="telegram_channel_overview" invisible="not is_telegram or setup_completed_steps != 5 or context.get('omni_technical')">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
             <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
             <field name="telegram_overview_connected" invisible="1"/>
@@ -189,7 +191,7 @@
           <field name="bot"/>
           <field name="webhook_url"/>
         </group>
-        <group string="Message retention · days" invisible="mode != 'settings'">
+        <group string="How long messages are kept" invisible="mode != 'settings'">
           <field name="message_days"/><field name="payload_days"/><field name="blocked_days"/>
         </group>
         <group invisible="mode != 'test_users'"><field name="test_user_ids" placeholder="44087589, 12345678"/></group>

@@ -8,49 +8,50 @@ from lxml import etree
 
 
 class TestDashboardTemplates(unittest.TestCase):
-    def test_favorite_star_is_only_available_when_favorites_are_expanded(self):
+    def test_favorites_section_is_gone(self):
         template = etree.parse(str(
             Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
         ))
-        buttons = template.xpath(
-            "//button[contains(@class, 'o_ai_home_favorite_toggle') and @aria-pressed='true']"
-        )
-        self.assertEqual(len(buttons), 1)
-        self.assertEqual(buttons[0].get('t-if'), 'app and this.state.showAllApps')
-        self.assertEqual(len(buttons[0].xpath("span[@data-icon='star' and @class='oi oi-filled']")), 1)
-
-    def test_available_app_stars_require_favorite_capacity(self):
-        template = etree.parse(str(
-            Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
-        ))
-        buttons = template.xpath("//button[@class='o_ai_home_favorite_toggle']")
-        self.assertEqual(len(buttons), 1)
-        self.assertEqual(buttons[0].get('t-if'), 'this.hasFavoriteCapacity')
-
-    def test_favorites_view_all_only_shows_when_apps_are_available(self):
-        template = etree.parse(str(
-            Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
-        ))
-        buttons = template.xpath("//button[contains(@class, 'o_ai_home_favorites_view_all')]")
-        self.assertEqual(len(buttons), 1)
-        self.assertEqual(buttons[0].get('t-if'), 'this.nonFavoriteApps.length')
+        self.assertFalse(template.xpath("//*[contains(@class, 'favorite')]"))
+        self.assertFalse(template.xpath("//*[contains(@class, 'o_ai_home_mywork_more')]"),
+                         'My Work sizes itself to the screen instead of a Show more button')
 
     def test_dashboard_icons_use_native_odoo20_markup(self):
         template = etree.parse(str(
             Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
         ))
         icons = template.xpath('//*[@data-icon]')
-        self.assertEqual(len(icons), 5)
         self.assertEqual([icon.get('data-icon') for icon in icons], [
-            'chevron_forward', 'chevron_forward', 'star', 'star',
-            'chevron_forward',
+            'chevron_forward', 'arrow_upward', 'add', 'mic',
         ])
+        self.assertFalse(template.xpath('//select[contains(@class, "o_ai_home_agent_select")]'),
+                         'Agents are chosen from the picker')
         for icon in icons:
             self.assertIn('oi', icon.get('class').split())
             self.assertEqual(icon.get('aria-hidden'), 'true')
         self.assertFalse(template.xpath('//*[contains(@class, "fa-")]'))
-        available_star = template.xpath('//span[@data-icon="star" and @t-att-class]')[0]
-        self.assertIn("'oi-filled': this.isFavorite(app)", available_star.get('t-att-class'))
+
+    def test_home_columns_follow_the_layout_brief(self):
+        template = etree.parse(str(
+            Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
+        ))
+        main = template.xpath('//main[contains(@class, "o_ai_home_container")]')[0]
+        columns = [child.get('class') for child in main]
+        # The composer is its own grid item so the center column can scroll
+        # underneath it without moving it.
+        self.assertEqual(columns, ['o_ai_home_left', 'o_ai_home_center', 'o_ai_home_composer', 'o_ai_home_right'])
+        self.assertTrue(template.xpath('//aside[@class="o_ai_home_left"]//section[contains(@class, "o_ai_home_mywork")]'))
+        right = template.xpath('//aside[@class="o_ai_home_right"]/section/@class')
+        self.assertEqual([cls.split()[-1] for cls in right],
+                         ['o_ai_home_automations', 'o_ai_home_runs', 'o_ai_home_recent'])
+        self.assertTrue(template.xpath('//div[contains(@class, "o_ai_home_status_filter")]'))
+        # Titles stay outside the scrolling item lists.
+        for section in template.xpath('//aside[@class="o_ai_home_right"]/section'):
+            heading = section.xpath('div[contains(@class, "o_ai_home_section_heading")]')
+            scroller = section.xpath('div[contains(@class, "o_ai_home_scroll")]')
+            self.assertTrue(heading and scroller)
+        self.assertTrue(template.xpath(
+            '//section[contains(@class, "o_ai_home_mywork")]/div[contains(@class, "o_ai_home_scroll")]'))
 
     def test_attention_badge_uses_bundled_shield_image(self):
         module = Path(__file__).resolve().parents[1]
@@ -69,7 +70,7 @@ class TestDashboardTemplates(unittest.TestCase):
     def test_component_members_use_owl3_context(self):
         source = Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.js'
         members = set(re.findall(r'\bget (\w+)\(', source.read_text()))
-        members.update({'state', 'favoritesRootRef', 'getAppInitial', 'isFavorite'})
+        members.update({'state', 'myWorkRef', 'fileInputRef'})
         template = etree.parse(str(source.with_suffix('.xml')))
         checked = 0
         for element in template.iter():
@@ -83,7 +84,7 @@ class TestDashboardTemplates(unittest.TestCase):
                         ))
                 checked += 1
         self.assertGreater(checked, 50)
-        self.assertEqual(template.xpath('//*[@t-ref]/@t-ref'), ['this.favoritesRootRef'])
+        self.assertEqual(template.xpath('//*[@t-ref]/@t-ref'), ['this.myWorkRef', 'this.fileInputRef'])
 
 
 if __name__ == '__main__':

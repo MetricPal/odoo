@@ -1,0 +1,38 @@
+<odoo>
+  <record id="command_form_ai" model="ir.ui.view">
+    <field name="name">omni.command.form.ai</field>
+    <field name="model">omni.command</field>
+    <field name="inherit_id" ref="omni_channel.command_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_submit']" position="after">
+        <button name="action_ai_draft_reply" type="object" string="Draft reply with AI"
+                invisible="state != 'draft' or not conversation_id or ai_drafting"/>
+      </xpath>
+      <xpath expr="//sheet" position="inside">
+        <field name="ai_drafting" invisible="1"/>
+        <div class="alert alert-secondary" role="status" invisible="not ai_drafting">
+          AI is drafting a reply. Reload to see it; you edit and submit it for approval as usual.
+        </div>
+        <div class="alert alert-info" role="status" invisible="not ai_suggestion or state != 'draft'">
+          <strong>AI suggestion</strong> — check it before submitting; it is not sent without approval.
+          <field name="ai_suggestion" nolabel="1" class="d-block mt-2"/>
+          <button name="action_ai_use_suggestion" type="object" string="Use this text" class="btn-link p-0 mt-1"/>
+        </div>
+      </xpath>
+    </field>
+  </record>
+  <record id="ai_reply_wizard_form" model="ir.ui.view">
+    <field name="name">omni.ai.reply.wizard.form</field>
+    <field name="model">omni.ai.reply.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Draft reply with AI">
+        <group><field name="command_id" invisible="1"/><field name="agent_id" options="{'no_create': True, 'no_open': True}"/></group>
+        <p class="text-muted">The recent conversation is sent to the agent's model provider. The draft is not sent until you submit it and it is approved.</p>
+        <footer>
+          <button name="action_draft" type="object" string="Draft reply" class="btn-primary"/>
+          <button string="Cancel" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

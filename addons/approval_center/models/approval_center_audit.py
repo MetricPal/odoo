@@ -1,4 +1,5 @@
-from odoo import fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import AccessError
 
 
 class ApprovalCenterAudit(models.Model):
@@ -10,7 +11,7 @@ class ApprovalCenterAudit(models.Model):
     request_id = fields.Many2one(
         'approval.center.request',
         required=True,
-        ondelete='cascade',
+        ondelete='restrict',
         index=True,
     )
     policy_id = fields.Many2one(
@@ -39,3 +40,17 @@ class ApprovalCenterAudit(models.Model):
     action_name = fields.Char(related='request_id.action_name', store=True, readonly=True)
     message = fields.Text(readonly=True)
     result = fields.Text(readonly=True)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        if not self.env.su:
+            raise AccessError(_('Audit entries are written by Approval Center actions only.'))
+        return super().create(vals_list)
+
+    def write(self, vals):
+        raise AccessError(_('Audit entries cannot be changed.'))
+
+    def unlink(self):
+        if not self.env.su:
+            raise AccessError(_('Audit entries are retained.'))
+        return super().unlink()

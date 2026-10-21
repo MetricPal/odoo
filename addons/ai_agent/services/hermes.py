@@ -18,6 +18,18 @@ class HermesUncertain(UserError):
     """The remote operation may have been accepted; never repeat blindly."""
 
 
+class HermesRejected(UserError):
+    """Hermes definitively refused the request (4xx); nothing was accepted."""
+
+
+class HermesUnavailable(UserError):
+    """A read-only request failed. Safe to retry later."""
+
+
+# 408 Request Timeout and 429 Too Many Requests do not prove the POST was refused.
+DEFINITIVE_REJECTIONS = frozenset(range(400, 500)) - {408, 429}
+
+
 def target(url, resolve=True):
     if not isinstance(url, str) or not url.strip():
         raise UserError(_('Enter the Hermes server URL, for example https://hermes.example.com.'))
@@ -88,16 +100,19 @@ def request(url, secret_reference, method, path, payload=None, headers=None, *, 
                                 headers={'Host': parsed.netloc, 'Authorization': f'Bearer {key}',
                                          'Content-Type': 'application/json', **(headers or {})},
                                 redirect=False, preload_content=False, retries=False)
+        status = response.status
+        if method == 'POST' and status in DEFINITIVE_REJECTIONS:
+            raise HermesRejected(_('Hermes refused the request (HTTP %s). Nothing was submitted; check the agent configuration and credentials.', status))
         raw = response.read(MAX_RESPONSE + 1)
         if len(raw) > MAX_RESPONSE:
             raise ValueError('response too large')
-        if not 200 <= response.status < 300:
+        if not 200 <= status < 300:
             raise ValueError('remote status')
         return json.loads(raw)
     except (OSError, ValueError, urllib3.exceptions.HTTPError):
         if method == 'POST':
             raise HermesUncertain(_('Hermes acceptance is uncertain. The operation will not be repeated automatically.')) from None
-        raise UserError(_('Hermes could not return a valid response. Check its readiness and credentials.')) from None
+        raise HermesUnavailable(_('Hermes could not return a valid response. Check its readiness and credentials.')) from None
     finally:
         if response is not None:
             response.release_conn()

@@ -20,7 +20,7 @@
             t-out="{ draft: 'Draft', active: 'Active', paused: 'Pause' }[this.state.workflow.state]"/>
     </t>
     <t t-if="this.state.page === 'builder' &amp;&amp; this.state.workflow">
-      <aside class="o_search_panel o_search_panel_wrap flex-grow-0 flex-shrink-0 pb-5 ps-3 overflow-auto position-relative wf_palette" aria-label="Add a step">
+      <aside t-if="this.state.workflow.can_edit" class="o_search_panel o_search_panel_wrap flex-grow-0 flex-shrink-0 pb-5 ps-3 overflow-auto position-relative wf_palette" aria-label="Add a step">
         <h3 class="mt-3">Add a step</h3><p class="text-muted">Drag a step onto the canvas, or click to add it. Drop on a step to insert after it.</p>
         <t t-foreach="this.blocks" t-as="group" t-key="group.title"><h4 class="mt-3" t-out="group.title"/>
           <button class="btn btn-light w-100 text-start mb-2" t-foreach="group.items" t-as="item" t-key="item[2]" t-on-click="() => this.addStep(item)" t-att-disabled="this.state.workflow.state === 'active' || this.state.busy"
@@ -30,13 +30,26 @@
           </button>
         </t>
       </aside>
-      <div class="o_search_panel_resize h-100 px-2 opacity-0 opacity-100-hover" t-on-click.stop.prevent="" t-on-pointerdown.stop.prevent="this.resizeStepPanel">
+      <div t-if="this.state.workflow.can_edit" class="o_search_panel_resize h-100 px-2 opacity-0 opacity-100-hover" t-on-click.stop.prevent="" t-on-pointerdown.stop.prevent="this.resizeStepPanel">
         <span class="border-start border-2 border-primary h-100 d-block"/>
       </div>
       <div class="o_form_view flex-grow-1 overflow-hidden min-w-0">
       <div class="o_form_renderer d-flex d-print-block flex-nowrap h-100 wf_builder">
         <div class="o_form_sheet_bg overflow-auto o-scrollbar-thin min-w-0">
         <section class="wf_canvas" aria-label="Workflow steps" t-on-dragover="this.allowStepDrop" t-on-drop="(ev) => this.dropStep(ev)">
+          <div t-if="!this.state.workflow.can_edit" class="alert alert-secondary wf_department_note" role="status">
+            You can preview, activate and pause this workflow. A Settings administrator changes its steps.
+          </div>
+          <div t-if="this.state.workflow.ai" class="alert wf_ai_note" t-att-class="this.state.workflow.ai.done ? 'alert-info' : 'alert-secondary'" role="status">
+            <t t-if="!this.state.workflow.ai.done">
+              <strong>AI is drafting this workflow.</strong> It fills the name, trigger and suggested steps for you to review.
+              <button type="button" class="btn btn-link p-0 ms-2 wf_ai_refresh" t-on-click="() => this.openWorkflow(this.state.workflow.id)">Check again</button>
+            </t>
+            <t t-else="">
+              <strong>AI suggestion</strong> — review it and add the steps below. Nothing runs until you activate.
+              <pre class="mb-0 mt-2 wf_ai_suggestion" t-out="this.state.workflow.ai.suggestion"/>
+            </t>
+          </div>
           <button t-on-dragover="this.allowStepDrop" t-on-drop="(ev) => this.dropStep(ev, false)" class="wf_node wf_trigger" t-att-class="{ is_selected: this.state.selected === 'trigger' }" t-on-click="() => this.configureWorkflow()"><small>WHEN</small><strong t-out="this.triggerLabel(this.state.workflow.trigger)"/><span t-out="this.state.workflow.model_id[1]"/><span>Edit trigger and record filter</span></button>
           <div class="wf_connector"/>
           <p class="wf_empty" t-if="!this.state.workflow.steps.length">Add your first action from the step menu.</p>
@@ -47,7 +60,7 @@
             <p>Connect these steps or remove them before activation.</p>
             <div t-foreach="this.canvas.unused" t-as="step" t-key="step.id" class="d-flex gap-2 m-1">
               <button class="btn btn-outline-primary" t-on-click="() => this.configureStep(step)" t-out="step.name"/>
-              <button t-if="this.state.workflow.state !== 'active'" class="btn btn-link text-danger bg-transparent border-0 text-decoration-none wf_remove_step" t-att-aria-label="'Remove ' + step.name" t-on-click="() => this.removeStep(step)">×</button>
+              <button t-if="this.state.workflow.state !== 'active' &amp;&amp; this.state.workflow.can_edit" class="btn btn-link text-danger bg-transparent border-0 text-decoration-none wf_remove_step" t-att-aria-label="'Remove ' + step.name" t-on-click="() => this.removeStep(step)">×</button>
             </div>
           </div>
         </section>
@@ -105,7 +118,7 @@
 <t t-name="workflow_center.Path">
   <t t-foreach="nodes" t-as="node" t-key="node.step.id">
     <div t-on-dragover="this.allowStepDrop" t-on-drop="(ev) => this.dropStep(ev, node.step.id)" t-att-class="'wf_node position-relative ' + (this.state.selected === node.step.id ? 'is_selected ' : '') + node.step.kind">
-      <button t-if="this.state.workflow.state !== 'active'" class="btn btn-link text-danger bg-transparent border-0 text-decoration-none btn-sm position-absolute top-0 end-0 m-1 wf_remove_step" t-att-aria-label="'Remove ' + node.step.name" title="Remove step" t-on-click.stop="() => this.removeStep(node.step)">×</button>
+      <button t-if="this.state.workflow.state !== 'active' &amp;&amp; this.state.workflow.can_edit" class="btn btn-link text-danger bg-transparent border-0 text-decoration-none btn-sm position-absolute top-0 end-0 m-1 wf_remove_step" t-att-aria-label="'Remove ' + node.step.name" title="Remove step" t-on-click.stop="() => this.removeStep(node.step)">×</button>
       <button class="wf_node_select pe-4" t-on-click="() => this.configureStep(node.step)">
         <small t-out="node.step.kind === 'approval' ? 'APPROVAL · OPTIONAL' : node.step.kind.toUpperCase()"/>
         <strong t-out="node.step.name"/>
@@ -135,7 +148,16 @@
               <button type="button" t-on-click="() => this.state.description = 'Create onboarding tasks for new employees.'">Onboard employees</button>
               <button type="button" t-on-click="() => this.state.description = 'Send confirmed orders to our logistics system.'">Send orders to logistics</button>
             </div>
-            <p class="mt-3 mb-0">AI drafting is not connected. Start blank to fill in the workflow settings with this description.</p>
+            <div t-if="this.state.agents.length" class="d-flex flex-wrap align-items-center gap-2 mt-3 wf_ai_draft">
+              <label for="wf_agent" class="visually-hidden">Agent</label>
+              <select id="wf_agent" class="form-select w-auto" t-att-value="this.state.agentId" t-on-change="(ev) => this.state.agentId = ev.target.value">
+                <option t-foreach="this.state.agents" t-as="agent" t-key="agent.id" t-att-value="agent.id" t-out="agent.name"/>
+              </select>
+              <button type="button" class="btn btn-primary wf_draft_ai" t-att-disabled="!this.state.description.trim() || !this.state.modelId || this.state.busy" t-on-click="() => this.draftWithAi()">Draft with AI</button>
+              <small class="text-muted">Uses the document chosen on the right. You review the draft before anything runs.</small>
+            </div>
+            <p t-elif="this.state.aiDrafting" class="mt-3 mb-0 wf_ai_no_agent">No AI agent is available to you yet. An AI manager can activate one in AI Agent; meanwhile, start blank with this description.</p>
+            <p t-else="" class="mt-3 mb-0">AI drafting is not connected. Start blank to fill in the workflow settings with this description.</p>
           </div>
           <aside><h3>Or start blank</h3><label for="wf_document">Which document should this workflow watch?</label>
             <select id="wf_document" t-att-value="this.state.modelId" t-on-change="(ev) => this.state.modelId = ev.target.value"><option t-foreach="this.state.models" t-as="model" t-key="model.id" t-att-value="model.id" t-att-selected="model.id.toString() === this.state.modelId"><t t-out="model.name"/></option></select>

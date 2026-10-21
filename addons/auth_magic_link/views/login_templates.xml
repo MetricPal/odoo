@@ -126,4 +126,20 @@
             <attribute name="class">o_auth_password_type</attribute>
         </xpath>
     </template>
+
+    <template id="magic_login_confirm" name="Confirm magic link sign-in">
+        <t t-call="auth_magic_link.standalone_login_layout">
+            <div class="o_auth_magic_confirm text-center">
+                <h4 class="mb-2">Continue to sign in</h4>
+                <p class="text-muted">Signing in as <strong t-out="magic_user_name"/>.</p>
+                <form method="post" action="/auth/magic-login" class="mt-3">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <input type="hidden" name="token" t-att-value="token"/>
+                    <input type="hidden" name="redirect" t-att-value="redirect" t-if="redirect"/>
+                    <button type="submit" class="btn btn-primary w-100">Continue</button>
+                </form>
+                <a href="/web/login" class="btn btn-link btn-sm mt-2">Not you? Back to sign in</a>
+            </div>
+        </t>
+    </template>
 </odoo>

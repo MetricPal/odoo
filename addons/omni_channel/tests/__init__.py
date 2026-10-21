@@ -17,3 +17,4 @@ from . import test_setup
 from . import test_channel_views
 
 from . import test_test_users
+from . import test_vault

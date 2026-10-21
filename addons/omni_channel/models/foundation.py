@@ -18,6 +18,23 @@ def protected_input(records, names, vals_list):
     )
 
 
+
+def boolean_search_values(operator, value):
+    """Booleans a search on a computed Boolean field asks for, or None if unsupported.
+
+    Odoo 20 passes ``in``/``not in`` with a set of values (``= True`` becomes
+    ``in {True}``); older callers may still pass ``=``/``!=``.
+    """
+    if operator in ('=', '!='):
+        values = {bool(value)}
+    elif operator in ('in', 'not in'):
+        values = {bool(item) for item in value}
+    else:
+        return None
+    if operator in ('!=', 'not in'):
+        values = {True, False} - values
+    return values
+
 class OmniPurpose(models.Model):
     _name = 'omni.purpose'
     _description = 'Communication Purpose'
@@ -52,7 +69,7 @@ class OmniChannelType(models.Model):
     )
     sequence = fields.Integer(default=10)
     adapter_ready = fields.Boolean(
-        compute='_compute_adapter_ready', string='Adapter installed',
+        compute='_compute_adapter_ready', string='Adapter installed', search='_search_adapter_ready',
     )
     _code_unique = models.Constraint('UNIQUE(code)', 'Channel codes must be unique.')
 
@@ -60,6 +77,17 @@ class OmniChannelType(models.Model):
         available = installed_adapters(self.env)
         for record in self:
             record.adapter_ready = record.code in available
+
+    def _search_adapter_ready(self, operator, value):
+        values = boolean_search_values(operator, value)
+        if values is None:
+            return NotImplemented
+        if values == {True, False}:
+            return []
+        if not values:
+            return [('id', 'in', [])]
+        codes = list(installed_adapters(self.env))
+        return [('code', 'in' if True in values else 'not in', codes)]
 
 
 class OmniScope(models.AbstractModel):

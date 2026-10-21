@@ -107,3 +107,18 @@ changing channel setup, forms, cards, lists or provider adapters.
   not standalone apps. Set application=False and deactivate their own menus.
 - Keep models, actions, views, data and permissions intact. Other applications
   will provide user-facing access later; do not invent a replacement app now.
+
+## Omnichannel launcher for administrators (2026-10-21)
+
+- User decision (setup UX review, batch 5) supersedes "no app launcher" for
+  administrators: Settings administrators open Omnichannel from its own app
+  (Channels, Outgoing messages, Receiving rules, Blocklist) instead of Settings >
+  Technical, which needed developer mode. Staff still reach the inbox from the
+  channel; no Inbox menu is added. `omni_social` and `omni_template` remain
+  shared features without apps.
+- The channel type picker offers only types with an installed connector; the
+  channel list no longer lists every catalogue type in its sidebar.
+- Telegram keeps the guided wizard until all five steps are complete; the compact
+  overview is for completed channels only.
+- Retention wording in setup matches the receiving rules form ("How long messages
+  are kept", "Keep conversation messages (days)", ...).

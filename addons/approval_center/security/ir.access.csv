@@ -1,6 +1,6 @@
 id,name,model_id,group_id/id,operation,domain
 access_approval_center_request_user,approval.center.request user,approval.center.request,approval_center.group_approval_center_user,crud,"[('requester_id', '=', user.id)]"
-access_approval_center_request_approver,approval.center.request approver,approval.center.request,approval_center.group_approval_center_approver,crud,"[('approver_ids.user_id', '=', user.id)]"
+access_approval_center_request_approver,approval.center.request approver,approval.center.request,approval_center.group_approval_center_approver,ru,"[('approver_ids.user_id', '=', user.id)]"
 access_approval_center_request_manager,approval.center.request manager,approval.center.request,approval_center.group_approval_center_manager,crud,
 access_approval_center_policy_user,approval.center.policy user,approval.center.policy,approval_center.group_approval_center_user,r,
 access_approval_center_policy_approver,approval.center.policy approver,approval.center.policy,approval_center.group_approval_center_approver,r,
@@ -12,3 +12,5 @@ access_approval_center_approver_manager,approval.center.approver manager,approva
 access_approval_center_audit_user,approval.center.audit user,approval.center.audit,approval_center.group_approval_center_user,r,"[('request_id.requester_id', '=', user.id)]"
 access_approval_center_audit_approver,approval.center.audit approver,approval.center.audit,approval_center.group_approval_center_approver,r,"[('request_id.approver_ids.user_id', '=', user.id)]"
 access_approval_center_audit_manager,approval.center.audit manager,approval.center.audit,approval_center.group_approval_center_manager,r,
+approval_center_request_company_rule,Approval requests: multi-company,approval.center.request,,crud,"[('company_id', 'in', company_ids + [False])]"
+approval_center_policy_company_rule,Approval types: multi-company,approval.center.policy,,crud,"[('company_id', 'in', company_ids + [False])]"

@@ -136,7 +136,12 @@ class TestWorkflowUI(HttpCase):
                     }
                     throw new Error('Overview search did not reach expected state');
                 };
+                // "Ready to use" is on by default: only templates for installed apps show.
+                await waitFor(() => document.querySelector('.o_searchview_facet'));
+                if (document.querySelector('.wf_template_unavailable')) throw new Error('Unavailable template shown by default');
+                document.querySelector('.o_searchview_facet .o_facet_remove').click();
                 await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
+                await waitFor(() => document.querySelector('.wf_template_unavailable'));
                 await waitFor(() => document.querySelector('.o_search_panel .o_search_panel_label[data-tooltip="CRM"]'));
                 const main = document.querySelector('.o_kanban_view > main');
                 if ([...main.classList].sort().join(' ') !== 'o_component_with_search_panel o_content') throw new Error('Overview main has custom layout classes');

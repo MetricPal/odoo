@@ -1,5 +1,6 @@
+import { defineMailModels } from "@mail/../tests/mail_test_helpers";
 import { beforeEach, expect, test } from "@odoo/hoot";
-import { queryOne, resize } from "@odoo/hoot-dom";
+import { animationFrame, resize } from "@odoo/hoot-dom";
 import { browser } from "@web/core/browser/browser";
 import { user } from "@web/core/user";
 import {
@@ -10,16 +11,16 @@ import {
 } from "@web/../tests/web_test_helpers";
 
 import {
-    AUTOMATION_LIMIT,
-    FAVORITE_LIMIT,
-    RECENT_VISIBLE_LIMIT,
+    ATTACHMENT_LIMIT,
+    MY_WORK_MIN_FIT,
     WorkDashboard,
-    buildFavoriteSlots,
-    compactFavoriteIds,
-    insertFavoriteAtSlot,
-    moveFavoriteToSlot,
+    filterAutomations,
+    groupWorkByDay,
+    myWorkVisibleCount,
     splitDashboardItems,
 } from "@ai_home/dashboard/dashboard";
+
+defineMailModels();
 
 const dashboardItems = [
     ...Array.from({ length: 5 }, (_, index) => ({
@@ -51,34 +52,80 @@ const dashboardItems = [
     })),
 ];
 
+function makeMyWork(extra = 0) {
+    return [
+        {
+            key: "work-res.partner-1",
+            name: "Azure Interior",
+            subtitle: "Contact · You commented",
+            occurred: luxon.DateTime.utc().toFormat("yyyy-MM-dd HH:mm:ss"),
+            iconText: "CO",
+            action: { res_model: "res.partner", res_id: 1 },
+        },
+        {
+            key: "work-sale.order-9",
+            name: "S00009",
+            subtitle: "Sales Order · You updated",
+            occurred: luxon.DateTime.utc().minus({ days: 30 }).toFormat("yyyy-MM-dd HH:mm:ss"),
+            iconText: "SA",
+            action: { res_model: "sale.order", res_id: 9 },
+        },
+        ...Array.from({ length: extra }, (_, index) => ({
+            key: `work-crm.lead-${index}`,
+            name: `Lead ${index}`,
+            subtitle: "Lead · You updated",
+            occurred: luxon.DateTime.utc().minus({ days: 40 + index }).toFormat("yyyy-MM-dd HH:mm:ss"),
+            iconText: "LE",
+            action: { res_model: "crm.lead", res_id: index + 100 },
+        })),
+    ];
+}
+let extraWork = 0;
+let homeAgents = [];
+const workflowRuns = [
+    { key: "run-5", name: "Invoice reminder", subtitle: "INV/2026/0007", status: "failed",
+      statusLabel: "Failed", occurred: "2020-01-01 10:00:00", action: { res_model: "workflow.run", res_id: 5 } },
+    { key: "run-4", name: "New lead first call", subtitle: "Azure Interior", status: "done",
+      statusLabel: "Done", occurred: "2020-01-01 09:00:00", action: { res_model: "workflow.run", res_id: 4 } },
+];
+const liveAutomations = [
+    { key: "workflow-1", name: "Overdue follow-up", subtitle: "Schedule", status: "paused", tone: "neutral",
+      occurred: "2020-01-01 10:00:00", action: { res_model: "workflow.definition", res_id: 1 } },
+    { key: "workflow-2", name: "Invoice reminder", subtitle: "2 failed runs", status: "failed", tone: "danger",
+      occurred: "2020-01-01 10:00:00", action: { res_model: "workflow.definition", res_id: 2 } },
+];
+function homeData() {
+    return {
+        items: dashboardItems,
+        attention: [],
+        automations: liveAutomations,
+        runs: workflowRuns,
+        myWork: makeMyWork(extraWork),
+        agents: homeAgents,
+        canManageAgents: false,
+    };
+}
+
 const apps = [
-    { id: 90, name: "Apps", xmlid: "base.menu_management", actionID: 90 },
-    { id: 91, name: "Settings", xmlid: "base.menu_administration", actionID: 91 },
     { id: 1, name: "Home", xmlid: "ai_home.menu_ai_home_root", actionID: 1 },
     { id: 2, name: "Sales", xmlid: "sale.menu_sale_root", actionID: 2 },
-    { id: 3, name: "Inventory", xmlid: "stock.menu_stock_root", actionID: 3 },
-    { id: 4, name: "Employees", xmlid: "hr.menu_hr_root", actionID: 4 },
-    ...Array.from({ length: 10 }, (_, index) => ({
-        id: index + 5,
-        name: `App ${index + 1}`,
-        xmlid: `test.menu_app_${index + 1}`,
-        actionID: index + 5,
-    })),
 ];
 
 beforeEach(() => {
+    extraWork = 0;
+    homeAgents = [];
     patchWithCleanup(user, { userId: 42 });
-    browser.localStorage.removeItem("ai_home.favorite_apps.42");
     mockService("menu", {
         getApps: () => apps,
         selectMenu: (app) => expect.step(`open ${app.name}`),
     });
     mockService("notification", { add: () => {} });
+    mockService("action", { doAction: () => {} });
     mockService("orm", {
         async call(model, method, args) {
             expect(model).toBe("ai.home.item");
-            if (method === "get_dashboard_items") {
-                return dashboardItems;
+            if (method === "get_home_data") {
+                return homeData();
             }
             if (method === "mark_recent_seen") {
                 expect.step(`seen ${args[0]}`);
@@ -86,171 +133,230 @@ beforeEach(() => {
             }
         },
     });
-    return () => browser.localStorage.removeItem("ai_home.favorite_apps.42");
 });
 
-test("dashboard helpers preserve section and capacity rules", () => {
+test("dashboard helpers preserve section rules", () => {
     const sections = splitDashboardItems(dashboardItems);
-
     expect(sections.attention).toHaveLength(5);
     expect(sections.automations).toHaveLength(6);
     expect(sections.recent).toHaveLength(8);
-    expect(buildFavoriteSlots(apps.slice(0, 3))).toHaveLength(FAVORITE_LIMIT);
-    expect(compactFavoriteIds([2, null, 3]).slice(0, 3)).toEqual([2, 3, null]);
-    expect(moveFavoriteToSlot([2, 3, 4], 2, 1).slice(0, 3)).toEqual([3, 2, 4]);
-    expect(insertFavoriteAtSlot([2, 3, null, 4], 5, 2).slice(0, 4)).toEqual([
-        2, 3, 5, 4,
-    ]);
-    expect(insertFavoriteAtSlot([2, 3, null, 4], 5, 1).slice(0, 4)).toEqual([
-        2, 5, 3, 4,
-    ]);
 });
 
-test("an intentionally empty favorite list remains empty", async () => {
-    browser.localStorage.setItem("ai_home.favorite_apps.42", "[]");
+test("My Work shows what fits, then twice that when there is more", () => {
+    expect(myWorkVisibleCount(5, 10)).toBe(5);
+    expect(myWorkVisibleCount(10, 10)).toBe(10);
+    expect(myWorkVisibleCount(11, 10)).toBe(11);
+    expect(myWorkVisibleCount(60, 10)).toBe(20);
+    expect(myWorkVisibleCount(60, 0)).toBe(MY_WORK_MIN_FIT * 2);
+});
 
+test("Home has no favorites and the composer stays outside the scrolling center", async () => {
+    await resize({ width: 1366 });
     await mountWithCleanup(WorkDashboard);
-
-    expect(".o_ai_home_favorite_slot").toHaveCount(FAVORITE_LIMIT);
-    expect(".o_ai_home_favorite_slot.o_is_empty").toHaveCount(FAVORITE_LIMIT);
+    expect(".o_ai_home_favorites").toHaveCount(0);
+    expect(".o_ai_home_mywork_more").toHaveCount(0);
+    expect(".o_ai_home_container > .o_ai_home_composer").toHaveCount(1);
+    expect(".o_ai_home_center .o_ai_home_composer").toHaveCount(0);
 });
 
-test("dashboard binds its sortable reference and reacts to state changes", async () => {
-    const dashboard = await mountWithCleanup(WorkDashboard);
-
-    expect(dashboard.favoritesRootRef()).toBe(queryOne(".o_ai_home_favorites"));
-    await contains(".o_ai_home_favorites_view_all").click();
-    expect(dashboard.state.showAllApps).toBe(true);
-    expect(".o_ai_home_all_app").toHaveCount(3);
-});
-
-test("renders responsive section capacities and expands requested content", async () => {
+test("renders section capacities and expands requested content", async () => {
     await resize({ width: 1366 });
     await mountWithCleanup(WorkDashboard);
 
     expect(".o_ai_home_attention_card").toHaveCount(3);
-    expect(
-        ".o_ai_home_attention > .o_ai_home_section_heading .o_ai_home_show_more"
-    ).toHaveText("Show more");
+    expect(".o_ai_home_show_more").toHaveText("Show more");
     expect(".o_ai_home_show_more").toHaveAttribute("aria-expanded", "false");
-    expect(".o_ai_home_show_more .o_ai_home_section_caret").toHaveCount(1);
-    const collapsedCardHeight = queryOne(
-        ".o_ai_home_attention_card"
-    ).getBoundingClientRect().height;
-    expect(".o_ai_home_favorite_slot").toHaveCount(FAVORITE_LIMIT);
-    expect(".o_ai_home_automation_card").toHaveCount(AUTOMATION_LIMIT);
-    expect(".o_ai_home_recent_card").toHaveCount(RECENT_VISIBLE_LIMIT);
+    expect(".o_ai_home_left .o_ai_home_mywork").toHaveCount(1);
+    expect(".o_ai_home_right .o_ai_home_automations").toHaveCount(1);
+    expect(".o_ai_home_right .o_ai_home_runs").toHaveCount(1);
+    expect(".o_ai_home_right .o_ai_home_recent").toHaveCount(1);
+    // Every row is rendered; the section scrolls instead of a View all button.
+    expect(".o_ai_home_automation_row").toHaveCount(8);
+    expect(".o_ai_home_recent_row").toHaveCount(8);
+    expect(".o_ai_home_automations_view_all, .o_ai_home_recent_view_all").toHaveCount(0);
+    expect(".o_ai_home_automations .o_ai_home_count").toHaveText("8");
+    expect(".o_ai_home_right .o_ai_home_panel.o_ai_home_scroll").toHaveCount(3);
+    expect(".o_ai_home_mywork > .o_ai_home_section_heading + .o_ai_home_mywork_list").toHaveCount(1);
 
     await contains(".o_ai_home_show_more").click();
     expect(".o_ai_home_attention_card").toHaveCount(5);
     expect(".o_ai_home_show_more").toHaveText("Show less");
-    expect(".o_ai_home_show_more").toHaveAttribute("aria-expanded", "true");
-    expect(".o_ai_home_show_more .o_ai_home_section_caret").toHaveCount(1);
-    expect(queryOne(".o_ai_home_attention_card").getBoundingClientRect().height).toBe(
-        collapsedCardHeight
-    );
-
-    await contains(".o_ai_home_favorites_view_all").click();
-    expect(".o_ai_home_favorites_view_all").toHaveAttribute("aria-expanded", "true");
-    expect(".o_ai_home_all_app").toHaveCount(3);
-    expect(".o_ai_home_all_app .o_ai_home_app_icon").toHaveCount(3);
-    expect(".o_ai_home_all_app .o_ai_home_app_name").toHaveCount(3);
-    expect(".o_ai_home_favorite_item .o_ai_home_favorite_toggle").toHaveCount(10);
-
-    await contains(".o_ai_home_all_app .o_ai_home_favorite_toggle").click();
-    expect(".o_ai_home_all_app").toHaveCount(2);
-    expect(".o_ai_home_favorite_item .o_ai_home_favorite_toggle").toHaveCount(11);
-
-    await contains(".o_ai_home_recent_view_all").click();
-    expect(".o_ai_home_recent_view_all").toHaveAttribute("aria-expanded", "true");
-    expect(".o_ai_home_recent_card").toHaveCount(8);
 });
 
-test("favorite apps open and recent cards become seen", async () => {
+test("recent rows become seen when opened", async () => {
     await mountWithCleanup(WorkDashboard);
-
-    await contains(".o_ai_home_favorite_slot", { text: "Sales" }).click();
-    await contains(".o_ai_home_recent_card", { text: "Recent 1" }).click();
-
-    expect.verifySteps(["open Sales", "seen 21"]);
-    expect(".o_ai_home_recent_card").toHaveCount(RECENT_VISIBLE_LIMIT);
-    await contains(".o_ai_home_recent_card", { text: "Recent 1", count: 0 });
+    await contains('.o_ai_home_recent_row[aria-label="Open Recent 1"]').click();
+    expect.verifySteps(["seen 21"]);
+    expect('.o_ai_home_recent_row[aria-label="Open Recent 1"]').toHaveCount(0);
 });
 
-test("favorite items can be reordered by drag and drop", async () => {
-    browser.localStorage.setItem("ai_home.favorite_apps.42", JSON.stringify([2, 3, 4]));
+test("workflow runs show their state and open the run", async () => {
+    let opened;
+    mockService("action", { doAction: (action) => { opened = action; } });
     await mountWithCleanup(WorkDashboard);
+    expect(".o_ai_home_run_row").toHaveCount(2);
+    expect(".o_ai_home_run_row:first .o_ai_home_pill").toHaveText("Failed");
+    expect(".o_ai_home_run_row:first .o_ai_home_pill").toHaveClass("o_run_failed");
+    await contains('.o_ai_home_run_row[aria-label="Open Invoice reminder run"]').click();
+    expect(opened.res_model).toBe("workflow.run");
+    expect(opened.res_id).toBe(5);
+});
 
-    await contains('[data-favorite-origin="favorite"][data-app-id="2"]').dragAndDrop(
-        '[data-favorite-origin="favorite"][data-app-id="3"]'
-    );
+test("My Work renders twice the rows that fit when the history is longer", async () => {
+    extraWork = 40;
+    patchWithCleanup(WorkDashboard.prototype, {
+        measureMyWork() {
+            this.state.myWorkFit = 6;
+        },
+    });
+    await mountWithCleanup(WorkDashboard);
+    await animationFrame();
+    expect(".o_ai_home_mywork_item").toHaveCount(12);
+});
 
-    expect(JSON.parse(browser.localStorage.getItem("ai_home.favorite_apps.42")).slice(0, 3)).toEqual([
-        3, 2, 4,
+test("the agent picker lists active agents and remembers the choice", async () => {
+    homeAgents = [
+        { id: 7, name: "Sales Assistant", description: "Pipeline and quotes" },
+        { id: 8, name: "HR Helper", description: "" },
+    ];
+    browser.localStorage.removeItem("ai_home.agent");
+    await mountWithCleanup(WorkDashboard);
+    expect(".o_ai_home_agent_name").toHaveText("Select agent");
+    await contains(".o_ai_home_agent_toggle").click();
+    expect(".o_ai_home_agent_option").toHaveCount(2);
+    expect(".o_ai_home_agent_manage").toHaveCount(0);
+    await contains('.o_ai_home_agent_option:contains("HR Helper")').click();
+    expect(".o_ai_home_agent_name").toHaveText("HR Helper");
+    expect(browser.localStorage.getItem("ai_home.agent")).toBe("8");
+    browser.localStorage.removeItem("ai_home.agent");
+});
+
+test("one agent is selected automatically; none shows a clear state", async () => {
+    homeAgents = [{ id: 7, name: "Sales Assistant", description: "" }];
+    const dashboard = await mountWithCleanup(WorkDashboard);
+    expect(".o_ai_home_agent_name").toHaveText("Sales Assistant");
+    dashboard.state.agents = [];
+    dashboard.state.agentId = "";
+    await animationFrame();
+    expect(".o_ai_home_agent_name").toHaveText("No active agent");
+});
+
+test("files can be attached, removed and travel with the question", async () => {
+    const created = [];
+    const unlinked = [];
+    mockService("orm", {
+        async call(model, method, args) {
+            if (model === "ai.home.item") {
+                return method === "get_home_data" ? homeData() : true;
+            }
+            return { type: "ir.actions.act_window", res_model: "ai.agent.conversation", res_id: 3 };
+        },
+        async create(model, records) {
+            created.push([model, records[0]]);
+            return [model === "ir.attachment" ? 40 + created.length : 11];
+        },
+        async unlink(model, ids) {
+            unlinked.push([model, ids]);
+            return true;
+        },
+    });
+    homeAgents = [{ id: 7, name: "Sales Assistant", description: "" }];
+    const dashboard = await mountWithCleanup(WorkDashboard);
+    await dashboard.addFiles([
+        new File(["# Brief"], "brief.md", { type: "text/markdown" }),
+        new File(["x"], "photo.png", { type: "image/png" }),
+        new File(["a,b"], "numbers.csv", { type: "text/csv" }),
     ]);
-});
-
-test("hovering a remaining app reserves and restores one empty slot", async () => {
-    browser.localStorage.setItem("ai_home.favorite_apps.42", JSON.stringify([2, 3]));
-    await mountWithCleanup(WorkDashboard);
-    await contains(".o_ai_home_favorites_view_all").click();
-
-    const { cancel, moveTo } = await contains(
-        '[data-favorite-origin="available"][data-app-id="5"]'
-    ).drag();
-    await moveTo('.o_ai_home_favorite_item[data-slot-index="1"]');
-    expect(".o_ai_home_favorite_item.o_is_reserved_empty").toHaveCount(1);
-
-    await cancel();
-    expect(".o_ai_home_favorite_item.o_is_reserved_empty").toHaveCount(0);
-});
-
-test("a remaining app can be dropped at an exact favorite position", async () => {
-    browser.localStorage.setItem(
-        "ai_home.favorite_apps.42",
-        JSON.stringify([2, 3, null, 4])
-    );
-    await mountWithCleanup(WorkDashboard);
-    expect('.o_ai_home_favorite_item[data-slot-index="2"][data-app-id="4"]').toHaveCount(1);
-    expect('.o_ai_home_favorite_item[data-slot-index="3"].o_is_empty').toHaveCount(1);
-    await contains(".o_ai_home_favorites_view_all").click();
-
-    await contains('[data-favorite-origin="available"][data-app-id="5"]').dragAndDrop(
-        '.o_ai_home_favorite_item[data-slot-index="1"]'
-    );
-
-    expect(JSON.parse(browser.localStorage.getItem("ai_home.favorite_apps.42")).slice(0, 4)).toEqual([
-        2, 5, 3, 4,
+    await animationFrame();
+    expect(".o_ai_home_attachment").toHaveCount(2);
+    expect(created.map(([model, values]) => [model, values.name])).toEqual([
+        ["ir.attachment", "brief.md"],
+        ["ir.attachment", "numbers.csv"],
     ]);
+    await contains('.o_ai_home_attachment_remove[aria-label="Remove numbers.csv"]').click();
+    expect(unlinked).toEqual([["ir.attachment", [42]]]);
+    expect(".o_ai_home_attachment").toHaveCount(1);
+    dashboard.state.mode = "auto";
+    dashboard.state.prompt = "Summarize the brief";
+    await dashboard.sendPrompt();
+    const ask = created.find(([model]) => model === "ai.agent.ask")[1];
+    expect(ask.attachment_ids).toEqual([[6, 0, [41]]]);
+    expect(dashboard.state.attachments).toHaveLength(0);
+    expect(ATTACHMENT_LIMIT).toBe(5);
 });
 
-
-test("favorite stars are visible only after View all and administrative apps are excluded", async () => {
-    browser.localStorage.setItem("ai_home.favorite_apps.42", JSON.stringify([90, 2, 91]));
-    await mountWithCleanup(WorkDashboard);
-
-    expect('.o_ai_home_favorite_item [data-icon="star"].oi-filled').toHaveCount(0);
-    expect(".o_ai_home_favorite_item .o_ai_home_app_name").toHaveText("Sales");
-    await contains(".o_ai_home_favorites_view_all").click();
-    expect('.o_ai_home_favorite_item [data-icon="star"].oi-filled').toHaveCount(1);
-    expect('[data-app-id="90"]').toHaveCount(0);
-    expect('[data-app-id="91"]').toHaveCount(0);
+test("Ask me prepares a draft and opens review without sending", async () => {
+    let request;
+    mockService("action", { doAction: (action) => { request = action; } });
+    const dashboard = await mountWithCleanup(WorkDashboard);
+    await contains(".o_ai_home_add").click();
+    expect(".o_ai_home_attach").toHaveCount(1);
+    await contains(".o_ai_home_prepare").click();
+    expect("#ai_home_prompt").toHaveValue("Prepare an approval request for ");
+    dashboard.state.agents = [{ id: 7, name: "Sales Assistant" }];
+    dashboard.state.agentId = "7";
+    dashboard.state.attachments = [{ id: 41, name: "brief.md" }];
+    dashboard.reviewRequest();
+    expect(request.res_model).toBe("ai.agent.ask");
+    expect(request.target).toBe("new");
+    expect(request.context.default_agent_id).toBe(7);
+    expect(request.context.default_prompt).toBe("Prepare an approval request for");
+    expect(request.context.default_attachment_ids).toEqual([41]);
 });
 
-
-test("available app stars disappear at capacity and return when a slot is freed", async () => {
-    browser.localStorage.setItem("ai_home.favorite_apps.42", JSON.stringify(
-        Array.from({ length: FAVORITE_LIMIT }, (_, index) => index + 2)
-    ));
+test("My Work groups history by day and opens the record", async () => {
+    const groups = groupWorkByDay(makeMyWork());
+    expect(groups.map((group) => group.key)).toEqual(["today", "earlier"]);
+    let opened;
+    mockService("action", { doAction: (action) => { opened = action; } });
     await mountWithCleanup(WorkDashboard);
-    await contains(".o_ai_home_favorites_view_all").click();
-    expect(".o_ai_home_all_app").toHaveCount(1);
-    expect(".o_ai_home_all_app .o_ai_home_favorite_toggle").toHaveCount(0);
-    expect(".o_ai_home_favorite_item .o_ai_home_favorite_toggle").toHaveCount(FAVORITE_LIMIT);
+    expect(".o_ai_home_mywork_day").toHaveCount(2);
+    expect(".o_ai_home_mywork_item").toHaveCount(2);
+    await contains('.o_ai_home_mywork_item[aria-label="Open Azure Interior"]').click();
+    expect(opened.res_model).toBe("res.partner");
+    expect(opened.res_id).toBe(1);
+});
 
-    await contains('.o_ai_home_favorite_item[data-app-id="2"] .o_ai_home_favorite_toggle').click();
-    expect(".o_ai_home_all_app .o_ai_home_favorite_toggle").toHaveCount(2);
-    await contains('.o_ai_home_all_app[data-app-id="2"] .o_ai_home_favorite_toggle').click();
-    expect(".o_ai_home_all_app .o_ai_home_favorite_toggle").toHaveCount(0);
-    expect(".o_ai_home_favorite_item .o_ai_home_favorite_toggle").toHaveCount(FAVORITE_LIMIT);
+test("Automations can be filtered by status", async () => {
+    expect(filterAutomations(liveAutomations, "failed")).toHaveLength(1);
+    expect(filterAutomations(liveAutomations, "all")).toHaveLength(2);
+    await mountWithCleanup(WorkDashboard);
+    expect(".o_ai_home_status_chip").toHaveCount(4); // all, active, paused, needs attention
+    await contains('.o_ai_home_status_chip:contains("Needs attention")').click();
+    expect(".o_ai_home_automation_row").toHaveCount(1);
+    expect(".o_ai_home_automation_row").toHaveAttribute("aria-label", "Open Invoice reminder");
+    expect(".o_ai_home_automation_row .o_ai_home_pill").toHaveText("Needs attention");
+    await contains('.o_ai_home_status_chip:contains("Paused")').click();
+    expect(".o_ai_home_automation_row").toHaveCount(1);
+});
+
+test("Auto mode sends the question through the Ask dialog's Send", async () => {
+    const calls = [];
+    mockService("orm", {
+        async call(model, method, args) {
+            if (model === "ai.home.item") {
+                return method === "get_home_data" ? homeData() : true;
+            }
+            calls.push([model, method, args]);
+            return { type: "ir.actions.act_window", res_model: "ai.agent.conversation", res_id: 3 };
+        },
+        async create(model, records) {
+            calls.push([model, "create", records]);
+            return [11];
+        },
+    });
+    let opened;
+    mockService("action", { doAction: (action) => { opened = action; } });
+    const dashboard = await mountWithCleanup(WorkDashboard);
+    dashboard.state.agents = [{ id: 7, name: "Sales Assistant" }];
+    dashboard.state.agentId = "7";
+    dashboard.state.mode = "auto";
+    dashboard.state.prompt = "Summarize my pipeline";
+    await dashboard.sendPrompt();
+    expect(calls).toEqual([
+        ["ai.agent.ask", "create", [{ agent_id: 7, prompt: "Summarize my pipeline", attachment_ids: [[6, 0, []]] }]],
+        ["ai.agent.ask", "action_send", [[11]]],
+    ]);
+    expect(opened.res_model).toBe("ai.agent.conversation");
+    expect(dashboard.state.prompt).toBe("");
 });

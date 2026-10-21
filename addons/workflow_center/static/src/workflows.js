@@ -264,11 +264,15 @@ export class WorkflowStarter extends Component {
 
     setup() {
         this.orm = useService("orm");
-        this.state = proxy({ models: [], modelId: "", description: "", busy: false });
+        this.action = useService("action");
+        this.state = proxy({ models: [], modelId: "", description: "", busy: false, agents: [], agentId: "", aiDrafting: false });
         onWillStart(async () => {
             if (this.props.record.resId) return;
             const data = await this.orm.call("workflow.definition", "home_data", []);
             this.state.models = data.models;
+            this.state.agents = data.agents || [];
+            this.state.aiDrafting = Boolean(data.ai_drafting);
+            this.state.agentId = this.state.agents.length ? String(this.state.agents[0].id) : "";
             const selected = this.props.record.data.model_id?.id;
             const model = data.models.find(m => m.id === selected)
                 || data.models.find(m => m.model === "account.move")
@@ -276,6 +280,19 @@ export class WorkflowStarter extends Component {
             this.state.modelId = model ? String(model.id) : "";
             this.state.description = this.props.record.data.description || "";
         });
+    }
+
+    async draftWithAi() {
+        if (this.state.busy || !this.state.description.trim() || !this.state.modelId || !this.state.agentId) return;
+        this.state.busy = true;
+        try {
+            const action = await this.orm.call("workflow.definition", "ai_draft", [
+                this.state.description.trim(), Number(this.state.modelId), Number(this.state.agentId),
+            ]);
+            await this.action.doAction(action);
+        } finally {
+            this.state.busy = false;
+        }
     }
 
     async startBlank() {

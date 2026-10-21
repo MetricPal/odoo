@@ -575,6 +575,38 @@ class TestMetricBranding(TransactionCase):
         )
 
 
+    def test_override_waits_until_template_model_is_loaded(self):
+        """Branding can load before the app owning a template during an upgrade."""
+        from unittest.mock import patch
+
+        from odoo.orm.registry import Registry
+
+        template = self.env['mail.template'].create({
+            'name': 'Pending template', 'model_id': self.env.ref('base.model_res_partner').id,
+            'body_html': '<p>Original</p>',
+        })
+        self.env['ir.model.data'].create({
+            'module': 'branding_test', 'name': 'pending_template',
+            'model': 'mail.template', 'res_id': template.id,
+        })
+        override = self.env['branding.mail.template.override'].create({
+            'xmlid': 'branding_test.pending_template', 'template_name': 'Branded template',
+            'body_html': '<p>Branded</p>',
+        })
+        contains = Registry.__contains__
+        with patch.object(Registry, '__contains__',
+                          lambda registry, name: name != 'res.partner' and contains(registry, name)):
+            self.assertFalse(override._apply())
+        self.assertFalse(override.applied_checksum)
+        self.assertEqual(template.name, 'Pending template')
+
+        # Once every module is loaded the register hook applies it.
+        override._register_hook()
+        self.assertTrue(override.applied_checksum)
+        self.assertEqual(template.name, 'Branded template')
+        self.assertIn('Branded', template.body_html)
+
+
 class TestBrandingSessionInfo(HttpCase):
     @classmethod
     def setUpClass(cls):

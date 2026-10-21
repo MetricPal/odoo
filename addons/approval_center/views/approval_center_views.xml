@@ -4,7 +4,10 @@
         <field name="name">approval.center.request.list</field>
         <field name="model">approval.center.request</field>
         <field name="arch" type="xml">
-            <list class="o_approval_center_list" decoration-info="state == 'submitted'" decoration-success="state == 'approved'" decoration-danger="state == 'refused'">
+            <list class="o_approval_center_list" create="0" decoration-info="state == 'submitted'" decoration-success="state == 'approved'" decoration-danger="state == 'refused'">
+                <header>
+                    <button name="action_pick_type" type="object" string="New request" class="btn-primary" display="always"/>
+                </header>
                 <field name="name"/>
                 <field name="policy_id"/>
                 <field name="requester_id" widget="many2one_avatar_user"/>
@@ -23,7 +26,7 @@
         <field name="name">approval.center.request.kanban</field>
         <field name="model">approval.center.request</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="state" sample="1">
+            <kanban default_group_by="state" sample="1" on_create="approval_center.action_approval_center_dashboard" quick_create="false">
                 <field name="name"/>
                 <field name="policy_id"/>
                 <field name="requester_id"/>
@@ -76,9 +79,12 @@
             <form string="Approval Request">
                 <header>
                     <button name="action_submit" type="object" string="Submit" class="oe_highlight" invisible="state != 'to_submit'"/>
-                    <button name="action_approve" type="object" string="Approve" class="oe_highlight" invisible="state != 'submitted'" groups="approval_center.group_approval_center_approver"/>
-                    <button name="action_refuse" type="object" string="Refuse" invisible="state != 'submitted'" groups="approval_center.group_approval_center_approver"/>
-                    <button name="action_cancel" type="object" string="Cancel" invisible="state == 'to_submit'"/>
+                    <field name="can_review" invisible="1"/>
+                    <field name="executed_at" invisible="1"/>
+                    <button name="action_approve" type="object" string="Approve" class="oe_highlight" invisible="not can_review" groups="approval_center.group_approval_center_approver"/>
+                    <button name="action_refuse" type="object" string="Refuse" invisible="not can_review" groups="approval_center.group_approval_center_approver"/>
+                    <button name="action_execute" type="object" string="Run Approved Action" class="oe_highlight" invisible="state != 'approved' or executed_at or not action_name"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state == 'to_submit' or executed_at"/>
                     <field name="state" widget="statusbar" statusbar_visible="to_submit,submitted,approved,refused"/>
                 </header>
                 <sheet>
@@ -86,6 +92,15 @@
                         <button name="action_view_audits" type="object" class="oe_stat_button" icon="fa-history">
                             <field name="audit_count" widget="statinfo" string="Audit"/>
                         </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <field name="action_name" invisible="1"/>
+                    <div class="alert alert-info mb-3" role="status" invisible="not waiting_for">
+                        <i class="fa fa-hourglass-half me-1" aria-hidden="true"/> Waiting for: <field name="waiting_for" class="fw-bold" readonly="1"/>
+                    </div>
+                    <div class="alert alert-danger mb-3" role="alert" invisible="not failure_reason">
+                        <i class="fa fa-exclamation-triangle me-1" aria-hidden="true"/> Last execution failed: <field name="failure_reason" readonly="1"/>
                     </div>
                     <div class="oe_title">
                         <label for="name"/>
@@ -121,7 +136,7 @@
                         </group>
                         <group>
                             <field name="create_date" string="Created On" readonly="1"/>
-                            <field name="approval_minimum"/>
+                            <field name="approval_minimum" string="Approvals needed" invisible="not policy_id"/>
                             <field name="item" invisible="not policy_id or has_items == 'no'" required="has_items == 'required'"/>
                             <field name="quantity" invisible="not policy_id or has_quantity == 'no'" required="has_quantity == 'required'"/>
                             <field name="amount" invisible="not policy_id or has_amount == 'no'" required="has_amount == 'required'"/>
@@ -157,7 +172,7 @@
         <field name="name">approval.center.request.search</field>
         <field name="model">approval.center.request</field>
         <field name="arch" type="xml">
-            <search string="Approval Requests">
+            <search string="Requests">
                 <field name="name"/>
                 <field name="policy_id"/>
                 <field name="requester_id"/>
@@ -165,9 +180,12 @@
                 <filter string="Approved" name="approved" domain="[('state', '=', 'approved')]"/>
                 <filter string="Refused" name="refused" domain="[('state', '=', 'refused')]"/>
                 <filter string="My Requests" name="my_requests" domain="[('requester_id', '=', uid)]"/>
+                <filter string="To Review" name="to_review" domain="[('state', '=', 'submitted'), ('approver_ids', 'any', [('user_id', '=', uid), ('status', '=', 'submitted')])]"/>
+                <separator/>
+                <filter string="Archived" name="archived" domain="[('active', '=', False)]"/>
                 <group>
                     <filter string="Status" name="status" domain="[]" context="{'group_by': 'state'}"/>
-                    <filter string="Category" name="category" domain="[]" context="{'group_by': 'policy_id'}"/>
+                    <filter string="Approval type" name="category" domain="[]" context="{'group_by': 'policy_id'}"/>
                     <filter string="Requester" name="requester" domain="[]" context="{'group_by': 'requester_id'}"/>
                 </group>
             </search>
@@ -178,31 +196,38 @@
         <field name="name">approval.center.type.kanban</field>
         <field name="model">approval.center.policy</field>
         <field name="arch" type="xml">
-            <kanban class="o_kanban_dashboard" sample="1" create="0" can_open="0" action="action_new_request" type="object">
+            <kanban class="o_kanban_dashboard" sample="1" create="0" can_open="0" action="action_card_click" type="object">
                 <field name="name"/>
                 <field name="description"/>
                 <field name="image_128"/>
                 <field name="request_count"/>
                 <field name="submitted_count"/>
                 <field name="approval_minimum"/>
+                <field name="setup_state"/>
+                <field name="approval_summary"/>
                 <templates>
                     <t t-name="card">
                         <div class="oe_kanban_card d-flex gap-2 p-2" style="min-height: 120px;">
                             <field name="image_128" widget="image" class="oe_avatar flex-shrink-0" options="{'size': [52, 52]}"/>
                             <div class="flex-grow-1 min-w-0">
-                                <div class="fw-bold text-truncate"><field name="name"/></div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="fw-bold text-truncate"><field name="name"/></div>
+                                    <span t-if="record.setup_state.raw_value === 'needs_approvers'" class="badge rounded-pill text-bg-warning o_approval_needs_approvers">Needs approvers</span>
+                                </div>
                                 <div class="text-muted small" style="min-height: 38px;">
                                     <field name="description"/>
                                 </div>
                                 <div class="d-flex gap-2 mt-2">
-                                    <button name="action_new_request" type="object" class="btn btn-primary btn-sm flex-fill">New Request</button>
+                                    <button t-if="record.setup_state.raw_value === 'ready'" name="action_new_request" type="object" class="btn btn-primary btn-sm flex-fill">New request</button>
+                                    <button t-else="" name="action_setup" type="object" class="btn btn-primary btn-sm flex-fill o_approval_setup" groups="approval_center.group_approval_center_manager">Set up approvers</button>
                                     <button name="action_view_submitted_requests" type="object" class="btn btn-secondary btn-sm flex-fill">
-                                        To Review <field name="submitted_count"/>
+                                        To review <field name="submitted_count"/>
                                     </button>
                                 </div>
+                                <div t-if="record.setup_state.raw_value !== 'ready'" class="small text-muted mt-1 o_approval_not_ready">Not available yet: ask an Approvals manager to add approvers.</div>
                                 <div class="d-flex gap-3 mt-2 text-muted small justify-content-between">
-                                    <span>Requests <field name="request_count"/></span>
-                                    <span>Minimum <field name="approval_minimum"/></span>
+                                    <span class="text-truncate" t-att-title="record.approval_summary.value"><field name="approval_summary"/></span>
+                                    <span class="text-nowrap">Requests <field name="request_count"/></span>
                                 </div>
                             </div>
                         </div>
@@ -221,9 +246,8 @@
                 <field name="image_128" widget="image" optional="show" options="{'size': [32, 32]}"/>
                 <field name="name"/>
                 <field name="active" width="80px"/>
-                <field name="approval_minimum" width="150px"/>
-                <field name="manager_approval" width="170px"/>
-                <field name="approver_sequence" width="190px"/>
+                <field name="approval_summary"/>
+                <field name="setup_state" widget="badge" decoration-warning="setup_state == 'needs_approvers'" decoration-success="setup_state == 'ready'"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="create_date" string="Created On" optional="hide"/>
                 <field name="write_date" string="Updated On" optional="hide"/>
@@ -251,33 +275,48 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
+                    <div class="alert alert-warning" role="status" invisible="setup_state != 'needs_approvers'">
+                        Nobody can approve these requests yet. Add approvers, or let the requester's manager approve
+                        (the manager comes from the Employees app).
+                    </div>
                     <notebook>
-                        <page string="Options">
+                        <page string="Who approves" name="approvers">
+                            <p class="text-muted"><field name="approval_summary" nolabel="1" class="d-inline"/></p>
                             <group>
-                                <group string="Fields">
+                                <group>
+                                    <field name="manager_approval"/>
+                                    <field name="approval_minimum"/>
+                                    <field name="approver_sequence"/>
+                                    <field name="allow_self_approval"/>
+                                </group>
+                            </group>
+                            <field name="selected_approver_user_ids" invisible="1"/>
+                            <field name="setup_state" invisible="1"/>
+                            <label for="approver_ids" string="Approvers"/>
+                            <field name="approver_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="user_id" string="Approver" widget="many2one_avatar_user" domain="[('id', 'not in', parent.selected_approver_user_ids)]"/>
+                                    <field name="required" string="Must approve"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Request form" name="request_form">
+                            <p class="text-muted">Choose which details a requester fills in.</p>
+                            <group>
+                                <group>
                                     <field name="has_document" widget="radio" options="{'horizontal': true}"/>
                                     <field name="has_partner" widget="radio" options="{'horizontal': true}"/>
                                     <field name="has_date" widget="radio" options="{'horizontal': true}"/>
                                     <field name="has_period" widget="radio" options="{'horizontal': true}"/>
                                     <field name="has_items" widget="radio" options="{'horizontal': true}"/>
+                                </group>
+                                <group>
                                     <field name="has_quantity" widget="radio" options="{'horizontal': true}"/>
                                     <field name="has_amount" widget="radio" options="{'horizontal': true}"/>
                                     <field name="has_reference" widget="radio" options="{'horizontal': true}"/>
                                     <field name="has_payment" widget="radio" options="{'horizontal': true}"/>
                                     <field name="has_location" widget="radio" options="{'horizontal': true}"/>
-                                </group>
-                                <group string="Approvers">
-                                    <field name="manager_approval"/>
-                                    <field name="approver_sequence"/>
-                                    <field name="approval_minimum"/>
-                                    <field name="selected_approver_user_ids" invisible="1"/>
-                                    <field name="approver_ids">
-                                        <list editable="bottom">
-                                            <field name="sequence" widget="handle"/>
-                                            <field name="user_id" string="Approver" widget="many2one_avatar_user" domain="[('id', 'not in', parent.selected_approver_user_ids)]"/>
-                                            <field name="required"/>
-                                        </list>
-                                    </field>
                                 </group>
                             </group>
                         </page>
@@ -291,7 +330,7 @@
                         </page>
                     </notebook>
                 </sheet>
-                <chatter/>
+                
             </form>
         </field>
     </record>
@@ -348,23 +387,23 @@
     </record>
 
     <record id="action_approval_center_types" model="ir.actions.act_window">
-        <field name="name">Approval Types</field>
+        <field name="name">Approval types</field>
         <field name="res_model">approval.center.policy</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Create an approval type</p>
-            <p>Configure approval categories such as business trips, contracts, procurement requests, and general approvals.</p>
+            <p>An approval type says who approves a kind of request (business trips, contracts, purchases) and which details the requester fills in.</p>
         </field>
     </record>
 
     <record id="action_approval_center_dashboard" model="ir.actions.act_window">
-        <field name="name">Approval Center</field>
+        <field name="name">Approvals</field>
         <field name="res_model">approval.center.policy</field>
         <field name="view_mode">kanban</field>
     </record>
 
     <record id="action_approval_center_requests" model="ir.actions.act_window">
-        <field name="name">Approval Requests</field>
+        <field name="name">Requests</field>
         <field name="res_model">approval.center.request</field>
         <field name="view_mode">kanban,list,form</field>
     </record>
@@ -417,7 +456,7 @@
                         <p t-if="doc.payment"><strong>Payment:</strong> <span t-field="doc.payment"/></p>
                         <p t-if="doc.document_ids"><strong>Documents:</strong> <span t-out="', '.join(doc.document_ids.mapped('name'))"/></p>
                         <p><strong>Created On:</strong> <span t-field="doc.create_date"/></p>
-                        <p><strong>Minimum Approval:</strong> <span t-field="doc.approval_minimum"/></p>
+                        <p><strong>Approvals needed:</strong> <span t-field="doc.approval_minimum"/></p>
                         <h3>Description</h3>
                         <p t-field="doc.reason"/>
                         <h3>Approver(s)</h3>
@@ -446,14 +485,14 @@
     </template>
 
     <menuitem id="menu_approval_center_root"
-              name="Approval Center"
+              name="Approvals"
               action="action_approval_center_dashboard"
               sequence="35"
               groups="approval_center.group_approval_center_user"
               web_icon="approval_center,static/description/icon.svg"/>
 
     <menuitem id="menu_approval_center_requests"
-              name="Approval Requests"
+              name="Requests"
               parent="menu_approval_center_root"
               action="action_approval_center_requests"
               sequence="10"/>
@@ -472,7 +511,7 @@
               groups="approval_center.group_approval_center_manager"/>
 
     <menuitem id="menu_approval_center_types"
-              name="Approval Types"
+              name="Approval types"
               parent="menu_approval_center_configuration"
               action="action_approval_center_types"
               sequence="10"

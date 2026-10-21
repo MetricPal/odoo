@@ -1,15 +1,18 @@
+import { defineMailModels } from "@mail/../tests/mail_test_helpers";
 import { expect, test } from "@odoo/hoot";
 import { mockService, mountWithCleanup } from "@web/../tests/web_test_helpers";
 import { router } from "@web/core/browser/router";
 import { registry } from "@web/core/registry";
 import { NavBar } from "@web/webclient/navbar/navbar";
 
-import { WorkDashboardGlobalSearch } from "@ai_home/global_search/global_search";
 import {
     WORK_DASHBOARD_ACTION_XMLID,
     WORK_DASHBOARD_ROUTE,
 } from "@ai_home/navbar_home/home_route";
 import { WORK_DASHBOARD_MENU_XMLID } from "@ai_home/navbar_home/navbar_home";
+
+// The navbar systray talks to Discuss; its models must exist in the mock server.
+defineMailModels();
 
 const homeApp = {
     id: 1,
@@ -78,8 +81,7 @@ test("Home app-brand text is not rendered in the navbar", async () => {
     await mountWithCleanup(NavBar);
 
     expect(".o_menu_brand").toHaveCount(0);
-    expect(".o_ai_home_global_search").toHaveCount(1);
-    expect(NavBar.components.WorkDashboardGlobalSearch).toBe(WorkDashboardGlobalSearch);
+    expect(".o_ai_home_global_search").toHaveCount(0);
 });
 
 test.tags("mobile");

@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.addons.mail.tests.common import mail_new_test_user
@@ -630,3 +630,183 @@ class TestAgent(TransactionCase):
         self.assertEqual(self.engine.state, 'unchecked')
         self.assertFalse(self.engine.status_message)
         self.assertFalse(self.engine.checked_at)
+
+
+@tagged('post_install', '-at_install')
+class TestAgentReliability(TransactionCase):
+    """Transient failures, configuration drift and per-user quota."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env_patch = patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443',
+                                                'AI_AGENT_SECRET_TEST': 'synthetic-not-a-live-key'})
+        cls.env_patch.start()
+        cls.addClassCleanup(cls.env_patch.stop)
+        cls.user = mail_new_test_user(cls.env, login='ai_rel_staff', groups='ai_agent.group_user',
+                                     company_ids=[Command.set(cls.env.company.ids)], notification_type='inbox')
+        cls.engine = cls.env['ai.agent.engine'].create({'name': 'Reliability engine', 'url': 'https://hermes.example.com',
+            'secret_reference': 'AI_AGENT_SECRET_TEST', 'management_url': 'https://hermes.example.com',
+            'management_secret_reference': 'AI_AGENT_SECRET_TEST'})
+        internal(cls.engine).write({'state': 'ready'})
+        cls.agent = cls.env['ai.agent'].create({'name': 'Reliability assistant', 'engine_id': cls.engine.id,
+                                               'user_ids': [Command.set(cls.user.ids)]})
+        cls.agent.action_activate()
+
+    def _queue(self, prompt='Summarize available knowledge'):
+        return self.env['ai.agent.run'].with_user(self.user)._queue(self.agent.with_user(self.user), prompt)
+
+    def _running(self):
+        run = self._queue().sudo()
+        internal(run).write({'state': 'running', 'remote_id': 'run_reliability', 'next_poll_at': False,
+                             'started_at': fields.Datetime.now()})
+        return run
+
+    def test_transient_poll_failure_retries_without_manager(self):
+        run = self._running()
+        with patch.object(type(self.engine), '_request', side_effect=hermes.HermesUnavailable('down')), \
+             patch.object(type(self.env['ir.cron']), '_commit_progress', return_value=60):
+            self.env['ai.agent.run']._cron_process()
+        self.assertEqual(run.state, 'running')
+        self.assertEqual(run.poll_failures, 1)
+        self.assertGreater(run.next_poll_at, fields.Datetime.now())
+        internal(run).write({'next_poll_at': False})
+        with patch.object(type(self.engine), '_request', return_value={'status': 'completed', 'output': 'Answer'}), \
+             patch.object(type(self.env['ir.cron']), '_commit_progress', return_value=60):
+            self.env['ai.agent.run']._cron_process()
+        self.assertEqual(run.state, 'completed')
+        self.assertEqual(run.poll_failures, 0)
+
+    def test_configuration_change_during_run_discards_answer(self):
+        run = self._running()
+        with patch.object(type(run), '_authorized_agent', side_effect=[run.agent_id, UserError('changed')]), \
+             patch.object(type(self.engine), '_request', return_value={'status': 'completed', 'output': 'Late'}), \
+             patch.object(type(self.env['ir.cron']), '_commit_progress', return_value=60):
+            self.env['ai.agent.run']._cron_process()
+        self.assertEqual(run.state, 'discarded')
+        self.assertFalse(run.answer)
+        self.assertTrue(run.finished_at)
+
+    def test_rejected_post_fails_without_reconciliation(self):
+        run = self._queue().sudo()
+        with patch.object(type(self.engine), '_inspect', return_value=({}, [])), \
+             patch.object(type(self.engine), '_request', side_effect=hermes.HermesRejected('HTTP 401')), \
+             patch.object(type(self.env['ir.cron']), '_commit_progress', return_value=60):
+            self.env['ai.agent.run']._cron_process()
+        self.assertEqual(run.state, 'failed')
+
+    def test_transport_classifies_post_status(self):
+        for status, expected in ((401, hermes.HermesRejected), (422, hermes.HermesRejected),
+                                 (429, hermes.HermesUncertain), (503, hermes.HermesUncertain)):
+            pool = MagicMock()
+            pool.request.return_value.status = status
+            pool.request.return_value.read.return_value = b'{}'
+            with patch.object(hermes.socket, 'getaddrinfo', return_value=[(None, None, None, None, ('10.0.0.5', 443))]), \
+                 patch.object(hermes.urllib3, 'HTTPSConnectionPool', return_value=pool):
+                with self.assertRaises(expected, msg=str(status)):
+                    hermes.request(self.engine.url, self.engine.secret_reference, 'POST', '/v1/runs', {})
+        pool = MagicMock()
+        pool.request.side_effect = OSError('reset')
+        with patch.object(hermes.socket, 'getaddrinfo', return_value=[(None, None, None, None, ('10.0.0.5', 443))]), \
+             patch.object(hermes.urllib3, 'HTTPSConnectionPool', return_value=pool):
+            with self.assertRaises(hermes.HermesUnavailable):
+                hermes.request(self.engine.url, self.engine.secret_reference, 'GET', '/v1/runs/x')
+
+    def test_per_user_daily_quota(self):
+        self.agent.action_pause()
+        self.agent.write({'max_requests_per_user_day': 1})
+        self.agent.action_activate()
+        self._queue('first question')
+        with self.assertRaises(UserError):
+            self._queue('second question')
+        self.agent.action_pause()
+        with self.assertRaises(ValidationError):
+            self.agent.write({'max_requests_per_user_day': 5000})
+
+    def test_explain_approval_request_prefills_question_only(self):
+        self.user.write({'group_ids': [Command.link(self.env.ref('approval_center.group_approval_center_user').id)]})
+        policy = self.env['approval.center.policy'].create({
+            'name': 'Explain test', 'has_document': 'no', 'company_id': False,
+            'approver_ids': [Command.create({'user_id': self.env.ref('base.user_admin').id})]})
+        request = self.env['approval.center.request'].with_user(self.user).create({
+            'name': 'Laptop purchase', 'policy_id': policy.id, 'reason': 'Replacement for broken device'})
+        request.action_submit()
+        runs = self.env['ai.agent.run'].sudo().search_count([])
+        action = request.with_user(self.user).action_ai_explain()
+        self.assertEqual(action['res_model'], 'ai.agent.ask')
+        self.assertEqual(action['context']['default_agent_id'], self.agent.id)
+        prompt = action['context']['default_prompt']
+        self.assertIn('Laptop purchase', prompt)
+        self.assertIn('Replacement for broken device', prompt)
+        self.assertIn('Do not approve or refuse', prompt)
+        self.assertEqual(self.env['ai.agent.run'].sudo().search_count([]), runs, 'Nothing is sent')
+
+
+class TestAgentAttachments(TransactionCase):
+    """Files attached to a question are read as text and travel with the run."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env_patch = patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443',
+                                                'AI_AGENT_SECRET_TEST': 'synthetic-not-a-live-key'})
+        cls.env_patch.start()
+        cls.addClassCleanup(cls.env_patch.stop)
+        cls.user = mail_new_test_user(cls.env, login='ai_attach_staff', groups='ai_agent.group_user',
+                                     company_ids=[Command.set(cls.env.company.ids)], notification_type='inbox')
+        cls.engine = cls.env['ai.agent.engine'].create({'name': 'Attachment engine', 'url': 'https://hermes.example.com',
+            'secret_reference': 'AI_AGENT_SECRET_TEST', 'management_url': 'https://hermes.example.com',
+            'management_secret_reference': 'AI_AGENT_SECRET_TEST'})
+        internal(cls.engine).write({'state': 'ready'})
+        cls.agent = cls.env['ai.agent'].create({'name': 'Attachment assistant', 'engine_id': cls.engine.id,
+                                               'user_ids': [Command.set(cls.user.ids)]})
+        cls.agent.action_activate()
+
+    def _attachment(self, name, raw, user=None):
+        return self.env['ir.attachment'].with_user(user or self.user).create({
+            'name': name, 'raw': raw, 'res_model': False, 'res_id': 0})
+
+    def test_attached_text_reaches_the_payload_and_follows_the_run(self):
+        note = self._attachment('brief.md', b'# Brief\nCustomer wants delivery by Friday.')
+        run = self.env['ai.agent.run'].with_user(self.user)._queue(
+            self.agent.with_user(self.user), 'Summarize the brief', attachments=note)
+        self.assertEqual(run.attachment_ids, note)
+        self.assertEqual((note.sudo().res_model, note.sudo().res_id), ('ai.agent.run', run.id))
+        payload, _digest = run.sudo()._prepare_payload()
+        self.assertIn('Customer wants delivery by Friday.', payload['input'])
+        self.assertIn('attached files', payload['instructions'])
+        other = mail_new_test_user(self.env, login='ai_attach_other', groups='ai_agent.group_user',
+                                   company_ids=[Command.set(self.env.company.ids)])
+        with self.assertRaises(AccessError):
+            note.with_user(other).check_access('read')
+
+    def test_can_chat_filter_accepts_odoo20_operators(self):
+        Agent = self.env['ai.agent'].with_user(self.user)
+        self.assertIn(self.agent, Agent.search([('can_chat', 'in', [True])]))
+        self.assertIn(self.agent, Agent.search([('can_chat', '=', True)]))
+        self.assertNotIn(self.agent, Agent.search([('can_chat', 'not in', [True])]))
+
+    def test_wizard_sends_attachments(self):
+        note = self._attachment('numbers.csv', b'month,revenue\nJan,10\n')
+        ask = self.env['ai.agent.ask'].with_user(self.user).create({
+            'agent_id': self.agent.id, 'prompt': 'Explain the numbers',
+            'attachment_ids': [Command.set(note.ids)]})
+        ask.action_send()
+        run = self.env['ai.agent.run'].sudo().search([('attachment_ids', 'in', note.ids)])
+        self.assertEqual(len(run), 1)
+
+    def test_unreadable_foreign_or_too_many_files_are_refused(self):
+        with self.assertRaisesRegex(UserError, 'cannot be read'):
+            self._queue_with(self._attachment('photo.png', b'\x89PNG\r\n'))
+        admin_file = self._attachment('admin.txt', b'secret plan', user=self.env.ref('base.user_admin'))
+        with self.assertRaises(AccessError):
+            self._queue_with(admin_file)
+        many = self.env['ir.attachment'].browse()
+        for index in range(6):
+            many |= self._attachment(f'note{index}.txt', b'hello')
+        with self.assertRaisesRegex(UserError, 'at most 5'):
+            self._queue_with(many)
+
+    def _queue_with(self, attachments):
+        return self.env['ai.agent.run'].with_user(self.user)._queue(
+            self.agent.with_user(self.user), 'Read this', attachments=attachments.with_user(self.user))

@@ -1,6 +1,6 @@
 {
     'name': 'Approval Center',
-    'version': '20.0.1.0.0',
+    'version': '20.0.1.2.0',
     'category': 'Productivity',
     'summary': 'Review, approve, and audit supervised business actions',
     'description': """

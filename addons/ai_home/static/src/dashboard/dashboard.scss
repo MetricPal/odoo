@@ -4,27 +4,29 @@
     --work-dashboard-muted-surface: #f7f7f8;
     --work-dashboard-text: #303036;
     --work-dashboard-muted: #6d6d76;
+    --work-dashboard-border: rgba(0, 0, 0, 0.07);
     --work-dashboard-accent-bg: rgba(113, 75, 103, 0.08);
     --work-dashboard-shadow: 0 0.25rem 0.75rem rgba(33, 37, 41, 0.12);
     --work-dashboard-radius: 1rem;
+    // Status colours: text on a light tint keeps a readable contrast.
+    --status-active: #1f7a56;
+    --status-active-bg: #e3f3ec;
+    --status-paused: #6d6d76;
+    --status-paused-bg: #ececef;
+    --status-draft: #2f6f8f;
+    --status-draft-bg: #e2eff6;
+    --status-failed: #b3401f;
+    --status-failed-bg: #fbe8e2;
+    --status-waiting: #8a5a00;
+    --status-waiting-bg: #fbf0d9;
 
+    overflow: auto;
     background: var(--work-dashboard-bg);
     color: var(--work-dashboard-text);
 
-    .o_ai_home_container {
-        width: 100%;
-        max-width: 82rem;
-        margin: 0 auto;
-        padding: clamp(1rem, 3vw, 3rem);
-    }
-
-    .o_ai_home_section {
-        margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
-    }
-
     h2 {
         margin: 0;
-        font-size: clamp(1.125rem, calc(1rem + 0.35vw), 1.5rem);
+        font-size: clamp(1.0625rem, calc(0.95rem + 0.3vw), 1.375rem);
         font-weight: 700;
         line-height: 1.25;
     }
@@ -34,15 +36,154 @@
         padding: 0;
     }
 
+    // ------------------------------------------------------------------
+    // Layout. Phone: one scrolling page, composer pinned to the bottom.
+    // Tablet and desktop: the page never scrolls; each column scrolls on
+    // its own and the composer sits under the center column, so it never
+    // moves.
+    // ------------------------------------------------------------------
+    .o_ai_home_container {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.25rem;
+        width: 100%;
+        max-width: 120rem;
+        min-height: 100%;
+        margin: 0 auto;
+        padding: clamp(1rem, 2vw, 1rem) clamp(1rem, 2vw, 2rem) 0;
+    }
+
+    .o_ai_home_left,
+    .o_ai_home_center,
+    .o_ai_home_right {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        min-width: 0;
+    }
+
+    .o_ai_home_center { order: 1; }
+    .o_ai_home_left { order: 2; }
+    .o_ai_home_right { order: 3; padding-bottom: 1rem; }
+    .o_ai_home_composer {
+        order: 4;
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        padding: 0.75rem 0 0.75rem;
+        background: linear-gradient(to bottom, transparent, var(--work-dashboard-bg) 0.75rem);
+    }
+
+    @media (min-width: 768px) {
+        overflow: hidden;
+
+        .o_ai_home_container {
+            height: 100%;
+            grid-template-columns: minmax(14rem, 1fr) minmax(0, 2fr);
+            // Center takes what it needs (up to half), the right column the rest.
+            grid-template-rows: minmax(0, max-content) minmax(0, 1fr) auto;
+            column-gap: clamp(1.25rem, 2vw, 2rem);
+            row-gap: 1.25rem;
+        }
+
+        // Columns never scroll as a whole: titles stay put and only the
+        // items underneath them scroll.
+        .o_ai_home_left,
+        .o_ai_home_center,
+        .o_ai_home_right {
+            overflow: hidden;
+            min-height: 0;
+            padding-bottom: 1rem;
+        }
+
+        .o_ai_home_section {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .o_ai_home_section_heading,
+        .o_ai_home_status_filter,
+        .o_ai_home_attention_summary { flex: 0 0 auto; }
+
+        .o_ai_home_scroll {
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        // Left: My Work fills the column.
+        .o_ai_home_mywork { flex: 1 1 auto; }
+        .o_ai_home_mywork_list {
+            flex: 1 1 auto;
+            scrollbar-width: thin;
+        }
+
+        // Center: the attention cards scroll inside their panel.
+        .o_ai_home_attention { flex: 0 1 auto; }
+        .o_ai_home_attention_panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .o_ai_home_attention_grid { flex: 0 1 auto; }
+
+        // Right: sections share the height in proportion to their content
+        // (more rows, more room), each keeps its title and a couple of rows
+        // visible, and rows scroll inside the section without a scrollbar.
+        .o_ai_home_right { gap: 1.25rem; }
+        .o_ai_home_right .o_ai_home_section {
+            flex: var(--o-rows, 1) 1 var(--o-head, 3.25rem);
+            min-height: var(--o-min, 9rem);
+            max-height: var(--o-max, none);
+        }
+        .o_ai_home_right .o_ai_home_panel { flex: 0 1 auto; }
+
+        .o_ai_home_right .o_ai_home_scroll,
+        .o_ai_home_attention_grid {
+            scrollbar-width: none;
+
+            &::-webkit-scrollbar { display: none; }
+        }
+
+        .o_ai_home_left { grid-column: 1; grid-row: 1 / 4; }
+        .o_ai_home_center { grid-column: 2; grid-row: 1; max-height: 50vh; }
+        .o_ai_home_right { grid-column: 2; grid-row: 2; }
+        .o_ai_home_composer {
+            grid-column: 2;
+            grid-row: 3;
+            position: static;
+            padding: 0 0 1rem;
+            background: none;
+        }
+    }
+
+    @media (min-width: 1200px) {
+        .o_ai_home_container {
+            grid-template-columns: minmax(15rem, 1fr) minmax(0, 3fr) minmax(17rem, 1.1fr);
+            grid-template-rows: minmax(0, 1fr) auto;
+        }
+
+        .o_ai_home_left { grid-column: 1; grid-row: 1 / 3; }
+        .o_ai_home_center { grid-column: 2; grid-row: 1; max-height: none; }
+        .o_ai_home_composer { grid-column: 2; grid-row: 2; }
+        .o_ai_home_right { grid-column: 3; grid-row: 1 / 3; }
+    }
+
+    // ------------------------------------------------------------------
+    // Sections
+    // ------------------------------------------------------------------
     .o_ai_home_section_heading {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        height: 3rem;
+        min-height: 2.5rem;
+        margin-bottom: 0.25rem;
 
         .btn-link {
             padding-inline: 0.25rem;
+            font-size: 0.875rem;
             text-decoration: none;
         }
     }
@@ -58,91 +199,17 @@
         }
     }
 
-    .o_ai_home_attention_panel {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 1rem;
-        padding: clamp(1rem, 2vw, 1.5rem);
-        border: 1px solid rgba(0, 0, 0, 0.04);
-        border-radius: var(--work-dashboard-radius);
-        background: var(--work-dashboard-surface);
-        box-shadow: var(--work-dashboard-shadow);
+    .o_ai_home_empty {
+        margin: 0;
+        color: var(--work-dashboard-muted);
+        font-size: 0.875rem;
     }
 
-    .o_ai_home_attention_summary {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        min-width: 0;
-
-        strong {
-            font-size: 1rem;
-        }
-    }
-
-    .o_ai_home_attention_icon {
-        width: 3rem;
-        height: 3rem;
-        flex: 0 0 auto;
-        object-fit: contain;
-    }
-
-    .o_ai_home_attention_grid,
-    .o_ai_home_recent_grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-    }
-
-    .o_ai_home_attention_grid {
-        align-content: start;
-    }
-
-    .o_ai_home_attention_card,
-    .o_ai_home_recent_card {
-        display: flex;
-        min-width: 0;
-        gap: 0.75rem;
-        align-items: center;
-        padding: 0.875rem;
-        border: 1px solid transparent;
-        border-radius: 0.875rem;
-        background: var(--work-dashboard-muted-surface);
-        color: inherit;
-        text-align: start;
-        transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
-
-        &:hover,
-        &:focus-visible {
-            border-color: #eeeeee;
-            box-shadow: 0 0.25rem 0.625rem rgba(33, 37, 41, 0.1);
-            transform: translateY(-1px);
-        }
-    }
-
-    .o_ai_home_recent_card {
-        min-height: 9em;
-        box-shadow: 0 0.2rem 0.6rem rgba(33, 37, 41, 0.14);
-    }
-
-    .o_ai_home_recent_icon {
-        display: grid;
-        width: 2.75rem;
-        height: 2.75rem;
-        flex: 0 0 auto;
-        place-items: center;
-        border-radius: 0.75rem;
-        background: #8d8e98;
-        color: #fff;
-        font-weight: 700;
-    }
-
-    .o_ai_home_recent_icon {
-        width: 7rem;
-        height: 7rem;
-        border-radius: 0.5rem;
-        font-size: 2.5rem;
-        font-weight: 400;
+    .o_ai_home_center_empty {
+        margin: auto 0 0;
+        padding: 2rem 0 0;
+        color: var(--work-dashboard-muted);
+        text-align: center;
     }
 
     .o_ai_home_card_copy {
@@ -170,297 +237,501 @@
         }
     }
 
-    .o_ai_home_favorite_grid {
+    // Needs your attention
+    .o_ai_home_attention_panel {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0.5rem;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+        padding: clamp(1rem, 2vw, 1.25rem);
+        border: 1px solid var(--work-dashboard-border);
+        border-radius: var(--work-dashboard-radius);
+        background: var(--work-dashboard-surface);
+        box-shadow: var(--work-dashboard-shadow);
     }
 
-    .o_ai_home_favorite_item {
-        position: relative;
-        width: clamp(3.9325rem, 6.05vw, 5.1425rem);
+    .o_ai_home_attention_summary {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
         min-width: 0;
-    }
 
-    .o_ai_home_sortable_item.o_is_draggable {
-        cursor: grab;
-
-        &.o_ai_home_favorite_dragging {
-            cursor: grabbing;
-            opacity: 0.65;
+        strong {
+            font-size: 1rem;
         }
     }
 
-    .o_ai_home_favorite_placeholder {
-        border-radius: 0.875rem;
-        background: rgba(113, 75, 103, 0.08);
+    .o_ai_home_attention_icon {
+        width: 2rem;
+        height: 2rem;
+        flex: 0 0 auto;
+        object-fit: contain;
     }
 
-    .o_ai_home_favorite_item.o_is_reserved_empty {
-        display: none;
+    .o_ai_home_attention_grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-content: start;
+        gap: 0.75rem;
     }
 
-    .o_ai_home_favorite_slot {
+    .o_ai_home_attention_card {
         display: flex;
-        width: 100%;
         min-width: 0;
-        flex-direction: column;
+        gap: 0.75rem;
         align-items: center;
-        gap: 0.45rem;
-        padding: 0;
+        padding: 0.75rem;
+        border: 1px solid transparent;
+        border-radius: 0.875rem;
+        background: var(--work-dashboard-muted-surface);
+        color: inherit;
+        text-align: start;
+        transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+
+        &:hover,
+        &:focus-visible {
+            border-color: #eee;
+            box-shadow: 0 0.25rem 0.625rem rgba(33, 37, 41, 0.1);
+            transform: translateY(-1px);
+        }
+    }
+
+    @media (min-width: 1200px) {
+        .o_ai_home_attention_grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    // ------------------------------------------------------------------
+    // My Work: history grouped by day
+    // ------------------------------------------------------------------
+    .o_ai_home_mywork_group + .o_ai_home_mywork_group { margin-top: 1rem; }
+
+    .o_ai_home_mywork_day {
+        margin: 0 0 0.25rem;
+        color: var(--work-dashboard-muted);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .o_ai_home_mywork_item {
+        display: grid;
+        grid-template-columns: 2rem minmax(0, 1fr) auto;
+        gap: 0.625rem;
+        align-items: center;
+        width: 100%;
+        padding: 0.5rem;
+        border: 0;
+        border-radius: 0.75rem;
+        background: transparent;
+        color: inherit;
+        text-align: start;
+
+        &:hover,
+        &:focus-visible { background: var(--work-dashboard-accent-bg); }
+
+        .o_ai_home_card_copy {
+            strong,
+            span { white-space: nowrap; }
+
+            span { font-size: 0.8125rem; }
+        }
+    }
+
+    .o_ai_home_mywork_icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.5rem;
+        background: var(--work-dashboard-surface);
+        box-shadow: inset 0 0 0 1px var(--work-dashboard-border);
+        font-size: 0.6875rem;
+        font-weight: 700;
+    }
+
+    .o_ai_home_mywork_time {
+        color: var(--work-dashboard-muted);
+        white-space: nowrap;
+    }
+
+    // ------------------------------------------------------------------
+    // Right column: Automations, Workflow runs, Recent as readable lists
+    // ------------------------------------------------------------------
+    .o_ai_home_panel {
+        border: 1px solid var(--work-dashboard-border);
+        border-radius: var(--work-dashboard-radius);
+        background: var(--work-dashboard-surface);
+        box-shadow: 0 0.125rem 0.375rem rgba(33, 37, 41, 0.06);
+    }
+
+    .o_ai_home_panel_empty { padding: 1rem; }
+
+    .o_ai_home_row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        align-items: center;
+        width: 100%;
+        min-height: 3.75rem;
+        padding: 0.625rem 0.875rem;
         border: 0;
         background: transparent;
         color: inherit;
+        text-align: start;
 
-        &:hover .o_ai_home_app_icon,
-        &:focus-visible .o_ai_home_app_icon {
-            box-shadow: 0 0.35rem 0.9rem rgba(33, 37, 41, 0.18);
-            transform: translateY(-2px);
+        & + .o_ai_home_row { border-top: 1px solid var(--work-dashboard-border); }
+
+        &:hover,
+        &:focus-visible { background: var(--work-dashboard-accent-bg); }
+    }
+
+    .o_ai_home_row_copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 0.125rem;
+
+        strong,
+        span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        &.o_is_empty .o_ai_home_app_icon {
-            background: rgba(255, 255, 255, 0.7);
-        }
+        strong { font-size: 0.875rem; font-weight: 600; }
 
-        .o_ai_home_app_icon {
-            width: 100%;
+        span {
+            color: var(--work-dashboard-muted);
+            font-size: 0.8125rem;
         }
     }
 
-    .o_ai_home_app_icon {
-        display: grid;
-        width: clamp(3.9325rem, 6.05vw, 5.1425rem);
-        aspect-ratio: 1;
-        place-items: center;
-        overflow: hidden;
-        border-radius: 0.875rem;
-        background: var(--work-dashboard-surface);
-        box-shadow: 0 0.2rem 0.6rem rgba(33, 37, 41, 0.14);
-        transition: transform 120ms ease, box-shadow 120ms ease;
+    .o_ai_home_row_meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.25rem;
 
-        img {
-            width: 100%;
-            height: 100%;
-            padding: 4px;
-            object-fit: cover;
+        small {
+            color: var(--work-dashboard-muted);
+            font-size: 0.75rem;
+            white-space: nowrap;
         }
     }
 
-    .o_ai_home_app_fallback {
-        display: grid;
-        width: 100%;
-        height: 100%;
-        place-items: center;
-        background: linear-gradient(145deg, #77586e, #5f3f58);
-        color: #fff;
-        font-size: 1.5rem;
+    .o_ai_home_dot {
+        display: inline-block;
+        width: 0.625rem;
+        height: 0.625rem;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--status-paused);
+    }
+
+    .o_ai_home_pill {
+        padding: 0.0625rem 0.5rem;
+        border-radius: 1rem;
+        background: var(--status-paused-bg);
+        color: var(--status-paused);
+        font-size: 0.6875rem;
         font-weight: 600;
+        white-space: nowrap;
     }
 
-    .o_ai_home_app_name {
-        width: 100%;
+    // Automation status / workflow run state colours
+    .o_status_active,
+    .o_run_done {
+        &.o_ai_home_dot { background: var(--status-active); }
+        &.o_ai_home_pill { background: var(--status-active-bg); color: var(--status-active); }
+    }
+
+    .o_status_draft,
+    .o_run_running {
+        &.o_ai_home_dot { background: var(--status-draft); }
+        &.o_ai_home_pill { background: var(--status-draft-bg); color: var(--status-draft); }
+    }
+
+    .o_status_failed,
+    .o_run_failed {
+        &.o_ai_home_dot { background: var(--status-failed); }
+        &.o_ai_home_pill { background: var(--status-failed-bg); color: var(--status-failed); }
+    }
+
+    .o_run_waiting {
+        &.o_ai_home_dot { background: var(--status-waiting); }
+        &.o_ai_home_pill { background: var(--status-waiting-bg); color: var(--status-waiting); }
+    }
+
+    .o_ai_home_status_filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .o_ai_home_status_chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        min-height: 1.875rem;
+        padding: 0 0.75rem;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 1rem;
+        background: var(--work-dashboard-surface);
+        font-size: 0.8125rem;
+
+        .o_ai_home_dot { width: 0.5rem; height: 0.5rem; }
+
+        &.o_is_active {
+            border-color: var(--o-brand-primary, #71639e);
+            background: var(--work-dashboard-accent-bg);
+            font-weight: 600;
+        }
+    }
+
+    .o_ai_home_status_count { color: var(--work-dashboard-muted); }
+
+    .o_ai_home_recent_icon {
+        display: grid;
+        width: 2.25rem;
+        height: 2.25rem;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 0.625rem;
+        background: #8d8e98;
+        color: #fff;
+        font-size: 0.8125rem;
+        font-weight: 700;
+    }
+
+    .o_tone_primary .o_ai_home_recent_icon { background: #76536d; }
+    .o_tone_success .o_ai_home_recent_icon { background: #18875f; }
+    .o_tone_warning .o_ai_home_recent_icon { background: #bc7a00; }
+    .o_tone_danger .o_ai_home_recent_icon { background: #c94e35; }
+    .o_tone_info .o_ai_home_recent_icon { background: #397d9b; }
+
+    // ------------------------------------------------------------------
+    // Composer
+    // ------------------------------------------------------------------
+    .o_ai_home_composer_box {
+        position: relative;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 1rem;
+        background: var(--work-dashboard-surface);
+        box-shadow: var(--work-dashboard-shadow);
+
+        &:focus-within { border-color: var(--o-brand-primary, #71639e); }
+
+        textarea {
+            display: block;
+            width: 100%;
+            min-height: 3.25rem;
+            max-height: 12rem;
+            padding: 0.875rem 3.25rem 0.875rem 1rem;
+            border: 0;
+            border-radius: 1rem;
+            background: transparent;
+            color: inherit;
+            resize: none;
+
+            &:focus { outline: none; }
+        }
+    }
+
+    .o_ai_home_ask_send {
+        position: absolute;
+        bottom: 0.625rem;
+        inset-inline-end: 0.625rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.5rem;
+        background: var(--o-brand-primary, #71639e);
+        color: #fff;
+
+        &:disabled {
+            background: var(--work-dashboard-muted-surface);
+            color: var(--work-dashboard-muted);
+        }
+    }
+
+    .o_ai_home_composer_controls {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.5rem 0.25rem 0;
+    }
+
+    .o_ai_home_composer_tools,
+    .o_ai_home_composer_settings {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .o_ai_home_tool {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.5rem;
+        color: var(--work-dashboard-muted);
+
+        &:hover,
+        &:focus-visible {
+            background: var(--work-dashboard-accent-bg);
+            color: inherit;
+        }
+
+        &.o_is_listening { color: #d23f3a; }
+    }
+
+    .o_ai_home_tool_menu {
+        position: absolute;
+        top: auto;
+        bottom: 100%;
+    }
+
+    .o_ai_home_disclaimer {
         overflow: hidden;
         color: var(--work-dashboard-muted);
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         text-align: center;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-    .o_ai_home_all_apps {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0.75rem;
-        margin-top: 1rem;
-        border-radius: var(--work-dashboard-radius);
-    }
-
-    .o_ai_home_all_app {
-        position: relative;
-        display: flex;
-        width: clamp(3.9325rem, 6.05vw, 5.1425rem);
-        min-width: 0;
-        flex-direction: column;
-    }
-
-    .o_ai_home_all_app_open {
-        display: flex;
-        width: 100%;
-        min-width: 0;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0;
+    .o_ai_home_mode_select {
+        max-width: 11rem;
+        padding: 0.25rem 0.375rem;
         border: 0;
+        border-radius: 0.5rem;
         background: transparent;
         color: inherit;
-        text-align: center;
-
-        .o_ai_home_app_icon {
-            width: 100%;
-        }
-
-        &:hover .o_ai_home_app_icon,
-        &:focus-visible .o_ai_home_app_icon {
-            box-shadow: 0 0.35rem 0.9rem rgba(33, 37, 41, 0.18);
-            transform: translateY(-2px);
-        }
-    }
-
-    .o_ai_home_favorite_toggle {
-        position: absolute;
-        top: -0.5rem;
-        right: -0.5rem;
-        z-index: 1;
-        width: 1.75rem;
-        min-height: 1.75rem;
-        padding: 0;
-        border: 0;
-        border-radius: 50%;
-        background: var(--work-dashboard-surface);
-        color: #96959e;
-        box-shadow: 0 0.15rem 0.4rem rgba(33, 37, 41, 0.16);
-
-        &.o_is_favorite {
-            color: #f0aa00;
-        }
-    }
-
-    .o_ai_home_automation_grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.75rem;
-    }
-
-    .o_ai_home_automation_card {
-        display: flex;
-        min-width: 0;
-        aspect-ratio: 1;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: flex-end;
-        gap: 0.35rem;
-        padding: 1rem;
-        border: 1px solid transparent;
-        border-radius: 0.875rem;
-        background: #85868f;
-        color: #fff;
-        text-align: start;
-        box-shadow: 0 0.2rem 0.6rem rgba(33, 37, 41, 0.13);
-        transition: transform 120ms ease, box-shadow 120ms ease;
+        font-size: 0.875rem;
 
         &:hover,
-        &:focus-visible {
-            box-shadow: 0 0.4rem 1rem rgba(33, 37, 41, 0.18);
-            transform: translateY(-2px);
-        }
-
-        span,
-        small {
-            opacity: 0.85;
-        }
+        &:focus-visible { background: var(--work-dashboard-accent-bg); }
     }
 
-    .o_tone_primary .o_ai_home_recent_icon {
-        background: #76536d;
-    }
-
-    .o_tone_success .o_ai_home_recent_icon {
-        background: #18875f;
-    }
-
-    .o_tone_warning .o_ai_home_recent_icon {
-        background: #bc7a00;
-    }
-
-    .o_tone_danger .o_ai_home_recent_icon {
-        background: #c94e35;
-    }
-
-    .o_tone_info .o_ai_home_recent_icon {
-        background: #397d9b;
-    }
-
-    .o_ai_home_automation_card.o_tone_primary {
-        background: #76536d;
-    }
-
-    .o_ai_home_automation_card.o_tone_success {
-        background: #287b5f;
-    }
-
-    .o_ai_home_automation_card.o_tone_warning {
-        background: #9e6b12;
-    }
-
-    .o_ai_home_automation_card.o_tone_danger {
-        background: #e95420;
-    }
-
-    .o_ai_home_automation_card.o_tone_info {
-        background: #4b819a;
-    }
-
-    @media (min-width: 768px) {
-        .o_ai_home_attention_panel {
-            grid-template-columns: minmax(13rem, 0.8fr) minmax(0, 2fr);
-        }
-
-        .o_ai_home_attention_summary {
-            align-items: flex-start;
-            flex-direction: column;
-        }
-
-        .o_ai_home_attention_grid,
-        .o_ai_home_recent_grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .o_ai_home_favorite_grid {
-            grid-template-columns: repeat(8, minmax(0, 1fr));
-        }
-
-        .o_ai_home_automation_grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-
-        .o_ai_home_all_apps {
-            grid-template-columns: repeat(8, minmax(0, 1fr));
-        }
-    }
-
-    @media (min-width: 1200px) {
-        .o_ai_home_attention_grid,
-        .o_ai_home_recent_grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-
-        .o_ai_home_favorite_grid {
-            grid-template-columns: repeat(12, minmax(0, 1fr));
-        }
-
-        .o_ai_home_automation_grid {
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-        }
-
-        .o_ai_home_all_apps {
-            grid-template-columns: repeat(12, minmax(0, 1fr));
-        }
-    }
-
-    @media (min-width: 1600px) {
-        .o_ai_home_container {
-            max-width: 90rem;
-        }
-
-        .o_ai_home_attention_panel {
-            grid-template-columns: minmax(16rem, 0.75fr) minmax(0, 2.5fr);
-        }
+    @media (max-width: 575.98px) {
+        .o_ai_home_composer_controls { grid-template-columns: auto auto; }
+        .o_ai_home_disclaimer { grid-column: 1 / -1; grid-row: 2; }
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .o_ai_home_section_toggle .o_ai_home_section_caret {
-            transition: none;
+        .o_ai_home_section_toggle .o_ai_home_section_caret { transition: none; }
+    }
+
+    // Section counts
+    .o_ai_home_count {
+        margin-inline-start: 0.375rem;
+        color: var(--work-dashboard-muted);
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    // Attachments in the composer
+    .o_ai_home_attachments {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+        padding: 0.625rem 0.75rem 0;
+    }
+
+    .o_ai_home_attachment {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        max-width: 14rem;
+        padding: 0.125rem 0.25rem 0.125rem 0.625rem;
+        border-radius: 0.5rem;
+        background: var(--work-dashboard-muted-surface);
+        box-shadow: inset 0 0 0 1px var(--work-dashboard-border);
+        font-size: 0.8125rem;
+
+        &.o_is_uploading {
+            padding-inline-end: 0.625rem;
+            color: var(--work-dashboard-muted);
         }
+    }
+
+    .o_ai_home_attachment_name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .o_ai_home_attachment_remove {
+        width: 1.25rem;
+        min-height: 1.25rem;
+        border-radius: 0.375rem;
+        color: var(--work-dashboard-muted);
+        line-height: 1;
+
+        &:hover,
+        &:focus-visible { background: var(--work-dashboard-accent-bg); color: inherit; }
+    }
+
+    // Agent picker
+    .o_ai_home_agent_picker { position: relative; }
+
+    .o_ai_home_agent_toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        max-width: 13rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.5rem;
+        color: inherit;
+        font-size: 0.875rem;
+
+        &:hover,
+        &:focus-visible { background: var(--work-dashboard-accent-bg); }
+    }
+
+    .o_ai_home_agent_name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .o_ai_home_agent_menu {
+        position: absolute;
+        top: auto;
+        bottom: 100%;
+        min-width: 16rem;
+        max-width: 22rem;
+        padding: 0.375rem;
+    }
+
+    .o_ai_home_agent_option {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.5rem;
+        align-items: center;
+        border-radius: 0.5rem;
+        white-space: normal;
+
+        &[aria-checked="true"] { background: var(--work-dashboard-accent-bg); }
+    }
+
+    .o_ai_home_agent_empty {
+        margin: 0;
+        padding: 0.5rem 0.75rem;
+        color: var(--work-dashboard-muted);
+        font-size: 0.875rem;
+    }
+
+    .o_ai_home_agent_manage {
+        margin-top: 0.25rem;
+        border-top: 1px solid var(--work-dashboard-border);
+        border-radius: 0;
+        font-size: 0.875rem;
     }
 }

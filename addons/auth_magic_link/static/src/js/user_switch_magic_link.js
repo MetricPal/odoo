@@ -2,7 +2,7 @@
 
 import { patch } from "@web/core/utils/patch";
 import { UserSwitch } from "@web/core/user_switch/user_switch";
-import { rpc } from "@web/core/network/rpc";
+import { getLastConnectedUsers } from "@web/core/user";
 
 function getPasswordSubmit(form) {
     return form?.querySelector(".oe_login_buttons > button[type='submit']") || null;
@@ -133,8 +133,8 @@ patch(UserSwitch.prototype, {
         if (emailInput) {
             emailInput.value = "";
             if (login) {
-                const result = await rpc("/auth/magic-link/user-email", { login });
-                emailInput.value = result?.email || "";
+                const known = getLastConnectedUsers().find((entry) => entry.login === login);
+                emailInput.value = known?.email || "";
             }
         }
 

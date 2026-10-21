@@ -5,7 +5,8 @@
       <group><field name="agent_id" string="Assistant" options="{'no_create': true, 'no_open': true}"/><field name="conversation_id" invisible="1"/></group>
       <separator string="Your question"/>
       <field name="prompt" nolabel="1" placeholder="e.g. Summarize my open opportunities and suggest the next follow-up."/>
-      <p class="text-muted mt-3">Send shares your question and permitted context with the configured model provider. The assistant can explain and draft; it cannot change records or send messages.</p>
+      <field name="attachment_ids" widget="many2many_binary" nolabel="1" class="mt-2"/>
+      <p class="text-muted mt-3">Send shares your question, attached files and permitted context with the configured model provider. The assistant can explain and draft; it cannot change records or send messages.</p>
       <footer><button name="action_send" type="object" string="Send" class="btn-primary"/><button string="Cancel" special="cancel"/></footer>
     </form></field>
   </record>

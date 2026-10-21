@@ -73,7 +73,11 @@ results. Configuration changes require renewed activation. Managers supervise
 run evidence in their selected companies; staff see their own conversations.
 
 Claims commit before remote submission. Unknown acceptance is **Needs
-reconciliation** and retains a concurrency slot. No automatic resubmission
+manager check** and retains a concurrency slot. Failed status checks are not
+uncertain: they retry automatically with backoff (30 s up to 10 min). A
+definite rejection (HTTP 4xx except 408/429) fails without retry. If the
+configuration or the requester's access changes during a run, the run stops or
+its answer is discarded. No automatic resubmission
 occurs, even when Hermes supports idempotency keys. With a returned remote ID,
 **Check remote outcome** performs a read-only reconciliation. Without an ID,
 inspect Hermes using the request key; no guessed success or retry is offered.

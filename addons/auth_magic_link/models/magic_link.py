@@ -1,11 +1,20 @@
 import hashlib
+import logging
 import secrets
+from datetime import timedelta
+
+import werkzeug.urls
 
 from odoo import api, fields, models
 from odoo.tools import email_normalize
 
+_logger = logging.getLogger(__name__)
+
 
 VALID_LOGIN_METHODS = {"password", "magic_link", "both", "oauth_only"}
+THROTTLE_WINDOW = timedelta(minutes=15)
+MAX_REQUESTS_PER_ADDRESS = 10
+MAX_LINKS_PER_ACCOUNT = 3
 
 
 class AuthMagicLink(models.Model):
@@ -118,6 +127,58 @@ class AuthMagicLink(models.Model):
         return raw_token
 
     @api.model
+    def request_allowed(self, remote_addr, user):
+        """Per-address and per-account throttle for link requests."""
+        Attempt = self.env["auth.magic.link.attempt"].sudo()
+        since = fields.Datetime.now() - THROTTLE_WINDOW
+        if remote_addr and Attempt.search_count(
+            [("remote_addr", "=", remote_addr), ("create_date", ">=", since)],
+            limit=MAX_REQUESTS_PER_ADDRESS,
+        ) >= MAX_REQUESTS_PER_ADDRESS:
+            return False
+        if user and Attempt.search_count(
+            [("user_id", "=", user.id), ("create_date", ">=", since)],
+            limit=MAX_LINKS_PER_ACCOUNT,
+        ) >= MAX_LINKS_PER_ACCOUNT:
+            return False
+        return True
+
+    @api.model
+    def record_attempt(self, remote_addr, user):
+        self.env["auth.magic.link.attempt"].sudo().create({
+            "remote_addr": (remote_addr or "")[:64],
+            "user_id": user.id or False,
+        })
+
+    @api.model
+    def send_login_link(self, user, db, redirect=None, create_ip=None, user_agent=None):
+        """Create a token and queue the email. Queued (not inline) sending keeps
+        the response time independent of whether the account exists."""
+        ttl = self.env["ir.config_parameter"].sudo().get_int("auth_magic_link.expiry_minutes", 10)
+        expiry = fields.Datetime.add(fields.Datetime.now(), minutes=max(1, min(ttl, 60)))
+        template = self.env.ref("auth_magic_link.mail_template_email_login_v4", raise_if_not_found=False)
+        if not template:
+            _logger.error("Magic login template is missing")
+            return False
+        _record, raw_token = self.sudo().create_login_token(
+            user, expiry, create_ip=create_ip, user_agent=user_agent)
+        base_url = self.env["ir.config_parameter"].sudo().get_str("web.base.url")
+        query = {"token": raw_token, "db": db}
+        if redirect:
+            query["redirect"] = redirect
+        login_url = "%s/auth/magic-login?%s" % (base_url.rstrip("/"), werkzeug.urls.url_encode(query))
+        admin = self.env.ref("base.user_admin").sudo()
+        template.sudo().with_context(login_url=login_url).send_mail(
+            user.id,
+            force_send=False,
+            email_values={"email_to": user.email, "email_from": admin.email_formatted},
+        )
+        cron = self.env.ref("mail.ir_cron_mail_scheduler_action", raise_if_not_found=False)
+        if cron:
+            cron.sudo()._trigger()
+        return True
+
+    @api.model
     def get_user(self, raw_token):
         return self.find_valid_token(raw_token).user_id
 
@@ -177,6 +238,12 @@ class AuthMagicLink(models.Model):
         ], limit=1)
 
     @api.autovacuum
+    def _gc_magic_link_attempts(self):
+        self.env["auth.magic.link.attempt"].sudo().search([
+            ("create_date", "<", fields.Datetime.now() - THROTTLE_WINDOW),
+        ]).unlink()
+
+    @api.autovacuum
     def _gc_magic_links(self):
         cutoff = fields.Datetime.now()
         self.sudo().search([
@@ -184,3 +251,12 @@ class AuthMagicLink(models.Model):
             ("expires_at", "<=", cutoff),
             ("used_at", "!=", False),
         ]).unlink()
+
+
+class AuthMagicLinkAttempt(models.Model):
+    _name = "auth.magic.link.attempt"
+    _description = "Magic Link Request Attempt"
+    _log_access = True
+
+    remote_addr = fields.Char(index=True)
+    user_id = fields.Many2one("res.users", index=True, ondelete="cascade")

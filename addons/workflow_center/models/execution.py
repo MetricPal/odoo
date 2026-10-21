@@ -250,7 +250,7 @@ class WorkflowRun(models.Model):
         )
         try:
             response = pool.request(
-                'POST', target.path + ('?' + target.query if target.query else '') or '/',
+                'POST', (target.path or '/') + ('?' + target.query if target.query else ''),
                 body=json.dumps(payload, default=str).encode(),
                 headers={'Host': target.hostname, 'Content-Type': 'application/json',
                          'Idempotency-Key': f'workflow-{self.env.cr.dbname}-{self.id}-{step.id}-{record.id}'},
@@ -268,7 +268,7 @@ class WorkflowRun(models.Model):
 
     def _operate(self):
         self.ensure_one()
-        self.workflow_id._manager()
+        self.workflow_id._manager(operate=True)
         if self.is_test:
             raise UserError(_('Preview runs cannot be executed.'))
         self.env.cr.execute('SELECT id FROM workflow_run WHERE id = %s FOR UPDATE', [self.id])
@@ -406,7 +406,7 @@ class WorkflowTest(models.TransientModel):
     def action_start(self):
         self.ensure_one()
         workflow = self.workflow_id
-        workflow._manager()
+        workflow._manager(operate=True)
         record = self.env[workflow.model_name].browse(self.record_id).exists()
         if not record:
             raise UserError(_('Choose an existing record.'))
@@ -416,8 +416,11 @@ class WorkflowTest(models.TransientModel):
                 raise UserError(_('Activate the reviewed workflow before running it.'))
             workflow._trigger_records(record)
         else:
-            issues = workflow._validate()
-            run = internal(self.env['workflow.run']).create({
+            # Preview bookkeeping reads technical records and writes run history;
+            # for a department manager it runs privileged after the checks above.
+            checker = workflow if workflow._can_edit() else workflow.sudo()
+            issues = checker._validate()
+            run = internal(checker.env['workflow.run']).create({
                 'workflow_id': workflow.id, 'record_id': record.id, 'name': record.display_name,
                 'revision': workflow.revision, 'is_test': True, 'state': 'done',
             })
@@ -427,7 +430,7 @@ class WorkflowTest(models.TransientModel):
             if not matched:
                 run._log(_('This record does not match the workflow filter.'), 'skipped')
             else:
-                step = workflow.step_ids.sorted('sequence')[:1]
+                step = checker.step_ids.sorted('sequence')[:1]
                 visited = set()
                 while step and step.id not in visited:
                     visited.add(step.id)
@@ -444,7 +447,7 @@ class WorkflowTest(models.TransientModel):
             if issues:
                 run._log('\n'.join(issues), 'needs_setup')
             else:
-                internal(workflow).write({'tested_revision': workflow.revision, 'tested_digest': workflow._fingerprint()})
+                internal(checker).write({'tested_revision': workflow.revision, 'tested_digest': checker._fingerprint()})
         return {'type': 'ir.actions.act_window', 'name': _('Run history'),
                 'res_model': 'workflow.run', 'view_mode': 'list,form', 'views': [(False, 'list'), (False, 'form')],
                 'domain': [('workflow_id', '=', workflow.id)]}

@@ -34,6 +34,22 @@ Never commit credentials, tokens, private keys or production secrets.
 
 Security-sensitive AI decisions, tool calls, approvals and executions must be auditable.
 
+## Credential storage
+
+Provider credentials (Slack, Teams, WhatsApp, Instagram/LinkedIn) are encrypted
+files under the Odoo data directory. By default the encryption key is stored next
+to them, which does not protect against someone who can read that directory. Set
+`OMNI_VAULT_KEY` (a Fernet key) in the Odoo process environment to keep the key
+elsewhere; bundles written before stay readable, and comma-separated keys allow
+rotation (new key first). Back up the key with the data directory.
+
+## Passwordless sign-in
+
+Magic links are single-use, expire within 60 minutes, are requested with exact
+email matching, throttled per address and per account, sent through the mail
+queue, and consumed only by an explicit POST after a confirmation page. No public
+endpoint reveals whether an account exists or what its email address is.
+
 ## Omni system administration
 
 System Administrators (`base.group_system`) inherit Omni Administrator access

@@ -11,6 +11,9 @@ class WorkflowApproval(models.Model):
     workflow_minimum = fields.Integer(readonly=True, copy=False)
     workflow_sequential = fields.Boolean(readonly=True, copy=False)
 
+    def _approval_trusted(self):
+        return trusted(self) or super()._approval_trusted()
+
     @api.model_create_multi
     def create(self, vals_list):
         if not trusted(self) and any(v.get('workflow_run_id') or v.get('workflow_minimum')

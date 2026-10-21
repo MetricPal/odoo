@@ -1,7 +1,7 @@
 {
     "name": "Magic Link Authentication",
     "summary": "Passwordless Magic Link authentication for Odoo 20 Community",
-    "version": "20.0.1.0.0",
+    "version": "20.0.1.1.0",
     "category": "Administration/Users",
     "license": "LGPL-3",
     "author": "Odoo Community",
@@ -22,6 +22,7 @@
         ],
         "web.assets_backend": [
             "auth_magic_link/static/src/js/auth_login_method_radio.js",
+            "auth_magic_link/static/src/js/remember_user_email.js",
             "auth_magic_link/static/src/xml/auth_login_method_radio.xml",
         ],
     },

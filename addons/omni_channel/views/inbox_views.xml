@@ -198,7 +198,7 @@
     <field name="res_model">omni.inbound.policy</field>
     <field name="view_mode">list,form</field>
   </record>
-  <menuitem id="menu_inbound_policies" name="Policies" parent="menu_omni_technical" action="action_inbound_policies" groups="base.group_system" sequence="30"/>
+  <menuitem id="menu_inbound_policies" name="Receiving rules" parent="menu_omni_technical" action="action_inbound_policies" groups="base.group_system" sequence="30"/>
   <record id="event_list" model="ir.ui.view">
     <field name="name">omni.webhook.event.list</field>
     <field name="model">omni.webhook.event</field>

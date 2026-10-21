@@ -93,7 +93,7 @@
         <header>
           <button name="action_stop" string="Stop request" type="object" invisible="state not in ['queued', 'running', 'submitting']" confirm="Request cancellation? Hermes stops cooperatively; accepted work may incur cost." />
           <button name="action_reconcile" string="Check remote outcome" type="object" groups="ai_agent.group_manager" invisible="state != 'uncertain'" />
-          <field name="state" widget="statusbar" />
+          <field name="state" widget="statusbar" statusbar_visible="queued,running,completed" />
         </header>
         <sheet>
           <div class="oe_title">
@@ -114,7 +114,10 @@
               <field name="finished_at" />
             </group>
           </group>
-          <div class="alert alert-info" role="status" invisible="state not in ['queued', 'submitting', 'running', 'stop_requested']">This request is processing. Refresh to see its latest state.</div>
+          <field name="poll_failures" invisible="1" />
+          <div class="alert alert-info" role="status" invisible="state not in ['queued', 'submitting', 'running', 'stop_requested'] or poll_failures">This request is processing. Refresh to see its latest state.</div>
+          <div class="alert alert-warning" role="status" invisible="not poll_failures or state not in ['running', 'stop_requested']">The AI service did not answer the last status check. Retrying automatically; no action is needed.</div>
+          <div class="alert alert-secondary" role="status" invisible="state != 'discarded'">This answer was not published because the agent configuration or your access changed while it was being prepared. Ask again.</div>
           <div class="alert alert-warning" role="alert" invisible="not error_message">
             <field name="error_message" nolabel="1" />
           </div>
@@ -122,6 +125,7 @@
             <page string="Question &amp; answer">
               <separator string="Your question" />
               <field name="prompt" nolabel="1" />
+              <field name="attachment_ids" widget="many2many_binary" nolabel="1" readonly="1" invisible="not attachment_ids" />
               <separator string="Assistant's answer" invisible="not answer" />
               <field name="answer" nolabel="1" invisible="not answer" />
             </page>
@@ -163,7 +167,7 @@
         <field name="name" />
         <field name="agent_id" />
         <filter name="pending" string="In progress" domain="[('state', 'in', ['queued', 'running', 'submitting'])]" />
-        <filter name="attention" string="Needs attention" domain="[('state', 'in', ['failed', 'uncertain'])]" />
+        <filter name="attention" string="Needs attention" domain="[('state', 'in', ['failed', 'uncertain', 'discarded'])]" />
         <filter name="completed" string="Completed" domain="[('state', '=', 'completed')]" />
         <group>
           <filter name="by_agent" string="Agent" context="{'group_by': 'agent_id'}" />

@@ -21,20 +21,27 @@ class TestWorkflows(TransactionCase):
     def test_workflows_is_an_administrator_app(self):
         menu = self.env.ref('workflow_center.menu_workflows')
         self.assertFalse(menu.parent_id)
-        self.assertEqual(menu.action, self.env.ref('workflow_center.action_workflow_templates'))
+        # No root action: administrators open Templates first, department managers My workflows.
+        self.assertFalse(menu.action)
+        self.assertEqual(self.env.ref('workflow_center.menu_workflow_templates').action,
+                         self.env.ref('workflow_center.action_workflow_templates'))
         self.assertEqual(menu.web_icon, 'workflow_center,static/description/icon.svg')
         self.assertTrue(menu.web_icon_data)
-        self.assertEqual(menu.group_ids, self.env.ref('base.group_system'))
+        self.assertEqual(menu.group_ids, self.env.ref('base.group_system')
+                         | self.env.ref('workflow_center.group_workflow_department_manager'))
         self.assertIn(menu, self.env['ir.ui.menu'].get_user_roots())
         user = new_test_user(self.env, login='workflow_app_user', groups='base.group_user')
         self.assertNotIn(menu, self.env['ir.ui.menu'].with_user(user).get_user_roots())
         module = self.env['ir.module.module'].search([('name', '=', 'workflow_center')])
         self.assertTrue(module.application)
         sections = menu.child_id.sorted('sequence')
-        self.assertEqual(sections.mapped('name'), ['My workflows', 'Run history'])
-        self.assertTrue(all(section.group_ids == menu.group_ids for section in sections))
-        self.assertEqual(sections[0].action, self.env.ref('workflow_center.action_workflow_library'))
-        self.assertEqual(sections[1].action, self.env.ref('workflow_center.action_run_history'))
+        self.assertEqual(sections.mapped('name'), ['Templates', 'My workflows', 'Run history'])
+        self.assertTrue(all(section.group_ids == menu.group_ids for section in sections
+                            if section.name != 'Templates'))
+        self.assertEqual(sections[0].group_ids, self.env.ref('base.group_system'))
+        self.assertEqual(sections[0].action, self.env.ref('workflow_center.action_workflow_templates'))
+        self.assertEqual(sections[1].action, self.env.ref('workflow_center.action_workflow_library'))
+        self.assertEqual(sections[2].action, self.env.ref('workflow_center.action_run_history'))
         self.assertFalse(self.env.ref('workflow_center.menu_workflows_approvals', raise_if_not_found=False))
         self.assertFalse(self.env.ref('workflow_center.action_workflow_approvals', raise_if_not_found=False))
 
@@ -189,6 +196,17 @@ class TestWorkflows(TransactionCase):
         with self.assertRaises(AccessError):
             self.execute_flow(flow, other)
         self.assertFalse(other.ref)
+
+    def test_automatic_trigger_skips_unreadable_records(self):
+        flow = self.flow()
+        self.step(flow, action_id=self.action().id)
+        self.activate(flow)
+        internal(flow).write({'trigger': 'create'})
+        company = self.env['res.company'].create({'name': 'Unreadable workflow company'})
+        other = self.env['res.partner'].sudo().create({'name': 'Other company record', 'company_id': company.id})
+        # Must not raise inside the editing user's transaction.
+        flow._trigger_records(other)
+        self.assertFalse(flow.run_ids.filtered(lambda r: r.record_id == other.id and not r.is_test))
 
     def test_configuration_change_requires_retest_and_stops_runtime(self):
         flow = self.flow()

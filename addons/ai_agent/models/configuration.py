@@ -1,13 +1,11 @@
-import io
 import json
 import re
 
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tools.pdf import PdfReader
 
 from ..services import hermes, secrets
-from .common import internal, manager, trusted
+from .common import FILE_MAX_BYTES, TEXT_MAX_CHARS, extract_text, internal, manager, trusted
 
 
 class CompanyConfiguration(models.AbstractModel):
@@ -420,21 +418,10 @@ class Source(models.Model):
             try:
                 text = source.text or ''
                 if source.kind == 'file':
-                    if source.file.size > 5 * 1024 * 1024:
+                    if source.file.size > FILE_MAX_BYTES:
                         raise ValueError('size')
-                    raw = source.file.content
-                    if not raw or len(raw) > 5 * 1024 * 1024:
-                        raise ValueError('size')
-                    if raw.startswith(b'%PDF-'):
-                        reader = PdfReader(io.BytesIO(raw))
-                        if reader.is_encrypted or len(reader.pages) > 100:
-                            raise ValueError('pdf limits')
-                        text = '\n'.join(page.extract_text() or '' for page in reader.pages)
-                    elif (source.filename or '').lower().endswith(('.txt', '.md', '.csv')):
-                        text = raw.decode('utf-8')
-                    else:
-                        raise ValueError('format')
-                if not text.strip() or len(text) > 200000:
+                    text = extract_text(source.file.content, source.filename)
+                if not text.strip() or len(text) > TEXT_MAX_CHARS:
                     raise ValueError('text limits')
                 values = {'state': 'ready', 'extracted_text': text, 'status_message': _('Text prepared for scoped retrieval.')}
             except Exception:

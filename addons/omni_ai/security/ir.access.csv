@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,operation,domain
+access_omni_ai_reply_wizard,AI reply draft,model_omni_ai_reply_wizard,omni_channel.group_omni_user,crud,

@@ -4,6 +4,9 @@
     <field name="arch" type="xml"><search>
       <field name="name" string="Template" filter_domain="['|', ('name', 'ilike', self), ('description', 'ilike', self)]"/>
       <field name="app"/><field name="category"/>
+      <filter name="available" string="Ready to use" domain="[('available', '=', True)]"/>
+      <filter name="needs_app" string="Needs an app" domain="[('available', '=', False)]"/>
+      <separator/>
       <filter name="reminders" string="Reminders" domain="[('category', '=', 'Reminders')]"/>
       <filter name="data_updates" string="Data updates" domain="[('category', '=', 'Data updates')]"/>
       <filter name="create_records" string="Create records" domain="[('category', '=', 'Create records')]"/>
@@ -26,7 +29,7 @@
               quick_create="false" action="action_start" type="object">
         <field name="available"/>
         <templates><t t-name="card" class="wf_template">
-          <div class="d-flex flex-column gap-2 w-100">
+          <div t-att-class="'d-flex flex-column gap-2 w-100' + (record.available.raw_value ? '' : ' opacity-50 wf_template_unavailable')">
             <field name="name" class="fw-bold fs-5"/>
             <div class="d-flex flex-wrap gap-1"><field name="app" widget="badge"/><field name="category" widget="badge"/></div>
             <field name="description" class="text-muted"/>
@@ -57,6 +60,11 @@
     <field name="name">Workflows</field><field name="res_model">workflow.template</field>
     <field name="view_mode">kanban,list</field><field name="view_id" ref="template_kanban"/>
     <field name="search_view_id" ref="template_search"/>
+    <field name="context">{'search_default_available': 1}</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">No template fits your installed apps yet</p>
+      <p>Remove the "Ready to use" filter to see every template, or start from New.</p>
+    </field>
   </record>
   <record id="workflow_list" model="ir.ui.view">
     <field name="name">workflow.definition.list</field><field name="model">workflow.definition</field>
@@ -64,6 +72,7 @@
       <list string="My workflows" js_class="workflow_center_list" edit="0" action="action_open_builder" type="object">
         <field name="name" string="Workflow"/>
         <field name="model_id" optional="show"/>
+        <field name="department_id" optional="show"/>
         <field name="trigger" string="Starts when" optional="show"/>
         <field name="state" string="Status" widget="badge" optional="show"/>
         <field name="description" optional="hide"/>
@@ -125,16 +134,19 @@
     <field name="arch" type="xml">
       <form string="Workflow settings" js_class="workflow_center_form">
         <sheet>
-          <widget name="workflow_starter" invisible="id"/>
-          <group>
+          <widget name="workflow_starter" invisible="id or model_id"/>
+          <group invisible="not id and not model_id">
             <field name="name"/>
             <field name="description" placeholder="When this happens, do this…"/>
             <field name="model_id" options="{'no_create': True}"/>
             <field name="model_name" invisible="1"/>
             <field name="company_id" groups="base.group_multi_company"/>
-            <field name="user_id" domain="[('share', '=', False)]" options="{'no_create': True}"/>
+            <field name="user_id" domain="[('share', '=', False)]" options="{'no_create': True}" groups="base.group_system"/>
+            <field name="user_id" readonly="1" groups="!base.group_system"/>
+            <field name="department_id" options="{'no_create': True}" groups="base.group_system"/>
+            <field name="department_id" readonly="1" groups="!base.group_system"/>
           </group>
-          <group string="When">
+          <group string="When" invisible="not id and not model_id">
             <field name="trigger"/>
             <field name="trigger_field_id" domain="[('model_id', '=', model_id)]" invisible="trigger not in ('write', 'stage')" options="{'no_create': True}"/>
             <field name="date_field_id" domain="[('model_id', '=', model_id), ('ttype', 'in', ['date', 'datetime'])]" invisible="trigger != 'date'" options="{'no_create': True}"/>
@@ -142,10 +154,10 @@
             <field name="interval_hours" invisible="trigger != 'schedule'"/>
             <field name="webhook_url" widget="CopyClipboardChar" invisible="trigger != 'webhook' or not webhook_url"/>
           </group>
-          <group string="If — optional">
+          <group string="If — optional" invisible="not id and not model_id">
             <field name="domain" widget="domain" options="{'model': 'model_name'}"/>
           </group>
-          <p class="text-muted">Actions run with the selected user's permissions in this company. A stage or status trigger watches the chosen field; use the filter above to select its new value.</p>
+          <p class="text-muted" invisible="not id and not model_id">Actions run with the selected user's permissions in this company. A stage or status trigger watches the chosen field; use the filter above to select its new value.</p>
         </sheet>
         <chatter/>
       </form>
@@ -326,7 +338,9 @@
   <record id="action_workflows" model="ir.actions.client">
     <field name="name">Workflows</field><field name="tag">workflow_center.home</field><field name="path">workflows</field>
   </record>
-  <menuitem id="menu_workflows" name="Workflows" action="action_workflow_templates" sequence="35" groups="base.group_system" web_icon="workflow_center,static/description/icon.svg"/>
+  <!-- No root action: administrators land on Templates, department managers on My workflows. -->
+  <menuitem id="menu_workflows" name="Workflows" sequence="35" groups="base.group_system,workflow_center.group_workflow_department_manager" web_icon="workflow_center,static/description/icon.svg"/>
+  <menuitem id="menu_workflow_templates" name="Templates" parent="menu_workflows" action="action_workflow_templates" sequence="1" groups="base.group_system"/>
   <record id="action_workflow_runs" model="ir.actions.client">
     <field name="name">Run history</field><field name="tag">workflow_center.runs</field><field name="path">workflow-runs</field>
   </record>
@@ -338,6 +352,11 @@
     <field name="view_mode">list,kanban,form</field>
     <field name="view_id" ref="workflow_list"/><field name="search_view_id" ref="workflow_search"/>
   </record>
-  <menuitem id="menu_my_workflows" name="My workflows" parent="menu_workflows" action="action_workflow_library" sequence="5" groups="base.group_system"/>
-  <menuitem id="menu_workflows_runs" name="Run history" parent="menu_workflows" action="action_run_history" sequence="20" groups="base.group_system"/>
+  <menuitem id="menu_my_workflows" name="My workflows" parent="menu_workflows" action="action_workflow_library" sequence="5" groups="base.group_system,workflow_center.group_workflow_department_manager"/>
+  <menuitem id="menu_workflows_runs" name="Run history" parent="menu_workflows" action="action_run_history" sequence="20" groups="base.group_system,workflow_center.group_workflow_department_manager"/>
+  <!-- Replace groups on upgrade; menuitem groups only add. -->
+  <record id="menu_workflows" model="ir.ui.menu">
+    <field name="action" eval="False"/>
+    <field name="group_ids" eval="[(6, 0, [ref('base.group_system'), ref('workflow_center.group_workflow_department_manager')])]"/>
+  </record>
 </odoo>

@@ -60,6 +60,27 @@ Icons should be intentionally selected and consistent with Odoo-style module
 icons; the Odoo Approvals icon URL provided as a reference is
 `https://download.odoocdn.com/icons/approvals/static/description/icon.svg`.
 
+Decision 2026-10-21 (setup UX review, batch 2): the module stays `Approval
+Center`, but its app-menu label is `Approvals`, because the launcher cuts the
+longer name. Use one word for a kind of request everywhere: "approval type"
+(not category or policy) in labels, menus and messages.
+
+## Approval type setup (2026-10-21)
+
+- An approval type is ready when it has approvers, or when "Requester's manager
+  approves" is on and the current user has a manager in Employees. Otherwise the
+  dashboard card shows "Needs approvers": managers get "Set up approvers", others
+  a short explanation, and starting a request is not offered.
+- The type form opens on "Who approves" (manager, how many must approve, approve
+  in order, self-approval, approvers with "Must approve") with a one-line summary
+  such as "Requester's manager, Ana · 2 of 2 must approve". Request fields are on
+  a second tab. Approval types have no chatter.
+- New from the request list or board opens the type picker (the dashboard).
+- Shipped approval types load once (`noupdate`): new databases default them to
+  the requester's manager, and upgrades no longer reset an administrator's edits.
+- Submit errors name the type and say what is missing (no approvers, or fewer
+  approvers than needed).
+
 ## Automation activation
 
 A learned automation is not active merely because AI detected it.
@@ -69,6 +90,24 @@ Activation requires explicit user confirmation of the automation definition and 
 ## Audit
 
 Every approval and execution must be traceable.
+
+## Request governance rules (Approval Center)
+
+These apply to every request, plain or created by another module (2026-10-20):
+
+- Status, approver decisions, targets and timestamps change only through the
+  request actions. Integrations that create requests extend the trust hook with
+  their own server-side capability; RPC context flags never grant it.
+- Submitted content is frozen. Cancel returns the request to draft for editing.
+- A requester cannot approve or refuse their own request unless the category's
+  "Allow Self-Approval" is enabled. Administrators may decide outside the approver
+  list; the audit records it as an override.
+- With "Approvers Sequence?" each approver decides in order. Required approvers
+  must approve before the request completes, whatever the minimum.
+- The minimum and sequence rule are frozen when the request is submitted.
+- Audit entries are append-only; requests with history are archived, not deleted.
+- An approved action runs once. It must be an `action_*`/`button_*` method of the
+  category's target model and runs with the executing user's permissions.
 
 ## Odoo execution rule
 

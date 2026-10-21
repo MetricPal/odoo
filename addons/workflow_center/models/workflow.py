@@ -6,15 +6,9 @@ from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
-TOKEN = object()
+from odoo.addons.approval_center.models.common import capability
 
-
-def internal(records):
-    return records.with_context(_workflow_token=TOKEN)
-
-
-def trusted(records):
-    return records.env.context.get('_workflow_token') is TOKEN
+internal, trusted = capability('_workflow_token')
 
 
 KINDS = [('action', 'Action'), ('condition', 'Condition'), ('branch', 'Branch'),
@@ -24,6 +18,23 @@ ACTIONS = [('object_write', 'Update record'), ('object_create', 'Create record')
            ('mail_post', 'Email or Odoo message'), ('webhook', 'Outgoing webhook'),
            ('code', 'Python code'), ('chat', 'Provider chat')]
 
+
+
+def boolean_search_values(operator, value):
+    """Booleans a search on a computed Boolean field asks for, or None if unsupported.
+
+    Odoo 20 passes ``in``/``not in`` with a set of values (``= True`` becomes
+    ``in {True}``); older callers may still pass ``=``/``!=``.
+    """
+    if operator in ('=', '!='):
+        values = {bool(value)}
+    elif operator in ('in', 'not in'):
+        values = {bool(item) for item in value}
+    else:
+        return None
+    if operator in ('!=', 'not in'):
+        values = {True, False} - values
+    return values
 
 class Workflow(models.Model):
     _name = 'workflow.definition'
@@ -35,6 +46,11 @@ class Workflow(models.Model):
     description = fields.Text()
     company_id = fields.Many2one('res.company', required=True, default=lambda s: s.env.company)
     user_id = fields.Many2one('res.users', string='Run as', required=True, default=lambda s: s.env.user)
+    department_id = fields.Many2one(
+        'hr.department', string='Department',
+        help='Managers of this department (and its sub-departments) who are Department workflow managers '
+             'can see this workflow and its runs. They can preview, activate and pause it when it runs as them.')
+    managed_by_me = fields.Boolean(compute='_compute_managed_by_me', search='_search_managed_by_me')
     model_id = fields.Many2one('ir.model', string='Document', required=True, ondelete='cascade',
                               domain=[('transient', '=', False)])
     model_name = fields.Char(related='model_id.model')
@@ -66,10 +82,65 @@ class Workflow(models.Model):
     _protected = {'state', 'revision', 'tested_revision', 'approved_by', 'approved_at',
                   'approved_digest', 'automation_id', 'next_run', 'tested_digest', 'schedule_cursor', 'manual_action_id'}
 
-    def _manager(self):
-        if not self.env.user.has_group('base.group_system'):
-            raise AccessError(_('Only Settings administrators may configure or operate workflows.'))
-        self.check_access('write')
+    def _managed_department_ids(self):
+        """Departments, with their sub-departments, that the current user manages in Employees."""
+        departments = self.env['hr.department'].sudo().search(
+            [('manager_id.user_id', '=', self.env.uid)])
+        if not departments:
+            return []
+        return self.env['hr.department'].sudo().search([('id', 'child_of', departments.ids)]).ids
+
+    @api.depends_context('uid')
+    def _compute_managed_by_me(self):
+        managed = set(self._managed_department_ids())
+        for workflow in self:
+            workflow.managed_by_me = workflow.sudo().department_id.id in managed
+
+    def _search_managed_by_me(self, operator, value):
+        values = boolean_search_values(operator, value)
+        if values is None:
+            return NotImplemented
+        if values == {True, False}:
+            return []
+        if not values:
+            return [('id', 'in', [])]
+        managed = self._managed_department_ids()
+        if True in values:
+            return [('department_id', 'in', managed)]
+        return ['|', ('department_id', '=', False), ('department_id', 'not in', managed)]
+
+    def _is_department_manager(self):
+        return self.env.user.has_group('workflow_center.group_workflow_department_manager')
+
+    def _manager(self, operate=False):
+        """Settings administrators configure and operate every workflow.
+
+        With ``operate``, a Department workflow manager may also preview, activate
+        and pause workflows of departments they manage that run as themselves.
+        """
+        if self.env.user.has_group('base.group_system'):
+            self.check_access('write')
+            return
+        if operate and self and self._is_department_manager() and all(
+            workflow.managed_by_me and workflow.sudo().user_id == self.env.user for workflow in self
+        ):
+            self.check_access('read')
+            return
+        raise AccessError(_('Only Settings administrators may change workflows. Department managers can '
+                            'preview, activate and pause workflows of their department that run as them.'))
+
+    def _viewer(self):
+        """Read the builder: administrators, or department managers for their departments."""
+        if self.env.user.has_group('base.group_system'):
+            self.check_access('write')
+            return
+        if self and self._is_department_manager() and all(workflow.managed_by_me for workflow in self):
+            self.check_access('read')
+            return
+        raise AccessError(_('This workflow belongs to another department.'))
+
+    def _can_edit(self):
+        return self.env.user.has_group('base.group_system')
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -206,25 +277,30 @@ class Workflow(models.Model):
 
     def action_activate(self):
         self.ensure_one()
-        self._manager()
-        issues = self._validate()
+        self._manager(operate=True)
+        # Validation reads technical records (server actions, fields) that only
+        # administrators may read; after the check above it runs privileged.
+        checked = self if self._can_edit() else self.sudo()
+        issues = checked._validate()
         if issues:
             raise UserError('\n'.join(issues))
-        if self.tested_revision != self.revision or self.tested_digest != self._fingerprint():
+        if self.tested_revision != self.revision or self.tested_digest != checked._fingerprint():
             raise UserError(_('Run a preview on a record before activating this version.'))
-        digest = self._fingerprint()
-        internal(self).write({'state': 'active', 'approved_by': self.env.uid,
+        digest = checked._fingerprint()
+        internal(checked).write({'state': 'active', 'approved_by': self.env.uid,
                               'approved_at': fields.Datetime.now(), 'approved_digest': digest,
                               'schedule_cursor': 0, 'next_run': fields.Datetime.now() + timedelta(hours=self.interval_hours)})
-        self._install_trigger()
-        self.env.ref('workflow_center.cron_workflows').write({'active': True})
+        # The generated rules contain fixed module code only, so installing them
+        # for a department manager after the checks above is safe.
+        self.sudo()._install_trigger()
+        self.env.ref('workflow_center.cron_workflows').sudo().write({'active': True})
         return True
 
     def action_pause(self):
-        self._manager()
-        self.automation_id.write({'active': False})
-        self.manual_action_id.write({'binding_model_id': False})
-        internal(self).write({'state': 'paused'})
+        self._manager(operate=True)
+        self.sudo().automation_id.write({'active': False})
+        self.sudo().manual_action_id.write({'binding_model_id': False})
+        internal(self if self._can_edit() else self.sudo()).write({'state': 'paused'})
         return True
 
     def _install_trigger(self):
@@ -285,7 +361,13 @@ class Workflow(models.Model):
         records = records.with_user(self.user_id).with_context(
             allowed_company_ids=[self.company_id.id], workflow_executing=True).with_company(self.company_id)
         for record in records:
-            record.check_access('read')
+            if not record.has_access('read'):
+                if self.trigger == 'manual':
+                    record.check_access('read')  # explicit run: tell the user why
+                # Automatic events run inside the editing user's transaction:
+                # never fail their save because the run-as user cannot read
+                # this record. Skip it instead.
+                continue
             if 'company_id' in record and record.company_id and record.company_id != self.company_id:
                 continue
             if not record.filtered_domain(workflow._domain()):
@@ -305,7 +387,7 @@ class Workflow(models.Model):
 
     def action_test_dialog(self):
         self.ensure_one()
-        self._manager()
+        self._manager(operate=True)
         return {'type': 'ir.actions.act_window', 'res_model': 'workflow.test',
                 'view_mode': 'form', 'views': [(False, 'form')], 'target': 'new', 'name': _('Test or run workflow'),
                 'context': {'default_workflow_id': self.id}}
@@ -329,22 +411,29 @@ class Workflow(models.Model):
                 ['name', 'model'], order='name'),
         }
 
+    def _builder_ai_info(self):
+        """AI drafting status for the builder; extended by the AI Agent bridge."""
+        return False
+
     def action_open_builder(self):
         self.ensure_one()
-        self._manager()
+        self._viewer()
         return {'type': 'ir.actions.client', 'tag': 'workflow_center.builder',
                 'name': self.name, 'params': {'workflow_id': self.id}}
 
     def builder_data(self):
         self.ensure_one()
-        self._manager()
+        self._viewer()
         data = self.read(['name', 'description', 'model_id', 'trigger', 'domain', 'state',
                           'revision', 'tested_revision', 'webhook_url'])[0]
+        data['ai'] = self._builder_ai_info()
+        data['can_edit'] = self._can_edit()
         data['steps'] = self.step_ids.sorted('sequence').read([
             'name', 'kind', 'action_type', 'sequence', 'on_error', 'next_id', 'false_id', 'end',
             'action_id', 'wait_hours', 'wait_date_id', 'policy_id', 'domain'])
-        data['issues'] = self._validate()
-        data['preview_current'] = self.tested_revision == self.revision and self.tested_digest == self._fingerprint()
+        checked = self if self._can_edit() else self.sudo()
+        data['issues'] = checked._validate()
+        data['preview_current'] = self.tested_revision == self.revision and self.tested_digest == checked._fingerprint()
         return data
 
     def add_step(self, kind, action_type='object_write', after_id=False):
