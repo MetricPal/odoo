@@ -401,7 +401,7 @@ class Publication(models.Model):
     connection_id = fields.Many2one(
         'omni.social.connection', string='Account', required=True, ondelete='restrict', check_company=True
     )
-    company_id = fields.Many2one(related='connection_id.company_id', store=True, precompute=True)
+    company_id = fields.Many2one(related='connection_id.company_id', store=True, precompute=True, default=None)
     purpose_id = fields.Many2one(related='connection_id.purpose_id', store=True, precompute=True)
     provider = fields.Selection(related='connection_id.provider')
     operation = fields.Selection(

@@ -125,17 +125,24 @@ class ChannelSetup(models.Model):
     setup_policy_id = fields.Many2one('omni.inbound.policy', compute='_compute_setup_bindings')
     setup_callback_url = fields.Char(string='Callback URL', compute='_compute_setup_bindings')
     setup_callback_preview = fields.Char(string='Webhook URL', compute='_compute_setup_callback_preview', inverse='_inverse_setup_callback_preview')
-    setup_endpoint_state = fields.Selection(related='setup_endpoint_id.state', string='Receiving status')
-    setup_endpoint_health = fields.Selection(related='setup_endpoint_id.health', string='Connection check')
-    setup_policy_state = fields.Selection(related='setup_policy_id.state')
-    setup_payload_days = fields.Integer(related='setup_policy_id.payload_days', readonly=False, string='Keep incoming processing data (days)', help='Temporary data used to process incoming messages or retry failed processing.')
-    setup_message_days = fields.Integer(related='setup_policy_id.message_days', readonly=False, string='Keep conversation messages (days)', help='After this period, stored message text is removed unless deletion is on hold.')
-    setup_blocked_days = fields.Integer(related='setup_policy_id.blocked_days', readonly=False, string='Keep blocked-event history (days)', help='A record that an incoming event was blocked. Blocked message text is never saved.')
+    # Plain computes over stored relations: the bindings above are not searchable,
+    # so related fields through them would warn and could not be recomputed precisely.
+    setup_endpoint_state = fields.Selection(lambda self: self.env['omni.inbound.endpoint']._fields['state'].selection,
+                                            compute='_compute_setup_binding_values', compute_sudo=True, string='Receiving status')
+    setup_endpoint_health = fields.Selection(lambda self: self.env['omni.inbound.endpoint']._fields['health'].selection,
+                                             compute='_compute_setup_binding_values', compute_sudo=True, string='Connection check')
+    setup_policy_state = fields.Selection(lambda self: self.env['omni.inbound.policy']._fields['state'].selection,
+                                          compute='_compute_setup_binding_values', compute_sudo=True)
+    setup_payload_days = fields.Integer(compute='_compute_setup_binding_values', compute_sudo=True, inverse='_inverse_setup_payload_days', string='Keep incoming processing data (days)', help='Temporary data used to process incoming messages or retry failed processing.')
+    setup_message_days = fields.Integer(compute='_compute_setup_binding_values', compute_sudo=True, inverse='_inverse_setup_message_days', string='Keep conversation messages (days)', help='After this period, stored message text is removed unless deletion is on hold.')
+    setup_blocked_days = fields.Integer(compute='_compute_setup_binding_values', compute_sudo=True, inverse='_inverse_setup_blocked_days', string='Keep blocked-event history (days)', help='A record that an incoming event was blocked. Blocked message text is never saved.')
+    setup_policy_ids = fields.One2many('omni.inbound.policy', 'channel_id')
     setup_has_bindings = fields.Boolean(compute='_compute_setup_bindings')
     setup_conversation_id = fields.Many2one('omni.conversation', string='Test conversation', check_company=True, copy=False)
     setup_test_body = fields.Text(string='Test message', copy=False)
 
-    @api.depends('sender_ids.account_id', 'endpoint_ids.account_id', 'setup_account_id', 'endpoint_ids.state', 'endpoint_ids.webhook_url_override', 'endpoint_ids.route_key')
+    @api.depends('sender_ids.account_id', 'endpoint_ids.account_id', 'setup_account_id', 'endpoint_ids.state', 'endpoint_ids.webhook_url_override', 'endpoint_ids.route_key',
+                 'setup_policy_ids.state')
     def _compute_setup_bindings(self):
         for channel in self:
             sender = channel.sender_ids.filtered(lambda s: s.account_id == channel.setup_account_id)[:1]
@@ -149,6 +156,35 @@ class ChannelSetup(models.Model):
             ) or self.env['omni.inbound.policy'].search(
                 [('channel_id', '=', channel.id)], order='id desc', limit=1,
             ) if channel.id and isinstance(channel.id, int) else False
+
+    @api.depends('setup_endpoint_id', 'setup_policy_id', 'endpoint_ids.state', 'endpoint_ids.health',
+                 'setup_policy_ids.state', 'setup_policy_ids.payload_days', 'setup_policy_ids.message_days',
+                 'setup_policy_ids.blocked_days')
+    def _compute_setup_binding_values(self):
+        for channel in self:
+            endpoint, policy = channel.setup_endpoint_id, channel.setup_policy_id
+            channel.setup_endpoint_state = endpoint.state
+            channel.setup_endpoint_health = endpoint.health
+            channel.setup_policy_state = policy.state
+            channel.setup_payload_days = policy.payload_days
+            channel.setup_message_days = policy.message_days
+            channel.setup_blocked_days = policy.blocked_days
+
+    # One inverse per field: while one of them is written, the others read as empty.
+    def _write_setup_retention(self, name):
+        for channel in self:
+            policy = channel.setup_policy_id
+            if policy and policy[name] != channel['setup_' + name]:
+                policy.write({name: channel['setup_' + name]})
+
+    def _inverse_setup_payload_days(self):
+        self._write_setup_retention('payload_days')
+
+    def _inverse_setup_message_days(self):
+        self._write_setup_retention('message_days')
+
+    def _inverse_setup_blocked_days(self):
+        self._write_setup_retention('blocked_days')
 
     @api.depends('setup_callback_url', 'setup_endpoint_id', 'endpoint_ids.route_key')
     def _compute_setup_callback_preview(self):

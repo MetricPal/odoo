@@ -123,8 +123,8 @@ class WhatsAppChannel(models.Model):
         internal(self).write({'setup_completed_step_ids': completed,
                              'setup_completed_steps': len(completed), 'setup_receiving_deferred': False})
 
-    @api.depends('setup_endpoint_id', 'setup_endpoint_id.whatsapp_callback_checked_at',
-                 'setup_endpoint_id.webhook_url_override', 'setup_account_id.credential_reference',
+    @api.depends('setup_endpoint_id', 'endpoint_ids.whatsapp_callback_checked_at',
+                 'endpoint_ids.webhook_url_override', 'setup_account_id.credential_reference',
                  'setup_endpoint_state')
     def _compute_whatsapp_receiving_ui(self):
         for channel in self:

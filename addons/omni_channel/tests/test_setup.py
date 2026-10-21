@@ -102,3 +102,33 @@ class TestOmniAdministration(TestOmniFoundation):
         self.assertEqual(block.state, 'draft')
         with self.assertRaises(ValidationError), self.cr.savepoint():
             block.write({'namespace': 'wrong-account'})
+
+
+@tagged('post_install', '-at_install')
+class TestSetupBindingValues(TestOmniFoundation):
+    def test_retention_fields_follow_and_write_the_policy(self):
+        # These were related fields through non-searchable computes (registry warnings);
+        # they are plain computes now and must still read and write the policy.
+        policy = self.env['omni.inbound.policy'].create({'name': 'Rules', 'channel_id': self.channel.id,
+                                                         'payload_days': 3, 'message_days': 30, 'blocked_days': 10})
+        channel = self.channel.with_user(self.manager)
+        self.assertEqual(channel.setup_policy_id, policy)
+        self.assertEqual(channel.setup_message_days, policy.message_days)
+        self.assertEqual(channel.setup_policy_state, policy.state)
+        channel.setup_message_days = 40
+        self.assertEqual(policy.message_days, 40)
+        policy.write({'payload_days': 4})
+        self.assertEqual(channel.setup_payload_days, 4)
+        channel.write({'setup_payload_days': 5, 'setup_message_days': 60, 'setup_blocked_days': 20})
+        self.assertEqual((policy.payload_days, policy.message_days, policy.blocked_days), (5, 60, 20))
+
+    def test_no_unsearchable_dependency_warnings(self):
+        import warnings
+        registry = self.env.registry
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            for name, model in registry.items():
+                if name.startswith(('omni.', 'social.')):
+                    for field in model._fields.values():
+                        list(field.resolve_depends(registry))
+        self.assertFalse([str(w.message) for w in caught if 'omni.' in str(w.message) and 'searchable' in str(w.message)])

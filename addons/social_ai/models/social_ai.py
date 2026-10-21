@@ -203,14 +203,20 @@ class Summary(models.Model):
 class Connection(models.Model):
     _inherit = 'omni.social.connection'
 
+    ai_summary_ids = fields.One2many('social.ai.summary', 'connection_id')
     ai_summary_id = fields.Many2one('social.ai.summary', compute='_compute_ai_summary', string='Latest summary')
-    ai_summary_text = fields.Text(related='ai_summary_id.text', string='AI summary')
-    ai_summary_state = fields.Selection(related='ai_summary_id.state')
+    ai_summary_text = fields.Text(compute='_compute_ai_summary', string='AI summary')
+    ai_summary_state = fields.Selection(lambda self: self.env['social.ai.summary']._fields['state'].selection,
+                                        compute='_compute_ai_summary')
 
+    @api.depends('ai_summary_ids', 'ai_summary_ids.text', 'ai_summary_ids.state')
     def _compute_ai_summary(self):
         Summary = self.env['social.ai.summary']
         for row in self:
-            row.ai_summary_id = Summary.search([('connection_id', '=', row.id)], limit=1) if row.id else Summary
+            latest = Summary.search([('connection_id', '=', row.id)], limit=1) if isinstance(row.id, int) else Summary
+            row.ai_summary_id = latest
+            row.ai_summary_text = latest.text
+            row.ai_summary_state = latest.state
 
     def _ai_activity_digest(self):
         since = fields.Datetime.now() - timedelta(days=SUMMARY_DAYS)

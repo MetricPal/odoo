@@ -9,6 +9,20 @@ Format:
 - affected areas
 - migration/compatibility notes
 
+## 2026-10-22 — Registry warnings on upgrade
+
+- Upgrading logged "should be searchable" warnings for 14 computed fields on
+  channels (setup receiving status and retention days, Telegram overview,
+  WhatsApp receiving panel) and on Social accounts (AI summary), plus a
+  "Redundant default" on Social posts' company. These fields depended through
+  computed links that cannot be searched. They now depend on stored relations
+  instead; the retention days are plain computes that write back to the
+  receiving rules (one inverse per field).
+- No data or behaviour change. A test now fails if any Omni/Social field
+  brings the warning back.
+- Affected: omni_channel, omni_telegram, omni_whatsapp, omni_social, social_ai.
+  Upgrade those modules.
+
 ## 2026-10-21 — Social plan, B1 groundwork
 
 Plan: "Social & New Channels Plan" doc (batches B1–B12).

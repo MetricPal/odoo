@@ -24,7 +24,7 @@ class TelegramChannelDetails(models.Model):
                 channel.is_telegram and channel.setup_completed_steps == 5
             ) else labels.get(channel.readiness, '')
 
-    @api.depends('selected_sender_id.account_id', 'setup_account_id',
+    @api.depends('selected_sender_id', 'setup_account_id',
                  'sender_ids.account_id.telegram_verified_at', 'setup_account_id.telegram_verified_at',
                  'sender_ids.account_id.telegram_sandbox_recipients', 'setup_account_id.telegram_sandbox_recipients',
                  'sender_ids.account_id.telegram_sandbox_authorized', 'setup_account_id.telegram_sandbox_authorized',
@@ -45,7 +45,8 @@ class TelegramChannelDetails(models.Model):
                 and channel.endpoint_ids.filtered(lambda e: e.account_id == account and e._allowed())
             ) else _('Receiving paused')
 
-    @api.depends('telegram_overview_account_id.telegram_sandbox_recipients')
+    @api.depends('telegram_overview_account_id', 'sender_ids.account_id.telegram_sandbox_recipients',
+                 'setup_account_id.telegram_sandbox_recipients')
     def _compute_telegram_test_users(self):
         for channel in self:
             channel.telegram_overview_test_users = channel.telegram_overview_account_id.telegram_sandbox_recipients or _('No test users')
