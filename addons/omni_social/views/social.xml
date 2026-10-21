@@ -1,52 +1,216 @@
 <odoo>
-<record id="connection_list" model="ir.ui.view"><field name="name">Social accounts</field><field name="model">omni.social.connection</field><field name="arch" type="xml"><list>
-<field name="name"/><field name="provider"/><field name="profile_name"/><field name="connected"/><field name="purpose_id" optional="show"/><field name="account_kind" optional="hide"/><field name="company_id" optional="hide"/><field name="synced_at" optional="hide"/><field name="sync_note" optional="hide"/><field name="active" optional="hide"/><field name="retention_days" optional="hide"/>
+<record id="platform_kanban" model="ir.ui.view"><field name="name">Social platforms</field><field name="model">omni.channel.type</field><field name="priority">99</field><field name="arch" type="xml"><kanban create="0" edit="0" delete="0" action="action_social_connect" type="object" class="o_social_platforms">
+<field name="social_ready"/>
+<templates><t t-name="card" class="flex-row align-items-center">
+  <div t-att-class="'w-100 d-flex flex-column gap-1' + (record.social_ready.raw_value ? '' : ' opacity-50')">
+    <field name="name" class="fw-bold fs-5"/>
+    <field name="social_rules" class="text-muted small" invisible="not social_ready"/>
+    <span class="text-muted small" invisible="social_ready">Needs its connector module; ask your administrator.</span>
+    <div><button name="action_social_connect" type="object" string="Connect" class="btn btn-primary btn-sm mt-1" invisible="not social_ready"/></div>
+  </div>
+</t></templates></kanban></field></record>
+<record id="platforms" model="ir.actions.act_window"><field name="name">Add a social account</field><field name="res_model">omni.channel.type</field><field name="view_mode">kanban</field><field name="view_id" ref="platform_kanban"/><field name="domain">['|', ('category', '=', 'social'), ('social_ready', '=', True)]</field><field name="context">{'create': False}</field><field name="help" type="html"><p class="o_view_nocontent_empty_folder">No social platforms in the catalogue</p></field></record>
+<record id="connection_list" model="ir.ui.view"><field name="name">Social accounts</field><field name="model">omni.social.connection</field><field name="arch" type="xml"><list create="0">
+<header><button name="%(omni_social.platforms)d" type="action" string="Add account" class="btn-primary" display="always" groups="omni_channel.group_omni_manager"/></header>
+<field name="name"/><field name="provider"/><field name="profile_name"/><field name="connected"/><field name="setup_step" widget="badge" decoration-warning="setup_step != 'done'" optional="show"/><field name="purpose_id" optional="show"/><field name="account_kind" optional="hide"/><field name="company_id" optional="hide"/><field name="synced_at" optional="hide"/><field name="sync_note" optional="hide"/><field name="active" optional="hide"/><field name="retention_days" optional="hide"/>
 </list></field></record>
 <record id="connection_form" model="ir.ui.view"><field name="name">Social account</field><field name="model">omni.social.connection</field><field name="arch" type="xml"><form>
-<header><button name="action_sync" type="object" string="Sync activity" class="btn-primary" invisible="not connected" groups="omni_channel.group_omni_manager"/><button name="action_new_post" type="object" string="New post" invisible="not connected"/></header>
+<header><button name="action_open_setup" type="object" string="Continue setup" class="btn-primary" invisible="setup_step == 'done' and connected" groups="omni_channel.group_omni_manager"/><field name="setup_step" invisible="1"/><button name="action_sync" type="object" string="Sync activity" class="btn-primary" invisible="not connected" groups="omni_channel.group_omni_manager"/><button name="action_new_post" type="object" string="New post" invisible="not connected"/></header>
 <sheet><div class="oe_title"><h1><field name="name" placeholder="Account name"/></h1></div><group><group>
 <field name="provider" readonly="connected"/><field name="account_kind" invisible="provider != 'linkedin'" readonly="connected"/><field name="purpose_id" readonly="connected"/><field name="company_id" readonly="connected" groups="base.group_multi_company"/>
 </group><group><field name="profile_name" invisible="not connected"/><field name="connected"/><field name="approval_type_id"/><field name="public_url" placeholder="https://your-public-server.example"/><field name="retention_days"/><field name="active" invisible="not connected"/>
-</group></group><field name="credentials_ui" widget="social_credentials" nolabel="1" groups="omni_channel.group_omni_manager"/>
-<div class="text-muted mt-3" invisible="provider != 'instagram'">Use a Page token for the Facebook Page linked to your professional Instagram account.</div>
+<field name="monthly_budget" invisible="not paid_platform" groups="omni_channel.group_omni_manager"/>
+</group></group>
+<field name="paid_platform" invisible="1"/><field name="oauth_available" invisible="1"/>
+<div class="text-muted mb-2" invisible="not rules_summary"><field name="rules_summary" nolabel="1" class="d-inline"/></div>
+<div class="mb-2" invisible="not usage_summary"><strong>Usage: </strong><field name="usage_summary" nolabel="1" class="d-inline"/></div>
+<group string="Sign-in" invisible="not oauth_available" groups="omni_channel.group_omni_manager"><field name="oauth_client_id" invisible="not oauth_client_id"/><field name="oauth_redirect_url" widget="CopyClipboardChar" invisible="not oauth_redirect_url" help="Add this address to the developer app's allowed redirect URLs."/></group><field name="credentials_ui" widget="social_credentials" nolabel="1" groups="omni_channel.group_omni_manager"/>
 <div class="text-muted mt-3" invisible="provider != 'linkedin'">Personal activity reads require approved LinkedIn access. Publishing uses your account’s granted permissions.</div>
-<group invisible="not webhook_enabled" groups="omni_channel.group_omni_manager"><field name="webhook_url" widget="url"/><field name="webhook_verify" invisible="provider != 'instagram'"/><button name="action_disable_webhook" type="object" string="Disable webhooks"/></group><field name="webhook_enabled" invisible="1"/><group invisible="not synced_at"><field name="synced_at"/><field name="sync_note"/></group>
+<group invisible="not webhook_enabled" groups="omni_channel.group_omni_manager"><field name="webhook_url" widget="url"/><field name="webhook_verify" invisible="provider not in ('instagram', 'facebook')"/><button name="action_disable_webhook" type="object" string="Disable webhooks"/></group><field name="webhook_enabled" invisible="1"/><group invisible="not synced_at"><field name="synced_at"/><field name="sync_note"/></group>
 </sheet></form></field></record>
-<record id="activity_list" model="ir.ui.view"><field name="name">Social activity</field><field name="model">omni.social.activity</field><field name="arch" type="xml"><list create="0" delete="0">
+<record id="activity_list" model="ir.ui.view"><field name="name">Social activity</field><field name="model">omni.social.activity</field><field name="arch" type="xml"><list create="0" delete="0" decoration-bf="inbox_state == 'new'">
+<field name="inbox_state" widget="badge" decoration-info="inbox_state == 'new'" decoration-success="inbox_state == 'replied'"/><field name="assignee_id" widget="many2one_avatar_user" optional="show"/>
 <field name="occurred_at"/><field name="connection_id"/><field name="kind"/><field name="format" optional="hide"/><field name="author"/><field name="body"/><field name="likes" optional="show"/><field name="comments" optional="show"/><field name="permalink" widget="url" optional="hide"/><field name="provider" optional="hide"/><field name="consent" optional="hide"/><field name="company_id" optional="hide"/>
 </list></field></record>
 <record id="activity_form" model="ir.ui.view"><field name="name">Social activity</field><field name="model">omni.social.activity</field><field name="arch" type="xml"><form create="0" delete="0" edit="0"><header>
-<button name="action_reply" type="object" string="Reply" class="btn-primary" invisible="format == 'STORY'"/>
+<button name="action_reply" type="object" string="Reply" class="btn-primary" invisible="format == 'STORY' or kind == 'post'"/>
+<button name="action_assign_me" type="object" string="Assign to me" invisible="assignee_id or kind == 'post'"/>
+<button name="action_mark_ignored" type="object" string="No reply needed" invisible="inbox_state != 'new' or kind == 'post'"/>
+<button name="action_mark_new" type="object" string="Mark as new" invisible="inbox_state == 'new' or kind == 'post'"/>
+<field name="inbox_state" widget="statusbar" invisible="kind == 'post'"/>
 <button name="action_consent" type="object" string="Confirm reply agreement" confirm="This person agreed to receive private replies from this account." invisible="kind != 'message' or consent" groups="omni_channel.group_omni_manager"/>
 <button name="action_revoke" type="object" string="Revoke reply agreement" invisible="kind != 'message' or not consent" groups="omni_channel.group_omni_manager"/>
-</header><sheet><group><field name="connection_id"/><field name="kind"/><field name="format"/><field name="author"/><field name="occurred_at"/><field name="consent" invisible="kind != 'message'"/></group><field name="body" nolabel="1"/><field name="permalink" widget="url" invisible="not permalink"/><group invisible="kind != 'post'"><field name="likes"/><field name="comments"/></group></sheet></form></field></record>
+</header><sheet><group><field name="connection_id"/><field name="kind"/><field name="format"/><field name="author"/><field name="occurred_at"/><field name="assignee_id" readonly="1" invisible="not assignee_id"/><field name="consent" invisible="kind != 'message'"/></group><field name="body" nolabel="1"/><field name="permalink" widget="url" invisible="not permalink"/><group invisible="kind != 'post'"><field name="likes"/><field name="comments"/></group></sheet></form></field></record>
 <record id="publication_list" model="ir.ui.view"><field name="name">Social publishing</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><list>
 <field name="name"/><field name="connection_id"/><field name="operation"/><field name="state" widget="badge"/><field name="requester_id" optional="show"/><field name="create_date" optional="hide"/><field name="expires_at" optional="hide"/><field name="company_id" optional="hide"/><field name="result_note" optional="hide"/>
 </list></field></record>
 <record id="publication_form" model="ir.ui.view"><field name="name">Social publication</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><form>
 <header><button name="action_submit" type="object" string="Submit for approval" class="btn-primary" invisible="state != 'draft'"/>
-<button name="action_publish" type="object" string="Publish / send" class="btn-primary" invisible="state not in ('approved','waiting')" confirm="Publish or send this exact approved content to the displayed account and destination?"/>
+<button name="action_publish" type="object" string="Publish / send" class="btn-primary" invisible="state not in ('approved','waiting') or (state == 'approved' and scheduled_at)" confirm="Publish or send this exact approved content to the displayed account and destination?"/>
 <button name="action_approval" type="object" string="View approval" invisible="not approval_request_id"/>
 <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft','pending','approved','waiting','failed')"/><field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,sent"/></header>
 <sheet><div class="oe_title"><h1><field name="name" readonly="state != 'draft'" placeholder="Subject"/></h1></div>
 <group><field name="connection_id" readonly="state != 'draft'" domain="[('connected','=',True),('active','=',True)]"/><field name="provider" invisible="1"/><field name="operation" readonly="state != 'draft' or provider == 'linkedin'"/>
 <field name="target_id" readonly="state != 'draft'" invisible="operation == 'post'" domain="[('connection_id','=',connection_id)]" options="{'no_create': True}"/><field name="format" readonly="state != 'draft'" invisible="operation != 'post'"/><field name="body" readonly="state != 'draft'" invisible="format == 'story' and operation == 'post'"/>
-<field name="image" widget="image" readonly="state != 'draft'" invisible="not image"/><field name="reason" readonly="state != 'draft'"/></group>
+<field name="image" widget="image" readonly="state != 'draft'" invisible="not image"/><field name="reason" readonly="state != 'draft'"/>
+<field name="scheduled_at" readonly="state != 'draft'" invisible="operation != 'post'"/><field name="published_at" invisible="not published_at"/><field name="campaign_id" readonly="1" invisible="not campaign_id"/></group>
+<div class="alert alert-warning" role="status" invisible="not limit_note"><field name="limit_note" nolabel="1" class="d-inline"/>. Shorten the text before submitting.</div>
 <field name="media_ids" readonly="state != 'draft'" invisible="operation != 'post' or image"><list editable="bottom"><field name="sequence" widget="handle"/><field name="kind"/><field name="preview" widget="image" options="{'size': [64,64]}"/><field name="name"/><field name="file" filename="name"/><field name="alt_text" optional="hide"/></list><form><group><field name="kind"/><field name="preview" widget="image" options="{'size': [64,64]}"/><field name="name"/><field name="file" filename="name"/><field name="alt_text"/></group></form></field><group invisible="not result_note"><field name="result_note"/><field name="result_key" invisible="not result_key"/></group><field name="approval_request_id" invisible="1"/>
 </sheet></form></field></record>
-<record id="approval_social_review" model="ir.ui.view"><field name="name">Social review content</field><field name="model">approval.center.request</field><field name="inherit_id" ref="approval_center.approval_center_request_view_form"/><field name="arch" type="xml"><xpath expr="//sheet" position="inside"><group string="Social content" invisible="not social_publication_id"><field name="social_publication_id"/><field name="social_account"/><field name="social_operation"/><field name="social_target" invisible="not social_target"/><field name="social_format"/><field name="social_body"/><field name="social_media_ids" readonly="1"><list create="0" delete="0"><field name="sequence"/><field name="kind"/><field name="preview" widget="image" options="{'size': [64,64]}"/><field name="name"/><field name="file" filename="name"/><field name="alt_text"/></list></field><field name="social_image" widget="image" invisible="not social_image"/></group></xpath></field></record>
-<record id="accounts" model="ir.actions.act_window"><field name="name">Accounts</field><field name="res_model">omni.social.connection</field><field name="view_mode">list,form</field></record>
-<record id="activity" model="ir.actions.act_window"><field name="name">Activity</field><field name="res_model">omni.social.activity</field><field name="view_mode">list,form</field></record>
-<record id="publishing" model="ir.actions.act_window"><field name="name">Publishing</field><field name="res_model">omni.social.publication</field><field name="view_mode">list,form</field></record>
+<record id="approval_social_review" model="ir.ui.view"><field name="name">Social review content</field><field name="model">approval.center.request</field><field name="inherit_id" ref="approval_center.approval_center_request_view_form"/><field name="arch" type="xml"><xpath expr="//sheet" position="inside"><group string="Social content" invisible="not social_publication_id"><field name="social_publication_id"/><field name="social_account"/><field name="social_operation"/><field name="social_target" invisible="not social_target"/><field name="social_format"/><field name="social_scheduled_at" invisible="not social_scheduled_at"/><field name="social_campaign_id" invisible="not social_campaign_id"/><field name="social_body"/><field name="social_media_ids" readonly="1"><list create="0" delete="0"><field name="sequence"/><field name="kind"/><field name="preview" widget="image" options="{'size': [64,64]}"/><field name="name"/><field name="file" filename="name"/><field name="alt_text"/></list></field><field name="social_image" widget="image" invisible="not social_image"/></group></xpath></field></record>
+
+<record id="connection_setup_form" model="ir.ui.view"><field name="name">Social account setup</field><field name="model">omni.social.connection</field><field name="priority">99</field><field name="arch" type="xml"><form string="Connect a social account" create="0" delete="0" class="o_social_setup">
+<header>
+  <button name="action_setup_next" type="object" string="Continue" class="btn-primary" invisible="setup_step in ('receiving', 'done')"/>
+  <button name="action_setup_next" type="object" string="Continue" class="btn-primary" invisible="setup_step != 'receiving' or not webhook_enabled"/>
+  <button name="action_setup_next" type="object" string="Skip for now" class="btn-primary" invisible="setup_step != 'receiving' or webhook_enabled"/>
+  <button name="action_setup_finish" type="object" string="Finish" class="btn-primary" invisible="setup_step != 'done'"/>
+  <button name="action_setup_back" type="object" string="Back" invisible="setup_step == 'platform'"/>
+  <field name="setup_step" widget="statusbar" readonly="1"/>
+</header>
+<sheet>
+  <field name="connected" invisible="1"/><field name="webhook_enabled" invisible="1"/><field name="approval_problem" invisible="1"/><field name="oauth_available" invisible="1"/>
+  <div class="oe_title"><h1><field name="name" placeholder="Account name, e.g. Company Instagram" readonly="setup_step != 'platform'"/></h1></div>
+
+  <div invisible="setup_step != 'platform'" name="step_platform">
+    <p class="text-muted">Choose the platform and the team that will post from this account. Team members draft posts; other team members approve them.</p>
+    <group>
+      <field name="provider" readonly="connected" string="Platform"/>
+      <field name="account_kind" widget="radio" string="Account type" invisible="provider != 'linkedin'" readonly="connected"/>
+      <field name="purpose_id" readonly="connected" placeholder="Choose a team" options="{'no_quick_create': True}"/>
+      <field name="company_id" readonly="connected" groups="base.group_multi_company"/>
+    </group>
+    <div class="text-muted" invisible="not platform_note"><field name="platform_note" nolabel="1" class="d-inline"/></div>
+  </div>
+
+  <div invisible="setup_step != 'connect'" name="step_connect">
+    <p class="text-muted">Sign in with the platform, or paste an access token from its developer portal. The platform checks the account before it is saved.</p>
+    <group>
+      <field name="public_url" placeholder="https://your-public-server.example" help="The address the platform uses to return after sign-in and to fetch approved media."/>
+      <field name="oauth_redirect_url" widget="CopyClipboardChar" invisible="not oauth_available or not oauth_redirect_url" string="Redirect URL"/>
+      <field name="profile_name" invisible="not connected" string="Connected as"/>
+    </group>
+    <div class="alert alert-success" role="status" invisible="not connected">Connected as <field name="profile_name" nolabel="1" class="d-inline fw-bold"/>. Continue to choose who approves posts.</div>
+    <field name="credentials_ui" widget="social_credentials" nolabel="1"/>
+  </div>
+
+  <div invisible="setup_step != 'approval'" name="step_approval">
+    <p class="text-muted">Every post and reply from this account is approved by someone other than its author before it goes out.</p>
+    <group>
+      <field name="approval_type_id" placeholder="Choose an approval type" options="{'no_quick_create': True}" context="{'default_company_id': company_id, 'default_manager_approval': False}"/>
+    </group>
+    <div class="alert alert-warning" role="status" invisible="not approval_problem"><field name="approval_problem" nolabel="1" class="d-inline"/></div>
+    <div class="alert alert-success" role="status" invisible="approval_problem">Approvers are ready.</div>
+    <button name="action_new_approval_type" type="object" string="New approval type" class="btn btn-link px-0" invisible="approval_type_id"/>
+  </div>
+
+  <div invisible="setup_step != 'receiving'" name="step_receiving">
+    <p class="text-muted">Optional. With webhooks, new comments and messages arrive within a minute. Without them, use <strong>Sync activity</strong> on the account whenever you want the latest activity.</p>
+    <field name="credentials_ui" widget="social_credentials" nolabel="1" invisible="webhook_enabled"/>
+    <group invisible="not webhook_enabled"><field name="webhook_url" widget="CopyClipboardChar" string="Callback URL"/><field name="webhook_verify" widget="CopyClipboardChar" invisible="provider not in ('instagram', 'facebook')"/></group>
+    <div class="text-muted" invisible="not webhook_enabled">Register the callback URL in the platform's developer portal to start receiving.</div>
+  </div>
+
+  <div invisible="setup_step != 'done'" name="step_done">
+    <h3>Ready</h3>
+    <ul class="list-unstyled">
+      <li><i class="fa fa-check text-success me-2"/>Connected as <field name="profile_name" nolabel="1" class="d-inline fw-bold"/></li>
+      <li><i class="fa fa-check text-success me-2"/>Approved by <field name="approval_type_id" nolabel="1" class="d-inline" readonly="1"/></li>
+      <li invisible="not webhook_enabled"><i class="fa fa-check text-success me-2"/>New activity arrives through webhooks</li>
+      <li invisible="webhook_enabled"><i class="fa fa-info-circle text-muted me-2"/>Activity is fetched when you click Sync activity</li>
+    </ul>
+    <div class="text-muted mb-3" invisible="not platform_note"><field name="platform_note" nolabel="1" class="d-inline"/></div>
+    <button name="action_sync" type="object" string="Sync activity now" class="btn btn-secondary me-2"/>
+    <button name="action_new_post" type="object" string="Write the first post" class="btn btn-secondary"/>
+  </div>
+</sheet></form></field></record>
+
+<record id="accounts" model="ir.actions.act_window"><field name="name">Accounts</field><field name="res_model">omni.social.connection</field><field name="view_mode">list,form</field><field name="help" type="html"><p class="o_view_nocontent_smiling_face">Connect your first social account</p><p>Click <strong>Add account</strong> and pick a platform. Setup takes four short steps: connect, choose who approves, optionally turn on webhooks, done.</p></field></record>
+<record id="activity_search" model="ir.ui.view"><field name="name">Social activity search</field><field name="model">omni.social.activity</field><field name="arch" type="xml"><search>
+<field name="body"/><field name="author"/><field name="connection_id"/>
+<filter name="to_answer" string="To answer" domain="[('inbox_state', '=', 'new'), ('kind', '!=', 'post')]"/>
+<filter name="mine" string="Assigned to me" domain="[('assignee_id', '=', uid)]"/>
+<separator/>
+<filter name="comments" string="Comments" domain="[('kind', '=', 'comment')]"/><filter name="messages" string="Private messages" domain="[('kind', '=', 'message')]"/><filter name="posts" string="Our posts" domain="[('kind', '=', 'post')]"/>
+<group><filter name="by_account" string="Account" context="{'group_by': 'connection_id'}"/><filter name="by_state" string="Handling" context="{'group_by': 'inbox_state'}"/></group>
+</search></field></record>
+<record id="activity" model="ir.actions.act_window"><field name="name">Activity</field><field name="res_model">omni.social.activity</field><field name="view_mode">list,form</field><field name="search_view_id" ref="activity_search"/><field name="context">{'search_default_to_answer': 1}</field><field name="help" type="html"><p class="o_view_nocontent_smiling_face">Nothing to answer</p><p>New comments and messages appear here after a sync or a webhook. Remove the "To answer" filter to see everything.</p></field></record>
+<record id="report_graph" model="ir.ui.view"><field name="name">Social weekly report</field><field name="model">omni.social.report</field><field name="arch" type="xml"><graph type="bar" stacked="0" sample="1">
+<field name="week" interval="week"/><field name="published" type="measure"/><field name="likes" type="measure"/><field name="comments" type="measure"/>
+</graph></field></record>
+<record id="report_pivot" model="ir.ui.view"><field name="name">Social weekly report</field><field name="model">omni.social.report</field><field name="arch" type="xml"><pivot sample="1">
+<field name="connection_id" type="row"/><field name="week" interval="week" type="col"/><field name="published" type="measure"/><field name="likes" type="measure"/><field name="comments" type="measure"/><field name="received" type="measure"/>
+</pivot></field></record>
+<record id="report_search" model="ir.ui.view"><field name="name">Social report search</field><field name="model">omni.social.report</field><field name="arch" type="xml"><search>
+<field name="connection_id"/><filter name="last_8_weeks" string="Last 8 weeks" domain="[('week', '>=', (context_today() - relativedelta(weeks=8)).strftime('%Y-%m-%d'))]"/>
+<group><filter name="by_account" string="Account" context="{'group_by': 'connection_id'}"/></group>
+</search></field></record>
+<record id="report" model="ir.actions.act_window"><field name="name">Weekly report</field><field name="res_model">omni.social.report</field><field name="view_mode">graph,pivot</field><field name="search_view_id" ref="report_search"/><field name="context">{'search_default_last_8_weeks': 1, 'search_default_by_account': 1}</field><field name="help" type="html"><p class="o_view_nocontent_smiling_face">No activity yet</p><p>Posts published here and the engagement imported from each account appear by week.</p></field></record>
+<record id="publication_kanban" model="ir.ui.view"><field name="name">Social publishing board</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><kanban default_group_by="stage" group_create="0" group_delete="0" group_edit="0" records_draggable="0" quick_create="0" class="o_social_board">
+<field name="state"/><field name="scheduled_at"/><field name="limit_note"/>
+<templates><t t-name="card">
+  <field name="name" class="fw-bold"/>
+  <div class="text-muted small"><field name="connection_id"/> · <field name="provider"/></div>
+  <field name="body" class="small text-truncate d-block" style="max-height:3.2em;white-space:normal;overflow:hidden"/>
+  <footer class="pt-1">
+    <span t-if="record.scheduled_at.raw_value" class="small"><i class="fa fa-clock-o me-1" title="Publish at"/><field name="scheduled_at" widget="datetime"/></span>
+    <span t-if="record.limit_note.raw_value" class="badge text-bg-warning ms-1">Too long</span>
+    <field name="requester_id" widget="many2one_avatar_user" class="ms-auto"/>
+  </footer>
+</t></templates></kanban></field></record>
+<record id="publication_calendar" model="ir.ui.view"><field name="name">Social publishing calendar</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><calendar date_start="calendar_date" color="connection_id" mode="month" quick_create="0" event_open_popup="0">
+<field name="connection_id" filters="1"/><field name="stage"/><field name="name"/>
+</calendar></field></record>
+<record id="publication_search" model="ir.ui.view"><field name="name">Social publishing search</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><search>
+<field name="name"/><field name="body"/><field name="connection_id"/><field name="campaign_id"/>
+<filter name="mine" string="My posts" domain="[('requester_id', '=', uid)]"/>
+<filter name="scheduled" string="Scheduled" domain="[('stage', '=', 'scheduled')]"/>
+<filter name="attention" string="Needs attention" domain="[('stage', '=', 'attention')]"/>
+<separator/><filter name="hide_cancelled" string="Hide cancelled" domain="[('stage', '!=', 'cancelled')]"/>
+<group><filter name="by_account" string="Account" context="{'group_by': 'connection_id'}"/><filter name="by_stage" string="Stage" context="{'group_by': 'stage'}"/></group>
+</search></field></record>
+<record id="publishing" model="ir.actions.act_window"><field name="name">Publishing</field><field name="res_model">omni.social.publication</field><field name="view_mode">kanban,calendar,list,form</field><field name="search_view_id" ref="publication_search"/><field name="context">{'search_default_hide_cancelled': 1}</field><field name="help" type="html"><p class="o_view_nocontent_smiling_face">Plan your first post</p><p>Drafts, posts in review, scheduled and published posts appear here. Connect an account first under <strong>Accounts</strong>.</p></field></record>
+<record id="campaign_list" model="ir.ui.view"><field name="name">Social campaigns</field><field name="model">omni.social.campaign</field><field name="arch" type="xml"><list>
+<field name="name"/><field name="scheduled_at"/><field name="version_count" string="Versions"/><field name="progress"/><field name="state" widget="badge" decoration-success="state == 'done'" decoration-warning="state == 'attention'" decoration-info="state == 'review'"/><field name="requester_id" widget="many2one_avatar_user" optional="show"/>
+</list></field></record>
+<record id="campaign_form" model="ir.ui.view"><field name="name">Social campaign</field><field name="model">omni.social.campaign</field><field name="arch" type="xml"><form>
+<header>
+  <button name="action_create_versions" type="object" string="Create versions" class="btn-primary" invisible="not missing_versions"/>
+  <button name="action_submit_all" type="object" string="Submit all for approval" class="btn-primary" invisible="state != 'draft' or not version_count"/>
+  <button name="action_approve_all" type="object" string="Approve all" class="btn-primary" invisible="not can_approve"/>
+  <button name="action_publish_ready" type="object" string="Publish now" invisible="state != 'approved'" confirm="Publish every approved version that has no publish time?"/>
+  <field name="state" widget="statusbar" statusbar_visible="draft,review,approved,done"/>
+</header>
+<sheet>
+  <field name="can_approve" invisible="1"/><field name="version_count" invisible="1"/><field name="missing_versions" invisible="1"/>
+  <div class="oe_title"><h1><field name="name" placeholder="Campaign name, e.g. Autumn launch"/></h1></div>
+  <group>
+    <group><field name="purpose_id"/><field name="company_id" groups="base.group_multi_company"/><field name="connection_ids" widget="many2many_tags" options="{'no_create': True}"/></group>
+    <group><field name="scheduled_at"/><field name="progress" invisible="not version_count"/></group>
+  </group>
+  <field name="brief" placeholder="Write the message once; each account gets its own version you can adapt."/>
+  <group><field name="reason" placeholder="Why this goes out, for the approver"/></group>
+  <field name="publication_ids" readonly="1" invisible="not version_count"><list create="0" delete="0" decoration-warning="limit_note">
+    <field name="connection_id"/><field name="provider"/><field name="body"/><field name="limit_note" string="Check"/><field name="stage" widget="badge"/>
+  </list></field>
+</sheet></form></field></record>
+<record id="campaigns" model="ir.actions.act_window"><field name="name">Campaigns</field><field name="res_model">omni.social.campaign</field><field name="view_mode">list,form</field><field name="help" type="html"><p class="o_view_nocontent_smiling_face">Post one message to several accounts</p><p>Write it once, create a version per account, adapt each to its platform and send them all for approval together.</p></field></record>
+<record id="cron_publish_scheduled" model="ir.cron"><field name="name">Social: publish scheduled posts</field><field name="model_id" ref="model_omni_social_publication"/><field name="state">code</field><field name="code">model._cron_publish_scheduled()</field><field name="interval_number">5</field><field name="interval_type">minutes</field><field name="active" eval="True"/></record>
 <record id="cron_retention" model="ir.cron"><field name="name">Social: activity retention</field><field name="model_id" ref="model_omni_social_connection"/><field name="state">code</field><field name="code">model._cron_retention()</field><field name="interval_number">1</field><field name="interval_type">days</field><field name="active" eval="True"/></record>
+<record id="channel_setup_social_hint" model="ir.ui.view"><field name="name">omni.channel.setup.form.social</field><field name="model">omni.channel</field><field name="inherit_id" ref="omni_channel.channel_setup_form"/><field name="arch" type="xml"><xpath expr="//div[hasclass('o_omni_setup_stage_0')]" position="inside"><field name="social_platforms" invisible="1"/><div class="alert alert-info d-flex align-items-center gap-2 mt-2" role="status" invisible="not social_platforms"><span>Public posting platforms (<field name="social_platforms" nolabel="1" class="d-inline"/>) are connected in the Social app.</span><button name="%(omni_social.accounts)d" type="action" string="Open Social accounts" class="btn btn-link p-0 ms-auto"/></div></xpath></field></record>
 <menuitem id="menu_social" name="Social" sequence="35" web_icon="omni_social,static/description/icon.svg" groups="omni_channel.group_omni_user"/>
-<menuitem id="menu_activity" name="Activity" parent="menu_social" action="activity" sequence="10"/>
-<menuitem id="menu_publishing" name="Publishing" parent="menu_social" action="publishing" sequence="20"/>
+<menuitem id="menu_publishing" name="Publishing" parent="menu_social" action="publishing" sequence="10"/>
+<menuitem id="menu_campaigns" name="Campaigns" parent="menu_social" action="campaigns" sequence="15"/>
+<menuitem id="menu_activity" name="Activity" parent="menu_social" action="activity" sequence="20"/>
 <menuitem id="menu_accounts" name="Accounts" parent="menu_social" action="accounts" sequence="30"/>
+<menuitem id="menu_report" name="Report" parent="menu_social" action="report" sequence="25"/>
 <record id="cron_webhooks" model="ir.cron"><field name="name">Social: webhook activity</field><field name="model_id" ref="model_omni_social_connection"/><field name="state">code</field><field name="code">model._cron_webhooks()</field><field name="interval_number">1</field><field name="interval_type">minutes</field><field name="active" eval="True"/></record>
-<!-- Shared feature addon: host applications will expose these actions later. -->
-<record id="menu_social" model="ir.ui.menu"><field name="active" eval="False"/></record>
-<record id="menu_activity" model="ir.ui.menu"><field name="active" eval="False"/></record>
-<record id="menu_publishing" model="ir.ui.menu"><field name="active" eval="False"/></record>
-<record id="menu_accounts" model="ir.ui.menu"><field name="active" eval="False"/></record>
+<!-- Social is an app of its own (see the Social & New Channels Plan). Earlier
+     versions shipped these menus inactive; switch them on for upgraded databases. -->
+<record id="menu_social" model="ir.ui.menu"><field name="active" eval="True"/></record>
+<record id="menu_activity" model="ir.ui.menu"><field name="active" eval="True"/></record>
+<record id="menu_publishing" model="ir.ui.menu"><field name="active" eval="True"/></record>
+<record id="menu_campaigns" model="ir.ui.menu"><field name="active" eval="True"/></record>
+<record id="menu_accounts" model="ir.ui.menu"><field name="active" eval="True"/></record>
+<record id="menu_report" model="ir.ui.menu"><field name="active" eval="True"/></record>
 </odoo>

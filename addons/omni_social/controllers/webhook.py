@@ -42,7 +42,7 @@ class SocialWebhook(http.Controller):
         # Read at most the bounded body size, including requests without Content-Length.
         raw = request.httprequest.stream.read(524289)
         header = request.httprequest.headers.get(
-            'X-Hub-Signature-256' if account.provider == 'instagram' else 'X-LI-Signature', ''
+            'X-Hub-Signature-256' if account.provider in webhook.META else 'X-LI-Signature', ''
         )
         if not webhook.signature(account.provider, secret, raw, header):
             return request.make_response('', status=403)

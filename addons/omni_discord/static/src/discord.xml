@@ -1,0 +1,53 @@
+<templates xml:space="preserve">
+  <t t-name="omni_discord.Credentials">
+    <div class="o_omni_discord_credentials w-100">
+      <div class="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
+        <span class="badge text-bg-secondary">Discord</span>
+        <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer">Open the Developer Portal ↗</a>
+      </div>
+      <t t-if="this.saved.bot">
+        <div class="mb-3"><span class="d-block mb-2">Bot</span><strong t-out="this.saved.name"/> · <span class="text-muted" t-out="this.saved.bot"/></div>
+        <span class="text-success">Bot connected</span>
+      </t>
+      <t t-else="">
+        <div class="mb-3">
+          <label t-att-for="this.props.id + '_token'" class="form-label d-block mb-2">Bot token</label>
+          <input t-att-id="this.props.id + '_token'" class="form-control o_discord_token" type="password" autocomplete="off" placeholder="Developer Portal › your app › Bot › Reset token" t-att-value="this.state.token" t-att-disabled="this.state.busy" t-on-input="(ev) => this.state.token = ev.target.value"/>
+          <small class="d-block text-muted mt-2">Also turn on "Message Content Intent" on the same page, and invite the bot to your server.</small>
+        </div>
+        <button type="button" class="btn btn-primary o_discord_connect" t-att-disabled="this.state.busy || !this.state.token.trim()" t-on-click="this.connect">
+          <t t-if="this.state.busy">Checking with Discord…</t><t t-else="">Connect bot</t>
+        </button>
+      </t>
+    </div>
+  </t>
+  <t t-name="omni_discord.Receiving">
+    <div class="w-100">
+      <strong>Discord</strong>
+      <div class="mt-4 mb-3">
+        <label t-att-for="this.props.id + '_url'" class="form-label d-block mb-2">Inbound URL</label>
+        <input t-att-id="this.props.id + '_url'" class="form-control" type="url" t-att-value="this.state.url" t-att-disabled="this.state.busy" t-on-input="(ev) => this.state.url = ev.target.value"/>
+        <small class="d-block text-muted mt-2">Your public HTTPS address with the channel path. The relay sends messages here.</small>
+      </div>
+      <div class="mb-3">
+        <label t-att-for="this.props.id + '_channels'" class="form-label d-block mb-2">Server channel IDs</label>
+        <input t-att-id="this.props.id + '_channels'" class="form-control o_discord_channels" type="text" placeholder="e.g. 1234567890123456789, 2345678901234567890" t-att-value="this.state.channels" t-att-disabled="this.state.busy" t-on-input="(ev) => this.state.channels = ev.target.value"/>
+        <small class="d-block text-muted mt-2">Right-click a channel › Copy Channel ID (Developer Mode). Direct messages to the bot always arrive.</small>
+      </div>
+      <div t-if="this.saved.command" class="mb-3">
+        <span class="d-block mb-2">Run the relay next to Odoo</span>
+        <code class="d-block p-2 bg-light border rounded text-break o_discord_command" t-out="this.saved.command"/>
+        <small class="d-block text-muted mt-2">Keep it running (systemd, Docker or a terminal multiplexer). It only forwards messages; it never sends to Discord.</small>
+      </div>
+      <button t-if="!this.saved.enabled || this.needsSave" type="button" class="btn btn-primary" t-att-disabled="this.state.busy" t-on-click="this.act">
+        <t t-if="this.state.busy">Please wait…</t>
+        <t t-elif="this.needsSave || !this.saved.url">Save</t>
+        <t t-else="">Enable receiving</t>
+      </button>
+      <p role="status" class="mt-3" t-att-class="{'text-success': this.saved.enabled}">
+        <t t-if="this.saved.enabled">Receiving enabled</t>
+        <t t-else="">Save, start the relay, then enable receiving</t>
+      </p>
+    </div>
+  </t>
+</templates>

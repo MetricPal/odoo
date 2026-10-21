@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,operation
+access_social_ai_wizard,Social AI draft,model_social_ai_wizard,omni_channel.group_omni_user,crud
+access_social_ai_summary,Social AI summary,model_social_ai_summary,omni_channel.group_omni_user,cru

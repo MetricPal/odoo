@@ -1,0 +1,63 @@
+<templates xml:space="preserve">
+  <t t-name="omni_messenger.Credentials">
+    <div class="o_omni_messenger_credentials w-100">
+      <div class="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
+        <span class="badge text-bg-secondary">Facebook Messenger</span>
+        <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Open Meta for Developers ↗</a>
+      </div>
+      <t t-if="this.saved.page">
+        <div class="mb-3"><span class="d-block mb-2">Page</span><strong t-out="this.saved.name"/> · <span class="text-muted" t-out="this.saved.page"/></div>
+        <span class="text-success">Page connected</span>
+      </t>
+      <t t-else="">
+        <div class="mb-3">
+          <label t-att-for="this.props.id + '_token'" class="form-label d-block mb-2">Page access token</label>
+          <input t-att-id="this.props.id + '_token'" class="form-control o_messenger_token" type="password" autocomplete="off" placeholder="Paste the token generated for your Page" t-att-value="this.state.token" t-att-disabled="this.state.busy" t-on-input="(ev) => this.state.token = ev.target.value"/>
+          <small class="d-block text-muted mt-2">In your Meta app: Messenger › Settings › Access tokens › Generate for the Page. Needs pages_messaging.</small>
+        </div>
+        <button type="button" class="btn btn-primary o_messenger_connect" t-att-disabled="this.state.busy || !this.state.token.trim()" t-on-click="this.connect">
+          <t t-if="this.state.busy">Checking with Meta…</t><t t-else="">Connect Page</t>
+        </button>
+      </t>
+    </div>
+  </t>
+  <t t-name="omni_messenger.Receiving">
+    <div class="w-100">
+      <strong>Facebook Messenger</strong>
+      <div class="mt-4 mb-4">
+        <label t-att-for="this.props.id + '_url'" class="form-label d-block mb-2">Webhook URL</label>
+        <input t-att-id="this.props.id + '_url'" class="form-control" type="url" t-att-value="this.state.url" t-att-disabled="this.state.busy" t-on-input="(ev) => this.state.url = ev.target.value"/>
+        <small class="d-block text-muted mt-2">Use your public HTTPS address. Keep the channel path.</small>
+      </div>
+      <div class="mb-4">
+        <label t-att-for="this.props.id + '_verify'" class="form-label d-block mb-2">Verify token</label>
+        <input t-att-id="this.props.id + '_verify'" class="form-control" readonly="readonly" t-att-value="this.saved.token"/>
+      </div>
+      <div class="mb-4">
+        <label t-att-for="this.props.id + '_secret'" class="form-label d-block mb-2">App secret</label>
+        <input t-att-id="this.props.id + '_secret'" class="form-control" type="password" autocomplete="off" t-att-placeholder="this.saved.saved ? 'Saved securely' : 'From Meta app settings › Basic'" t-att-disabled="this.state.busy" t-on-input="(ev) => this.state.secret = ev.target.value" t-att-value="this.state.secret"/>
+      </div>
+      <p>Save, then paste the URL and verify token in your Meta app under Messenger › Webhooks, and subscribe the Page to <strong>messages</strong>.</p>
+      <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+        <button t-if="!this.saved.enabled || this.needsSave" type="button" class="btn btn-primary" t-att-disabled="this.state.busy || (!this.needsSave &amp;&amp; !this.saved.verified)" t-on-click="this.act">
+          <t t-if="this.state.busy">Please wait…</t>
+          <t t-elif="this.needsSave">Save webhook</t>
+          <t t-else="">Enable receiving</t>
+        </button>
+      </div>
+      <p role="status" t-att-class="{'text-success': this.saved.enabled}">
+        <t t-if="this.saved.enabled">Receiving enabled</t>
+        <t t-elif="this.saved.verified">Meta verified the webhook. Enable receiving.</t>
+        <t t-else="">Waiting for Meta to verify the webhook</t>
+      </p>
+    </div>
+  </t>
+  <t t-name="omni_messenger.ChannelSetupGuide" t-inherit="omni_channel.ChannelSetup" t-inherit-mode="extension">
+    <xpath expr="//p[contains(., 'Enter your personal Telegram user ID')]" position="attributes">
+      <attribute name="t-if">!this.model.root.data.is_messenger</attribute>
+    </xpath>
+    <xpath expr="//p[contains(., 'Enter your personal Telegram user ID')]" position="after">
+      <p t-if="this.model.root.data.is_messenger">Write to your Page from a test Facebook account, then reply from the inbox: replies are possible within 24 hours of the person's last message.</p>
+    </xpath>
+  </t>
+</templates>

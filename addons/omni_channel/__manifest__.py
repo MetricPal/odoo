@@ -1,6 +1,6 @@
 {
     'name': 'Omnichannel',
-    'version': '20.0.1.24.0',
+    'version': '20.0.1.25.0',
     'summary': 'Manage communication channels, sender readiness and ownership in one governed workspace',
     'category': 'Productivity',
     'author': 'metric.io',

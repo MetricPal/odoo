@@ -1,6 +1,6 @@
 {
     "name": "Omnichannel WhatsApp",
-    "version": "20.0.0.5.1",
+    "version": "20.0.0.6.0",
     "summary": "Receive WhatsApp Business messages in the shared Odoo inbox",
     "description": "Connect an existing WhatsApp Business Cloud API account to Omnichannel. Receive private text messages in Odoo, control team access, and send one confirmed setup test. Normal business replies, templates and media are not implemented.",
     "category": "Productivity",

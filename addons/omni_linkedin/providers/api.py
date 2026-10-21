@@ -6,6 +6,7 @@ import time
 from datetime import datetime, timezone
 from urllib.parse import quote
 from odoo.addons.omni_social.providers.http import call, upload_linkedin, ProviderError
+from odoo.addons.omni_social.providers.capabilities import Capabilities, OAuth
 
 VERSION = '202609'
 HEADERS = {'Linkedin-Version': VERSION, 'X-Restli-Protocol-Version': '2.0.0'}
@@ -53,6 +54,39 @@ def date(ms):
 
 
 class Adapter:
+    CAPABILITIES = Capabilities(
+        label='LinkedIn',
+        hosts=('api.linkedin.com',),
+        operations=('post', 'reply'),
+        formats=('standard', 'carousel'),
+        text_limit=3000,
+        media_kinds=('image',),
+        max_media=20,
+        upload_bytes=True,
+        account_kinds=('organization', 'person'),
+        oauth=OAuth(
+            authorize_url='https://www.linkedin.com/oauth/v2/authorization',
+            token_url='https://www.linkedin.com/oauth/v2/accessToken',
+            scopes=('openid', 'profile', 'w_member_social'),
+        ),
+        developer_url='https://www.linkedin.com/developers/apps',
+        account_label='LinkedIn Page ID',
+        account_required_for=('organization',),
+    )
+
+    def oauth_scopes(self, kind):
+        scopes = self.CAPABILITIES.oauth.scopes
+        if kind == 'organization':
+            # Company Pages need the Community Management API product on the app.
+            scopes += ('r_organization_social', 'w_organization_social', 'rw_organization_admin')
+        return scopes
+
+    def oauth_token(self, response, app, account=''):
+        token = response.get('access_token')
+        if not isinstance(token, str) or not token:
+            raise ValueError('token')
+        return token, {}
+
     def verify(self, token, account='', kind='organization'):
         member = get(token, '/v2/userinfo')
         subject = member.get('sub')

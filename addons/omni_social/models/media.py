@@ -141,7 +141,8 @@ class Media(models.Model):
             mime = 'video/mp4'
         parent = self.publication_id
         url = ''
-        if parent.provider == 'instagram':
+        caps = parent.connection_id._caps()
+        if caps and caps.needs_public_url:
             if not parent.connection_id.public_url:
                 raise UserError(_('Set the account’s public HTTPS address.'))
             url = parent.connection_id.public_url.rstrip('/') + '/omni/social/media/' + token + '/' + str(index)

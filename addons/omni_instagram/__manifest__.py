@@ -1,5 +1,5 @@
 {'name': 'Omnichannel Instagram',
- 'version': '20.0.2.0.0',
+ 'version': '20.0.2.1.0',
  'summary': 'Receive Instagram activity and messages; publish approved photos and replies',
  'description': 'Receive Instagram activity and messages; publish approved photos and replies. '
                 'Provider permissions determine available incoming data. Every public post or '

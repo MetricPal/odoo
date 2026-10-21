@@ -15,17 +15,19 @@ Offline checks, 2026-10-11:
   scoped file access, per-index public serving only during claims, automatic staged
   continuation with committed IDs, real MP4 probing and disguised-JPEG rejection, signed endpoint rejects tampering, duplicates
   produce one receipt, inbound cron imports without calling execute, disable works.
-- Actual Owl 3 widget test: rendering, conditional Page ID, save/RPC/reload,
+- Owl 3 widget test (now the Hoot suite `static/tests/credentials.test.js`, run by `tests/test_ui.py`): rendering, conditional Page ID, save/RPC/reload,
   transient token/app-secret clearing, failed-save guard, desktop/mobile bounds.
 - Existing connector regressions: 18 Slack, 19 Teams, 44 WhatsApp, 6 Omnichannel
   view and 4 Telegram view tests.
 
-Commands:
+Commands (all checks run under Odoo's test runner since 2026-10-21):
 ```
-.venv/bin/python -m unittest discover -s addons/omni_social/tests -p 'test_*.py'
+./odoo-bin -d <test-db> -i omni_instagram,omni_linkedin,social_ai,social_home \
+  --test-tags /omni_social,/social_ai,/social_home --stop-after-init
 .venv/bin/python addons/omni_social/tools/check_install.py
-OMNI_NODE_MODULES=/path/to/node_modules node addons/omni_social/tools/test_ui.cjs
 ```
+
+Live platform checks are listed in `LIVE_CHECKS.md`; record results there.
 
 The install tool blocks `requests.Session.request/get/post`, SMTP and account
 invitations and deletes its disposable database. Provider fixtures are synthetic;

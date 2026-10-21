@@ -14,7 +14,7 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.addons.omni_channel.models.foundation import protected_input
 from odoo.addons.omni_channel.models.command import digest
 from ..providers import vault
-from ..providers.registry import provider
+from ..providers.registry import provider, capabilities
 from ..providers.http import ProviderError
 
 internal, trusted = capability('_social_internal')
@@ -174,10 +174,22 @@ class Connection(models.Model):
             account_key=self.account_key,
         )
 
+    def _caps(self):
+        """Declared platform rules (see providers/capabilities.py), or None."""
+        self.ensure_one()
+        return capabilities(self.provider)
+
     def action_connect(self, token, account=''):
         self.ensure_one()
         self._require_manager()
         self._lock()
+        return self._store_verified(token, account)
+
+    def _store_verified(self, token, account='', extra=None):
+        """Verify the token with the platform, then keep it in the encrypted vault.
+
+        ``extra`` carries sign-in details such as a refresh token and expiry.
+        """
         try:
             profile = self._provider().verify(token, account, self.account_kind)
         except (ProviderError, ValueError):
@@ -191,6 +203,7 @@ class Connection(models.Model):
                 'account_key': profile['id'],
                 'token': token,
                 'profile': profile,
+                **(extra or {}),
             }
         )
         self.env.cr.postrollback.add(lambda: vault.remove(ref, self.env.cr.dbname))
@@ -455,16 +468,20 @@ class Publication(models.Model):
     def _onchange_format(self):
         if self.format == 'story':
             self.body = False
-        if self.connection_id.provider == 'linkedin' and self.format in ('reel', 'story'):
-            self.format = 'standard'
+        caps = capabilities(self.connection_id.provider)
+        if caps and self.format not in caps.formats:
+            self.format = caps.formats[0]
 
     @api.onchange('connection_id')
     def _onchange_account(self):
         if self.target_id and self.target_id.connection_id != self.connection_id:
             self.target_id = False
-        if self.connection_id.provider == 'linkedin':
-            if self.operation == 'message':
+        caps = capabilities(self.connection_id.provider)
+        if caps:
+            if self.operation not in caps.operations:
                 self.operation = 'post'
+            if self.format not in caps.formats:
+                self.format = caps.formats[0]
 
     @api.model_create_multi
     def create(self, values):
@@ -613,6 +630,7 @@ class Publication(models.Model):
             raise UserError(_('Media belongs to posts only.'))
         if self.format != 'standard' and self.operation != 'post':
             raise UserError(_('Choose Post for replies.'))
+        self._check_capabilities(media)
         doc = {
             'format': self.format,
             'media': media,
@@ -642,6 +660,38 @@ class Publication(models.Model):
                 _('This platform does not support the selected action or content. Check the content and photo.')
             ) from None
         return doc
+
+    def _check_capabilities(self, media):
+        """Apply the platform's declared rules with messages a person can act on."""
+        caps = self.connection_id._caps()
+        if not caps:
+            return
+        label = caps.label
+        if self.operation not in caps.operations:
+            raise UserError(
+                _('%(platform)s does not support this action. Choose: %(allowed)s.',
+                  platform=label,
+                  allowed=', '.join(dict(self._fields['operation'].selection)[o] for o in caps.operations
+                                    if o in dict(self._fields['operation'].selection)))
+            )
+        if self.operation == 'post' and self.format not in caps.formats:
+            raise UserError(_('%(platform)s does not support this format.', platform=label))
+        limit = caps.limit_for(self.operation)
+        if len(self.body or '') > limit:
+            raise UserError(
+                _('%(platform)s allows up to %(limit)s characters; this text has %(count)s.',
+                  platform=label, limit=limit, count=len(self.body or ''))
+            )
+        if self.operation == 'post':
+            count = len(media) + (1 if self.image else 0)
+            if caps.media_required and not count:
+                raise UserError(_('%(platform)s posts need a photo or video.', platform=label))
+            if count > caps.max_media:
+                raise UserError(
+                    _('%(platform)s allows up to %(limit)s files in one post.', platform=label, limit=caps.max_media)
+                )
+            if any(item['kind'] not in caps.media_kinds for item in media):
+                raise UserError(_('%(platform)s does not accept this kind of file.', platform=label))
 
     def action_submit(self):
         self.ensure_one()
@@ -734,6 +784,9 @@ class Publication(models.Model):
         self._frozen()
         if self.state not in ('approved', 'waiting'):
             raise UserError(_('Only an approved, unsent action can publish.'))
+        if self.state == 'approved':
+            # Daily platform caps and the monthly budget are checked before the first call only.
+            self.connection_id._check_quota(self.operation, self.payload)
         req = self.approval_request_id
         approved = req.sudo().approver_ids.filtered(lambda l: l.status == 'approved')
         policy = self._policy()
@@ -747,7 +800,8 @@ class Publication(models.Model):
         internal(self).write({'state': 'executing', 'claim_key': key, 'result_note': False})
         self._audit('social.claimed', _('Publishing attempt recorded before contacting the platform.'))
         bundle = self.connection_id._bundle()
-        if self.provider == 'linkedin':
+        caps = self.connection_id._caps()
+        if caps and caps.upload_bytes:
             bundle = {**bundle, 'media_bytes': {m.id: m.file.content for m in self.media_ids}}
         return key, self.payload, bundle, self.container_key
 
@@ -783,8 +837,15 @@ class Publication(models.Model):
             if outcome not in ('sent', 'waiting', 'failed', 'unknown'):
                 outcome = 'unknown'
             values = {'state': outcome, 'result_note': note}
+            if outcome == 'sent':
+                values['published_at'] = fields.Datetime.now()
             values['container_key' if outcome == 'waiting' else 'result_key'] = result
             internal(row).write(values)
+            if outcome in ('sent', 'unknown'):
+                # An uncertain result may have reached the platform: count it.
+                row.connection_id._record_usage(row, doc)
+            if outcome == 'sent':
+                row._social_sent()
             request = row.approval_request_id
             if outcome == 'sent':
                 internal(request.sudo()).write({'executed_at': fields.Datetime.now()})

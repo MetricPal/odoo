@@ -5,28 +5,31 @@ import hmac
 import json
 import re
 
+# Platforms that sign webhooks the Meta way (X-Hub-Signature-256, hub.challenge).
+META = ('instagram', 'facebook')
+
 
 def signature(provider, secret, raw, header):
     if not secret or not isinstance(raw, bytes) or len(raw) > 524288 or not isinstance(header, str):
         return False
-    if provider not in ('instagram', 'linkedin') or not re.fullmatch(
-        r'sha256=[0-9a-f]{64}' if provider == 'instagram' else r'[0-9a-f]{64}', header
+    if provider not in META + ('linkedin',) or not re.fullmatch(
+        r'sha256=[0-9a-f]{64}' if provider in META else r'[0-9a-f]{64}', header
     ):
         return False
-    message = raw if provider == 'instagram' else b'hmacsha256=' + raw
+    message = raw if provider in META else b'hmacsha256=' + raw
     expected = hmac.new(secret.encode(), message, hashlib.sha256).hexdigest()
-    if provider == 'instagram':
+    if provider in META:
         expected = 'sha256=' + expected
     return hmac.compare_digest(expected, header)
 
 
 def challenge(provider, secret, verify, params):
     # An unset token or secret must never validate an empty or forged challenge.
-    if provider == 'instagram' and not verify:
+    if provider in META and not verify:
         raise ValueError('verification')
-    if provider != 'instagram' and not secret:
+    if provider not in META and not secret:
         raise ValueError('verification')
-    if provider == 'instagram':
+    if provider in META:
         value = params.get('hub.challenge', '')
         if params.get('hub.mode') != 'subscribe' or not hmac.compare_digest(
             str(params.get('hub.verify_token', '')).encode(), verify.encode()
@@ -48,7 +51,7 @@ def hints(provider, profile, raw):
     value = json.loads(raw)
     if not isinstance(value, dict):
         raise ValueError('payload')
-    if provider == 'instagram':
+    if provider in META:
         entries = value.get('entry', [])
         if value.get('object') not in ('instagram', 'page') or not isinstance(entries, list) or len(entries) > 100:
             raise ValueError('payload')

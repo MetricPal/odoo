@@ -116,6 +116,23 @@
     }
 }
 
+// Phones: Odoo turns the search-panel layout into a column below md; stack the
+// steps, the form and the guidance in that column instead of 100%-wide flex
+// items side by side (which scrolled the setup sideways).
+@include media-breakpoint-down(md) {
+    .o_omni_setup_content.o_component_with_search_panel {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        overflow-x: hidden;
+        > .o_omni_setup_steps,
+        > .o_omni_setup {
+            flex: 0 0 auto;
+            width: 100%;
+            max-width: none;
+        }
+    }
+}
+
 .o_omni_setup_progress {
     min-width: 120px;
     .o_omni_setup_track {

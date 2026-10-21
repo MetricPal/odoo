@@ -5,7 +5,8 @@ import re
 import time
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote, urlsplit
-from odoo.addons.omni_social.providers.http import call, ProviderError
+from odoo.addons.omni_social.providers.http import call, call_form, ProviderError
+from odoo.addons.omni_social.providers.capabilities import Capabilities, OAuth
 
 VERSION = 'v25.0'
 
@@ -58,6 +59,64 @@ def values(result):
 
 
 class Adapter:
+    CAPABILITIES = Capabilities(
+        label='Instagram',
+        hosts=('graph.facebook.com',),
+        operations=('post', 'reply', 'message'),
+        formats=('standard', 'carousel', 'reel', 'story'),
+        text_limit=2200,
+        message_limit=1000,
+        media_kinds=('image', 'video'),
+        max_media=10,
+        media_required=True,
+        needs_public_url=True,
+        oauth=OAuth(
+            authorize_url='https://www.facebook.com/' + VERSION + '/dialog/oauth',
+            token_url='https://graph.facebook.com/' + VERSION + '/oauth/access_token',
+            scopes=(
+                'pages_show_list',
+                'pages_read_engagement',
+                'instagram_basic',
+                'instagram_content_publish',
+                'instagram_manage_comments',
+                'instagram_manage_messages',
+            ),
+            scope_separator=',',
+        ),
+        token_hint='Use a Page token for the Facebook Page linked to your professional Instagram account.',
+        developer_url='https://developers.facebook.com/apps/',
+        account_label='Facebook Page ID (only if you manage several Pages)',
+    )
+
+    def oauth_token(self, response, app, account=''):
+        """Turn the signed-in person's token into the Page token ``verify`` expects.
+
+        The short-lived user token is exchanged for a long-lived one first, so the
+        Page token derived from it does not expire after an hour.
+        """
+        token = response.get('access_token')
+        if not isinstance(token, str) or not token:
+            raise ValueError('token')
+        long_lived = call_form(
+            self.CAPABILITIES.oauth.token_url,
+            {
+                'grant_type': 'fb_exchange_token',
+                'client_id': app['client_id'],
+                'client_secret': app['client_secret'],
+                'fb_exchange_token': token,
+            },
+        ).get('access_token') or token
+        pages = values(edge(long_lived, 'me', 'accounts', fields='id,access_token,instagram_business_account', limit=100))
+        linked = [
+            p
+            for p in pages
+            if p.get('instagram_business_account') and p.get('access_token') and (not account or p.get('id') == account)
+        ]
+        if len(linked) != 1:
+            # Several Pages: the account field must name the Facebook Page ID to use.
+            raise ValueError('page_choice')
+        return linked[0]['access_token'], {}
+
     def verify(self, token, account='', kind='organization'):
         page = get(token, 'me', fields='id,name,instagram_business_account')
         ig = page.get('instagram_business_account', {}).get('id')

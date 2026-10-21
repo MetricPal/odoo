@@ -128,14 +128,14 @@ with tempfile.TemporaryDirectory() as directory, \
         check.assertEqual(endpoint.sudo()._whatsapp_challenge(params, url), '12345')
         check.assertTrue(endpoint._whatsapp_verified())
         check.assertNotEqual(endpoint.state, 'enabled')
-        from odoo.addons.omni_whatsapp.controllers import webhook as controller
+        from odoo.addons.omni_channel.controllers import inbound as controller
         def get_callback(parameters):
             fake_request = SimpleNamespace(env=env(user=env.ref('base.public_user').id), httprequest=Request(EnvironBuilder(
                 path='/omni/inbound/' + endpoint.route_key, base_url='https://channels.synthetic.example/',
                 query_string=parameters).get_environ()),
                 make_response=lambda body, status=200, headers=None: Response(body, status=status, headers=headers))
             with patch.object(controller, 'request', fake_request):
-                return controller.WhatsAppWebhook().challenge(endpoint.route_key)
+                return controller.OmniInboundController().challenge(endpoint.route_key)
         response = get_callback(params)
         check.assertEqual(response.status_code, 200)
         check.assertEqual(response.get_data(as_text=True), '12345')

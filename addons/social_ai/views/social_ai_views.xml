@@ -1,0 +1,79 @@
+<odoo>
+  <record id="publication_form_ai" model="ir.ui.view">
+    <field name="name">omni.social.publication.form.ai</field>
+    <field name="model">omni.social.publication</field>
+    <field name="inherit_id" ref="omni_social.publication_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_submit']" position="after">
+        <button name="action_ai_draft" type="object" string="Draft with AI" invisible="state != 'draft' or ai_drafting"/>
+      </xpath>
+      <xpath expr="//field[@name='body']" position="before">
+        <field name="ai_brief" invisible="state != 'draft' or operation != 'post'" placeholder="A few words for the AI agent, e.g. announce the autumn webinar on 4 November"/>
+      </xpath>
+      <xpath expr="//sheet" position="inside">
+        <field name="ai_drafting" invisible="1"/>
+        <div class="alert alert-secondary" role="status" invisible="not ai_drafting">
+          AI is drafting. Reload in a moment to see the text; you still edit it and submit it for approval.
+        </div>
+        <div class="alert alert-info" role="status" invisible="not ai_suggestion or state != 'draft'">
+          <strong>AI suggestion</strong> — check it before submitting; nothing is published without approval.
+          <field name="ai_suggestion" nolabel="1" class="d-block mt-2"/>
+          <button name="action_ai_use_suggestion" type="object" string="Use this text" class="btn-link p-0 mt-1"/>
+        </div>
+      </xpath>
+    </field>
+  </record>
+  <record id="activity_form_ai" model="ir.ui.view">
+    <field name="name">omni.social.activity.form.ai</field>
+    <field name="model">omni.social.activity</field>
+    <field name="inherit_id" ref="omni_social.activity_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_reply']" position="after">
+        <button name="action_ai_draft_reply" type="object" string="Draft reply with AI" invisible="kind == 'post' or format == 'STORY'"/>
+      </xpath>
+    </field>
+  </record>
+  <record id="campaign_form_ai" model="ir.ui.view">
+    <field name="name">omni.social.campaign.form.ai</field>
+    <field name="model">omni.social.campaign</field>
+    <field name="inherit_id" ref="omni_social.campaign_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_submit_all']" position="before">
+        <button name="action_ai_adapt_versions" type="object" string="Adapt versions with AI" invisible="state != 'draft' or not version_count"/>
+      </xpath>
+    </field>
+  </record>
+  <record id="connection_form_ai" model="ir.ui.view">
+    <field name="name">omni.social.connection.form.ai</field>
+    <field name="model">omni.social.connection</field>
+    <field name="inherit_id" ref="omni_social.connection_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_new_post']" position="after">
+        <button name="action_ai_summarize" type="object" string="Summarize activity" invisible="not connected"/>
+      </xpath>
+      <xpath expr="//sheet" position="inside">
+        <field name="ai_summary_state" invisible="1"/>
+        <div class="alert alert-secondary mt-3" role="status" invisible="ai_summary_state != 'running'">AI is summarizing the last 7 days. Reload in a moment.</div>
+        <div class="mt-3" invisible="ai_summary_state not in ('done', 'failed')">
+          <h4>Last 7 days (AI summary)</h4>
+          <field name="ai_summary_text" nolabel="1" class="text-break"/>
+        </div>
+      </xpath>
+    </field>
+  </record>
+  <record id="ai_wizard_form" model="ir.ui.view">
+    <field name="name">social.ai.wizard.form</field>
+    <field name="model">social.ai.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Draft with AI">
+        <group><field name="res_model" invisible="1"/><field name="res_id" invisible="1"/><field name="mode" invisible="1"/>
+          <field name="agent_id" options="{'no_create': True, 'no_open': True}"/></group>
+        <p class="text-muted">The text and, for replies, the comment or message are sent to the agent's model provider. Nothing is published until a person submits it and it is approved.</p>
+        <footer>
+          <button name="action_run" type="object" string="Ask the agent" class="btn-primary"/>
+          <button string="Cancel" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

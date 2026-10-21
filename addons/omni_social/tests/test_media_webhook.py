@@ -2,18 +2,13 @@
 
 import hashlib
 import hmac
-import importlib.util
 import json
-import unittest
-from pathlib import Path
 from unittest.mock import Mock, patch
-from test_protocol import ig, li, http, PROFILE, IG
+from odoo.tests import BaseCase, tagged
 
-spec = importlib.util.spec_from_file_location(
-    'webhook_protocol', Path(__file__).resolve().parents[1] / 'providers/webhook.py'
-)
-webhook = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(webhook)
+from odoo.addons.omni_social.providers import webhook
+from .test_protocol import ig, li, http, PROFILE, IG
+
 MEDIA = [
     {'id': 1, 'kind': 'image', 'url': 'https://public.example/1', 'digest': 'a', 'alt_text': 'First'},
     {'id': 2, 'kind': 'image', 'url': 'https://public.example/2', 'digest': 'b', 'alt_text': 'Second'},
@@ -30,7 +25,8 @@ def doc(provider='instagram', fmt='carousel', media=None):
     }
 
 
-class MediaProtocol(unittest.TestCase):
+@tagged('post_install', '-at_install')
+class MediaProtocol(BaseCase):
     def test_instagram_carousel_stages_order_and_one_mutation_each(self):
         adapter = ig.Adapter()
         payload = doc()
@@ -233,7 +229,8 @@ class MediaProtocol(unittest.TestCase):
         self.assertFalse(session.request.call_args.kwargs['allow_redirects'])
 
 
-class WebhookProtocol(unittest.TestCase):
+@tagged('post_install', '-at_install')
+class WebhookProtocol(BaseCase):
     def test_exact_raw_signatures_both_platforms(self):
         raw = b'{"entry": []}'
         for platform in ['instagram', 'linkedin']:
@@ -285,5 +282,3 @@ class WebhookProtocol(unittest.TestCase):
             webhook.hints('linkedin', profile, b'{"type":"LEAD_ACTION"}')
 
 
-if __name__ == '__main__':
-    unittest.main()

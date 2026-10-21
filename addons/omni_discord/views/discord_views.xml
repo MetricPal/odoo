@@ -1,0 +1,19 @@
+<odoo>
+  <record id="discord_setup" model="ir.ui.view">
+    <field name="name">Discord setup</field>
+    <field name="model">omni.channel</field>
+    <field name="inherit_id" ref="omni_channel.channel_setup_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside"><field name="is_discord" invisible="1"/></xpath>
+      <xpath expr="//div[hasclass('o_omni_setup_stage_1')]/field[@name='setup_connection_mode']" position="attributes">
+        <attribute name="invisible" add="is_discord" separator=" or "/>
+      </xpath>
+      <xpath expr="//div[hasclass('o_omni_setup_stage_1')]" position="inside">
+        <field name="discord_credentials_ui" widget="omni_discord_credentials" nolabel="1" invisible="not is_discord" groups="omni_channel.group_omni_manager"/>
+      </xpath>
+      <xpath expr="//div[@name='setup_provider_receiving']" position="inside">
+        <field name="discord_receiving_ui" widget="omni_discord_receiving" nolabel="1" invisible="not is_discord" groups="omni_channel.group_omni_manager"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

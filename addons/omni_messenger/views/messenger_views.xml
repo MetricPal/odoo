@@ -1,0 +1,25 @@
+<odoo>
+  <record id="channel_type_messenger" model="omni.channel.type">
+    <field name="name">Facebook Messenger</field>
+    <field name="code">messenger</field>
+    <field name="category">messaging</field>
+    <field name="sequence">5</field>
+  </record>
+  <record id="messenger_setup" model="ir.ui.view">
+    <field name="name">Messenger setup</field>
+    <field name="model">omni.channel</field>
+    <field name="inherit_id" ref="omni_channel.channel_setup_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside"><field name="is_messenger" invisible="1"/></xpath>
+      <xpath expr="//div[hasclass('o_omni_setup_stage_1')]/field[@name='setup_connection_mode']" position="attributes">
+        <attribute name="invisible" add="is_messenger" separator=" or "/>
+      </xpath>
+      <xpath expr="//div[hasclass('o_omni_setup_stage_1')]" position="inside">
+        <field name="messenger_credentials_ui" widget="omni_messenger_credentials" nolabel="1" invisible="not is_messenger" groups="omni_channel.group_omni_manager"/>
+      </xpath>
+      <xpath expr="//div[@name='setup_provider_receiving']" position="inside">
+        <field name="messenger_receiving_ui" widget="omni_messenger_receiving" nolabel="1" invisible="not is_messenger" groups="omni_channel.group_omni_manager"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

@@ -5,6 +5,21 @@ import time
 import requests
 
 
+# Hosts a connector may call. Connectors add theirs when they register.
+_HOSTS = {'graph.facebook.com', 'api.linkedin.com'}
+
+
+def allow_hosts(*hosts):
+    for host in hosts:
+        if not isinstance(host, str) or not host or '/' in host or ':' in host or host.startswith('.'):
+            raise ValueError('host')
+        _HOSTS.add(host.lower())
+
+
+def allowed(host):
+    return isinstance(host, str) and host.lower() in _HOSTS
+
+
 class ProviderError(Exception):
     def __init__(self, code="provider", uncertain=False):
         self.code, self.uncertain = code, uncertain
@@ -13,7 +28,7 @@ class ProviderError(Exception):
 
 def call(host, path, token, *, method='GET', params=None, body=None, headers=None):
     if (
-        host not in ('graph.facebook.com', 'api.linkedin.com')
+        not allowed(host)
         or not path.startswith('/')
         or '?' in path
         or '#' in path
@@ -99,6 +114,60 @@ def upload_linkedin(url, token, raw):
             raise ProviderError('upload', True)
     except requests.RequestException:
         raise ProviderError('upload', True) from None
+    finally:
+        if response is not None:
+            response.close()
+        session.close()
+
+
+def call_form(url, data, *, basic=None):
+    """POST a form to a registered OAuth token endpoint; returns the JSON body.
+
+    Used only for authorization-code and refresh-token exchanges. Never follows
+    redirects or ambient proxies, and never sends a bearer token.
+    """
+    from urllib.parse import urlsplit
+
+    p = urlsplit(url)
+    if (
+        p.scheme != 'https'
+        or not allowed(p.hostname)
+        or p.port not in (None, 443)
+        or p.username
+        or p.password
+        or p.query
+        or p.fragment
+        or not isinstance(data, dict)
+    ):
+        raise ValueError('endpoint')
+    session = requests.Session()
+    session.trust_env = False
+    response = None
+    try:
+        start = time.monotonic()
+        response = session.post(
+            url,
+            data=data,
+            auth=basic,
+            headers={'Accept': 'application/json'},
+            timeout=(5, 10),
+            allow_redirects=False,
+            stream=True,
+            verify=True,
+        )
+        raw = bytearray()
+        for chunk in response.iter_content(8192):
+            raw.extend(chunk)
+            if len(raw) > 65536 or time.monotonic() - start > 20:
+                raise ProviderError('response')
+        if not 200 <= response.status_code < 300:
+            raise ProviderError('access' if response.status_code in (400, 401, 403) else 'rejected')
+        value = json.loads(raw) if raw else {}
+        if not isinstance(value, dict):
+            raise ProviderError('response')
+        return value
+    except (requests.RequestException, ValueError) as error:
+        raise ProviderError('network') from error
     finally:
         if response is not None:
             response.close()

@@ -1,6 +1,6 @@
 {
     'name': 'AI Home',
-    'version': '1.3',
+    'version': '1.4',
     'category': 'Productivity',
     'summary': 'AI Home: my work, items needing attention, automations, workflow runs and recent activity',
     'icon': '/ai_home/static/description/icon.svg',

@@ -1,27 +1,15 @@
 """Pure transport and provider boundary checks; no API traffic."""
 
-import importlib.util
-import sys
 import tempfile
-import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-R = Path(__file__).resolve().parents[3]
+from odoo.tests import BaseCase, tagged
 
+from odoo.addons.omni_social.providers import http, vault
+from odoo.addons.omni_instagram.providers import api as ig
+from odoo.addons.omni_linkedin.providers import api as li
 
-def load(name, path):
-    spec = importlib.util.spec_from_file_location(name, R / path)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-http = load('odoo.addons.omni_social.providers.http', 'addons/omni_social/providers/http.py')
-vault = load('social_test_vault', 'addons/omni_social/providers/vault.py')
-ig = load('social_test_ig', 'addons/omni_instagram/providers/api.py')
-li = load('social_test_li', 'addons/omni_linkedin/providers/api.py')
 PROFILE = {'id': 'urn:li:person:SELF', 'name': 'QA', 'member': 'urn:li:person:SELF', 'kind': 'person'}
 DOC = {'account': PROFILE['id'], 'operation': 'post', 'body': 'Hello', 'image_digest': ''}
 IG = {'id': '100', 'page': '200', 'name': '@qa', 'kind': 'organization', 'account_type': ''}
@@ -34,7 +22,8 @@ IGDOC = {
 }
 
 
-class Protocol(unittest.TestCase):
+@tagged('post_install', '-at_install')
+class Protocol(BaseCase):
     def test_fixed_host_and_method(self):
         for host, path, method in [
             ('evil.example', '/me', 'GET'),
@@ -251,7 +240,8 @@ class Protocol(unittest.TestCase):
                 li.urn(value)
 
 
-class PrivateReplies(unittest.TestCase):
+@tagged('post_install', '-at_install')
+class PrivateReplies(BaseCase):
     def test_private_membership_and_received_text(self):
         value = {
             'id': 'mid.$123',
@@ -322,5 +312,3 @@ class PrivateReplies(unittest.TestCase):
             self.assertEqual(send.call_args.args[2]['actor'], PROFILE['id'])
 
 
-if __name__ == '__main__':
-    unittest.main()

@@ -352,6 +352,10 @@ export class WorkDashboard extends Component {
     }
 
     openItem(item) {
+        if (item.action && item.action.type) {
+            // A full window action prepared by the server (e.g. a filtered list).
+            return this.action.doAction(item.action);
+        }
         if (item.action) {
             return this.action.doAction({
                 type: "ir.actions.act_window",

@@ -9,6 +9,90 @@ Format:
 - affected areas
 - migration/compatibility notes
 
+## 2026-10-21 — Social plan, B1 groundwork
+
+Plan: "Social & New Channels Plan" doc (batches B1–B12).
+
+- **Social 20.0.2.2.0**: each connector declares its rules once
+  (`providers/capabilities.py`: actions, formats, character and media limits,
+  daily caps, prices, sign-in). The post form and submit checks read them and
+  name the platform's limit in the error. Account managers can sign in with the
+  platform (OAuth: app ID and secret kept in the encrypted vault, one-use hashed
+  state, optional PKCE, automatic refresh that keeps pending reviews valid);
+  pasting a token still works. A usage meter records each published or
+  uncertain action, enforces daily caps and, on paid platforms, a monthly
+  budget before the first platform call. Media is served to any platform that
+  fetches it from the public address, not only Instagram. Omnichannel's
+  channel picker tells people which platforms are connected in Social.
+- **Instagram / LinkedIn 20.0.2.1.0**: capability declarations and sign-in.
+- Widget check moved from `tools/test_ui.cjs` (removed) to a Hoot suite run by
+  `tests/test_ui.py`; new Odoo tests in `tests/test_groundwork.py`.
+- Upgrade `omni_social,omni_instagram,omni_linkedin`.
+- **B2 guided setup**: Social › Accounts › **Add account** shows platform
+  cards (platforms without a connector are dimmed). Connect opens a five-step
+  setup (Platform → Connect → Who approves → Receiving → Ready) with plain
+  checks at each step; "New approval type" opens a prefilled dialog and picks
+  the result. Existing accounts stay as they are (`setup_step = done`);
+  unconnected ones show **Continue setup**.
+- **B3 planning**: the Social app menus are switched on (earlier versions
+  shipped them inactive). Publishing opens as a board (Draft → In review →
+  Scheduled → Ready → Published → Needs attention) with calendar and list
+  views. Posts can carry a publish time: the time is part of the reviewed
+  content, the approval lasts until that time plus two hours (at most 14 days
+  after submission), and a cron publishes due posts as their requester; nothing
+  publishes early. Campaigns: one text, a version per account, "Submit all"
+  and, for reviewers, "Approve all" (each version keeps its own audited
+  approval). Decision 2 of the plan taken as proposed.
+- **B4 everyday use**: Activity is an inbox (New → Replied / No reply needed,
+  Assign to me, "To answer" filter by default; a published reply marks its
+  comment Replied; imported posts never count). **Report**: posts published,
+  likes, comments and received comments/messages per account and week.
+  **Social: AI drafts** (`social_ai`, new, auto-installs with AI Agent) and
+  **Social: Home items** (`social_home`, new, auto-installs with AI Home: "N to
+  answer on <account>" and posts that need attention). AI Home items may now
+  carry a full window action.
+- **B5 proof**: all Social checks (protocol, media, webhook, ORM, widget) run
+  under Odoo's test runner (`--test-tags /omni_social`, 81 tests); live checks
+  with real accounts are listed in `omni_social/LIVE_CHECKS.md` (not run yet:
+  they need your test accounts). Omnichannel: the channel setup no longer
+  scrolls sideways on phones; the guided-setup UI test follows the
+  installed-connector picker.
+- **B6 Facebook Pages** (`omni_facebook`, new): Page posts and comments in
+  Social; text, photo, multi-photo and video posts and replies after approval;
+  sign-in picks the Page token. Messenger follows as `omni_messenger`.
+- **B6 Messenger** (`omni_messenger`, new): Facebook Messenger channel type in
+  Omnichannel; Page token verification, signed webhook intake of private text,
+  approved replies within the 24-hour window checked with Meta. The Meta GET
+  webhook handshake moved from `omni_whatsapp` into Omnichannel's inbound
+  controller (connectors provide `_<code>_challenge`); remove
+  `addons/omni_whatsapp/controllers/` (`git rm -r`).
+- **B7 Threads** (`omni_threads`, new): posts and replies with likes and reply
+  counts; text, photo, video and carousel posts and replies after approval;
+  250 posts / 1,000 replies per day enforced by the usage meter; 60-day tokens
+  renewed through the connector's own renewal call (new `oauth_refresh` hook).
+  Scheduled posts whose media is still processing now continue automatically.
+- **B8 YouTube** (`omni_youtube`, new): uploads with counts and comments;
+  approved video uploads (subject = reviewed title) via a two-step resumable
+  upload; replies and new comments on own videos; Google sign-in with offline
+  refresh. Uploads stay private until the Google project passes YouTube's audit.
+- **B9 Discord** (`omni_discord`, new; ADR 0010): Discord bot channel in
+  Omnichannel. DMs and chosen server channels arrive through
+  `tools/discord_relay.py` (signed, five-minute window); approved replies go
+  through Discord's REST API and mention only the person answered. Decision 1
+  of the plan taken as the shipped relay.
+- **B10 Pinterest** (`omni_pinterest`, new): image Pins (1 or 2–5 images) to
+  the board chosen at connect, subject as title, first link as destination;
+  board Pins imported. Social: `title_limit` capability makes the subject the
+  reviewed title (YouTube now uses it too).
+- **B11 TikTok** (`omni_tiktok`, new): approved videos (direct upload) and
+  photo posts through the Content Posting API, status followed until
+  published; most public privacy level offered (only-me before TikTok's
+  audit). No comments API; DMs not built (decision 5 taken as "no").
+- **B12 X** (`omni_x`, new): approved posts (up to 4 images) and replies; sync
+  of 10 posts and 10 mentions. Every publish (link posts priced higher) and
+  every sync is priced and recorded; accounts on paid platforms start with a
+  $20 monthly budget (decision 3 taken as proposed) and stop at the cap.
+
 ## 2026-10-21
 
 Setup UX review of Approval Center, Workflows and Omnichannel (see the review

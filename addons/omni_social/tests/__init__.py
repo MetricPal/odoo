@@ -1,1 +1,2 @@
-# Pure protocol tests are run separately; tools/check_install.py exercises real ORM.
+from . import test_groundwork, test_ui, test_setup, test_planning, test_inbox
+from . import test_protocol, test_media_webhook

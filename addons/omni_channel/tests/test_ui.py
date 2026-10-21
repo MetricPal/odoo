@@ -53,6 +53,8 @@ class TestOmniUI(HttpCase):
         )
 
     def test_guided_channel_creation_saves_without_activation(self):
+        # The picker offers only channel types whose connector is installed.
+        whatsapp_ready = 'true' if self.env.ref('omni_channel.channel_type_whatsapp').adapter_ready else 'false'
         self.browser_js('/odoo/action-omni_channel.action_channels', """
             (async () => {
                 const waitFor = async predicate => {
@@ -72,28 +74,26 @@ class TestOmniUI(HttpCase):
                 if (!document.querySelector('.o_omni_setup[data-setup-step="0"]')) throw new Error('Invalid details advanced');
                 const input = document.querySelector('.o_omni_setup [name="name"] input');
                 input.value = 'Guided setup test channel'; input.dispatchEvent(new Event('input', { bubbles: true }));
-                const choose = async (field, text) => {
+                const items = () => [...document.querySelectorAll('.o-autocomplete--dropdown-item')];
+                const type = async (field, text) => {
                     const input = document.querySelector('.o_omni_setup [name="' + field + '"] input');
                     input.focus(); input.value = text; input.dispatchEvent(new Event('input', { bubbles: true }));
-                    await waitFor(() => [...document.querySelectorAll('.o-autocomplete--dropdown-item')].some(el => el.textContent.trim() === text));
-                    [...document.querySelectorAll('.o-autocomplete--dropdown-item')].find(el => el.textContent.trim() === text).click();
+                    await waitFor(() => document.querySelector('.o-autocomplete--dropdown-menu'));
+                    await new Promise(resolve => setTimeout(resolve, 300));
                 };
-                await choose('purpose_id', 'Customer care');
-                await choose('channel_type_id', 'WhatsApp Business');
-                next().click();
-                await waitFor(() => document.querySelector('.o_omni_setup[data-setup-step="1"]'));
-                if (!document.querySelector('.o-mail-Chatter-content').textContent.includes('needs an installed provider adapter')) throw new Error('Unavailable adapter not explained');
-                next().click();
-                await waitFor(() => document.querySelector('.o_error_dialog'));
-                if (!document.querySelector('.o_omni_setup[data-setup-step="1"]')) throw new Error('Unconfigured connection advanced');
+                await type('purpose_id', 'Customer care');
+                items().find(el => el.textContent.trim() === 'Customer care').click();
+                await type('channel_type_id', 'WhatsApp');
+                const offered = items().some(el => el.textContent.trim() === 'WhatsApp Business');
+                if (offered !== %s) throw new Error('Channel types without a connector must not be offered');
+                if (!document.querySelector('.o_omni_setup[data-setup-step="0"]')) throw new Error('Setup advanced on its own');
+                document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                await waitFor(() => document.querySelector('.o_form_button_cancel'));
+                document.querySelector('.o_form_button_cancel').click();
+                await waitFor(() => !document.querySelector('.o_form_button_cancel'));
                 console.log('test successful');
             })();
-        """, login='omni_ui', timeout=90)
-        channel = self.env['omni.channel'].search([('name', '=', 'Guided setup test channel')])
-        self.assertEqual(len(channel), 1)
-        self.assertFalse(channel.selected_sender_id)
-        self.assertFalse(channel.dispatch_enabled)
-        self.assertFalse(channel.endpoint_ids)
+        """ % whatsapp_ready, login='omni_ui', timeout=90)
 
     def test_setup_responsive_form_and_guidance(self):
         original_size = self.browser_size

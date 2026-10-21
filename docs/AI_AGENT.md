@@ -102,5 +102,12 @@ Response style is presented as four radio choices with short descriptions. These
   reply draft sends the recent conversation (customer text marked as untrusted)
   and puts the answer in the draft if it is still empty, otherwise beside it with
   "Use this text". The reply is still edited, submitted and approved as before.
+- `social_ai` (installs with Social and AI Agent): "Draft with AI" on a post
+  draft writes from a short brief or adapts existing text to the platform's
+  limit (from the connector's capability list); "Draft reply with AI" on a
+  comment or message starts a reply draft (platform text marked as untrusted);
+  campaigns adapt every version; "Summarize activity" on an account summarizes
+  the last 7 days for team members. Text fills an empty draft or is shown as a
+  suggestion; nothing is submitted or published by the agent.
 - `ai.agent._chat_options()` lists the agents the current user can ask now, for
   pickers in other apps.

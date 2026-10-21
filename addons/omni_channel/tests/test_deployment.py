@@ -27,7 +27,7 @@ class TestOmniDeployment(TransactionCase):
 
     def _endpoint(self, provider):
         purpose = self.env['omni.purpose'].create({'name': 'Deployment test', 'code': 'deployment_' + provider})
-        channel_type = self.env.ref('omni_channel.channel_type_' + provider)
+        channel_type = self.env['omni.channel.type'].search([('code', '=', provider)], limit=1)
         channel = self.env['omni.channel'].create({
             'name': 'Deployment channel', 'purpose_id': purpose.id, 'channel_type_id': channel_type.id,
         })
