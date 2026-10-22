@@ -10,6 +10,19 @@ Format:
 - migration/compatibility notes
 
 
+
+## 2026-10-23 — Contacts: Customers filter, social and chat channels
+
+- New module **omni_contacts** (auto-installs with Contacts, Invoicing,
+  Employees and Omnichannel): Customers filter below Employees; platform tags
+  on the contact list and kanban cards; brand chips and a Social & chat tab on
+  the contact form. Chats linked to a contact in Omnichannel appear
+  automatically; social profiles are added by hand. Chat identifiers are
+  visible only to the chat's Omnichannel team; internal users can read the
+  channel catalog (platform names) for the tags.
+- **Messaging Marketing** menus: Messaging Marketing, Mailing List, Reporting
+  (opens delivery results directly).
+
 ## 2026-10-23 — Messaging Marketing: mailings, approval and sending
 
 - **Messaging Marketing 20.0.1.1.0**: mailings. Write one message with

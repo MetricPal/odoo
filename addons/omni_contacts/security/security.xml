@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <!-- Everyone who can read contacts sees profiles added by hand. Chat identifiers (numbers, chat IDs)
+       are visible to members of that chat's Omnichannel team only. -->
+  <record id="scope_channel_manual_read" model="ir.access">
+    <field name="name">Contact channels: hand-added profiles</field>
+    <field name="model_id" ref="model_omni_partner_channel"/>
+    <field name="group_id" ref="base.group_user"/>
+    <field name="operation">r</field>
+    <field name="domain">[('source', '=', 'manual')]</field>
+  </record>
+  <record id="scope_channel_manual_manage" model="ir.access">
+    <field name="name">Contact channels: manage hand-added profiles</field>
+    <field name="model_id" ref="model_omni_partner_channel"/>
+    <field name="group_id" ref="base.group_partner_manager"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('source', '=', 'manual')]</field>
+  </record>
+  <record id="scope_channel_team_chats" model="ir.access">
+    <field name="name">Contact channels: chats of my Omnichannel teams</field>
+    <field name="model_id" ref="model_omni_partner_channel"/>
+    <field name="group_id" ref="omni_channel.group_omni_user"/>
+    <field name="operation">r</field>
+    <field name="domain">[] if user.has_group('base.group_system') else ['|', ('source', '=', 'manual'), ('identity_id.purpose_id.user_ids', 'in', [user.id])]</field>
+  </record>
+  <!-- The platform catalog (names like WhatsApp, Instagram) is shown as contact tags to every internal user. -->
+  <record id="access_channel_type_read" model="ir.access">
+    <field name="name">Channel catalog (read, for contact tags)</field>
+    <field name="model_id" ref="omni_channel.model_omni_channel_type"/>
+    <field name="group_id" ref="base.group_user"/>
+    <field name="operation">r</field>
+  </record>
+</odoo>

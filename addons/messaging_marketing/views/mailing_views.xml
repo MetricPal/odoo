@@ -203,7 +203,7 @@
   </record>
 
   <record id="action_mailings" model="ir.actions.act_window">
-    <field name="name">Mailings</field>
+    <field name="name">Messaging Marketing</field>
     <field name="res_model">mm.mailing</field>
     <field name="view_mode">kanban,list,form</field>
     <field name="help" type="html">

@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <!-- Search: Customers below Employees; filter by platform. -->
+  <record id="partner_search_channels" model="ir.ui.view">
+    <field name="name">res.partner.search.channels</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="hr.res_partner_view_search"/>
+    <field name="arch" type="xml">
+      <xpath expr="//filter[@name='employees']" position="after">
+        <filter name="customers" string="Customers" domain="[('customer_rank', '>', 0)]"
+                help="Contacts with a confirmed sale or a posted customer invoice"/>
+      </xpath>
+    </field>
+  </record>
+  <record id="partner_search_channel_fields" model="ir.ui.view">
+    <field name="name">res.partner.search.channel.fields</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_res_partner_filter"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='category_id']" position="after">
+        <field name="channel_type_ids" string="Social or chat"/>
+      </xpath>
+      <xpath expr="//filter[@name='inactive']" position="before">
+        <filter name="has_channels" string="On social or chat" domain="[('channel_type_ids', '!=', False)]"/>
+        <separator/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- List: platforms as coloured tags. -->
+  <record id="partner_list_channels" model="ir.ui.view">
+    <field name="name">res.partner.list.channels</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_partner_tree"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='phone']" position="after">
+        <field name="channel_type_ids" widget="many2many_tags" options="{'color_field': 'color'}" optional="show"
+               string="Social &amp; chat"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- Kanban card: platforms as tags under the contact details. -->
+  <record id="partner_kanban_channels" model="ir.ui.view">
+    <field name="name">res.partner.kanban.channels</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.res_partner_kanban_view"/>
+    <field name="arch" type="xml">
+      <xpath expr="//t[@t-name='card']//field[@name='properties']" position="before">
+        <field name="channel_type_ids" widget="many2many_tags" options="{'color_field': 'color'}"
+               invisible="not channel_type_ids" class="o_partner_channel_tags"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- Form: brand chips when the contact has channels; a tab to add and review them. -->
+  <record id="partner_form_channels" model="ir.ui.view">
+    <field name="name">res.partner.form.channels</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_partner_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet/div[hasclass('d-flex')][field[@name='properties']]" position="before">
+        <div class="o_partner_channels" invisible="not active_channel_ids" name="channel_chips">
+          <div class="o_partner_channels_label">Social &amp; chat</div>
+          <field name="active_channel_ids" mode="kanban" readonly="1" nolabel="1" class="o_partner_channel_chips">
+            <kanban>
+              <field name="color"/><field name="icon"/><field name="url"/><field name="source"/>
+              <templates>
+                <t t-name="card" class="p-0 border-0 bg-transparent">
+                  <div t-attf-class="o_partner_channel_chip o_pc_color_#{record.color.raw_value or 0}">
+                    <span class="o_pc_icon"><i class="oi" t-att-data-icon="record.icon.raw_value"/></span>
+                    <span class="o_pc_text">
+                      <field name="channel_type_id" class="o_pc_platform"/>
+                      <a t-if="record.url.raw_value" t-att-href="record.url.raw_value" target="_blank" rel="noopener noreferrer"
+                         class="o_pc_handle"><field name="handle"/></a>
+                      <field t-else="" name="handle" class="o_pc_handle"/>
+                    </span>
+                    <span t-if="record.source.raw_value == 'conversation'" class="o_pc_badge" title="Chats in Omnichannel">chat</span>
+                  </div>
+                </t>
+              </templates>
+            </kanban>
+          </field>
+        </div>
+      </xpath>
+      <xpath expr="//page[@name='contact_addresses']" position="after">
+        <page string="Social &amp; chat" name="social_chat">
+          <p class="text-muted small mb-2">
+            Social profiles you add here, and chats linked to this contact in Omnichannel
+            (<em>Link existing contact</em> on a conversation). Archived channels are hidden from the tags.
+          </p>
+          <field name="channel_ids" context="{'active_test': False}" nolabel="1">
+            <list editable="bottom" decoration-muted="not active">
+              <field name="sequence" widget="handle"/>
+              <field name="channel_type_id" options="{'no_create': true, 'no_open': true}" readonly="source != 'manual'"/>
+              <field name="handle" readonly="source != 'manual'" placeholder="@username, number or profile link"/>
+              <field name="url" widget="url" readonly="1"/>
+              <field name="source" readonly="1"/>
+              <field name="channel_id" optional="show" readonly="1"/>
+              <field name="last_message_at" optional="show"/>
+              <field name="active" widget="boolean_toggle" readonly="source != 'manual'"/>
+            </list>
+          </field>
+        </page>
+      </xpath>
+    </field>
+  </record>
+</odoo>

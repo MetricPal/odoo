@@ -1,0 +1,72 @@
+// Contact form: social profiles and chats as compact brand chips.
+$pc-colors: (0: #5f6368, 6: #111111, 1: #ff0050, 4: #229ed9, 5: #4a154b, 8: #0a66c2, 9: #d6249f, 10: #25d366, 11: #5865f2);
+
+.o_partner_channels {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem .75rem;
+    margin: .25rem 0 1rem;
+
+    .o_partner_channels_label {
+        font-weight: 600;
+        color: $text-muted;
+        min-width: 8rem;
+    }
+    .o_partner_channel_chips {
+        flex: 1;
+
+        .o_kanban_renderer {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: .5rem;
+            padding: 0 !important;
+            min-height: 0;
+            background: transparent;
+        }
+        .o_kanban_record {
+            width: auto !important;
+            min-width: 0 !important;
+            flex: 0 0 auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            background: transparent !important;
+        }
+        .o_kanban_ghost { display: none !important; }
+    }
+}
+.o_partner_channel_chip {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem .75rem .3rem .3rem;
+    border: 1px solid $border-color;
+    border-radius: 2rem;
+    background: $o-view-background-color;
+
+    .o_pc_icon {
+        width: 1.9rem;
+        height: 1.9rem;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.05rem;
+    }
+    .o_pc_text { display: flex; flex-direction: column; line-height: 1.15; }
+    .o_pc_platform { font-size: .75rem; color: $text-muted; }
+    .o_pc_handle { font-weight: 600; max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_pc_badge {
+        font-size: .7rem;
+        border-radius: 1rem;
+        padding: 0 .4rem;
+        background: rgba($o-action, .1);
+        color: $o-action;
+    }
+    @each $index, $color in $pc-colors {
+        &.o_pc_color_#{$index} .o_pc_icon { background: $color; }
+    }
+}
+.o_partner_channel_tags { margin-top: .25rem; }
