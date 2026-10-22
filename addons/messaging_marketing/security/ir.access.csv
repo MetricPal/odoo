@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,operation
+access_contact_user,Messaging contact,model_mm_contact,group_mm_user,cru
+access_contact_manager,Messaging contact management,model_mm_contact,group_mm_manager,crud
+access_consent_user,Messaging opt-in history,model_mm_consent,group_mm_user,r
+access_list_user,Messaging list,model_mm_list,group_mm_user,crud
+access_subscription_user,Messaging list membership,model_mm_subscription,group_mm_user,crud
+access_blacklist_user,Messaging blacklist,model_mm_blacklist,group_mm_user,cr
+access_blacklist_manager,Messaging blacklist management,model_mm_blacklist,group_mm_manager,crud
+access_consent_wizard_user,Record opt-in,model_mm_consent_wizard,group_mm_user,crud
+access_import_user,Add messaging contacts,model_mm_contact_import,group_mm_user,crud
+access_mailing_user,Messaging mailing,model_mm_mailing,group_mm_user,crud
+access_trace_user,Messaging mailing recipients,model_mm_trace,group_mm_user,r

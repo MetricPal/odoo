@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <menuitem id="menu_root" name="Messaging Marketing" sequence="36" action="action_mailings"
+            web_icon="messaging_marketing,static/description/icon.svg" groups="group_mm_user"/>
+  <menuitem id="menu_mailings" name="Mailings" parent="menu_root" action="action_mailings" sequence="10"/>
+  <menuitem id="menu_audience" name="Audience" parent="menu_root" sequence="20"/>
+  <menuitem id="menu_contacts" name="Contacts" parent="menu_audience" action="action_contacts" sequence="10"/>
+  <menuitem id="menu_lists" name="Lists" parent="menu_audience" action="action_lists" sequence="20"/>
+  <menuitem id="menu_import" name="Add from Contacts" parent="menu_audience" action="action_contact_import" sequence="30"/>
+  <menuitem id="menu_reporting" name="Reporting" parent="menu_root" sequence="80"/>
+  <menuitem id="menu_traces" name="Delivery results" parent="menu_reporting" action="action_traces" sequence="10"/>
+  <menuitem id="menu_config" name="Configuration" parent="menu_root" sequence="90"/>
+  <menuitem id="menu_consents" name="Opt-in history" parent="menu_config" action="action_consents" sequence="10"/>
+  <menuitem id="menu_blacklist" name="Blacklist" parent="menu_config" action="action_blacklist" sequence="20"/>
+</odoo>

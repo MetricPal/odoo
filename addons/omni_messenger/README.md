@@ -22,5 +22,5 @@ Rules:
 - An uncertain send is reported as "unknown" and never retried automatically.
 
 The webhook handshake (GET) is answered by Omnichannel's inbound route, shared
-with WhatsApp. Facebook Page posts and comments are in the Social app
+with WhatsApp. Facebook Page posts and comments are in the Social Marketing app
 (`omni_facebook`).

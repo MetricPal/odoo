@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="trace_list" model="ir.ui.view">
+    <field name="name">mm.trace.list</field>
+    <field name="model">mm.trace</field>
+    <field name="arch" type="xml">
+      <list create="0" edit="0" delete="0" decoration-success="state == 'sent'" decoration-muted="state in ('skipped', 'cancelled')"
+            decoration-danger="state in ('failed', 'expired')" decoration-warning="state in ('held', 'unknown')">
+        <field name="mailing_id" optional="hide"/>
+        <field name="contact_id"/>
+        <field name="address"/>
+        <field name="state" widget="badge" decoration-success="state == 'sent'" decoration-info="state in ('queued', 'sending')"
+               decoration-danger="state in ('failed', 'expired')" decoration-warning="state in ('held', 'unknown')"/>
+        <field name="sent_at"/>
+        <field name="note"/>
+      </list>
+    </field>
+  </record>
+  <record id="trace_graph" model="ir.ui.view">
+    <field name="name">mm.trace.graph</field>
+    <field name="model">mm.trace</field>
+    <field name="arch" type="xml">
+      <graph type="pie"><field name="state"/></graph>
+    </field>
+  </record>
+  <record id="trace_search" model="ir.ui.view">
+    <field name="name">mm.trace.search</field>
+    <field name="model">mm.trace</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="contact_id"/>
+        <field name="address"/>
+        <field name="mailing_id"/>
+        <filter name="sent" string="Sent" domain="[('state', '=', 'sent')]"/>
+        <filter name="waiting" string="Waiting to send" domain="[('state', 'in', ('queued', 'sending'))]"/>
+        <filter name="problems" string="Not sent" domain="[('state', 'in', ('failed', 'held', 'expired', 'unknown'))]"/>
+        <filter name="skipped" string="Skipped" domain="[('state', '=', 'skipped')]"/>
+        <group>
+          <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+          <filter name="group_mailing" string="Mailing" context="{'group_by': 'mailing_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="action_traces" model="ir.actions.act_window">
+    <field name="name">Delivery results</field>
+    <field name="res_model">mm.trace</field>
+    <field name="view_mode">list,graph</field>
+    <field name="context">{'search_default_group_mailing': 1}</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_empty_folder">No messages sent yet</p>
+      <p>Each person a mailing is sent to appears here with what happened: sent, skipped (for example after
+        opting out) or not sent, with the reason.</p>
+    </field>
+  </record>
+</odoo>

@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="conversation_form_mm" model="ir.ui.view">
+    <field name="name">omni.conversation.form.messaging.marketing</field>
+    <field name="model">omni.conversation</field>
+    <field name="inherit_id" ref="omni_channel.conversation_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_link_contact']" position="after">
+        <field name="mm_channel_code" invisible="1"/>
+        <button name="action_mm_add_contact" type="object" string="Add to Messaging Marketing"
+                groups="messaging_marketing.group_mm_user" invisible="mm_channel_code not in ('whatsapp', 'telegram')"
+                help="Create or find the marketing contact for this chat. No opt-in is recorded: ask the person first."/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

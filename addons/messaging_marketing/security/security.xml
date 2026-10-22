@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="privilege_mm" model="res.groups.privilege">
+    <field name="name">Messaging Marketing</field>
+    <field name="category_id" ref="base.module_category_marketing"/>
+  </record>
+  <record id="group_mm_user" model="res.groups">
+    <field name="name">User</field>
+    <field name="privilege_id" ref="privilege_mm"/>
+    <field name="implied_ids" eval="[(4, ref('omni_channel.group_omni_user'))]"/>
+  </record>
+  <record id="group_mm_manager" model="res.groups">
+    <field name="name">Administrator</field>
+    <field name="privilege_id" ref="privilege_mm"/>
+    <field name="implied_ids" eval="[(4, ref('group_mm_user'))]"/>
+  </record>
+  <record id="base.group_system" model="res.groups">
+    <field name="implied_ids" eval="[(4, ref('group_mm_manager'))]"/>
+  </record>
+
+  <!-- Contacts, opt-in evidence and the blacklist are shared by the company's marketers. -->
+  <record id="scope_contact" model="ir.access">
+    <field name="name">Messaging contact company</field>
+    <field name="model_id" ref="model_mm_contact"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_consent" model="ir.access">
+    <field name="name">Messaging opt-in company</field>
+    <field name="model_id" ref="model_mm_consent"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_blacklist" model="ir.access">
+    <field name="name">Messaging blacklist company</field>
+    <field name="model_id" ref="model_mm_blacklist"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <!-- Lists belong to a communication team, like every Omnichannel record. -->
+  <record id="scope_list" model="ir.access">
+    <field name="name">Messaging list company and team</field>
+    <field name="model_id" ref="model_mm_list"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)] + ([] if user.has_group('base.group_system') else [('purpose_id.user_ids', 'in', [user.id])])</field>
+  </record>
+  <record id="scope_subscription" model="ir.access">
+    <field name="name">Messaging list membership company and team</field>
+    <field name="model_id" ref="model_mm_subscription"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)] + ([] if user.has_group('base.group_system') else [('list_id.purpose_id.user_ids', 'in', [user.id])])</field>
+  </record>
+  <!-- Mailings and their results belong to the list's communication team. -->
+  <record id="scope_mailing" model="ir.access">
+    <field name="name">Messaging mailing company and team</field>
+    <field name="model_id" ref="model_mm_mailing"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)] + ([] if user.has_group('base.group_system') else [('purpose_id.user_ids', 'in', [user.id])])</field>
+  </record>
+  <record id="scope_trace" model="ir.access">
+    <field name="name">Messaging mailing recipients company and team</field>
+    <field name="model_id" ref="model_mm_trace"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)] + ([] if user.has_group('base.group_system') else [('purpose_id.user_ids', 'in', [user.id])])</field>
+  </record>
+</odoo>

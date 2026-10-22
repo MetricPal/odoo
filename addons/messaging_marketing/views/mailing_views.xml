@@ -1,0 +1,215 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="mailing_form" model="ir.ui.view">
+    <field name="name">mm.mailing.form</field>
+    <field name="model">mm.mailing</field>
+    <field name="arch" type="xml">
+      <form class="o_mm_mailing">
+        <header>
+          <button name="action_submit" type="object" string="Submit for approval" class="btn-primary"
+                  invisible="state != 'draft' or not is_requester"/>
+          <button name="action_send_now" type="object" string="Send now" class="btn-primary"
+                  invisible="state != 'approved' or (schedule == 'later' and not is_due)"
+                  confirm="Queue this approved mailing now? Each message is checked again just before it is sent."/>
+          <button name="action_view_approval" type="object" string="View approval" invisible="not approval_request_id"/>
+          <button name="action_duplicate" type="object" string="Duplicate to change" invisible="state == 'draft'"/>
+          <button name="action_cancel" type="object" string="Cancel mailing"
+                  invisible="state not in ('draft', 'pending', 'approved', 'sending')"
+                  confirm="Cancel this mailing? Messages already sent stay sent; the others are withdrawn."/>
+          <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,sending,done"/>
+        </header>
+        <sheet>
+          <field name="is_requester" invisible="1"/><field name="is_due" invisible="1"/>
+          <field name="approval_request_id" invisible="1"/><field name="currency_id" invisible="1"/>
+          <field name="char_limit" invisible="1"/><field name="link_count" invisible="1"/>
+          <div class="oe_button_box" name="button_box" invisible="state in ('draft', 'pending', 'refused')">
+            <button name="action_view_traces" type="object" class="oe_stat_button" icon="group">
+              <field name="recipient_count" widget="statinfo" string="Recipients"/>
+            </button>
+            <button name="action_view_traces" type="object" class="oe_stat_button" icon="send">
+              <field name="sent_count" widget="statinfo" string="Sent"/>
+            </button>
+            <button name="action_view_traces" type="object" class="oe_stat_button" icon="error" invisible="not failed_count">
+              <field name="failed_count" widget="statinfo" string="Not sent"/>
+            </button>
+            <button name="action_view_clicks" type="object" class="oe_stat_button" icon="link">
+              <field name="click_count" widget="statinfo" string="Link clicks"/>
+            </button>
+          </div>
+          <div class="alert alert-warning d-flex gap-2" role="status"
+               invisible="not channel_problem or state not in ('draft', 'approved', 'sending')">
+            <i class="oi" data-icon="warning"/><field name="channel_problem" nolabel="1" class="d-inline"/>
+          </div>
+          <div class="oe_title">
+            <label for="name"/>
+            <h1><field name="name" placeholder="e.g. Ramadan offer for VIP customers" readonly="state != 'draft'"/></h1>
+          </div>
+          <div class="row g-4">
+            <div class="col-lg-7" name="compose">
+              <group>
+                <field name="channel" widget="radio" options="{'horizontal': true}" readonly="state != 'draft'"/>
+                <field name="channel_id" readonly="state != 'draft'" options="{'no_create': true, 'no_open': true}"/>
+                <field name="purpose_id" widget="radio" options="{'horizontal': true}" readonly="state != 'draft'"
+                       groups="base.group_no_one"/>
+                <field name="list_ids" widget="many2many_tags" readonly="state != 'draft'"
+                       options="{'no_create': true}" placeholder="Choose one or more lists"/>
+              </group>
+
+              <div class="o_mm_audience" name="audience" invisible="not list_ids">
+                <div class="o_mm_audience_main">
+                  <span class="o_mm_audience_count"><field name="audience_count" nolabel="1"/></span>
+                  <span invisible="state != 'draft'"> people can receive this mailing now</span>
+                  <span invisible="state == 'draft'"> people were approved to receive this mailing</span>
+                </div>
+                <div class="text-muted small"><field name="excluded_summary" nolabel="1"/></div>
+              </div>
+
+              <label for="body" string="Message" class="o_mm_label"/>
+              <field name="body" nolabel="1" readonly="state != 'draft'" class="o_mm_body"
+                     placeholder="Hi {first_name}, our Ramadan offer starts today: 20% off everything until Sunday. Reply STOP to stop these messages."/>
+              <div class="d-flex justify-content-between small text-muted mb-3" invisible="state != 'draft'">
+                <span>Personalise with <code>{first_name}</code> or <code>{name}</code>. Tell people how to stop: replies of STOP opt them out automatically.</span>
+                <span class="text-nowrap ms-2" invisible="char_count &gt; char_limit"><field name="char_count" class="d-inline" nolabel="1"/> / <field name="char_limit" class="d-inline" nolabel="1"/></span>
+                <span class="text-nowrap ms-2 text-danger fw-bold" invisible="char_count &lt;= char_limit">Too long: <field name="char_count" class="d-inline" nolabel="1"/> / <field name="char_limit" class="d-inline" nolabel="1"/></span>
+              </div>
+
+              <group>
+                <field name="schedule" widget="radio" options="{'horizontal': true}" readonly="state != 'draft'"/>
+                <field name="scheduled_at" invisible="schedule != 'later'" required="schedule == 'later' and state == 'draft'"
+                       readonly="state != 'draft'"/>
+                <field name="reason" readonly="state != 'draft'" placeholder="Why this mailing? Anything the approver should check"/>
+              </group>
+              <group string="Tracking and cost">
+                <field name="utm_campaign_id" readonly="state != 'draft'" options="{'no_quick_create': true}"
+                       placeholder="Optional: report results under a campaign"/>
+                <field name="track_links" readonly="state != 'draft'" invisible="not link_count and state == 'draft'"/>
+                <field name="price_per_message" invisible="channel != 'whatsapp'" readonly="state != 'draft'"/>
+                <field name="cost_estimate" invisible="channel != 'whatsapp' or not price_per_message"/>
+              </group>
+            </div>
+
+            <div class="col-lg-5" name="preview">
+              <div class="o_mm_phone">
+                <div class="o_mm_phone_bar">
+                  <span class="o_mm_phone_avatar"><i class="oi" data-icon="campaign"/></span>
+                  <span class="o_mm_phone_title"><field name="channel_id" nolabel="1" readonly="1" options="{'no_open': true}" placeholder="Your channel"/></span>
+                </div>
+                <div class="o_mm_phone_screen">
+                  <div class="o_mm_bubble" invisible="not preview_text"><field name="preview_text" nolabel="1" readonly="1"/></div>
+                  <div class="o_mm_phone_empty" invisible="preview_text">Your message appears here as recipients will see it.</div>
+                </div>
+              </div>
+              <div class="text-muted small text-center mt-2" invisible="not preview_text">
+                Preview for <field name="preview_name" class="d-inline" nolabel="1"/>. Approximate: the app shows the final layout.
+              </div>
+            </div>
+          </div>
+
+          <notebook invisible="state in ('draft', 'pending', 'refused')">
+            <page string="Recipients" name="recipients">
+              <field name="trace_ids" readonly="1">
+                <list decoration-success="state == 'sent'" decoration-muted="state in ('skipped', 'cancelled')"
+                      decoration-danger="state in ('failed', 'expired')" decoration-warning="state in ('held', 'unknown')">
+                  <field name="contact_id"/>
+                  <field name="address"/>
+                  <field name="state" widget="badge"/>
+                  <field name="sent_at"/>
+                  <field name="note"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+
+  <record id="mailing_list" model="ir.ui.view">
+    <field name="name">mm.mailing.list</field>
+    <field name="model">mm.mailing</field>
+    <field name="arch" type="xml">
+      <list decoration-muted="state in ('cancelled', 'refused')">
+        <field name="name"/>
+        <field name="channel" widget="badge"/>
+        <field name="list_ids" widget="many2many_tags" optional="show"/>
+        <field name="display_state" string="Status" widget="badge"/>
+        <field name="state" column_invisible="1"/>
+        <field name="scheduled_at" optional="show"/>
+        <field name="sent_at" optional="show"/>
+        <field name="audience_count" optional="show"/>
+        <field name="sent_count" optional="show"/>
+        <field name="failed_count" optional="hide"/>
+        <field name="click_count" optional="show"/>
+        <field name="requester_id" widget="many2one_avatar_user" optional="show"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="mailing_kanban" model="ir.ui.view">
+    <field name="name">mm.mailing.kanban</field>
+    <field name="model">mm.mailing</field>
+    <field name="arch" type="xml">
+      <kanban default_group_by="state" quick_create="false" group_create="false" group_delete="false" group_edit="false"
+              records_draggable="false">
+        <field name="state"/><field name="channel"/><field name="sent_count"/><field name="failed_count"/>
+        <templates>
+          <t t-name="card">
+            <field name="name" class="fw-bold fs-5"/>
+            <div class="d-flex flex-wrap gap-1 my-1">
+              <field name="channel" widget="badge"/>
+              <field name="list_ids" widget="many2many_tags"/>
+            </div>
+            <div class="small text-muted">
+              <field name="audience_count"/> recipients
+              <t t-if="record.sent_count.raw_value"> · <field name="sent_count"/> sent</t>
+              <t t-if="record.failed_count.raw_value"> · <span class="text-danger"><field name="failed_count"/> not sent</span></t>
+            </div>
+            <div class="small text-muted" t-if="record.scheduled_at.raw_value">Sends at <field name="scheduled_at"/></div>
+            <footer class="d-flex justify-content-between mt-2">
+              <field name="display_state" widget="badge"/>
+              <field name="requester_id" widget="many2one_avatar_user"/>
+            </footer>
+          </t>
+        </templates>
+      </kanban>
+    </field>
+  </record>
+
+  <record id="mailing_search" model="ir.ui.view">
+    <field name="name">mm.mailing.search</field>
+    <field name="model">mm.mailing</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="list_ids"/>
+        <field name="utm_campaign_id"/>
+        <filter name="mine" string="My mailings" domain="[('requester_id', '=', uid)]"/>
+        <separator/>
+        <filter name="drafts" string="Drafts" domain="[('state', '=', 'draft')]"/>
+        <filter name="to_approve" string="Waiting for approval" domain="[('state', '=', 'pending')]"/>
+        <filter name="scheduled" string="Approved or scheduled" domain="[('state', '=', 'approved')]"/>
+        <filter name="sent" string="Sending or sent" domain="[('state', 'in', ('sending', 'done'))]"/>
+        <separator/>
+        <filter name="whatsapp" string="WhatsApp" domain="[('channel', '=', 'whatsapp')]"/>
+        <filter name="telegram" string="Telegram" domain="[('channel', '=', 'telegram')]"/>
+        <group>
+          <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+          <filter name="group_channel" string="Channel" context="{'group_by': 'channel'}"/>
+          <filter name="group_campaign" string="Campaign" context="{'group_by': 'utm_campaign_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_mailings" model="ir.actions.act_window">
+    <field name="name">Mailings</field>
+    <field name="res_model">mm.mailing</field>
+    <field name="view_mode">kanban,list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Create your first mailing</p>
+      <p>Write one message, choose the lists, and see exactly who can receive it. An approver checks the
+        text and the audience before anything is sent, and only people who opted in receive it.</p>
+    </field>
+  </record>
+</odoo>

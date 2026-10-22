@@ -255,6 +255,14 @@ class TestTelegramProvider(TransactionCase):
             result = self.adapter.dispatch(self.claim)
             self.assertEqual(result.outcome, "definitely_not_sent")
             self.assertEqual(result.retryable, status == 429)
+        # A person who blocked the bot refuses this chat only: not a credential failure.
+        self.http.send_result = HTTPResult(
+            403, {"ok": False, "error_code": 403, "description": "Forbidden: bot was blocked by the user"},
+        )
+        blocked = self.adapter.dispatch(self.claim)
+        self.assertEqual((blocked.outcome, blocked.reason_code), ("definitely_not_sent", "invalid_recipient"))
+        self.http.send_result = HTTPResult(403, {"ok": False, "error_code": 403, "description": "Forbidden"})
+        self.assertEqual(self.adapter.dispatch(self.claim).reason_code, "unauthorized")
         for delay in [True, -1, 86401, "7"]:
             self.http.send_result = HTTPResult(
                 429,

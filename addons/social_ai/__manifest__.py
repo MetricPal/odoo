@@ -1,5 +1,5 @@
 {
-    'name': 'Social: AI drafts',
+    'name': 'Social Marketing: AI drafts',
     'version': '20.0.1.0.0',
     'category': 'Marketing/Social Marketing',
     'summary': 'Draft posts and replies, adapt them to each platform and summarize activity with an AI Agent',

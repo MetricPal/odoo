@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="approval_mailing_review" model="ir.ui.view">
+    <field name="name">approval.center.request.form.mailing</field>
+    <field name="model">approval.center.request</field>
+    <field name="inherit_id" ref="approval_center.approval_center_request_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <group string="Mailing to review" invisible="not mm_mailing_id" name="mm_review">
+          <field name="mm_mailing_id"/>
+          <field name="mm_channel"/>
+          <field name="mm_channel_id"/>
+          <field name="mm_lists"/>
+          <field name="mm_audience_count"/>
+          <field name="mm_excluded" invisible="not mm_excluded"/>
+          <field name="mm_scheduled_at" invisible="not mm_scheduled_at"/>
+          <field name="mm_cost" invisible="not mm_cost"/>
+          <field name="mm_body"/>
+          <field name="mm_preview"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+</odoo>

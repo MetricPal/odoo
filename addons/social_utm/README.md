@@ -1,4 +1,4 @@
-# Social: campaign tracking
+# Social Marketing: campaign tracking
 
 Connects Social to Odoo's UTM campaigns, the ones Link Tracker, CRM, Sales,
 Email Marketing and Website report on. Installs automatically when Social and
@@ -23,5 +23,5 @@ Short links only work when Odoo is reachable from the internet: tracking needs
 and the post form says why. Private replies are never shortened.
 
 Why separate from Social campaigns: the UTM campaign is a shared label used by
-many apps; the Social campaign is a publishing workflow (versions, schedule,
+many apps; the Social Marketing campaign is a publishing workflow (versions, schedule,
 approvals). They are linked, not merged.

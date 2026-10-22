@@ -1,5 +1,5 @@
 {
-    'name': 'Social: Home items',
+    'name': 'Social Marketing: Home items',
     'version': '20.0.1.0.0',
     'category': 'Marketing/Social Marketing',
     'summary': 'Show comments and messages to answer, and posts that need attention, on AI Home',

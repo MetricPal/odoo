@@ -8,9 +8,10 @@ Store durable decisions here as ADR-style markdown files.
 - [ADR 0008: Approval Center as the governed request kernel](0008-governed-request-kernel.md)
 - [ADR 0009: Department workflow managers](0009-department-workflow-managers.md)
 - [ADR 0010: Discord receives through a signed gateway relay](0010-discord-gateway-relay.md)
+- [ADR 0011: Messaging Marketing reuses Omnichannel sending](0011-messaging-marketing.md)
 
 Two records share the number 0005 (`0005-slack-teams-private-text.md` and
-`0005-workflow-automation.md`); use 0011 or later for new records.
+`0005-workflow-automation.md`); use 0012 or later for new records.
 
 Suggested format:
 - Context

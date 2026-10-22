@@ -1,4 +1,4 @@
-{'name': 'Social',
+{'name': 'Social Marketing',
  'version': '20.0.3.0.0',
  'summary': 'Review incoming social activity and publish approved content',
  'category': 'Marketing/Social Marketing',

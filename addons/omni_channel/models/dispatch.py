@@ -316,6 +316,38 @@ class OmniDispatchCommand(models.Model):
             )
         return super().action_cancel()
 
+    def _approval_targets_command(self, request):
+        """True when ``request`` is the review that approved this command.
+
+        Extension point: a module that approves many messages with one review
+        (a marketing mailing) returns True for its own reviewed messages. The
+        approver lines, policy and recipient checks below still apply.
+        """
+        return (
+            request.omni_command_id == self
+            and request.target_model == "omni.command"
+            and request.target_res_id == self.id
+        )
+
+    def _check_recipient_authorization(self):
+        """Explicit, current recipient grant. Extension point for other evidence models."""
+        if (
+            not self.env["omni.consent"]
+            .sudo()
+            .search_count(
+                [
+                    ("channel_id", "=", self.channel_id.id),
+                    ("namespace", "=", self.sender_id.namespace),
+                    ("recipient", "=", self.recipient),
+                    ("state", "=", "confirmed"),
+                    ("expires_at", ">", fields.Datetime.now()),
+                ],
+            )
+        ):
+            raise AccessError(
+                _("Current recipient authorization evidence is required."),
+            )
+
     def _check_dispatch_authorization(self):
         self.ensure_one()
         self._check_frozen()
@@ -323,9 +355,7 @@ class OmniDispatchCommand(models.Model):
         doc = self._policy_document()
         if (
             request.state != "approved"
-            or request.omni_command_id != self
-            or request.target_model != "omni.command"
-            or request.target_res_id != self.id
+            or not self._approval_targets_command(request)
             or request.company_id != self.company_id
             or request.requester_id != self.requester_id
         ):
@@ -343,22 +373,7 @@ class OmniDispatchCommand(models.Model):
         ):
             raise AccessError(_("Required approvals are missing."))
         # Explicit recipient grant is required even for an approved command.
-        if (
-            not self.env["omni.consent"]
-            .sudo()
-            .search_count(
-                [
-                    ("channel_id", "=", self.channel_id.id),
-                    ("namespace", "=", self.sender_id.namespace),
-                    ("recipient", "=", self.recipient),
-                    ("state", "=", "confirmed"),
-                    ("expires_at", ">", fields.Datetime.now()),
-                ],
-            )
-        ):
-            raise AccessError(
-                _("Current recipient authorization evidence is required."),
-            )
+        self._check_recipient_authorization()
 
     @api.model
     def _claim_next(self):

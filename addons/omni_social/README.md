@@ -1,4 +1,4 @@
-# Social
+# Social Marketing
 
 Incoming social activity and approved publishing, under the **Social** app
 menu (Activity, Publishing, Accounts). Install a connector such as

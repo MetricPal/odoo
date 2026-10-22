@@ -1,0 +1,288 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <!-- Contacts -->
+  <record id="contact_list" model="ir.ui.view">
+    <field name="name">mm.contact.list</field>
+    <field name="model">mm.contact</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="whatsapp"/>
+        <field name="whatsapp_status" widget="badge" decoration-success="whatsapp_status == 'opted_in'"
+               decoration-danger="whatsapp_status == 'opted_out'" decoration-muted="whatsapp_status == 'unknown'"/>
+        <field name="telegram_status" widget="badge" decoration-success="telegram_status == 'opted_in'"
+               decoration-danger="telegram_status == 'opted_out'" decoration-muted="telegram_status == 'unknown'"
+               optional="show"/>
+        <field name="list_ids" widget="many2many_tags" optional="show"/>
+        <field name="partner_id" optional="hide"/>
+        <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="contact_form" model="ir.ui.view">
+    <field name="name">mm.contact.form</field>
+    <field name="model">mm.contact</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_record_consent" type="object" string="Record opt-in or opt-out" class="btn-primary"
+                  invisible="not id"/>
+        </header>
+        <sheet>
+          <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+          <div class="oe_title"><h1><field name="name" placeholder="e.g. Aisha Rahman"/></h1></div>
+          <group>
+            <group string="WhatsApp">
+              <field name="whatsapp" placeholder="+60 12 345 6789"/>
+              <field name="whatsapp_status" string="Status" widget="badge" decoration-success="whatsapp_status == 'opted_in'"
+                     decoration-danger="whatsapp_status == 'opted_out'" decoration-muted="whatsapp_status == 'unknown'"/>
+              <div colspan="2" class="text-danger" invisible="not whatsapp_blacklisted">
+                <i class="oi" data-icon="block"/> This number is blacklisted: it never receives marketing.
+              </div>
+            </group>
+            <group string="Telegram">
+              <field name="telegram_chat" placeholder="Linked when the person starts your bot"/>
+              <field name="telegram_conversation_id" string="Conversation" invisible="not telegram_conversation_id"/>
+              <div colspan="2" class="text-muted small" invisible="telegram_chat">
+                People appear here after they message your bot: open the chat in Omnichannel and use
+                <em>Add to Messaging Marketing</em>.
+              </div>
+              <field name="telegram_status" string="Status" widget="badge" decoration-success="telegram_status == 'opted_in'"
+                     decoration-danger="telegram_status == 'opted_out'" decoration-muted="telegram_status == 'unknown'"/>
+              <div colspan="2" class="text-danger" invisible="not telegram_blacklisted">
+                <i class="oi" data-icon="block"/> This chat is blacklisted: it never receives marketing.
+              </div>
+            </group>
+            <group>
+              <field name="partner_id"/>
+              <field name="country_id" options="{'no_create': true}"/>
+              <field name="lang"/>
+            </group>
+            <group>
+              <field name="company_id" groups="base.group_multi_company" options="{'no_create': true}"/>
+              <field name="active" invisible="1"/>
+              <field name="whatsapp_blacklisted" invisible="1"/>
+              <field name="telegram_blacklisted" invisible="1"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Lists" name="lists">
+              <field name="subscription_ids">
+                <list editable="bottom">
+                  <field name="list_id" options="{'no_create': true}"/>
+                  <field name="opt_out" widget="boolean_toggle"/>
+                  <field name="left_at"/>
+                </list>
+              </field>
+            </page>
+            <page string="Opt-in history" name="consent">
+              <field name="consent_ids">
+                <list create="0" delete="0" decoration-success="action == 'opt_in'" decoration-danger="action == 'opt_out'">
+                  <field name="recorded_at"/>
+                  <field name="channel"/>
+                  <field name="action"/>
+                  <field name="source"/>
+                  <field name="evidence"/>
+                  <field name="recorded_by" widget="many2one_avatar_user"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+
+  <record id="contact_search" model="ir.ui.view">
+    <field name="name">mm.contact.search</field>
+    <field name="model">mm.contact</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name" filter_domain="['|', '|', ('name', 'ilike', self), ('whatsapp', 'ilike', self), ('partner_id', 'ilike', self)]"/>
+        <field name="list_ids"/>
+        <filter name="wa_in" string="WhatsApp opted in" domain="[('whatsapp_status', '=', 'opted_in')]"/>
+        <filter name="tg_in" string="Telegram opted in" domain="[('telegram_status', '=', 'opted_in')]"/>
+        <filter name="no_answer" string="No opt-in yet" domain="[('whatsapp_status', '=', 'unknown'), ('telegram_status', '=', 'unknown')]"/>
+        <filter name="opted_out" string="Opted out" domain="['|', ('whatsapp_status', '=', 'opted_out'), ('telegram_status', '=', 'opted_out')]"/>
+        <separator/>
+        <filter name="blacklisted" string="Blacklisted" domain="['|', ('whatsapp_blacklisted', '=', True), ('telegram_blacklisted', '=', True)]"/>
+        <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+        <group>
+          <filter name="by_wa" string="WhatsApp status" context="{'group_by': 'whatsapp_status'}"/>
+          <filter name="by_country" string="Country" context="{'group_by': 'country_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_contacts" model="ir.actions.act_window">
+    <field name="name">Contacts</field>
+    <field name="res_model">mm.contact</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Add the people you will message</p>
+      <p>Add them one by one or from your Contacts, then record how each person agreed to receive
+        marketing on WhatsApp or Telegram. Only people who opted in are ever sent a campaign.</p>
+    </field>
+  </record>
+  <record id="action_record_consent_server" model="ir.actions.server">
+    <field name="name">Record opt-in or opt-out</field>
+    <field name="model_id" ref="model_mm_contact"/>
+    <field name="binding_model_id" ref="model_mm_contact"/>
+    <field name="binding_view_types">list</field>
+    <field name="state">code</field>
+    <field name="code">action = records.action_record_consent()</field>
+  </record>
+
+  <!-- Lists -->
+  <record id="list_kanban" model="ir.ui.view">
+    <field name="name">mm.list.kanban</field>
+    <field name="model">mm.list</field>
+    <field name="arch" type="xml">
+      <kanban action="action_view_contacts" type="object">
+        <templates>
+          <t t-name="card">
+            <field name="name" class="fw-bold fs-5"/>
+            <field name="description" class="text-muted small"/>
+            <div class="d-flex gap-3 mt-2 small">
+              <span title="Contacts"><i class="oi" data-icon="group"/> <field name="contact_count"/></span>
+              <span title="Reachable on WhatsApp" class="text-success"><i class="oi" data-icon="oi_whatsapp"/> <field name="whatsapp_count"/></span>
+              <span title="Reachable on Telegram" class="text-info"><i class="oi" data-icon="oi_telegram"/> <field name="telegram_count"/></span>
+            </div>
+            <footer class="pt-1"><field name="purpose_id" class="small text-muted"/></footer>
+          </t>
+        </templates>
+      </kanban>
+    </field>
+  </record>
+  <record id="list_list" model="ir.ui.view">
+    <field name="name">mm.list.list</field>
+    <field name="model">mm.list</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="purpose_id"/>
+        <field name="contact_count"/>
+        <field name="whatsapp_count"/>
+        <field name="telegram_count"/>
+        <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+      </list>
+    </field>
+  </record>
+  <record id="list_form" model="ir.ui.view">
+    <field name="name">mm.list.form</field>
+    <field name="model">mm.list</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <div class="oe_button_box" name="button_box">
+            <button name="action_view_contacts" type="object" class="oe_stat_button" icon="group">
+              <field name="contact_count" widget="statinfo" string="Contacts"/>
+            </button>
+          </div>
+          <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+          <div class="oe_title"><h1><field name="name" placeholder="e.g. VIP customers"/></h1></div>
+          <group>
+            <group>
+              <field name="purpose_id" widget="radio" options="{'no_create': true}"/>
+              <field name="company_id" groups="base.group_multi_company" options="{'no_create': true}"/>
+              <field name="active" invisible="1"/>
+            </group>
+            <group>
+              <field name="whatsapp_count"/>
+              <field name="telegram_count"/>
+            </group>
+          </group>
+          <field name="description" placeholder="Who is in this list and what they signed up for"/>
+          <field name="subscription_ids">
+            <list editable="bottom">
+              <field name="contact_id" options="{'no_create': true}"/>
+              <field name="opt_out" widget="boolean_toggle"/>
+              <field name="left_at"/>
+            </list>
+          </field>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_lists" model="ir.actions.act_window">
+    <field name="name">Lists</field>
+    <field name="res_model">mm.list</field>
+    <field name="view_mode">kanban,list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Group your audience into lists</p>
+      <p>A list is who a campaign goes to. Each card shows how many members can be reached on each channel
+        right now: opted in and not blacklisted.</p>
+    </field>
+  </record>
+
+  <!-- Opt-in history -->
+  <record id="consent_list" model="ir.ui.view">
+    <field name="name">mm.consent.list</field>
+    <field name="model">mm.consent</field>
+    <field name="arch" type="xml">
+      <list create="0" edit="0" delete="0" decoration-success="action == 'opt_in'" decoration-danger="action == 'opt_out'">
+        <field name="recorded_at"/>
+        <field name="contact_id"/>
+        <field name="channel"/>
+        <field name="action"/>
+        <field name="source"/>
+        <field name="evidence"/>
+        <field name="recorded_by" widget="many2one_avatar_user"/>
+      </list>
+    </field>
+  </record>
+  <record id="consent_search" model="ir.ui.view">
+    <field name="name">mm.consent.search</field>
+    <field name="model">mm.consent</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="contact_id"/>
+        <field name="evidence"/>
+        <filter name="opt_in" string="Opt-ins" domain="[('action', '=', 'opt_in')]"/>
+        <filter name="opt_out" string="Opt-outs" domain="[('action', '=', 'opt_out')]"/>
+        <group>
+          <filter name="by_channel" string="Channel" context="{'group_by': 'channel'}"/>
+          <filter name="by_source" string="How" context="{'group_by': 'source'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="action_consents" model="ir.actions.act_window">
+    <field name="name">Opt-in history</field>
+    <field name="res_model">mm.consent</field>
+    <field name="view_mode">list</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_empty_folder">No opt-ins recorded yet</p>
+      <p>Every opt-in and opt-out is kept here as evidence: who recorded it, when, and how the person agreed.</p>
+    </field>
+  </record>
+
+  <!-- Blacklist -->
+  <record id="blacklist_list" model="ir.ui.view">
+    <field name="name">mm.blacklist.list</field>
+    <field name="model">mm.blacklist</field>
+    <field name="arch" type="xml">
+      <list editable="top">
+        <field name="channel"/>
+        <field name="address"/>
+        <field name="reason"/>
+        <field name="create_date" string="Added" readonly="1"/>
+        <field name="create_uid" string="By" readonly="1" widget="many2one_avatar_user"/>
+        <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+      </list>
+    </field>
+  </record>
+  <record id="action_blacklist" model="ir.actions.act_window">
+    <field name="name">Blacklist</field>
+    <field name="res_model">mm.blacklist</field>
+    <field name="view_mode">list</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">No blacklisted numbers</p>
+      <p>A blacklisted number or chat never receives marketing, whatever its opt-in says.
+        Only an administrator can remove an entry.</p>
+    </field>
+  </record>
+</odoo>

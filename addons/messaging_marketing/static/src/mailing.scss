@@ -1,0 +1,75 @@
+// Mailing form: audience summary and an approximate chat preview.
+.o_mm_mailing {
+    .o_mm_audience {
+        border: 1px solid $border-color;
+        border-left: 4px solid $o-action;
+        border-radius: .5rem;
+        padding: .75rem 1rem;
+        margin: 0 0 1rem;
+
+        .o_mm_audience_main { font-size: 1.05rem; }
+        .o_mm_audience_count { font-size: 1.6rem; font-weight: 700; color: $o-action; }
+    }
+    .o_mm_label { font-weight: 600; margin-bottom: .25rem; }
+    .o_mm_body textarea {
+        min-height: 9rem;
+        border: 1px solid $border-color;
+        border-radius: .5rem;
+        padding: .5rem .75rem;
+    }
+
+    .o_mm_phone {
+        max-width: 22rem;
+        margin: 0 auto;
+        border: 10px solid #1f2328;
+        border-radius: 2rem;
+        overflow: hidden;
+        background: #e9eef2;
+        box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .12);
+    }
+    .o_mm_phone_bar {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .6rem .8rem;
+        background: #2b5278;
+        color: #fff;
+        font-weight: 600;
+
+        .o_field_widget, a, span { color: #fff !important; }
+    }
+    .o_mm_phone_avatar {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .2);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .o_mm_phone_screen {
+        min-height: 18rem;
+        padding: 1rem .75rem;
+        background-image: radial-gradient(rgba(0, 0, 0, .04) 1px, transparent 1px);
+        background-size: 12px 12px;
+    }
+    .o_mm_bubble {
+        max-width: 88%;
+        background: #fff;
+        border-radius: .9rem .9rem .9rem .2rem;
+        padding: .55rem .75rem;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, .08);
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: .92rem;
+        color: #111;
+
+        .o_field_widget, span { white-space: pre-wrap; }
+    }
+    .o_mm_phone_empty {
+        color: $text-muted;
+        text-align: center;
+        margin-top: 6rem;
+        font-size: .9rem;
+    }
+}

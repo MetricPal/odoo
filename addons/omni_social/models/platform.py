@@ -471,7 +471,7 @@ class ChannelType(models.Model):
     _inherit = 'omni.channel.type'
 
     social_ready = fields.Boolean(
-        compute='_compute_social_ready', search='_search_social_ready', string='Connected in Social'
+        compute='_compute_social_ready', search='_search_social_ready', string='Connected in Social Marketing'
     )
 
     def _compute_social_ready(self):

@@ -10,6 +10,18 @@ from odoo.addons.omni_channel.providers.base import HealthResult
 from odoo.addons.omni_channel.providers.dispatch import DispatchResult
 from odoo.addons.omni_channel.providers.inbound import InboundEvent
 
+# Bot API 403 descriptions that concern one chat, not the bot's credentials.
+RECIPIENT_REFUSALS = (
+    "bot was blocked by the user",
+    "user is deactivated",
+    "bot can't initiate conversation with a user",
+)
+
+
+def recipient_refused(description):
+    text = description.lower() if isinstance(description, str) else ""
+    return any(phrase in text for phrase in RECIPIENT_REFUSALS)
+
 
 class TelegramAdapter:
     dispatch_supported = True
@@ -287,6 +299,12 @@ class TelegramAdapter:
                             retry_after=delay,
                             reason_code="rate_limited",
                         )
+                if result.status == 403 and recipient_refused(data.get("description")):
+                    # One person blocked the bot or closed their account: a refusal
+                    # for this chat only, not a broken bot token.
+                    return DispatchResult(
+                        "definitely_not_sent", reason_code="invalid_recipient",
+                    )
                 if result.status in (401, 403):
                     return DispatchResult(
                         "definitely_not_sent", reason_code="unauthorized",

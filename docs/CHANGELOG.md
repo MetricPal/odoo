@@ -9,6 +9,53 @@ Format:
 - affected areas
 - migration/compatibility notes
 
+
+## 2026-10-23 — Messaging Marketing: mailings, approval and sending
+
+- **Messaging Marketing 20.0.1.1.0**: mailings. Write one message with
+  `{first_name}`/`{name}`, choose lists, and see who can receive it now and
+  why others are excluded, a character counter, a chat-style preview and a
+  WhatsApp cost estimate. Submitting freezes text, channel and recipients for
+  one Approval Center review (the channel's approval type; never self-approved).
+  After approval it is queued right away or at the scheduled time; results per
+  recipient (sent, not sent with reason, skipped) and link clicks.
+- STOP replies on WhatsApp or Telegram record an opt-out automatically.
+  **Add to Messaging Marketing** on an Omnichannel conversation creates or
+  links the contact (Telegram mailings are sent in that bot conversation).
+- **Omnichannel**: `_check_dispatch_authorization` now calls two overridable
+  steps, `_approval_targets_command` and `_check_recipient_authorization`
+  (default behaviour unchanged), so one mailing review can authorize its
+  messages while every other dispatch check still runs (ADR 0011).
+- **Telegram**: a 403 for one chat (bot blocked, account deleted) is
+  `invalid_recipient`, no longer `unauthorized`; it no longer marks the
+  sender unhealthy.
+- Limits unchanged and documented: Telegram sends only to its sandbox
+  allowlist; WhatsApp cannot send yet.
+- Affected: messaging_marketing (new dependencies: approval_center,
+  link_tracker), omni_channel, omni_telegram. Upgrade those modules.
+
+## 2026-10-22 — Messaging Marketing: audience and opt-in
+
+- New app **Messaging Marketing** (`messaging_marketing`) for marketing over
+  WhatsApp and Telegram, next to Email, SMS and Social Marketing. First stage:
+  contacts (normalized WhatsApp numbers, linked Telegram chats), per-channel
+  opt-in recorded as immutable evidence, lists scoped to a communication
+  team, a blacklist, and adding contacts from Odoo Contacts without opting
+  them in.
+- Reason: Omnichannel is for conversations; campaigns need audience, consent
+  evidence and statistics like the other marketing apps, and must not message
+  people who did not agree.
+- Affected: new module only (depends on omni_channel, phone_validation, utm).
+- Compatibility: install the module; no changes to existing data.
+
+## 2026-10-22 — Social is now "Social Marketing"
+
+- The app (module `omni_social`, menu, Apps list) is named **Social Marketing**,
+  alongside Email Marketing and SMS Marketing. Bridge modules follow:
+  Social Marketing: AI drafts / Home items / campaign tracking. Home items,
+  the Omnichannel hint, scheduled jobs and docs use the new name. Technical
+  names (`omni_social`, `social_*`, models) are unchanged.
+
 ## 2026-10-22 — Workflow builder: branch lines, step help, preview dialog
 
 - Branches draw a stem from the branch step, a split into Yes and No, and a

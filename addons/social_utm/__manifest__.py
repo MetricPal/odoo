@@ -1,5 +1,5 @@
 {
-    'name': 'Social: campaign tracking',
+    'name': 'Social Marketing: campaign tracking',
     'version': '20.0.1.0.0',
     'category': 'Marketing/Social Marketing',
     'summary': 'Tie Social campaigns and posts to UTM campaigns and track their links',
