@@ -72,6 +72,37 @@ deliver a message. Run mode queues the active workflow for the worker.
 A workflow's configured actions and scope are its approved automation policy;
 an extra per-record approval step is optional.
 
+## Templates
+
+Templates are starting points. Built-in templates come with the app (read-only;
+archive them to hide them). **Save as template** on any workflow keeps a hidden
+copy that can be edited in the builder (**Edit template**) but never activated;
+starting from a template creates an independent draft that still needs a
+preview and activation. Templates are grouped by **What it does** (Reminders,
+Data updates, Create records, Scheduled, Integrations, Approvals, Other — one
+colour each) and by application. Settings administrators manage them.
+
+## Working from the lists
+
+My workflows (list and kanban) offers **Preview / run**, **Activate** (shown
+only when the current version has a successful preview and no setup issue;
+otherwise **Before activation** says what is missing), **Pause**, **Runs**,
+**Duplicate** and **Save as template**, with run and failure counts.
+
+**Run history** lists every run: live runs started by the trigger or by Run,
+and previews ("Preview only"). Open a run to see its steps, the current step,
+waits, errors and approvals, and to retry, skip or stop it.
+
+## Builder
+
+The step palette explains each step and shows an example on hover. A click
+adds the step after the selected step, or at the end of the main path (the
+hint above the palette says where); when the main path ends with a branch,
+select the step it should follow first, or drag it onto that step. Branches
+draw a split into Yes and No and a join where the paths continue together.
+The preview dialog asks for one existing record of the workflow's document
+(**Test on**); **Run now** is offered only while the workflow is active.
+
 ## Triggers and steps
 
 Triggers: record creation, watched-field changes, stage/status changes (watched

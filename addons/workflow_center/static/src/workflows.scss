@@ -36,10 +36,31 @@
     }
     .wf_connector { width: 2px; height: 24px; background: #d6ced3; }
     .wf_paths { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 16px; span { padding: 5px 9px; border-radius: 12px; background: #eef5f0; } }
-    .wf_branch_paths { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; width: 100%; border-top: 2px solid #d6ced3; margin-top: 22px;
-        > section { display: flex; flex-direction: column; align-items: center; min-width: 0; }
-        .wf_node { width: 100%; } .wf_path_label { margin: 16px 0; border-radius: 12px; padding: 4px 12px; font-size: 12px; background: #ddf2eb; }
+    // Branch: a stem from the branch step splits into Yes and No; paths that
+    // continue join again above the next shared step.
+    .wf_branch_paths { --wf-line: #d6ced3; --wf-gap: 24px;
+        position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--wf-gap); width: 100%;
+        &::before, &::after { content: ''; position: absolute; left: calc(50% - 1px); width: 2px; height: 14px; background: var(--wf-line); }
+        &::before { top: 0; }
+        &::after { bottom: 0; }
+        > section { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+        .wf_node { width: 100%; }
+        .wf_path_label { border-radius: 12px; padding: 4px 12px; font-size: 12px; background: #ddf2eb; }
         .wf_path_label.no { background: #fcf0d6; }
+        .wf_split, .wf_join { position: relative; display: block; width: 100%; flex-shrink: 0;
+            &::before, &::after { content: ''; position: absolute; background: var(--wf-line); }
+        }
+        .wf_split { height: 28px;
+            &::before { top: 13px; height: 2px; }                        // half of the split bar
+            &::after { top: 13px; bottom: 0; left: calc(50% - 1px); width: 2px; } // down to the Yes/No label
+        }
+        .wf_join { flex-grow: 1; min-height: 28px;
+            &::before { top: 0; bottom: 13px; left: calc(50% - 1px); width: 2px; } // down from the last step
+            &::after { bottom: 13px; height: 2px; }                     // half of the join bar
+        }
+        .wf_branch_yes { .wf_split::before, .wf_join::after { left: 50%; right: calc(var(--wf-gap) / -2); } }
+        .wf_branch_no { .wf_split::before, .wf_join::after { left: calc(var(--wf-gap) / -2); right: 50%; } }
+        > section > small { margin-top: 8px; }
     }
     .wf_unconnected { border-top: 1px solid #ddd; margin-top: 20px; padding-top: 20px; width: 100%; }
     .wf_end { display: inline-block; margin: 12px; border: 1px dashed #c9c1c6; border-radius: 20px; padding: 2px 10px; color: #777; font-size: 11px; }
@@ -55,7 +76,14 @@
     .wf_describe { padding-bottom: 24px; border-bottom: 1px solid #e3dfe1; }
 }
 
-@media (max-width: 600px) { .wf_editor_view .wf_branch_paths { grid-template-columns: 1fr; } .o_workflow_starter .wf_describe { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+    // Paths stack: keep the vertical lines, drop the horizontal bars.
+    .wf_editor_view .wf_branch_paths { grid-template-columns: 1fr;
+        .wf_split::before, .wf_join::after { display: none; }
+        &::after { display: none; }
+    }
+    .o_workflow_starter .wf_describe { grid-template-columns: 1fr; }
+}
 
 // The inspector shares its parent's scrollbar and uses the available sidebar width.
 .wf_step_inspector {
@@ -77,3 +105,23 @@
 .o_search_panel {
     width: var(--SearchPanel-width, 260px);
 }
+// Template categories: one colour each, the same as the list badges.
+@mixin wf-cat($color) { background-color: $color; color: color-contrast($color); }
+.wf_cat {
+    &.wf_cat_reminders { @include wf-cat($warning); }
+    &.wf_cat_data_updates { @include wf-cat($info); }
+    &.wf_cat_create_records { @include wf-cat($success); }
+    &.wf_cat_scheduled { @include wf-cat($primary); }
+    &.wf_cat_integrations { @include wf-cat($danger); }
+    &.wf_cat_approvals { @include wf-cat($gray-600); }
+    &.wf_cat_other { @include wf-cat($light); }
+    &.wf_cat_mine { background: transparent; color: $o-action; border: 1px solid $o-action; }
+}
+
+// Step palette: explanation under each step and a clear insertion point.
+.wf_palette {
+    .wf_palette_item { white-space: normal; line-height: 1.3; }
+    .wf_palette_help { margin-left: 1.6rem; }
+    .wf_insert_hint { border-left: 3px solid $o-action; background: rgba($o-action, .06); padding: .35rem .5rem; border-radius: .25rem; }
+}
+.wf_editor_view .wf_node.wf_drop_target { outline: 2px dashed $o-action; outline-offset: 3px; }

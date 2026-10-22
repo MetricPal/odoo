@@ -1,5 +1,6 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
+from odoo.addons.web.models.models import UnlinkBlockedError
 
 from .common import approval_internal, approval_token_present
 
@@ -158,9 +159,22 @@ class ApprovalCenterRequest(models.Model):
 
     def unlink(self):
         if not self.env.su:
-            for request in self:
-                if request.state != 'to_submit' or request.sudo().audit_ids:
-                    raise UserError(_('Requests with review history are kept for the audit trail. Archive it instead.'))
+            # Drafts that never went to review can be deleted; the rest is audit trail.
+            blocked = self.filtered(lambda request: request.state != 'to_submit' or request.sudo().audit_ids)
+            if blocked:
+                # Same error as a record still in use: the web client offers "Archive" right away.
+                error = UnlinkBlockedError(_(
+                    'Requests that went to review are kept for the audit trail. Archive them instead: '
+                    'they disappear from the lists and can be found with the Archived filter.'
+                ))
+                error.context = {
+                    'archivable': True,
+                    'model_name': _('the approval history (audit trail)'),
+                    'res_model': self._name,
+                    'res_ids': self.ids,
+                    'blocked_ids': blocked.ids,
+                }
+                raise error
         return super().unlink()
 
     # ------------------------------------------------------------------

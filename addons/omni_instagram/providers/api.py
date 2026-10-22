@@ -68,6 +68,8 @@ class Adapter:
         message_limit=1000,
         media_kinds=('image', 'video'),
         max_media=10,
+        format_media={'standard': (1, 1, ('image',)), 'carousel': (2, 10, ('image', 'video')),
+                      'reel': (1, 1, ('video',)), 'story': (1, 1, ('image', 'video'))},
         media_required=True,
         needs_public_url=True,
         oauth=OAuth(

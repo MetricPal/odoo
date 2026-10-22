@@ -223,3 +223,24 @@ class TestApprovalGovernance(TransactionCase):
         visible = self.env['approval.center.request'].with_user(self.manager).with_context(
             allowed_company_ids=[self.env.company.id]).search([('id', '=', request.id)])
         self.assertFalse(visible)
+
+    def test_delete_offers_archive_for_requests_and_types(self):
+        """Requests that went to review and their type cannot be deleted; both can be archived."""
+        from odoo.addons.web.models.models import UnlinkBlockedError
+        draft = self._request()
+        request = self._submitted()
+        request.with_user(self.requester).action_cancel()  # back to "To Submit", history kept
+        both = (draft | request).with_user(self.requester)
+        with self.assertRaises(UnlinkBlockedError) as caught:
+            both.unlink()
+        context = caught.exception.context
+        self.assertTrue(context['archivable'])
+        self.assertEqual(context['res_ids'], both.ids)
+        self.assertEqual(context['blocked_ids'], request.ids)
+        both.action_archive()  # what the dialog's Archive button does
+        self.assertFalse(both.exists().filtered('active'))
+        self.assertFalse(self.env['approval.center.request'].search([('policy_id', '=', self.policy.id)]))
+        policy = self.policy.with_user(self.manager)
+        policy.action_archive()
+        self.assertFalse(policy.active)
+        self.assertNotIn(policy, self.env['approval.center.policy'].search([]))

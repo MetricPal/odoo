@@ -62,6 +62,7 @@ class Adapter:
         text_limit=3000,
         media_kinds=('image',),
         max_media=20,
+        format_media={'standard': (0, 20, ('image',)), 'carousel': (2, 20, ('image',))},
         upload_bytes=True,
         account_kinds=('organization', 'person'),
         oauth=OAuth(

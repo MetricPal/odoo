@@ -1,0 +1,556 @@
+// Post editor: choice cards, text counter, media drop zone, live preview.
+
+.o_social_cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: .5rem;
+    width: 100%;
+}
+
+.o_social_card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: 0;
+    padding: .65rem .75rem;
+    border: 1px solid $border-color;
+    border-radius: .5rem;
+    background: $o-view-background-color;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+
+    &:hover:not(.o_readonly) {
+        border-color: $o-action;
+    }
+    &:focus-within {
+        box-shadow: 0 0 0 .2rem rgba($o-action, .25);
+    }
+    &.o_selected {
+        border-color: $o-action;
+        box-shadow: inset 0 0 0 1px $o-action;
+        background: rgba($o-action, .05);
+    }
+    &.o_readonly {
+        cursor: default;
+    }
+}
+
+.o_social_card_text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.o_social_card_title {
+    font-weight: 600;
+}
+.o_social_card_help {
+    color: $text-muted;
+    font-size: .85em;
+    line-height: 1.3;
+}
+
+// Choice cards stack the picture above the text.
+.o_social_choices {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+
+    .o_social_choice {
+        flex-direction: column;
+        align-items: flex-start;
+        padding-top: .5rem;
+    }
+}
+
+.o_social_check {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 1.5px solid $border-color;
+    border-radius: 50%;
+
+    .o_selected & {
+        border: .35rem solid $o-action;
+    }
+}
+
+.o_social_art {
+    width: 64px;
+    height: 48px;
+
+    .o_art_frame { fill: none; stroke: $gray-500; stroke-width: 1.5; }
+    .o_art_back { opacity: .45; }
+    .o_art_mid { opacity: .7; }
+    .o_art_fill { fill: rgba($o-action, .15); }
+    .o_art_accent { fill: $o-action; }
+    .o_art_line { fill: $gray-400; }
+    .o_art_stroke { fill: none; stroke: $gray-500; stroke-width: 1.5; }
+    .o_art_ring { fill: none; stroke: $o-action; stroke-width: 1.5; }
+
+    .o_selected & .o_art_frame { stroke: $o-action; }
+}
+
+// Platform marks: brand colors on a rounded tile.
+.o_social_brand {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: .5rem;
+    color: #fff;
+    background: $gray-600;
+    font-size: 1.15rem;
+
+    &.o_brand_instagram { background: linear-gradient(45deg, #f09433, #dc2743 50%, #bc1888); }
+    &.o_brand_facebook { background: #1877f2; }
+    &.o_brand_linkedin { background: #0a66c2; }
+    &.o_brand_x, &.o_brand_threads, &.o_brand_tiktok { background: #000; }
+    &.o_brand_youtube { background: #f00; }
+    &.o_brand_pinterest { background: #e60023; }
+    &.o_brand_discord { background: #5865f2; }
+}
+
+// Text box with a live character count.
+.o_social_text {
+    position: relative;
+
+    textarea {
+        min-height: 7rem;
+        padding-bottom: 1.5rem;
+        resize: vertical;
+    }
+}
+.o_social_counter {
+    position: absolute;
+    right: .25rem;
+    bottom: .25rem;
+    font-size: .8em;
+    color: $text-muted;
+    background: $o-view-background-color;
+    padding: 0 .25rem;
+    pointer-events: none;
+}
+
+// Drop zone and thumbnails.
+.o_social_media {
+    width: 100%;
+}
+.o_social_drop {
+    border: 2px dashed $border-color;
+    border-radius: .5rem;
+    padding: 1rem;
+    text-align: center;
+    background: $o-view-background-color;
+    transition: border-color .15s, background .15s;
+
+    &.o_dragging {
+        border-color: $o-action;
+        background: rgba($o-action, .06);
+    }
+    &.o_full {
+        opacity: .75;
+    }
+}
+.o_social_drop_icon {
+    font-size: 2rem;
+    color: $o-action;
+}
+.o_social_rules {
+    margin-top: .5rem;
+    font-size: .85em;
+    color: $text-muted;
+}
+
+.o_social_thumbs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: .5rem;
+    margin-top: .75rem;
+}
+.o_social_thumb {
+    border: 1px solid $border-color;
+    border-radius: .5rem;
+    overflow: hidden;
+    background: $o-view-background-color;
+}
+.o_social_thumb_media {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background: $gray-200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img, video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+.o_social_thumb_index, .o_social_thumb_kind {
+    position: absolute;
+    top: .35rem;
+    padding: 0 .4rem;
+    border-radius: 1rem;
+    background: rgba(0, 0, 0, .6);
+    color: #fff;
+    font-size: .75em;
+}
+.o_social_thumb_index { left: .35rem; }
+.o_social_thumb_kind { right: .35rem; }
+.o_social_thumb_info {
+    padding: .35rem .5rem 0;
+    min-width: 0;
+}
+.o_social_thumb_actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+// ---------------------------------------------------------------- preview
+
+.o_social_preview {
+    position: sticky;
+    top: 1rem;
+}
+.o_social_preview_head {
+    margin-bottom: .5rem;
+}
+.o_social_preview_empty {
+    border: 1px dashed $border-color;
+    border-radius: .75rem;
+    padding: 2.5rem 1rem;
+    text-align: center;
+}
+
+// Mockups use the platforms' light look whatever the Odoo theme.
+.o_pv_device {
+    max-width: 400px;
+    margin: 0 auto;
+    color: #0f1419;
+    font-size: 14px;
+    line-height: 1.4;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    .text-muted { color: #65676b !important; }
+}
+.o_pv_card, .o_pv_pin {
+    background: #fff;
+    border: 1px solid #dbdbdb;
+    border-radius: .75rem;
+    overflow: hidden;
+}
+.o_pv_header {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .65rem .75rem;
+}
+.o_pv_header_inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+}
+.o_pv_avatar {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: $o-action;
+    color: #fff;
+    font-weight: 700;
+}
+.o_pv_avatar_sm {
+    width: 28px;
+    height: 28px;
+    font-size: .8em;
+}
+.o_pv_square_avatar { border-radius: .35rem; }
+.o_pv_other { background: #8a8d91; }
+.o_pv_ring {
+    width: 34px;
+    height: 34px;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #dc2743;
+}
+.o_pv_body {
+    padding: .5rem .75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.o_pv_meta { padding: 0 .75rem .65rem; }
+.o_pv_more_link {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: #65676b;
+    font-weight: 600;
+}
+.o_pv_actions {
+    display: flex;
+    gap: 1rem;
+    padding: .5rem .75rem;
+    font-size: 1.35rem;
+
+    &.o_pv_actions_spread {
+        justify-content: space-between;
+        font-size: 1rem;
+    }
+}
+
+.o_pv_slides {
+    position: relative;
+    background: #000;
+    aspect-ratio: 4 / 5;
+
+    &.o_pv_square { aspect-ratio: 1 / 1; }
+    img, video { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+.o_pv_counter {
+    position: absolute;
+    top: .6rem;
+    right: .6rem;
+    padding: .1rem .5rem;
+    border-radius: 1rem;
+    background: rgba(0, 0, 0, .65);
+    color: #fff;
+    font-size: .8em;
+}
+.o_pv_nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .85);
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.o_pv_prev { left: .5rem; }
+.o_pv_next { right: .5rem; }
+.o_pv_dots {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding-top: .5rem;
+
+    span { width: 6px; height: 6px; border-radius: 50%; background: #c7c7c7; }
+    .o_active { background: #0095f6; }
+}
+
+.o_pv_grid {
+    display: grid;
+    gap: 2px;
+    grid-template-columns: 1fr 1fr;
+    aspect-ratio: 16 / 10;
+    background: #fff;
+
+    &.o_pv_grid_1 { grid-template-columns: 1fr; aspect-ratio: auto; }
+    &.o_pv_grid_3 .o_pv_cell:first-child { grid-row: span 2; }
+}
+.o_pv_side .o_pv_grid {
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 1px solid #e1e8ed;
+    margin-top: .5rem;
+}
+.o_pv_cell {
+    position: relative;
+    overflow: hidden;
+    background: #000;
+    min-height: 0;
+
+    img, video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .o_pv_grid_1 & img, .o_pv_grid_1 & video { height: auto; max-height: 480px; object-fit: contain; }
+}
+.o_pv_more {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .5);
+    color: #fff;
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.o_pv_placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem;
+    min-height: 160px;
+    color: #8a8d91;
+    background: #f0f2f5;
+    text-align: center;
+    padding: 1rem;
+
+    .oi { font-size: 2rem; }
+    &.o_pv_square { aspect-ratio: 1 / 1; }
+    &.o_pv_tall { aspect-ratio: 2 / 3; }
+}
+
+// X / Threads layout
+.o_pv_side {
+    display: flex;
+    gap: .65rem;
+    padding: .75rem;
+}
+.o_pv_side_main { flex: 1; min-width: 0; }
+.o_pv_threads .o_pv_slides { border-radius: .5rem; overflow: hidden; margin-top: .5rem; }
+
+// YouTube
+.o_pv_video {
+    aspect-ratio: 16 / 9;
+    background: #000;
+
+    video { width: 100%; height: 100%; }
+    .o_pv_placeholder { height: 100%; }
+}
+.o_pv_yt_title { font-size: 1.05rem; font-weight: 700; margin-bottom: .25rem; }
+.o_pv_description {
+    background: #f2f2f2;
+    border-radius: .5rem;
+    padding: .5rem .65rem;
+    font-size: .9em;
+}
+
+// Pinterest
+.o_pv_pin {
+    max-width: 260px;
+    margin: 0 auto;
+    border: 0;
+    border-radius: 1rem;
+
+    .o_pv_slides { aspect-ratio: auto; border-radius: 1rem; overflow: hidden; }
+    .o_pv_slides img { height: auto; }
+}
+.o_pv_pin_title { font-weight: 700; }
+
+// Vertical formats
+.o_pv_vertical {
+    position: relative;
+    max-width: 280px;
+    margin: 0 auto;
+    aspect-ratio: 9 / 16;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #111;
+    color: #fff;
+
+    > img, > video { width: 100%; height: 100%; object-fit: cover; }
+    .o_pv_placeholder { height: 100%; background: #222; color: #aaa; }
+    .text-muted { color: rgba(255, 255, 255, .7) !important; }
+}
+.o_pv_rail {
+    position: absolute;
+    right: .5rem;
+    bottom: 5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.5rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+}
+.o_pv_caption {
+    position: absolute;
+    left: .75rem;
+    right: 3.5rem;
+    bottom: .75rem;
+    white-space: pre-wrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .7);
+
+    .o_pv_more_link { color: #fff; }
+}
+.o_pv_story_top {
+    position: absolute;
+    top: .5rem;
+    left: .5rem;
+    right: .5rem;
+}
+.o_pv_bars {
+    display: flex;
+    gap: 3px;
+
+    span { flex: 1; height: 2px; background: rgba(255, 255, 255, .6); border-radius: 1px; }
+    span:first-child { background: #fff; }
+}
+.o_pv_story_user {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .5rem;
+    font-weight: 600;
+    font-size: .85em;
+}
+
+// Replies
+.o_pv_thread { padding: .75rem; }
+.o_pv_comment {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: .5rem;
+
+    &.o_pv_nested { margin-left: 2.25rem; }
+}
+.o_pv_bubble {
+    background: #f0f2f5;
+    border-radius: 1rem;
+    padding: .4rem .75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    &.o_pv_mine { background: rgba($o-action, .12); }
+}
+.o_pv_private .o_pv_bubble.o_pv_mine {
+    background: #0084ff;
+    color: #fff;
+}
+.o_pv_thread .o_pv_meta { padding: 0; }
+
+// Two-column editor: preview beside the form on wide screens, below on phones.
+.o_social_composer {
+    .o_social_section_label {
+        font-weight: 600;
+        margin: 1rem 0 .4rem;
+    }
+}
+@include media-breakpoint-down(lg) {
+    .o_social_preview { position: static; margin-top: 1.5rem; }
+}
+
+// Field wrappers default to inline sizing; these editors use the full column.
+.o_field_social_account_cards, .o_field_social_choice_cards, .o_field_social_media_drop, .o_field_social_text {
+    display: block;
+    width: 100%;
+}
+
+.o_social_text textarea.o_input {
+    border: 1px solid $border-color;
+    border-radius: .5rem;
+    padding: .5rem .75rem 1.5rem;
+
+    &:focus {
+        border-color: $o-action;
+    }
+}
+
+.o_social_thumb.o_problem {
+    border-color: $danger;
+
+    .o_social_thumb_media { opacity: .45; }
+}
+.o_social_problem { padding: 0 .5rem; }
+.o_pv_vertical .o_pv_counter { top: 2.5rem; }

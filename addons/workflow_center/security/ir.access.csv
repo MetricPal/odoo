@@ -5,4 +5,5 @@ run_admin,Workflow run administrators,model_workflow_run,base.group_system,cru
 log_admin,Workflow history administrators,model_workflow_run_log,base.group_system,cr
 test_admin,Workflow tests,model_workflow_test,base.group_system,crud
 value_admin,Workflow field mappings,model_workflow_value,base.group_system,crud
-template_admin,Workflow template readers,model_workflow_template,base.group_system,r
+template_admin,Workflow templates,model_workflow_template,base.group_system,crud
+template_save_admin,Save workflow templates,model_workflow_template_save,base.group_system,crud

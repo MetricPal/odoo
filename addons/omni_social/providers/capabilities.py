@@ -9,6 +9,13 @@ from dataclasses import dataclass, field, asdict
 from types import MappingProxyType
 
 OPERATIONS = ('post', 'reply', 'message')
+# Files Odoo itself accepts (checked again when the post is submitted).
+PHOTO_BYTES = 8 * 1024 * 1024
+PHOTO_PIXELS = 24_000_000
+VIDEO_BYTES = 64 * 1024 * 1024
+VIDEO_SECONDS = (3, 900)
+VIDEO_WIDTH = 1920
+SHORT_VIDEO_SECONDS = 60  # stories and carousel videos
 OPERATION_LABELS = {'post': 'posts', 'reply': 'replies', 'message': 'private replies'}
 
 
@@ -34,6 +41,7 @@ class Capabilities:
     formats: tuple = ('standard',)
     text_limit: int = 2200
     message_limit: int = 0  # 0 = text_limit
+    reply_limit: int = 0  # 0 = text_limit
     media_kinds: tuple = ('image',)
     max_media: int = 1
     media_required: bool = False
@@ -55,6 +63,21 @@ class Capabilities:
     account_label: str = ''
     # Account kinds for which that identifier is required; empty = optional for all.
     account_required_for: tuple = ()
+    # Media per format: {format: (minimum, maximum, kinds)}. Missing formats use
+    # media_required / max_media / media_kinds.
+    format_media: dict = field(default_factory=dict)
+    # Largest photo the platform takes, when it is below Odoo's own limit.
+    photo_bytes: int = 0
+
+    def media_rule(self, fmt='standard'):
+        """(minimum, maximum, kinds) of files for a post in this format."""
+        if fmt in self.format_media:
+            low, high, kinds = self.format_media[fmt]
+            return max(low, 1 if self.media_required else 0), high, tuple(kinds)
+        return (1 if self.media_required else 0), self.max_media, tuple(self.media_kinds)
+
+    def photo_limit(self):
+        return min(self.photo_bytes or PHOTO_BYTES, PHOTO_BYTES)
 
     def asks_account(self, kind):
         if not self.account_label:
@@ -64,6 +87,8 @@ class Capabilities:
     def limit_for(self, operation):
         if operation == 'message' and self.message_limit:
             return self.message_limit
+        if operation == 'reply' and self.reply_limit:
+            return self.reply_limit
         return self.text_limit
 
     def paid(self):

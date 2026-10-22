@@ -27,6 +27,10 @@ something.
 | 9 | Webhooks: enter the app secret, register the callback | A new comment arrives within a minute without Sync |
 | 10 | Wait past the token expiry (or revoke and sign in again) | Publishing still works after refresh, or asks to sign in again |
 
+With campaign tracking (social_utm, public HTTPS `web.base.url`): a post with a
+link shows a `/r/` short link after submitting; the approval lists its
+destination; opening it from a phone counts a click under **Link clicks**.
+
 Facebook also: 2–10 photos in one post, a video, a reply to a comment.
 Threads also: a carousel, a video (waits for processing), the 250-a-day counter.
 Pinterest: checks 3, 6 and 9 do not apply (no comments API); also a 3-image Pin with a link.

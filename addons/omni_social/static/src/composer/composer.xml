@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<!-- Small illustrations for the choice cards (generic shapes, no platform artwork). -->
+<t t-name="omni_social.Art">
+  <svg t-if="value === 'post' or value === 'standard'" class="o_social_art" viewBox="0 0 64 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <rect x="14" y="4" width="36" height="40" rx="4" class="o_art_frame"/>
+      <rect x="18" y="8" width="28" height="18" rx="2" class="o_art_fill"/>
+      <path d="M20 24l7-8 5 5 4-4 8 7z" class="o_art_accent"/>
+      <rect x="18" y="30" width="22" height="3" rx="1.5" class="o_art_line"/>
+      <rect x="18" y="36" width="15" height="3" rx="1.5" class="o_art_line"/>
+    </svg>
+  <svg t-elif="value === 'reply'" class="o_social_art" viewBox="0 0 64 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="6" width="34" height="18" rx="6" class="o_art_frame"/>
+      <rect x="11" y="12" width="20" height="3" rx="1.5" class="o_art_line"/>
+      <path d="M14 24v6l6-6" class="o_art_frame"/>
+      <rect x="24" y="24" width="34" height="18" rx="6" class="o_art_fill"/>
+      <rect x="29" y="30" width="20" height="3" rx="1.5" class="o_art_accent"/>
+      <path d="M50 42v5l-6-5" class="o_art_fill"/>
+    </svg>
+  <svg t-elif="value === 'message'" class="o_social_art" viewBox="0 0 64 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="10" width="40" height="28" rx="4" class="o_art_frame"/>
+      <path d="M8 14l20 14 20-14" class="o_art_stroke"/>
+      <rect x="40" y="26" width="16" height="14" rx="3" class="o_art_fill"/>
+      <path d="M44 26v-3a4 4 0 0 1 8 0v3" class="o_art_stroke"/>
+      <circle cx="48" cy="33" r="2" class="o_art_accent"/>
+    </svg>
+  <svg t-elif="value === 'carousel'" class="o_social_art" viewBox="0 0 64 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <rect x="22" y="6" width="28" height="32" rx="3" class="o_art_frame o_art_back"/>
+      <rect x="18" y="8" width="28" height="32" rx="3" class="o_art_frame o_art_mid"/>
+      <rect x="14" y="10" width="28" height="32" rx="3" class="o_art_fill"/>
+      <path d="M17 36l7-9 5 5 4-4 6 8z" class="o_art_accent"/>
+      <circle cx="24" cy="46" r="1.6" class="o_art_accent"/>
+      <circle cx="30" cy="46" r="1.6" class="o_art_line"/>
+      <circle cx="36" cy="46" r="1.6" class="o_art_line"/>
+    </svg>
+  <svg t-elif="value === 'reel'" class="o_social_art" viewBox="0 0 64 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="2" width="24" height="44" rx="4" class="o_art_frame"/>
+      <rect x="23" y="6" width="18" height="36" rx="2" class="o_art_fill"/>
+      <path d="M29 18v12l10-6z" class="o_art_accent"/>
+    </svg>
+  <svg t-elif="value === 'story'" class="o_social_art" viewBox="0 0 64 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="2" width="24" height="44" rx="4" class="o_art_frame"/>
+      <rect x="23" y="6" width="18" height="36" rx="2" class="o_art_fill"/>
+      <rect x="24" y="8" width="7" height="1.6" rx=".8" class="o_art_accent"/>
+      <rect x="33" y="8" width="7" height="1.6" rx=".8" class="o_art_line"/>
+      <circle cx="27" cy="14" r="3" class="o_art_ring"/>
+      <rect x="26" y="34" width="12" height="4" rx="2" class="o_art_line"/>
+    </svg>
+</t>
+
+<t t-name="omni_social.AccountCards">
+  <div class="o_social_accounts">
+    <input t-if="!this.props.readonly and this.accounts.data.length > 6" type="search"
+           class="form-control mb-2 o_social_account_filter" placeholder="Find an account"
+           t-att-value="this.state.filter" t-on-input="(ev) => { this.state.filter = ev.target.value; }"/>
+    <div class="o_social_cards" role="radiogroup" aria-label="Account">
+      <label t-foreach="this.items" t-as="account" t-key="account.id"
+             class="o_social_card o_social_account_card"
+             t-att-class="{ 'o_selected': account.id === this.value?.id, 'o_readonly': this.props.readonly }">
+        <input type="radio" class="visually-hidden" t-att-name="this.props.id + '_account'"
+               t-att-checked="account.id === this.value?.id" t-att-disabled="this.props.readonly"
+               t-on-change="() => this.select(account)"/>
+        <span class="o_social_brand" t-att-class="'o_brand_' + account.provider">
+          <i class="oi" t-att-data-icon="this.icon(account.provider)"/>
+        </span>
+        <span class="o_social_card_text">
+          <span class="o_social_card_title" t-out="account.display_name"/>
+          <span t-if="account.profile_name" class="o_social_card_help" t-out="account.profile_name"/>
+        </span>
+      </label>
+    </div>
+    <div t-if="!this.items.length and !this.props.readonly" class="text-muted">
+      No connected account yet. Connect one under <strong>Accounts</strong>.
+    </div>
+  </div>
+</t>
+
+<t t-name="omni_social.ChoiceCards">
+  <div class="o_social_cards o_social_choices" role="radiogroup">
+    <label t-foreach="this.visibleOptions" t-as="option" t-key="option.value"
+           class="o_social_card o_social_choice"
+           t-att-class="{ 'o_selected': option.value === this.value, 'o_readonly': this.props.readonly }"
+           t-att-data-value="option.value">
+      <input type="radio" class="visually-hidden" t-att-name="this.props.id + '_' + this.props.name"
+             t-att-checked="option.value === this.value" t-att-disabled="this.props.readonly"
+             t-on-change="() => this.select(option.value)"/>
+      <t t-call="omni_social.Art" value="option.value"/>
+      <span class="o_social_card_text">
+        <span class="o_social_card_title" t-out="option.label"/>
+        <span t-if="option.description" class="o_social_card_help" t-out="option.description"/>
+      </span>
+      <span class="o_social_check" aria-hidden="true"/>
+    </label>
+  </div>
+</t>
+
+<t t-name="omni_social.TextField">
+  <t t-if="this.props.readonly">
+    <span class="o_social_readonly_text" t-out="this.value"/>
+  </t>
+  <t t-else="">
+    <div class="o_social_text w-100">
+      <textarea class="o_input" t-att-id="this.props.id"
+                t-att-placeholder="this.placeholderText" t-att-rows="this.rowCount"
+                t-ref="this.textareaRef" t-on-blur="this.onBlur" t-on-input="this.onTyping"/>
+      <div t-if="this.limit" class="o_social_counter" t-att-class="{ 'text-danger fw-bold': this.over }" aria-live="polite">
+        <t t-out="this.count.toLocaleString()"/> / <t t-out="this.limit.toLocaleString()"/>
+      </div>
+    </div>
+  </t>
+</t>
+
+<t t-name="omni_social.TitleHint">
+  <div t-if="this.title.limit" class="o_social_title_hint text-muted small">
+    <t t-out="this.title.hint"/>
+    <span class="ms-2" t-att-class="{ 'text-danger fw-bold': this.count > this.title.limit }">
+      <t t-out="this.count"/> / <t t-out="this.title.limit"/>
+    </span>
+  </div>
+</t>
+
+<t t-name="omni_social.MediaDrop">
+  <div class="o_social_media">
+    <div t-if="!this.props.readonly and this.rules.max" class="o_social_drop"
+         t-att-class="{ 'o_dragging': this.state.dragging, 'o_full': this.full }"
+         t-on-dragover="this.onDragOver" t-on-dragleave="this.onDragLeave" t-on-drop="this.onDrop">
+      <input type="file" class="d-none" t-ref="this.inputRef" t-att-accept="this.rules.accept"
+             t-att-multiple="this.rules.max > 1" t-on-change="this.onPick"/>
+      <i class="oi o_social_drop_icon" data-icon="cloud_upload"/>
+      <div t-if="this.state.busy" class="fw-bold">Preparing files…</div>
+      <div t-elif="this.full" class="fw-bold"><t t-out="this.fullLabel"/></div>
+      <div t-else="">
+        <span class="fw-bold">Drag <t t-out="this.kindsLabel"/> here</span> or
+        <button type="button" class="btn btn-link p-0 align-baseline o_social_browse" t-on-click="this.browse">choose files</button>
+      </div>
+      <ul class="o_social_rules list-unstyled mb-0">
+        <li t-foreach="this.rules.rules" t-as="rule" t-key="rule_index" t-out="rule"/>
+      </ul>
+    </div>
+    <div t-if="this.problems and !this.props.readonly" class="alert alert-warning mt-2 mb-0" role="status">
+      Remove the marked files: this account or format does not take them, and the post cannot be submitted with them.
+    </div>
+    <div t-if="this.state.errors.length" class="alert alert-warning mt-2 mb-0 o_social_media_errors" role="alert">
+      <div t-foreach="this.state.errors" t-as="error" t-key="error_index" t-out="error"/>
+    </div>
+    <div t-if="this.items.length" class="o_social_thumbs">
+      <div t-foreach="this.items" t-as="item" t-key="item.id" class="o_social_thumb" t-att-class="{ 'o_problem': item.problem }">
+        <div class="o_social_thumb_media">
+          <video t-if="item.kind === 'video' and item.url" t-att-src="item.url" muted="1" preload="metadata"/>
+          <img t-elif="item.url" t-att-src="item.url" t-att-alt="item.name"/>
+          <i t-else="" class="oi" t-att-data-icon="item.kind === 'video' ? 'videocam' : 'image'"/>
+          <span class="o_social_thumb_index" t-out="item_index + 1"/>
+          <span t-if="item.kind === 'video'" class="o_social_thumb_kind"><i class="oi" data-icon="play_arrow"/> <t t-out="this.length(item)"/></span>
+        </div>
+        <div class="o_social_thumb_info">
+          <div class="text-truncate fw-bold" t-att-title="item.name" t-out="item.name"/>
+          <div class="text-muted small">
+            <t t-out="this.info(item)"/>
+            <span t-if="item.converted" class="ms-1">· converted to JPEG</span>
+          </div>
+          <div t-if="item.problem" class="text-danger small fw-bold o_social_problem"><i class="oi" data-icon="warning"/> <t t-out="item.problem"/></div>
+        </div>
+        <div t-if="!this.props.readonly" class="o_social_thumb_actions">
+          <button type="button" class="btn btn-sm btn-link" title="Move earlier" t-att-disabled="item_first" t-on-click="() => this.move(item, -1)"><i class="oi" data-icon="chevron_left"/></button>
+          <button type="button" class="btn btn-sm btn-link" title="Move later" t-att-disabled="item_last" t-on-click="() => this.move(item, 1)"><i class="oi" data-icon="chevron_right"/></button>
+          <button type="button" class="btn btn-sm btn-link text-danger o_social_remove" title="Remove" t-on-click="() => this.remove(item)"><i class="oi" data-icon="delete"/></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</t>
+
+<!-- Media block used by most mockups. -->
+<t t-name="omni_social.PreviewMedia">
+  <t t-if="this.media.length">
+    <div t-if="mode === 'slides'" class="o_pv_slides" t-att-class="{ 'o_pv_square': square }">
+      <video t-if="this.slide.kind === 'video'" t-att-src="this.slide.url" muted="1" controls="1" preload="metadata"/>
+      <img t-else="" t-att-src="this.slide.url" t-att-alt="this.slide.name"/>
+      <t t-if="this.media.length > 1">
+        <span class="o_pv_counter"><t t-out="Math.min(this.state.slide, this.media.length - 1) + 1"/>/<t t-out="this.media.length"/></span>
+        <button type="button" class="o_pv_nav o_pv_prev" title="Previous" t-on-click="() => this.step(-1)"><i class="oi" data-icon="chevron_left"/></button>
+        <button type="button" class="o_pv_nav o_pv_next" title="Next" t-on-click="() => this.step(1)"><i class="oi" data-icon="chevron_right"/></button>
+      </t>
+    </div>
+    <div t-if="mode === 'slides' and this.media.length > 1" class="o_pv_dots">
+      <span t-foreach="this.media" t-as="m" t-key="m.id" t-att-class="{ 'o_active': m_index === Math.min(this.state.slide, this.media.length - 1) }"/>
+    </div>
+    <div t-if="mode === 'grid'" class="o_pv_grid" t-att-class="'o_pv_grid_' + this.grid.count">
+      <div t-foreach="this.grid.shown" t-as="m" t-key="m.id" class="o_pv_cell">
+        <video t-if="m.kind === 'video'" t-att-src="m.url" muted="1" preload="metadata"/>
+        <img t-else="" t-att-src="m.url" t-att-alt="m.name"/>
+        <span t-if="m_last and this.grid.extra" class="o_pv_more">+<t t-out="this.grid.extra"/></span>
+      </div>
+    </div>
+  </t>
+</t>
+
+<t t-name="omni_social.PreviewText">
+  <span class="o_pv_text"><t t-out="this.short.text"/></span>
+  <t t-if="this.short.more">… <button type="button" class="o_pv_more_link" t-on-click="this.expand"><t t-out="moreLabel"/></button></t>
+</t>
+
+<t t-name="omni_social.Preview">
+  <div class="o_social_preview">
+    <div class="o_social_preview_head">
+      <span class="fw-bold">Preview</span>
+      <span t-if="this.ui.ready" class="text-muted small ms-2">
+        <i class="oi" t-att-data-icon="this.ui.platform.icon"/> <t t-out="this.ui.platform.label"/>
+      </span>
+    </div>
+    <div t-if="!this.ui.ready" class="o_social_preview_empty text-muted">
+      <i class="oi oi-2x d-block mb-2" data-icon="smartphone"/>
+      Choose an account to see how the post will look.
+    </div>
+    <t t-else="">
+      <div class="o_pv_device" t-att-class="'o_pv_' + this.platform">
+
+        <!-- Replies: the received comment, then the answer under it. -->
+        <t t-if="this.operation !== 'post'">
+          <div class="o_pv_card o_pv_thread">
+            <div t-if="this.target" class="o_pv_comment">
+              <span class="o_pv_avatar o_pv_avatar_sm o_pv_other" t-out="(this.target.author || '?').replace('@', '').charAt(0).toUpperCase()"/>
+              <div class="o_pv_bubble">
+                <div class="fw-bold" t-out="this.target.author || 'Someone'"/>
+                <div t-out="this.target.body"/>
+              </div>
+            </div>
+            <div t-else="" class="text-muted small mb-2">Choose the comment or message to answer.</div>
+            <div class="o_pv_comment" t-att-class="{ 'o_pv_nested': this.operation === 'reply', 'o_pv_private': this.operation === 'message' }">
+              <span class="o_pv_avatar o_pv_avatar_sm" t-out="this.initial"/>
+              <div class="o_pv_bubble o_pv_mine">
+                <div class="fw-bold" t-out="this.account.profile or this.account.name"/>
+                <div class="o_pv_text" t-out="this.text or '…'"/>
+              </div>
+            </div>
+            <div class="o_pv_meta text-muted small">
+              <t t-if="this.operation === 'message'"><i class="oi" data-icon="lock"/> Private message · </t>
+              <t t-else=""><i class="oi" data-icon="public"/> Public reply · </t>
+              <t t-out="this.when"/>
+            </div>
+          </div>
+        </t>
+
+        <!-- Vertical formats: reels, stories, TikTok. -->
+        <t t-elif="this.vertical">
+          <div class="o_pv_vertical">
+            <t t-if="this.slide">
+              <video t-if="this.slide.kind === 'video'" t-att-src="this.slide.url" muted="1" preload="metadata"/>
+              <img t-else="" t-att-src="this.slide.url" t-att-alt="this.slide.name"/>
+            </t>
+            <div t-else="" class="o_pv_placeholder"><i class="oi" data-icon="image"/><div>Add a photo or video</div></div>
+            <t t-if="this.media.length > 1">
+              <span class="o_pv_counter"><t t-out="Math.min(this.state.slide, this.media.length - 1) + 1"/>/<t t-out="this.media.length"/></span>
+              <button type="button" class="o_pv_nav o_pv_prev" title="Previous" t-on-click="() => this.step(-1)"><i class="oi" data-icon="chevron_left"/></button>
+              <button type="button" class="o_pv_nav o_pv_next" title="Next" t-on-click="() => this.step(1)"><i class="oi" data-icon="chevron_right"/></button>
+            </t>
+            <div t-if="this.format === 'story'" class="o_pv_story_top">
+              <div class="o_pv_bars"><span t-foreach="this.media.length ? this.media : [1]" t-as="b" t-key="b_index"/></div>
+              <div class="o_pv_story_user"><span class="o_pv_avatar o_pv_avatar_sm" t-out="this.initial"/> <t t-out="this.handle"/> <span class="opacity-75 ms-1">now</span></div>
+            </div>
+            <t t-else="">
+              <div class="o_pv_rail">
+                <span class="o_pv_avatar o_pv_avatar_sm" t-out="this.initial"/>
+                <i class="oi" data-icon="favorite"/><i class="oi" data-icon="mode_comment"/><i class="oi" data-icon="bookmark"/><i class="oi" data-icon="share"/>
+              </div>
+              <div class="o_pv_caption">
+                <div class="fw-bold">@<t t-out="this.handle"/></div>
+                <div t-if="this.platform === 'tiktok' and this.title and this.media.length and this.media[0].kind === 'image'" class="fw-bold" t-out="this.title"/>
+                <t t-call="omni_social.PreviewText" moreLabel="'more'"/>
+              </div>
+            </t>
+          </div>
+        </t>
+
+        <!-- Instagram -->
+        <t t-elif="this.platform === 'instagram'">
+          <div class="o_pv_card">
+            <div class="o_pv_header"><span class="o_pv_avatar o_pv_ring" t-out="this.initial"/><span class="fw-bold" t-out="this.handle"/><i class="oi ms-auto" data-icon="more_horiz"/></div>
+            <t t-call="omni_social.PreviewMedia" mode="'slides'" square="true"/>
+            <div t-if="!this.media.length" class="o_pv_placeholder o_pv_square"><i class="oi" data-icon="image"/><div>Instagram posts need a photo or video</div></div>
+            <div class="o_pv_actions"><i class="oi" data-icon="favorite"/><i class="oi" data-icon="mode_comment"/><i class="oi" data-icon="send"/><i class="oi ms-auto" data-icon="bookmark"/></div>
+            <div class="o_pv_body"><span class="fw-bold me-1" t-out="this.handle"/><t t-call="omni_social.PreviewText" moreLabel="'more'"/></div>
+            <div class="o_pv_meta text-muted small" t-out="this.when"/>
+          </div>
+        </t>
+
+        <!-- X and Threads: avatar on the left, text then media. -->
+        <t t-elif="this.platform === 'x' or this.platform === 'threads'">
+          <div class="o_pv_card o_pv_side">
+            <span class="o_pv_avatar" t-out="this.initial"/>
+            <div class="o_pv_side_main">
+              <div class="o_pv_header_inline">
+                <span class="fw-bold" t-out="this.account.name"/>
+                <span t-if="this.platform === 'x'" class="text-muted">@<t t-out="this.handle"/> · <t t-out="this.when"/></span>
+                <span t-else="" class="text-muted"><t t-out="this.when"/></span>
+              </div>
+              <div class="o_pv_body p-0"><t t-call="omni_social.PreviewText" moreLabel="'Show more'"/></div>
+              <t t-call="omni_social.PreviewMedia" mode="this.platform === 'threads' ? 'slides' : 'grid'" square="false"/>
+              <div class="o_pv_actions o_pv_actions_spread text-muted">
+                <i class="oi" data-icon="mode_comment"/><i class="oi" data-icon="autorenew"/><i class="oi" data-icon="favorite"/><i class="oi" data-icon="share"/>
+              </div>
+            </div>
+          </div>
+        </t>
+
+        <!-- YouTube: video, title, channel, description. -->
+        <t t-elif="this.platform === 'youtube'">
+          <div class="o_pv_card">
+            <div class="o_pv_video">
+              <video t-if="this.slide" t-att-src="this.slide.url" muted="1" controls="1" preload="metadata"/>
+              <div t-else="" class="o_pv_placeholder"><i class="oi" data-icon="play_circle"/><div>Add the video</div></div>
+            </div>
+            <div class="o_pv_body">
+              <div class="o_pv_yt_title" t-out="this.title or 'Video title'"/>
+              <div class="o_pv_header px-0"><span class="o_pv_avatar o_pv_avatar_sm" t-out="this.initial"/><span class="fw-bold" t-out="this.account.name"/></div>
+              <div class="o_pv_description"><t t-call="omni_social.PreviewText" moreLabel="'more'"/></div>
+            </div>
+          </div>
+        </t>
+
+        <!-- Pinterest: image card, title, description. -->
+        <t t-elif="this.platform === 'pinterest'">
+          <div class="o_pv_pin">
+            <t t-call="omni_social.PreviewMedia" mode="'slides'" square="false"/>
+            <div t-if="!this.media.length" class="o_pv_placeholder o_pv_tall"><i class="oi" data-icon="image"/><div>Pins need a photo</div></div>
+            <div class="o_pv_body">
+              <div class="o_pv_pin_title" t-out="this.title or 'Pin title'"/>
+              <div class="small"><t t-call="omni_social.PreviewText" moreLabel="'more'"/></div>
+              <div class="o_pv_header px-0 pb-0"><span class="o_pv_avatar o_pv_avatar_sm" t-out="this.initial"/><span t-out="this.account.name"/></div>
+            </div>
+          </div>
+        </t>
+
+        <!-- Facebook, LinkedIn and others: header, text, media grid, reactions. -->
+        <t t-else="">
+          <div class="o_pv_card">
+            <div class="o_pv_header">
+              <span class="o_pv_avatar" t-att-class="{ 'o_pv_square_avatar': this.platform === 'linkedin' and this.account.kind !== 'person' }" t-out="this.initial"/>
+              <div class="lh-sm">
+                <div class="fw-bold" t-out="this.account.name"/>
+                <div class="text-muted small"><t t-out="this.when"/> · <i class="oi" data-icon="public"/></div>
+              </div>
+              <i class="oi ms-auto" data-icon="more_horiz"/>
+            </div>
+            <div class="o_pv_body pt-0"><t t-call="omni_social.PreviewText" moreLabel="this.platform === 'linkedin' ? 'see more' : 'See more'"/></div>
+            <t t-call="omni_social.PreviewMedia" mode="'grid'" square="false"/>
+            <div class="o_pv_actions o_pv_actions_spread text-muted border-top">
+              <span><i class="oi" data-icon="thumb_up"/> Like</span><span><i class="oi" data-icon="mode_comment"/> Comment</span><span><i class="oi" data-icon="share"/> Share</span>
+            </div>
+          </div>
+        </t>
+      </div>
+      <div t-if="this.over" class="alert alert-danger mt-2 mb-0 py-2 small" role="alert">
+        The text is longer than <t t-out="this.ui.platform.label"/> allows (<t t-out="this.ui.text.limit.toLocaleString()"/> characters).
+      </div>
+      <div class="text-muted small mt-2">Approximate preview. <t t-out="this.ui.platform.label"/> decides the final layout on each device.</div>
+    </t>
+  </div>
+</t>
+
+</templates>

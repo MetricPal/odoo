@@ -11,6 +11,18 @@ from odoo.exceptions import AccessError, UserError
 from .social import guarded
 
 
+def _probe(raw):
+    with tempfile.NamedTemporaryFile(suffix='.mp4') as handle:
+        handle.write(raw)
+        handle.flush()
+        probe = subprocess.run(
+            ['ffprobe', '-v', 'error', '-protocol_whitelist', 'file', '-f', 'mov',
+             '-show_streams', '-show_format', '-of', 'json', handle.name],
+            capture_output=True, timeout=15, check=True,
+        )
+    return json.loads(probe.stdout)
+
+
 class Media(models.Model):
     _name = 'omni.social.media'
     _description = 'Social Media'
@@ -25,6 +37,31 @@ class Media(models.Model):
     alt_text = fields.Char(string='Description')
 
     preview = fields.Binary(compute='_compute_preview')
+    # Read from the file when it is saved; shown next to the file and in the preview.
+    file_size = fields.Integer(compute='_compute_metadata', store=True, string='Size (bytes)')
+    width = fields.Integer(compute='_compute_metadata', store=True)
+    height = fields.Integer(compute='_compute_metadata', store=True)
+    duration = fields.Float(compute='_compute_metadata', store=True, string='Length (s)')
+
+    @api.depends('file', 'kind')
+    def _compute_metadata(self):
+        for row in self:
+            raw = row.file.content if row.file else b''
+            row.file_size, row.width, row.height, row.duration = len(raw), 0, 0, 0.0
+            if not raw:
+                continue
+            try:
+                if row.kind == 'image':
+                    with Image.open(io.BytesIO(raw)) as img:
+                        row.width, row.height = img.size
+                else:
+                    info = _probe(raw)
+                    video = [s for s in info.get('streams', []) if s.get('codec_type') == 'video'][:1]
+                    if video:
+                        row.width, row.height = int(video[0].get('width') or 0), int(video[0].get('height') or 0)
+                    row.duration = float((info.get('format') or {}).get('duration') or 0)
+            except Exception:  # noqa: BLE001 - unreadable files are reported when the post is submitted
+                continue
 
     @api.depends('file', 'kind')
     def _compute_preview(self):

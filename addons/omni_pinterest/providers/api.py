@@ -57,6 +57,7 @@ class Adapter:
         text_limit=TEXT_LIMIT,
         media_kinds=('image',),
         max_media=5,
+        format_media={'standard': (1, 1, ('image',)), 'carousel': (2, 5, ('image',))},
         media_required=True,
         needs_public_url=True,
         title_limit=TITLE_LIMIT,

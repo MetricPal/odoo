@@ -21,7 +21,13 @@ class TestWorkflowUI(HttpCase):
                     }
                     throw new Error('Workflow UI did not reach expected state: ' + document.body.innerText.slice(-1500));
                 };
-                await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
+                // "Ready to use" is on by default (only templates for installed apps).
+                await waitFor(() => document.querySelectorAll('.wf_template').length >= 1);
+                const facet = document.querySelector('.o_searchview_facet .o_facet_remove');
+                if (facet) {
+                    facet.click();
+                    await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
+                }
                 if (document.querySelector('.wf_home .wf_link')) throw new Error('Existing workflows still on overview');
                 if (document.querySelector('.wf_describe')) throw new Error('Creation panel remains on overview');
                 if (document.querySelector('.wf_nav')) throw new Error('Duplicate workflow navbar');
@@ -34,18 +40,24 @@ class TestWorkflowUI(HttpCase):
                 if (!formNew?.nextElementSibling?.classList.contains('o_workflow_open_builder')) throw new Error('Open builder is not immediately after New');
                 if (document.querySelector('.o_form_statusbar .o_workflow_open_builder')) throw new Error('Builder button remains below the toolbar');
                 if (!document.body.innerText.includes('AI drafting is not connected')) throw new Error('Missing honest drafting status');
-                document.querySelector('.o_control_panel .breadcrumb a').click();
-                await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
+                // Breadcrumbs collapse to a back arrow on phones.
+                const back = document.querySelector('.o_control_panel .breadcrumb a');
+                if (back) back.click(); else history.back();
+                await waitFor(() => document.querySelectorAll('.wf_template').length >= 1);
                 console.log('workflow_capture_home');
                 await new Promise(resolve => setTimeout(resolve, 300));
                 const onboarding = [...document.querySelectorAll('.wf_template')].find(n => n.innerText.includes('New employee onboarding'));
                 onboarding.click();
                 await waitFor(() => document.querySelectorAll('.wf_node').length === 6);
-                const workflowTitle = () => document.querySelector('.o_control_panel .o_last_breadcrumb_item')?.textContent.trim();
+                const workflowTitle = () => {
+                    // Desktop: in the control panel; phone: in the top bar.
+                    const item = document.querySelector('.o_control_panel .o_last_breadcrumb_item') || document.querySelector('.o_last_breadcrumb_item');
+                    return item && (item.querySelector('.text-truncate') || item).textContent.trim();
+                };
                 await waitFor(() => workflowTitle() === 'New employee onboarding');
                 if (document.body.innerText.includes('Before you activate')) throw new Error('Removed checklist remains');
                 if (document.querySelector('.wf_header')) throw new Error('Duplicate canvas heading remains');
-                if (document.querySelector('.o_control_panel_breadcrumbs_actions .wf_status')?.textContent.trim() !== 'Draft') throw new Error('Workflow status missing beside navbar name');
+                if (document.querySelector('.o_control_panel .wf_status')?.textContent.trim() !== 'Draft') throw new Error('Workflow status missing beside navbar name');
                 const guide = document.querySelector('.wf_builder_guide');
                 if (!document.querySelector('.o_control_panel_main_buttons .wf_preview')) throw new Error('Preview missing from native toolbar');
                 if (!document.querySelector('.o_search_panel .wf_palette') && !document.querySelector('.o_search_panel.wf_palette')) throw new Error('Step menu missing from search panel');
@@ -54,13 +66,15 @@ class TestWorkflowUI(HttpCase):
                 if (!document.querySelector('.o_control_panel .wf_activate').disabled) throw new Error('Incomplete template can activate');
                 if (document.querySelector('.o_control_panel .wf_settings')) throw new Error('Duplicate Settings button remains');
                 if (!document.querySelector('.wf_trigger')) throw new Error('Workflow starting point missing');
-                const handle = document.querySelector('.o_search_panel_resize');
-                const panel = document.querySelector('.o_search_panel.wf_palette');
-                const width = panel.offsetWidth;
-                handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 200 }));
-                document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 240 }));
-                document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, clientX: 240 }));
-                if (panel.offsetWidth <= width) throw new Error('Step panel did not resize');
+                if (window.innerWidth > 768) {  // resizing is a wide-screen feature
+                    const handle = document.querySelector('.o_search_panel_resize');
+                    const panel = document.querySelector('.o_search_panel.wf_palette');
+                    const width = panel.offsetWidth;
+                    handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 200 }));
+                    document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 240 }));
+                    document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, clientX: 240 }));
+                    if (panel.offsetWidth <= width) throw new Error('Step panel did not resize');
+                }
                 if (document.querySelector('.o-mail-Chatter-content').textContent.includes('Select a step to inspect it.')) throw new Error('Removed hint remains');
                 if (document.querySelector('.wf_trigger').classList.contains('is_selected')) throw new Error('Starting point selected initially');
                 document.querySelector('.wf_trigger').click();
@@ -94,10 +108,12 @@ class TestWorkflowUI(HttpCase):
                 if (!actions.querySelector('.wf_remove_step').classList.contains('btn-secondary')) throw new Error('Remove step is not secondary');
                 if (!actions.closest('.o-mail-Chatter-top').querySelector('hr')) throw new Error('Horizontal toolbar divider missing');
                 if (document.querySelector('.wf_trigger').classList.contains('is_selected') || document.querySelectorAll('.wf_node.is_selected').length !== 1) throw new Error('Starting point remains selected alongside a step');
-                const wait = [...document.querySelectorAll('.wf_palette button')].find(n => n.innerText.trim() === 'Wait');
+                const wait = [...document.querySelectorAll('.wf_palette .wf_palette_item')].find(n => n.querySelector('.fw-semibold').textContent.trim() === 'Wait');
+                if (!wait.dataset.tooltip || !wait.querySelector('.wf_palette_help').textContent.trim()) throw new Error('Palette item has no explanation');
                 if (wait.getAttribute('draggable') !== 'true' || !wait.draggable) throw new Error('Palette item is not natively draggable');
                 if (document.querySelector('.wf_palette').textContent.includes('After:')) throw new Error('Old palette hint remains');
-                if (!document.querySelector('.wf_palette').textContent.includes('Drag a step onto the canvas, or click to add it.')) throw new Error('Drag/click hint missing');
+                if (!document.querySelector('.wf_palette').textContent.includes('Click a step to add it, or drag it onto the step it should follow.')) throw new Error('Drag/click hint missing');
+                if (!document.querySelector('.wf_insert_hint').textContent.includes('Adds after')) throw new Error('Insertion point not shown for the selected step');
                 const transfer = new DataTransfer();
                 wait.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
                 const target = document.querySelector('.wf_node.is_selected');
@@ -127,6 +143,7 @@ class TestWorkflowUI(HttpCase):
         self.test_home_and_builder()
 
     def test_overview_native_filters_and_groups(self):
+        missing_apps = self.env['workflow.template'].search_count([('available', '=', False)])
         self.browser_js('/odoo/action-workflow_center.action_workflows', """
             (async () => {
                 const waitFor = async (predicate) => {
@@ -141,7 +158,7 @@ class TestWorkflowUI(HttpCase):
                 if (document.querySelector('.wf_template_unavailable')) throw new Error('Unavailable template shown by default');
                 document.querySelector('.o_searchview_facet .o_facet_remove').click();
                 await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
-                await waitFor(() => document.querySelector('.wf_template_unavailable'));
+                if (%(missing)s) await waitFor(() => document.querySelector('.wf_template_unavailable'));
                 await waitFor(() => document.querySelector('.o_search_panel .o_search_panel_label[data-tooltip="CRM"]'));
                 const main = document.querySelector('.o_kanban_view > main');
                 if ([...main.classList].sort().join(' ') !== 'o_component_with_search_panel o_content') throw new Error('Overview main has custom layout classes');
@@ -160,7 +177,8 @@ class TestWorkflowUI(HttpCase):
                 if (![...document.querySelectorAll('.o_data_row')].every(row => row.textContent.includes('CRM'))) throw new Error('Application filter was lost switching to list');
                 document.querySelector('.o_switch_view.o_kanban').click();
                 await waitFor(() => document.querySelectorAll('.wf_template').length === filteredCount);
-                document.querySelector('.o_search_panel_label[data-tooltip="All"]').click();
+                const appsSection = [...document.querySelectorAll('.o_search_panel_section')].find(section => section.textContent.includes('Applications'));
+                appsSection.querySelector('.o_search_panel_label[data-tooltip="All"]').click();
                 await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
                 if (document.querySelector('.o_kanban_renderer').textContent.includes('Start from a template')) throw new Error('Removed template heading remains');
                 if (document.querySelectorAll('.o_kanban_renderer > article.o_card_record.o_kanban_record').length !== 11) throw new Error('Templates are not native-style article cards');
@@ -184,16 +202,23 @@ class TestWorkflowUI(HttpCase):
                 document.querySelector('.o_searchview_dropdown_toggler').click();
                 await waitFor(() => document.querySelector('.o_filter_menu'));
                 const find = (selector, name) => [...document.querySelectorAll(selector)].find(n => n.textContent.trim() === name);
+                // Categories ("What it does") live in the side panel, each with its own colour on the cards.
+                const categories = [...document.querySelectorAll('.o_search_panel_section')].find(section => section.textContent.includes('What it does'));
                 for (const name of ['Reminders', 'Data updates', 'Create records', 'Scheduled', 'Integrations', 'Approvals']) {
+                    if (!categories.querySelector(`.o_search_panel_label[data-tooltip="${name}"]`)) throw new Error('Missing category: ' + name);
+                }
+                if (!document.querySelector('.wf_cat.wf_cat_reminders')) throw new Error('Category colours missing');
+                for (const name of ['My templates', 'Built-in']) {
                     if (!find('.o_filter_menu .dropdown-item', name)) throw new Error('Missing predefined filter: ' + name);
                 }
                 for (const name of ['Category', 'Application']) {
                     if (!find('.o_group_by_menu .dropdown-item', name)) throw new Error('Missing predefined group: ' + name);
                 }
-                find('.o_filter_menu .dropdown-item', 'Reminders').click();
+                document.querySelector('.o_searchview_dropdown_toggler').click();
+                categories.querySelector('.o_search_panel_label[data-tooltip="Reminders"]').click();
                 await waitFor(() => document.querySelectorAll('.wf_template').length < 11);
                 if (![...document.querySelectorAll('.wf_template')].every(n => n.textContent.includes('Reminders'))) throw new Error('Category filter mismatch');
-                document.querySelector('.o_facet_remove').click();
+                categories.querySelector('.o_search_panel_label[data-tooltip="All"]').click();
                 await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
                 if (!document.querySelector('.o_group_by_menu')) document.querySelector('.o_searchview_dropdown_toggler').click();
                 await waitFor(() => find('.o_group_by_menu .dropdown-item', 'Application'));
@@ -202,7 +227,7 @@ class TestWorkflowUI(HttpCase):
                 if (document.querySelectorAll('.wf_template').length !== 11) throw new Error('Grouping lost templates');
                 console.log('test successful');
             })();
-        """, login='admin', timeout=90)
+        """.replace('%(missing)s', str(missing_apps)), login='admin', timeout=90)
 
     def test_my_workflows_navigation(self):
         self.env['workflow.definition'].with_user(self.env.ref('base.user_admin')).create({
@@ -226,7 +251,7 @@ class TestWorkflowUI(HttpCase):
                 await waitFor(() => document.querySelector('.o_list_view'));
                 if (document.querySelector('.o_kanban_renderer')) throw new Error('Templates on My workflows');
                 if (document.querySelector('th[data-name="description"]')) throw new Error('Optional description shown by default');
-                if (!document.querySelector('.o_optional_columns')) throw new Error('Missing column selector');
+                await waitFor(() => document.querySelector('.o_optional_columns'));
                 document.querySelector('.o_switch_view.o_kanban').click();
                 await waitFor(() => document.querySelector('.o_kanban_record'));
                 const columns = [...document.querySelectorAll('.o_kanban_header_title')];
@@ -242,7 +267,7 @@ class TestWorkflowUI(HttpCase):
                 await waitFor(() => document.querySelector('.o_list_view'));
                 const flow = [...document.querySelectorAll('.o_data_row')].find(n => n.textContent.includes('Navigation test workflow'));
                 if (!flow) throw new Error('Existing workflow missing');
-                flow.click();
+                flow.querySelector('td.o_data_cell').click();
                 await waitFor(() => document.querySelector('.wf_builder'));
                 if (!document.querySelector('.o_control_panel').textContent.includes('Navigation test workflow')) throw new Error('Wrong builder opened');
                 menu().click();
@@ -372,10 +397,10 @@ class TestWorkflowUI(HttpCase):
                 input.focus(); input.value = 'Workflow UI customer'; input.dispatchEvent(new Event('input', {bubbles: true}));
                 await waitFor(() => [...document.querySelectorAll('.o-autocomplete--dropdown-item')].some(n => n.textContent.includes('Workflow UI customer')));
                 [...document.querySelectorAll('.o-autocomplete--dropdown-item')].find(n => n.textContent.includes('Workflow UI customer')).click();
-                document.querySelector('.modal button[name="action_start"]').click();
-                await waitFor(() => document.querySelectorAll('.modal').length > 1);
-                [...document.querySelectorAll('.modal-footer .btn-primary')].at(-1).click();
-                await waitFor(() => document.querySelector('.o_list_renderer'));
+                if (!document.querySelector('.modal [name="mode"] input[type="radio"]')) throw new Error('Mode is not a radio choice');
+                // Preview changes nothing, so it starts without a confirmation.
+                document.querySelector('.modal button[name="action_start"]:not(.d-none)').click();
+                await waitFor(() => document.querySelector('.o_list_renderer') && document.querySelector('.o_control_panel').textContent.includes('Run history'));
                 console.log('test successful');
             })();
         """, login='admin', timeout=90)
@@ -415,7 +440,7 @@ class TestWorkflowUI(HttpCase):
                     [...document.querySelectorAll('.o-autocomplete--dropdown-item')].find(n => (n.textContent.trim() === text || n.textContent.trim() === text + ' (Contact)')).click();
                 };
                 await waitFor(() => [...document.querySelectorAll('.o_data_row')].some(n => n.textContent.includes('Branch and create UI')));
-                [...document.querySelectorAll('.o_data_row')].find(n => n.textContent.includes('Branch and create UI')).click();
+                [...document.querySelectorAll('.o_data_row')].find(n => n.textContent.includes('Branch and create UI')).querySelector('td.o_data_cell').click();
                 await waitFor(() => document.querySelectorAll('.wf_branch_paths > section').length === 2);
                 const paths = document.querySelectorAll('.wf_branch_paths > section');
                 if (!paths[0].innerText.includes('Create follow-up contact') || !paths[1].innerText.includes('Wait for contact details')) throw new Error('Branch paths are mixed');

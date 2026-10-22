@@ -15,6 +15,7 @@ import { CallbackRecorder, useSetupAction } from "@web/search/action_hook";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { _t } from "@web/core/l10n/translation";
 
 let nextInspectorId = 0;
 
@@ -39,24 +40,38 @@ export class Workflows extends Component {
             workflow: null, selected: null,
             busy: false,
         });
+        // [kind, action type, label, icon, one-line description, hover help with an example]
         this.blocks = [
-            { title: "Actions", items: [
-                ["action", "object_write", "Update record", "edit"],
-                ["action", "object_create", "Create record", "add"],
-                ["action", "next_activity", "Schedule activity", "calendar_today"],
-                ["action", "followers", "Add followers", "group"],
-                ["action", "mail_post", "Email or Odoo message", "mail"],
-                ["action", "chat", "Provider chat", "chat_bubble"],
-                ["action", "webhook", "Call webhook", "link"],
-                ["action", "code", "Python code", "code"],
+            { title: _t("Actions"), items: [
+                ["action", "object_write", _t("Update record"), "edit", _t("Change fields on the record"),
+                    _t("Set or change fields on the record the workflow runs on. Example: assign a salesperson or move the stage to Qualified.")],
+                ["action", "object_create", _t("Create record"), "add", _t("Create a related record"),
+                    _t("Create another record and fill its fields from this one. Example: create a project when a deal is won.")],
+                ["action", "next_activity", _t("Schedule activity"), "calendar_today", _t("Give someone a to-do"),
+                    _t("Add an activity with a due date for a person. Example: “Call the customer” due in 2 days, for the salesperson.")],
+                ["action", "followers", _t("Add followers"), "group", _t("Subscribe people to the record"),
+                    _t("Followers receive the record's messages and updates. Example: add the customer to a new project.")],
+                ["action", "mail_post", _t("Email or Odoo message"), "mail", _t("Send an email or post a note"),
+                    _t("Send an email from a template, or post a message or internal note on the record. Example: email the customer a payment reminder.")],
+                ["action", "chat", _t("Provider chat"), "chat_bubble", _t("Message on a chat channel"),
+                    _t("Send a message through a connected chat provider. Needs a provider integration before the workflow can be activated.")],
+                ["action", "webhook", _t("Call webhook"), "link", _t("Send data to another system"),
+                    _t("Send the record to another system's URL. Delivery is tracked; an uncertain delivery stops the run for review. Example: send a confirmed order to logistics.")],
+                ["action", "code", _t("Python code"), "code", _t("Run reviewed code"),
+                    _t("Run Python code written by an administrator. Use only when no other step fits; it is checked again before activation.")],
             ] },
-            { title: "Logic", items: [
-                ["condition", "object_write", "Condition", "filter_alt"],
-                ["branch", "object_write", "Branch", "account_tree"],
-                ["wait", "object_write", "Wait", "schedule"],
-                ["foreach", "object_write", "For each record", "autorenew"],
+            { title: _t("Logic"), items: [
+                ["condition", "object_write", _t("Condition"), "filter_alt", _t("Continue only if it matches"),
+                    _t("Check the record against a filter. If it matches, continue; if not, this run stops here. Example: only posted, unpaid invoices.")],
+                ["branch", "object_write", _t("Branch"), "account_tree", _t("Split into Yes and No"),
+                    _t("Check a filter and follow a Yes path or a No path. Example: paid yet? Yes → thank the customer, No → call them.")],
+                ["wait", "object_write", _t("Wait"), "schedule", _t("Pause for a time or until a date"),
+                    _t("Pause the run for some hours or days, or until a date on the record, then continue. Example: wait 7 days.")],
+                ["foreach", "object_write", _t("For each record"), "autorenew", _t("Repeat for related records"),
+                    _t("Run an action once for each related record. Example: for each order line, update its delivery date.")],
             ] },
-            { title: "Optional", items: [["approval", "object_write", "Approval", "checklist"]] },
+            { title: _t("Optional"), items: [["approval", "object_write", _t("Approval"), "checklist", _t("Wait for approvers"),
+                _t("Ask the approvers of an approval type to accept before continuing. Refusal stops the run. Put the action to approve after this step.")]] },
         ];
         onWillStart(async () => {
             await this.loadHome();
@@ -141,6 +156,35 @@ export class Workflows extends Component {
             onSave: () => this.openWorkflow(this.state.workflow.id),
         };
     }
+    /**
+     * Where a clicked step goes: after the selected step; first when the
+     * trigger is selected or there are no steps; otherwise after the last step
+     * of the main path. Null when that would be ambiguous (the main path ends
+     * with a branch): the person then picks a step first.
+     */
+    get insertTarget() {
+        const steps = this.state.workflow?.steps || [];
+        if (this.selectedStep) {
+            return { id: this.selectedStep.id, label: _t("Adds after “%s”.", this.selectedStep.name) };
+        }
+        if (this.state.selected === "trigger" || !steps.length) {
+            return { id: false, label: _t("Adds as the first step.") };
+        }
+        const main = this.canvas.nodes;
+        const last = main[main.length - 1];
+        if (last && last.step.kind !== "branch") {
+            return { id: last.step.id, label: _t("Adds at the end, after “%s”.", last.step.name) };
+        }
+        return null;
+    }
+    async addFromPalette(item) {
+        const target = this.insertTarget;
+        if (!target) {
+            this.notification.add(_t("Click the step it should follow on the canvas, then add it, or drag it onto that step."), { type: "info" });
+            return;
+        }
+        await this.addStep(item, target.id);
+    }
     async addStep(item, afterId = this.selectedStep?.id || false) {
         if (this.state.busy || this.state.workflow.state === "active") return;
         this.state.busy = true;
@@ -168,13 +212,31 @@ export class Workflows extends Component {
         ev.stopPropagation();
         ev.dataTransfer.dropEffect = "copy";
     }
-    async dropStep(ev, afterId = this.selectedStep?.id || false) {
+    async dropStep(ev, afterId) {
         if (!this.draggedStep) return;
         ev.preventDefault();
         ev.stopPropagation();
+        this.clearDropTarget();
         const item = this.draggedStep;
         this.draggedStep = null;
+        if (afterId === undefined) {
+            // Dropped on the canvas background: same rule as a click.
+            const target = this.insertTarget;
+            if (!target) {
+                this.notification.add(_t("Drop the step onto the step it should follow."), { type: "info" });
+                return;
+            }
+            afterId = target.id;
+        }
         await this.addStep(item, afterId);
+    }
+    markDropTarget(ev) {
+        if (!this.draggedStep) return;
+        this.clearDropTarget();
+        ev.currentTarget.classList.add("wf_drop_target");
+    }
+    clearDropTarget() {
+        document.querySelectorAll(".wf_drop_target").forEach((el) => el.classList.remove("wf_drop_target"));
     }
     async removeStep(step) {
         if (this.state.workflow.state === "active") return;
@@ -218,6 +280,11 @@ export class Workflows extends Component {
             stage: "Stage or status changed", date: "Date field", schedule: "Schedule", webhook: "Incoming webhook" }[value] || value;
     }
     edgeName(value) { return value ? value[1] : "Next step"; }
+    /** True when a Yes/No path stops on its own, so it does not join the shared continuation. */
+    pathEnds(nodes) {
+        const last = nodes[nodes.length - 1];
+        return Boolean(last && last.step.end);
+    }
 }
 // Keep the native form widgets, validation, and Save/Discard behavior in the inspector.
 class WorkflowInlineStepController extends FormController {

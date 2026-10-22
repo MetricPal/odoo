@@ -83,6 +83,7 @@ class Adapter:
         text_limit=CAPTION_LIMIT,
         media_kinds=('image', 'video'),
         max_media=MAX_PHOTOS,
+        format_media={'standard': (1, MAX_PHOTOS, ('image', 'video')), 'carousel': (2, MAX_PHOTOS, ('image',))},
         media_required=True,
         needs_public_url=True,
         upload_bytes=True,

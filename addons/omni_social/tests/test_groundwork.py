@@ -88,7 +88,7 @@ class TestSocialGroundwork(TransactionCase):
         self._connect()
         caps = registry.capabilities('linkedin')
         with patch.dict(registry._CAPABILITIES, {'linkedin': dataclasses.replace(caps, media_required=True)}):
-            with self.assertRaisesRegex(UserError, 'need a photo or video'):
+            with self.assertRaisesRegex(UserError, 'needs at least 1 photo or video'):
                 self._post().with_user(self.operator).action_submit()
 
     # ---- usage meter ---------------------------------------------------

@@ -24,7 +24,7 @@
 </div>
 <div class="ot_preview"><div class="d-flex align-items-center justify-content-between mb-3"><strong>Preview</strong><field name="channel_type_id" readonly="1" nolabel="1" options="{'no_open':True}"/></div><field name="preview_html" widget="html" readonly="1" nolabel="1"/><group><field name="resource_ref" widget="omni_template_record" options="{'no_create':True,'no_open':True}"/></group><field name="preview_note" readonly="1" nolabel="1" class="text-muted small"/></div>
 </div></page>
-<page string="Options" name="options"><group><group><field name="purpose_id" options="{'no_create':True}"/><field name="company_id" options="{'no_create':True}"/></group><group><field name="language_id" options="{'no_create':True}"/><field name="approval_type_id" options="{'no_create':True}"/></group></group><p class="text-muted">Saving does not send, publish or approve content.</p></page>
+<page string="Options" name="options"><group><group><field name="purpose_id" widget="radio" options="{'horizontal': true}"/><field name="company_id" options="{'no_create':True}"/></group><group><field name="language_id" options="{'no_create':True}"/><field name="approval_type_id" options="{'no_create':True}"/></group></group><p class="text-muted">Saving does not send, publish or approve content.</p></page>
 </notebook>
 </sheet></form>
 </field></record>

@@ -80,6 +80,8 @@ class Adapter:
         text_limit=TEXT_LIMIT,
         media_kinds=('image',),
         max_media=4,
+        format_media={'standard': (0, 4, ('image',)), 'carousel': (2, 4, ('image',))},
+        photo_bytes=5 * 1024 * 1024,
         upload_bytes=True,
         costs={'post': POST_PRICE, 'reply': POST_PRICE, 'read': READ_PRICE * READ_BATCH * 2},
         oauth=OAuth(

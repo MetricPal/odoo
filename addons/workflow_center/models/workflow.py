@@ -79,7 +79,14 @@ class Workflow(models.Model):
     webhook_url = fields.Char(related='automation_id.url', string='Incoming webhook URL')
     step_ids = fields.One2many('workflow.step', 'workflow_id', copy=True)
     run_ids = fields.One2many('workflow.run', 'workflow_id')
-    _protected = {'state', 'revision', 'tested_revision', 'approved_by', 'approved_at',
+    # Hidden copy behind a saved template: editable in the builder, never activated.
+    is_template = fields.Boolean(readonly=True, copy=False, index=True)
+    run_count = fields.Integer(compute='_compute_run_counts', string='Runs')
+    failed_run_count = fields.Integer(compute='_compute_run_counts', string='Failed runs')
+    last_run_at = fields.Datetime(compute='_compute_run_counts', string='Last run')
+    ready_to_activate = fields.Boolean(compute='_compute_readiness')
+    readiness_note = fields.Char(compute='_compute_readiness', string='Before activation')
+    _protected = {'is_template', 'state', 'revision', 'tested_revision', 'approved_by', 'approved_at',
                   'approved_digest', 'automation_id', 'next_run', 'tested_digest', 'schedule_cursor', 'manual_action_id'}
 
     def _managed_department_ids(self):
@@ -171,6 +178,97 @@ class Workflow(models.Model):
                 ('state', 'in', ['running', 'waiting', 'failed']),
             ]):
                 raise UserError(_('Stop unfinished runs before changing this workflow. Their steps must remain unchanged.'))
+
+    def _not_template(self):
+        if self.filtered('is_template'):
+            raise UserError(_('This is a template. Start a workflow from it in Templates, then preview and '
+                              'activate that workflow.'))
+
+    def _compute_run_counts(self):
+        Run = self.env['workflow.run'].sudo()
+        live = [('workflow_id', 'in', self.ids), ('is_test', '=', False)]
+        counts = {wf.id: n for wf, n in Run._read_group(live, ['workflow_id'], ['__count'])}
+        failed = {wf.id: n for wf, n in Run._read_group(live + [('state', '=', 'failed')], ['workflow_id'], ['__count'])}
+        last = {wf.id: at for wf, at in Run._read_group(live, ['workflow_id'], ['started_at:max'])}
+        for workflow in self:
+            workflow.run_count = counts.get(workflow.id, 0)
+            workflow.failed_run_count = failed.get(workflow.id, 0)
+            workflow.last_run_at = last.get(workflow.id, False)
+
+    @api.depends_context('uid')
+    def _compute_readiness(self):
+        for workflow in self:
+            workflow.ready_to_activate, workflow.readiness_note = False, ''
+            if workflow.is_template or workflow.state == 'active' or not workflow.id:
+                continue
+            checked = workflow if workflow._can_edit() else workflow.sudo()
+            issues = checked._validate()
+            if issues:
+                workflow.readiness_note = _('Needs setup: %s', issues[0])
+            elif workflow.tested_revision != workflow.revision or workflow.tested_digest != checked._fingerprint():
+                workflow.readiness_note = _('Preview it on a record first.')
+            else:
+                workflow.ready_to_activate = True
+
+    # ------------------------------------------------------------------ copies
+
+    def _clone(self, values=None, is_template=False):
+        """A new draft with the same trigger and steps.
+
+        Each step gets its own copy of its configured server action, and the
+        Next / If-no links point to the new steps, so editing the copy never
+        changes the original.
+        """
+        self.ensure_one()
+        self._manager()
+        source = self.sudo() if self._can_edit() else self
+        fields_to_copy = ['name', 'description', 'company_id', 'user_id', 'department_id', 'model_id', 'trigger',
+                          'trigger_field_id', 'date_field_id', 'offset_days', 'interval_hours', 'domain']
+        vals = {}
+        for name in fields_to_copy:
+            value = source[name]
+            vals[name] = value.id if isinstance(value, models.BaseModel) else value
+        vals.update(values or {})
+        new = self.create(vals)
+        if is_template:
+            internal(new).write({'is_template': True})
+        mapping = {}
+        Step = self.env['workflow.step']
+        for step in source.step_ids.sorted('sequence'):
+            action = step.action_id.copy({'name': step.action_id.name}) if step.action_id else step.action_id
+            mapping[step] = step.copy({'workflow_id': new.id, 'name': step.name, 'next_id': False,
+                                       'false_id': False, 'action_id': action.id})
+        for old, copied in mapping.items():
+            links = {}
+            if old.next_id:
+                links['next_id'] = mapping.get(old.next_id, Step).id
+            if old.false_id:
+                links['false_id'] = mapping.get(old.false_id, Step).id
+            if links:
+                copied.write(links)
+        return new
+
+    def action_duplicate(self):
+        self.ensure_one()
+        copy = self._clone({'name': _('%s (copy)', self.name)})
+        return copy.action_open_builder()
+
+    def action_save_as_template(self):
+        self.ensure_one()
+        self._manager()
+        self._not_template()
+        return {'type': 'ir.actions.act_window', 'res_model': 'workflow.template.save', 'view_mode': 'form',
+                'views': [(False, 'form')], 'target': 'new', 'name': _('Save as template'),
+                'context': {'default_workflow_id': self.id, 'default_name': self.name,
+                            'default_description': self.description}}
+
+    def action_run_history(self):
+        self.ensure_one()
+        self._viewer()
+        action = self.env['ir.actions.act_window']._for_xml_id('workflow_center.action_run_history')
+        action.update(domain=[('workflow_id', '=', self.id)], name=_('Runs: %s', self.name),
+                      context={'search_default_live_runs': 1})
+        return action
 
     def unlink(self):
         self._manager()
@@ -278,6 +376,7 @@ class Workflow(models.Model):
     def action_activate(self):
         self.ensure_one()
         self._manager(operate=True)
+        self._not_template()
         # Validation reads technical records (server actions, fields) that only
         # administrators may read; after the check above it runs privileged.
         checked = self if self._can_edit() else self.sudo()
@@ -388,6 +487,7 @@ class Workflow(models.Model):
     def action_test_dialog(self):
         self.ensure_one()
         self._manager(operate=True)
+        self._not_template()
         return {'type': 'ir.actions.act_window', 'res_model': 'workflow.test',
                 'view_mode': 'form', 'views': [(False, 'form')], 'target': 'new', 'name': _('Test or run workflow'),
                 'context': {'default_workflow_id': self.id}}
@@ -404,7 +504,7 @@ class Workflow(models.Model):
             item['available'] = item['model'] in self.env
         return {
             'templates': templates,
-            'workflows': self.search_read([], ['name', 'state', 'model_id', 'trigger', 'description']),
+            'workflows': self.search_read([('is_template', '=', False)], ['name', 'state', 'model_id', 'trigger', 'description']),
             'models': self.env['ir.model'].search_read(
                 [('transient', '=', False), ('abstract', '=', False), ('model', 'not like', 'ir.%'),
                  ('model', 'not like', 'workflow.%'), ('model', 'not in', ['res.users', 'res.groups'])],
@@ -425,7 +525,7 @@ class Workflow(models.Model):
         self.ensure_one()
         self._viewer()
         data = self.read(['name', 'description', 'model_id', 'trigger', 'domain', 'state',
-                          'revision', 'tested_revision', 'webhook_url'])[0]
+                          'revision', 'tested_revision', 'webhook_url', 'is_template'])[0]
         data['ai'] = self._builder_ai_info()
         data['can_edit'] = self._can_edit()
         data['steps'] = self.step_ids.sorted('sequence').read([

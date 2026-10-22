@@ -97,10 +97,10 @@
                     <field name="active" invisible="1"/>
                     <field name="action_name" invisible="1"/>
                     <div class="alert alert-info mb-3" role="status" invisible="not waiting_for">
-                        <i class="fa fa-hourglass-half me-1" aria-hidden="true"/> Waiting for: <field name="waiting_for" class="fw-bold" readonly="1"/>
+                        <i class="oi me-1" data-icon="hourglass_empty" aria-hidden="true"/> Waiting for: <field name="waiting_for" class="fw-bold" readonly="1"/>
                     </div>
                     <div class="alert alert-danger mb-3" role="alert" invisible="not failure_reason">
-                        <i class="fa fa-exclamation-triangle me-1" aria-hidden="true"/> Last execution failed: <field name="failure_reason" readonly="1"/>
+                        <i class="oi me-1" data-icon="warning" aria-hidden="true"/> Last execution failed: <field name="failure_reason" readonly="1"/>
                     </div>
                     <div class="oe_title">
                         <label for="name"/>
@@ -245,7 +245,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="image_128" widget="image" optional="show" options="{'size': [32, 32]}"/>
                 <field name="name"/>
-                <field name="active" width="80px"/>
+                <field name="active" width="80px" optional="hide"/>
                 <field name="approval_summary"/>
                 <field name="setup_state" widget="badge" decoration-warning="setup_state == 'needs_approvers'" decoration-success="setup_state == 'ready'"/>
                 <field name="company_id" groups="base.group_multi_company"/>

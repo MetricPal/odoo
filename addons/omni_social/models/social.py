@@ -47,11 +47,18 @@ class Connection(models.Model):
     )
     channel_type_id = fields.Many2one('omni.channel.type', compute='_compute_catalog')
 
+    @api.model
+    def _default_social_team(self):
+        team = self.env.ref('omni_channel.purpose_social_media', raise_if_not_found=False)
+        return team if team and team.active else False
+
     @api.depends('provider')
     def _compute_catalog(self):
         for row in self:
             row.channel_type_id = self.env['omni.channel.type'].search([('code', '=', row.provider)], limit=1)
 
+    # New social accounts start in the Social Media team when it exists.
+    purpose_id = fields.Many2one(default=lambda self: self._default_social_team())
     account_kind = fields.Selection(
         [('organization', 'Company Page'), ('person', 'Personal profile')], default='organization', required=True
     )
@@ -411,7 +418,7 @@ class Publication(models.Model):
         required=True,
     )
     target_id = fields.Many2one('omni.social.activity', string='Reply to', ondelete='set null', check_company=True)
-    body = fields.Text(string='Content')
+    body = fields.Text(string='Text')
     image = fields.Binary(string='Photo', attachment=False)
     format = fields.Selection(
         [('standard', 'Post'), ('carousel', 'Carousel'), ('reel', 'Reel'), ('story', 'Story')],
@@ -419,7 +426,10 @@ class Publication(models.Model):
         required=True,
     )
     media_ids = fields.One2many('omni.social.media', 'publication_id', string='Media', copy=True)
-    reason = fields.Text(string='Reason', required=True)
+    reason = fields.Text(
+        string='Note for the approver', required=True,
+        help='Why this post goes out and anything the approver should check. Only the approver sees it.',
+    )
     requester_id = fields.Many2one('res.users', default=lambda self: self.env.user, readonly=True, required=True)
     state = fields.Selection(
         [
@@ -684,14 +694,37 @@ class Publication(models.Model):
             )
         if self.operation == 'post':
             count = len(media) + (1 if self.image else 0)
-            if caps.media_required and not count:
-                raise UserError(_('%(platform)s posts need a photo or video.', platform=label))
-            if count > caps.max_media:
+            low, high, kinds = caps.media_rule(self.format)
+            names = self._format_names()
+            if count < low:
                 raise UserError(
-                    _('%(platform)s allows up to %(limit)s files in one post.', platform=label, limit=caps.max_media)
+                    _('%(platform)s needs at least %(count)s photo or video for a %(format)s.',
+                      platform=label, count=low, format=names.get(self.format, self.format))
+                    if low == 1 else
+                    _('%(platform)s needs at least %(count)s files for a %(format)s.',
+                      platform=label, count=low, format=names.get(self.format, self.format))
                 )
-            if any(item['kind'] not in caps.media_kinds for item in media):
-                raise UserError(_('%(platform)s does not accept this kind of file.', platform=label))
+            if count > high:
+                raise UserError(
+                    _('%(platform)s allows up to %(limit)s files in a %(format)s.',
+                      platform=label, limit=high, format=names.get(self.format, self.format))
+                )
+            if any(item['kind'] not in kinds for item in media):
+                raise UserError(
+                    _('%(platform)s takes only photos here.', platform=label) if kinds == ('image',)
+                    else _('%(platform)s takes only a video here.', platform=label) if kinds == ('video',)
+                    else _('%(platform)s does not accept this kind of file.', platform=label)
+                )
+            photo_limit = caps.photo_limit()
+            for row in self.media_ids:
+                if row.kind == 'image' and row.file and len(row.file.content) > photo_limit:
+                    raise UserError(
+                        _('%(platform)s takes photos up to %(size)s MB; %(name)s is larger.',
+                          platform=label, size=photo_limit // (1024 * 1024), name=row.name)
+                    )
+
+    def _format_names(self):
+        return {key: label.lower() for key, label in self._fields['format']._description_selection(self.env)}
 
     def action_submit(self):
         self.ensure_one()

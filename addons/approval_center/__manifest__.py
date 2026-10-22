@@ -14,6 +14,7 @@ audit trail.
         'base',
         'hr',
         'mail',
+        'web',
     ],
     'data': [
         'security/approval_center_security.xml',

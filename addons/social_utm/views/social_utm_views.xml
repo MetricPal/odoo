@@ -1,0 +1,47 @@
+<odoo>
+  <record id="publication_form_utm" model="ir.ui.view">
+    <field name="name">omni.social.publication.form.utm</field>
+    <field name="model">omni.social.publication</field>
+    <field name="inherit_id" ref="omni_social.publication_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='scheduled_at']" position="after">
+        <field name="utm_campaign_id" readonly="state != 'draft' or campaign_id" invisible="operation == 'message'"
+               placeholder="Optional: report clicks, leads and sales under a campaign" options="{'no_quick_create': True}"/>
+        <field name="track_links" readonly="state != 'draft'" invisible="operation == 'message'"/>
+        <field name="link_clicks" invisible="not link_clicks"/>
+      </xpath>
+      <xpath expr="//div[@name='text_block']" position="inside">
+        <div class="text-muted small mt-1 o_social_link_note" invisible="not link_note"><i class="oi me-1" data-icon="link"/><field name="link_note" nolabel="1" class="d-inline"/></div>
+      </xpath>
+      <xpath expr="//header" position="inside">
+        <button name="action_link_clicks" type="object" string="Link clicks" invisible="not link_clicks"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="campaign_form_utm" model="ir.ui.view">
+    <field name="name">omni.social.campaign.form.utm</field>
+    <field name="model">omni.social.campaign</field>
+    <field name="inherit_id" ref="omni_social.campaign_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='scheduled_at']" position="after">
+        <field name="utm_campaign_id" placeholder="Created with the campaign name" options="{'no_quick_create': True}"/>
+        <field name="link_clicks" invisible="not utm_campaign_id"/>
+      </xpath>
+      <xpath expr="//header" position="inside">
+        <button name="action_link_clicks" type="object" string="Link clicks" invisible="not link_clicks"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="approval_social_review_utm" model="ir.ui.view">
+    <field name="name">Social review links</field>
+    <field name="model">approval.center.request</field>
+    <field name="inherit_id" ref="omni_social.approval_social_review"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='social_body']" position="after">
+        <field name="social_links" invisible="not social_links"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

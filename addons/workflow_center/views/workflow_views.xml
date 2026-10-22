@@ -3,38 +3,48 @@
     <field name="name">workflow.template.search</field><field name="model">workflow.template</field>
     <field name="arch" type="xml"><search>
       <field name="name" string="Template" filter_domain="['|', ('name', 'ilike', self), ('description', 'ilike', self)]"/>
-      <field name="app"/><field name="category"/>
+      <field name="app_id"/><field name="category"/>
       <filter name="available" string="Ready to use" domain="[('available', '=', True)]"/>
       <filter name="needs_app" string="Needs an app" domain="[('available', '=', False)]"/>
       <separator/>
-      <filter name="reminders" string="Reminders" domain="[('category', '=', 'Reminders')]"/>
-      <filter name="data_updates" string="Data updates" domain="[('category', '=', 'Data updates')]"/>
-      <filter name="create_records" string="Create records" domain="[('category', '=', 'Create records')]"/>
-      <filter name="scheduled" string="Scheduled" domain="[('category', '=', 'Scheduled')]"/>
-      <filter name="integrations" string="Integrations" domain="[('category', '=', 'Integrations')]"/>
-      <filter name="approvals" string="Approvals" domain="[('category', '=', 'Approvals')]"/>
+      <filter name="mine" string="My templates" domain="[('builtin', '=', False)]"/>
+      <filter name="builtin" string="Built-in" domain="[('builtin', '=', True)]"/>
+      <separator/>
+      <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
       <separator/>
       <filter name="group_category" string="Category" context="{'group_by': 'category'}"/>
-      <filter name="group_app" string="Application" context="{'group_by': 'app'}"/>
+      <filter name="group_app" string="Application" context="{'group_by': 'app_id'}"/>
       <searchpanel>
-        <field name="app" string="Applications" select="one" enable_counters="1" expand="1"/>
+        <field name="category" string="What it does" select="one" enable_counters="1" icon="oi_tag"/>
+        <field name="app_id" string="Applications" select="one" enable_counters="1"/>
       </searchpanel>
     </search></field>
   </record>
   <record id="template_kanban" model="ir.ui.view">
     <field name="name">workflow.template.kanban</field><field name="model">workflow.template</field>
     <field name="arch" type="xml">
-      <kanban js_class="workflow_template_kanban" create="0" edit="0" delete="0"
+      <kanban js_class="workflow_template_kanban" create="0" edit="0"
               records_draggable="false" groups_draggable="false" group_create="false" group_edit="false" group_delete="false"
               quick_create="false" action="action_start" type="object">
-        <field name="available"/>
-        <templates><t t-name="card" class="wf_template">
+        <field name="available"/><field name="builtin"/><field name="category"/><field name="active"/>
+        <templates>
+          <t t-name="menu">
+            <a t-if="!record.builtin.raw_value" role="menuitem" type="object" name="action_edit_template" class="dropdown-item">Edit template</a>
+            <a role="menuitem" type="archive" class="dropdown-item" t-if="record.active.raw_value">Archive</a>
+            <a role="menuitem" type="unarchive" class="dropdown-item" t-if="!record.active.raw_value">Restore</a>
+            <a t-if="!record.builtin.raw_value" role="menuitem" type="delete" class="dropdown-item">Delete</a>
+          </t>
+          <t t-name="card" class="wf_template">
           <div t-att-class="'d-flex flex-column gap-2 w-100' + (record.available.raw_value ? '' : ' opacity-50 wf_template_unavailable')">
             <field name="name" class="fw-bold fs-5"/>
-            <div class="d-flex flex-wrap gap-1"><field name="app" widget="badge"/><field name="category" widget="badge"/></div>
+            <div class="d-flex flex-wrap gap-1">
+              <field name="app_id" widget="badge"/>
+              <span t-attf-class="badge rounded-pill wf_cat wf_cat_#{record.category.raw_value}"><field name="category"/></span>
+              <span t-if="!record.builtin.raw_value" class="badge rounded-pill wf_cat wf_cat_mine">My template</span>
+            </div>
             <field name="description" class="text-muted"/>
             <field name="blocks" class="text-muted small"/>
-            <small t-if="!record.available.raw_value" class="text-muted">Install <field name="app"/> to use this template</small>
+            <small t-if="!record.available.raw_value" class="text-muted">Install <field name="app_id"/> to use this template</small>
             <small t-else="" class="text-muted">Opens a draft for review and setup</small>
           </div>
         </t></templates>
@@ -44,17 +54,36 @@
   <record id="template_list" model="ir.ui.view">
     <field name="name">workflow.template.list</field><field name="model">workflow.template</field>
     <field name="arch" type="xml">
-      <list js_class="workflow_template_list" create="0" edit="0" delete="0" action="action_start" type="object">
+      <list js_class="workflow_template_list" create="0" edit="0" action="action_start" type="object">
+        <field name="builtin" column_invisible="1"/>
         <field name="name" string="Template"/>
-        <field name="app" optional="show"/>
-        <field name="category" optional="show"/>
+        <field name="app_id" optional="show"/>
+        <field name="category" optional="show" widget="badge"
+               decoration-warning="category == 'reminders'" decoration-info="category == 'data_updates'"
+               decoration-success="category == 'create_records'" decoration-primary="category == 'scheduled'"
+               decoration-danger="category == 'integrations'" decoration-muted="category == 'approvals'"/>
+        <field name="builtin" string="Built-in" optional="show" widget="boolean_toggle" readonly="1"/>
         <field name="description" optional="hide"/>
         <field name="blocks" optional="hide"/>
         <field name="trigger" optional="hide"/>
         <field name="model_name" optional="hide"/>
         <field name="available" optional="hide"/>
+        <button name="action_edit_template" type="object" string="Edit" icon="edit" invisible="builtin"/>
       </list>
     </field>
+  </record>
+  <record id="template_save_form" model="ir.ui.view">
+    <field name="name">workflow.template.save.form</field><field name="model">workflow.template.save</field>
+    <field name="arch" type="xml"><form>
+      <p class="text-muted">Saves a copy of this workflow's trigger and steps as a template for your organization. Workflows started from it are new drafts: they still need a preview and activation. Changing the template later does not change workflows already started from it.</p>
+      <group>
+        <field name="workflow_id"/>
+        <field name="name"/>
+        <field name="category" widget="radio" options="{'horizontal': true}"/>
+        <field name="description" placeholder="What it does and when to use it"/>
+      </group>
+      <footer><button name="action_save" type="object" string="Save template" class="btn-primary"/><button string="Cancel" special="cancel"/></footer>
+    </form></field>
   </record>
   <record id="action_workflow_templates" model="ir.actions.act_window">
     <field name="name">Workflows</field><field name="res_model">workflow.template</field>
@@ -74,7 +103,20 @@
         <field name="model_id" optional="show"/>
         <field name="department_id" optional="show"/>
         <field name="trigger" string="Starts when" optional="show"/>
-        <field name="state" string="Status" widget="badge" optional="show"/>
+        <field name="state" string="Status" widget="badge" optional="show"
+               decoration-success="state == 'active'" decoration-warning="state == 'paused'"/>
+        <field name="run_count" optional="show"/>
+        <field name="failed_run_count" optional="hide" decoration-danger="failed_run_count"/>
+        <field name="last_run_at" optional="hide"/>
+        <button name="action_test_dialog" type="object" string="Preview / run" icon="play_arrow" title="Preview on a record, or run it if active"/>
+        <field name="readiness_note" optional="show" string="Before activation"/>
+        <field name="ready_to_activate" column_invisible="1"/>
+        <button name="action_activate" type="object" string="Activate" icon="check_circle" invisible="state == 'active' or not ready_to_activate"
+                confirm="Authorize this workflow's configured actions, trigger, record filter, execution user and company? Matching events will run automatically. You can pause it at any time."/>
+        <button name="action_pause" type="object" string="Pause" icon="pause" invisible="state != 'active'"/>
+        <button name="action_run_history" type="object" string="Runs" icon="history"/>
+        <button name="action_duplicate" type="object" string="Duplicate" icon="content_copy" groups="base.group_system"/>
+        <button name="action_save_as_template" type="object" string="Save as template" icon="bookmark" groups="base.group_system"/>
         <field name="description" optional="hide"/>
         <field name="user_id" optional="hide"/>
         <field name="company_id" groups="base.group_multi_company" optional="hide"/>
@@ -100,14 +142,33 @@
       <kanban on_create="workflow_center.action_new_workflow" default_group_by="state" records_draggable="false" groups_draggable="false"
               group_create="false" group_edit="false" group_delete="false"
               quick_create="false" action="action_open_builder" type="object">
+        <field name="state"/><field name="run_count"/><field name="failed_run_count"/><field name="ready_to_activate"/>
         <templates>
+          <t t-name="menu">
+            <a role="menuitem" type="object" name="action_open_builder" class="dropdown-item">Open builder</a>
+            <a role="menuitem" type="object" name="action_run_history" class="dropdown-item">Run history</a>
+            <a role="menuitem" type="object" name="action_duplicate" class="dropdown-item" groups="base.group_system">Duplicate</a>
+            <a role="menuitem" type="object" name="action_save_as_template" class="dropdown-item" groups="base.group_system">Save as template</a>
+          </t>
           <t t-name="card">
             <field name="name" class="fw-bold fs-5"/>
             <field name="model_id"/>
             <field name="trigger" class="text-muted"/>
             <field name="description" class="text-muted text-truncate"/>
+            <div class="small text-muted mt-1">
+              <t t-if="record.run_count.raw_value"><field name="run_count"/> runs</t><t t-else="">No runs yet</t>
+              <span t-if="record.failed_run_count.raw_value" class="text-danger ms-2"><field name="failed_run_count"/> failed</span>
+            </div>
+            <div class="d-flex flex-wrap gap-1 mt-2 wf_card_actions">
+              <button name="action_test_dialog" type="object" class="btn btn-sm btn-secondary">Preview / run</button>
+              <button t-if="record.state.raw_value !== 'active' and record.ready_to_activate.raw_value" name="action_activate" type="object" class="btn btn-sm btn-primary"
+                      confirm="Authorize this workflow's configured actions, trigger, record filter, execution user and company? Matching events will run automatically. You can pause it at any time.">Activate</button>
+              <button t-else="" name="action_pause" type="object" class="btn btn-sm btn-secondary">Pause</button>
+              <button name="action_run_history" type="object" class="btn btn-sm btn-link">Runs</button>
+            </div>
+            <field name="readiness_note" class="small text-warning-emphasis mt-1"/>
             <footer class="d-flex justify-content-between mt-2">
-              <field name="state" widget="badge"/>
+              <field name="state" widget="badge" decoration-success="state == 'active'" decoration-warning="state == 'paused'"/>
               <field name="user_id" widget="many2one_avatar_user"/>
             </footer>
           </t>
@@ -325,11 +386,34 @@
   </record>
   <record id="test_form" model="ir.ui.view">
     <field name="name">workflow.test.form</field><field name="model">workflow.test</field>
-    <field name="arch" type="xml"><form><group>
-      <field name="workflow_id" readonly="1"/><field name="model_name" invisible="1"/>
-      <field name="record_id" widget="many2one_reference" options="{'no_create': True}"/><field name="mode"/>
-    </group><p>A preview follows conditions using this record's current values. It records planned steps without executing actions or waiting.</p>
-    <footer><button name="action_start" string="Continue" type="object" class="btn-primary" confirm="Continue in the selected mode? Run mode executes the active, approved workflow; Preview changes no business data."/><button string="Cancel" special="cancel"/></footer>
+    <field name="arch" type="xml"><form>
+      <field name="model_name" invisible="1"/><field name="workflow_state" invisible="1"/><field name="record_count" invisible="1"/>
+      <p class="text-muted">
+        Pick one existing <strong><field name="model_label" class="d-inline" readonly="1"/></strong> to follow the
+        workflow's steps with its current values.
+      </p>
+      <group>
+        <field name="workflow_id" readonly="1"/>
+        <field name="record_id" widget="many2one_reference" options="{'no_create': True}" placeholder="Search by name"/>
+        <field name="mode" widget="radio" readonly="workflow_state != 'active'"/>
+      </group>
+      <div class="alert alert-warning" role="status" invisible="record_count">
+        There is no <field name="model_label" class="d-inline" readonly="1"/> to test on yet. Create one in its app first.
+      </div>
+      <div class="alert alert-info" role="status" invisible="mode != 'preview'">
+        <strong>Preview</strong> lists the steps this record would go through and checks each condition. It sends nothing,
+        changes nothing and does not wait. A successful preview of the current version is required before activation.
+      </div>
+      <div class="text-muted small" invisible="workflow_state == 'active'">Run becomes available once the workflow is active.</div>
+      <div class="alert alert-warning" role="status" invisible="mode != 'run'">
+        <strong>Run</strong> executes the active workflow on this record now: its actions, messages and webhooks really happen.
+      </div>
+      <footer>
+        <button name="action_start" string="Preview" type="object" class="btn-primary" invisible="mode != 'preview'"/>
+        <button name="action_start" string="Run now" type="object" class="btn-primary" invisible="mode != 'run'"
+                confirm="Run this active workflow on the selected record now? Its actions, messages and webhooks will really happen."/>
+        <button string="Cancel" special="cancel"/>
+      </footer>
     </form></field>
   </record>
   <record id="action_new_workflow" model="ir.actions.client">
@@ -351,6 +435,7 @@
     <field name="name">My workflows</field><field name="res_model">workflow.definition</field>
     <field name="view_mode">list,kanban,form</field>
     <field name="view_id" ref="workflow_list"/><field name="search_view_id" ref="workflow_search"/>
+    <field name="domain">[('is_template', '=', False)]</field>
   </record>
   <menuitem id="menu_my_workflows" name="My workflows" parent="menu_workflows" action="action_workflow_library" sequence="5" groups="base.group_system,workflow_center.group_workflow_department_manager"/>
   <menuitem id="menu_workflows_runs" name="Run history" parent="menu_workflows" action="action_run_history" sequence="20" groups="base.group_system,workflow_center.group_workflow_department_manager"/>

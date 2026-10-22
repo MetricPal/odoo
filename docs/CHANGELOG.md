@@ -9,6 +9,104 @@ Format:
 - affected areas
 - migration/compatibility notes
 
+## 2026-10-22 — Workflow builder: branch lines, step help, preview dialog
+
+- Branches draw a stem from the branch step, a split into Yes and No, and a
+  join above the next shared step (paths that end on their own do not join).
+  On phones the paths stack and only vertical lines remain.
+- Step palette: a one-line explanation under each step and a hover example.
+  A click now adds after the selected step or at the end of the main path
+  (before: always as the first step when nothing was selected); a hint shows
+  where. Drop targets are outlined while dragging. Step settings have a close
+  button.
+- Preview dialog: "Record" is now **Test on** with an explanation of what to
+  pick; **Mode** is a radio choice; Run only when the workflow is active;
+  a warning when the document has no record yet; Preview starts without a
+  confirmation, Run now keeps one.
+- Browser tests updated to the current builder (four were failing before this
+  change: missing close button, row clicks, phone breadcrumbs).
+
+## 2026-10-22 — Workflows: own templates, coloured categories, actions from lists
+
+- **Workflows 20.0.1.2.0**: templates are now stored records. Built-in
+  templates are refreshed from the code catalogue on install/upgrade and stay
+  read-only (archive to hide). **Save as template** on any workflow keeps a
+  hidden copy (never activated) that can be edited in the builder; starting
+  from it creates an independent draft (its own steps, links and configured
+  actions). Templates are managed by Settings administrators.
+- Categories (Reminders, Data updates, Create records, Scheduled,
+  Integrations, Approvals, Other) have one colour each and a side-panel
+  section "What it does"; Applications link to the app module.
+- My workflows list and kanban: Preview / run, Activate (only when ready;
+  otherwise "Before activation" says why), Pause, Runs, Duplicate, Save as
+  template; run and failure counts.
+- Migration drops the old `workflow_template` SQL view (pre-migrate).
+
+## 2026-10-22 — Approval Center: archive instead of delete, from the dialog
+
+- Deleting a request that went to review (submitted, approved, refused, or
+  cancelled back to "To Submit") now shows the same dialog as a type in use:
+  "Not possible to delete … How about archiving it instead?" with an
+  **Archive** button. Before, it only said to archive, without a way to do it
+  there, and the type could not be deleted either because of those requests.
+- Drafts that never went to review can still be deleted.
+- The way out: archive the requests, then archive the type. Both leave the
+  lists and stay findable with the **Archived** filter; nothing in the audit
+  trail is deleted.
+- The always-ticked **Active** column of the approval types list is hidden
+  by default (archived types are not listed anyway).
+- Affected: approval_center (now declares its `web` dependency).
+
+## 2026-10-22 — Social campaign tracking (social_utm)
+
+- New bridge module **social_utm** (auto-installs with Social + Link Tracker).
+  Social campaigns get a UTM campaign of the same name (existing campaigns on
+  install); posts can choose one.
+- Links in a post become tracked short links when it is submitted (campaign,
+  platform as source, Social Media as medium, the post as reference), so the
+  approver reviews the exact text plus each link's destination. Destinations
+  are part of the approved document: a changed tracker blocks publishing.
+- Needs a public HTTPS `web.base.url`; otherwise links stay as written and the
+  form explains why. Link clicks are shown on posts and campaigns.
+- Decision: Social campaigns and UTM campaigns stay separate models and are
+  linked; UTM campaigns are a shared label used by CRM, Sales, Email
+  Marketing, Website and Recruitment.
+
+## 2026-10-22 — Communication team as radio buttons; Social Media team
+
+- New **Social Media** communication team (omni_channel catalogue). New social
+  accounts and campaigns start in it when it exists; it can be changed.
+- The communication team is chosen with horizontal radio buttons wherever it
+  is edited: Omnichannel channel, channel setup, account, receiving endpoint,
+  command and block forms; Social account, account setup and campaign; message
+  templates. LinkedIn's account type is a horizontal radio too.
+- The platform picker ("Add a social account") shows each platform's mark.
+- Campaign "Reason" is now **Note for the approver**, like posts.
+- Affected: omni_channel, omni_social, omni_template. Upgrade them; the new
+  team is added on upgrade (members still need to be added to it).
+
+## 2026-10-22 — Social: guided post form with live preview
+
+- **Social 20.0.3.0.0**: new post form. Account, action and format are cards
+  with illustrations and short explanations, filtered by what the platform
+  supports. The text box counts characters against the platform limit. Media
+  is a drag-and-drop uploader that lists the limits for the account and
+  format, converts PNG/WebP to JPEG in the browser, and shows size,
+  dimensions and length. A live preview mimics each platform's layout
+  (Instagram, Facebook, LinkedIn, X, Threads, TikTok, YouTube, Pinterest,
+  stories/reels, replies).
+- "Content" is now **Text**; "Reason" is now **Note for the approver**, with
+  placeholders explaining both.
+- Connectors declare per-format media rules (`format_media`), a lower photo
+  size where needed (`photo_bytes`, X: 5 MB) and a reply length
+  (`reply_limit`, Facebook 8,000, YouTube 10,000). Submit enforces them with
+  messages naming the platform and format.
+- Media records store size, width, height and video length.
+- Icons: `fa` classes render nothing in Odoo 20; Social and Approval Center
+  views now use Odoo icons.
+- Affected: omni_social, the eight social connectors, social_ai (AI brief has
+  its own label), approval_center (icons). Upgrade those modules.
+
 ## 2026-10-22 — Registry warnings on upgrade
 
 - Upgrading logged "should be searchable" warnings for 14 computed fields on

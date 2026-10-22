@@ -71,6 +71,32 @@ requires checking the platform; no unsafe reset button is offered.
 
 No Omnichannel, Telegram, WhatsApp, Slack or Teams source files are changed.
 
+## Writing a post
+
+The post form guides the author with the chosen account's own rules:
+
+- **Account**, **What do you want to do?** and **Format** are picture cards.
+  Only the actions and formats the account's platform supports are shown, each
+  with a short explanation (for example "2–10 photos or videos people swipe
+  through").
+- **Text** shows a live character count against the platform's limit (posts,
+  replies and private replies can differ). Stories have no text.
+- **Photos and videos** is a drop zone that lists the limits for this account
+  and format: how many files, which kinds, size, megapixels, video length and
+  width. PNG and WebP photos are converted to JPEG in the browser, and very
+  large photos are scaled down. Thumbnails show dimensions, size and length;
+  files the current account or format does not take are marked.
+- **Preview** shows the post the way the platform lays it out (Instagram,
+  Facebook, LinkedIn, X, Threads, TikTok, YouTube, Pinterest, stories and
+  reels, public and private replies). It is approximate: each platform has the
+  final say.
+- **Note for the approver** (formerly "Reason") is sent with the approval
+  request and is not published.
+
+The server checks the same rules again on **Submit for approval**.
+Connectors declare them in `Capabilities` (`format_media`, `photo_bytes`,
+`reply_limit`).
+
 ## Planning
 
 **Publishing** is a board by stage, with calendar and list views. Give a post a

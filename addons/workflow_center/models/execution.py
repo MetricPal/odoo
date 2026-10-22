@@ -399,9 +399,26 @@ class WorkflowTest(models.TransientModel):
     _description = 'Test or Run Workflow'
     workflow_id = fields.Many2one('workflow.definition', required=True)
     model_name = fields.Char(related='workflow_id.model_name')
-    record_id = fields.Many2oneReference(model_field='model_name', string='Record', required=True)
-    mode = fields.Selection([('preview', 'Preview without changing the record'),
-                             ('run', 'Run the active workflow')], default='preview', required=True)
+    model_label = fields.Char(related='workflow_id.model_id.name', string='Document')
+    workflow_state = fields.Selection(related='workflow_id.state')
+    record_id = fields.Many2oneReference(
+        model_field='model_name', string='Test on', required=True,
+        help='An existing record of the document this workflow watches. The preview follows the steps with '
+             "this record's current values; Run executes the active workflow on it.")
+    record_count = fields.Integer(compute='_compute_record_count')
+    mode = fields.Selection([('preview', 'Preview: show the steps, change nothing'),
+                             ('run', 'Run now on this record')], default='preview', required=True)
+
+    @api.depends('model_name')
+    def _compute_record_count(self):
+        for test in self:
+            Model = self.env.get(test.model_name) if test.model_name else None
+            test.record_count = Model.search_count([], limit=1) if Model is not None and Model.has_access('read') else 0
+
+    @api.onchange('workflow_id')
+    def _onchange_workflow(self):
+        if self.workflow_id.state != 'active':
+            self.mode = 'preview'
 
     def action_start(self):
         self.ensure_one()
@@ -413,7 +430,7 @@ class WorkflowTest(models.TransientModel):
         record.check_access('read')
         if self.mode == 'run':
             if workflow.state != 'active':
-                raise UserError(_('Activate the reviewed workflow before running it.'))
+                raise UserError(_('Run is available once the workflow is active. Use Preview until then.'))
             workflow._trigger_records(record)
         else:
             # Preview bookkeeping reads technical records and writes run history;

@@ -76,6 +76,7 @@ class Adapter:
         text_limit=TEXT_LIMIT,
         media_kinds=('image', 'video'),
         max_media=20,
+        format_media={'standard': (0, 1, ('image', 'video')), 'carousel': (2, 20, ('image', 'video'))},
         needs_public_url=True,
         daily_limits={'post': 250, 'reply': 1000},
         oauth=OAuth(

@@ -151,9 +151,12 @@ class TestWorkflows(TransactionCase):
         self.step(flow, action_id=self.action().id)
         with self.assertRaises(UserError):
             flow.action_activate()
+        self.assertEqual(flow.readiness_note, 'Preview it on a record first.')
         self.preview(flow)
         self.assertFalse(self.partner.ref)
         self.assertEqual(flow.state, 'draft')
+        flow.invalidate_recordset(['ready_to_activate', 'readiness_note'])
+        self.assertTrue(flow.ready_to_activate)
         flow.action_activate()
         run = self.execute_flow(flow)
         self.assertEqual(run.state, 'done', run.error)
@@ -316,24 +319,81 @@ class TestWorkflows(TransactionCase):
     def test_template_search_catalog_is_read_only(self):
         templates = self.env['workflow.template']
         recipes = self.env['workflow.definition'].home_data()['templates']
-        categories = templates.search_panel_select_range('app', enable_counters=True, expand=True)['values']
-        self.assertEqual({item['id'] for item in categories}, {item['app'] for item in recipes})
-        for item in categories:
-            self.assertEqual(item['__count'], sum(recipe['app'] == item['id'] for recipe in recipes))
+        apps = templates.search_panel_select_range('app_id', enable_counters=True)['values']
+        self.assertEqual({item['display_name'] for item in apps}, {item['app'] for item in recipes})
+        for item in apps:
+            self.assertEqual(item['__count'], sum(recipe['app'] == item['display_name'] for recipe in recipes))
+        categories = templates.search_panel_select_range('category', enable_counters=True)['values']
+        self.assertEqual({c['id'] for c in categories if c['__count']},
+                         {'reminders', 'data_updates', 'create_records', 'scheduled', 'integrations', 'approvals'})
 
         self.assertEqual(templates.search([]).mapped('key'), [item['key'] for item in recipes])
-        reminders = templates.search([('category', '=', 'Reminders')])
+        reminders = templates.search([('category', '=', 'reminders')])
         self.assertEqual(set(reminders.mapped('key')),
                          {item['key'] for item in recipes if item['category'] == 'Reminders'})
-        with self.assertRaises(AccessError):
+        with self.assertRaises(UserError):
             reminders.write({'name': 'Changed template'})
         with self.assertRaises(AccessError):
             templates.create({'name': 'Unapproved recipe'})
-        with self.assertRaises(AccessError):
+        with self.assertRaises(UserError):
             reminders.unlink()
+        reminders[:1].action_archive()  # built-ins can be hidden
+        self.assertNotIn(reminders[:1], templates.search([]))
         user = new_test_user(self.env, login='template_catalog_staff', groups='base.group_user')
         with self.assertRaises(AccessError):
             templates.with_user(user).search_read([], ['name'])
+
+    def test_saved_template_round_trip(self):
+        flow = self.flow(name='Partner welcome', description='Welcome new partners')
+        first = self.step(flow, name='Check', kind='branch', domain="[('is_company', '=', True)]")
+        yes = self.step(flow, name='Company welcome', action_id=self.action('Company').id)
+        no = self.step(flow, name='Person welcome', action_id=self.action('Person').id)
+        first.false_id = no
+        yes.end = True
+        result = self.env['workflow.template.save'].create({
+            'workflow_id': flow.id, 'name': 'Welcome partners', 'category': 'data_updates',
+        }).action_save()
+        self.assertEqual(result['tag'], 'display_notification')
+        template = self.env['workflow.template'].search([('name', '=', 'Welcome partners')])
+        self.assertFalse(template.builtin)
+        self.assertEqual(template.blocks, 'Check · Company welcome · Person welcome')
+        hidden = template.workflow_id
+        self.assertTrue(hidden.is_template)
+        self.assertNotIn(hidden, self.env['workflow.definition'].search([('is_template', '=', False)]))
+        with self.assertRaises(UserError):
+            hidden.action_activate()
+        with self.assertRaises(UserError):
+            hidden.action_test_dialog()
+        # Starting from it makes an independent draft with its own actions and links.
+        draft = self.env['workflow.definition'].browse(template.action_start()['params']['workflow_id'])
+        self.assertFalse(draft.is_template)
+        self.assertEqual(draft.state, 'draft')
+        steps = draft.step_ids.sorted('sequence')
+        self.assertEqual(steps.mapped('name'), ['Check', 'Company welcome', 'Person welcome'])
+        self.assertEqual(steps[0].false_id, steps[2])
+        self.assertTrue(steps[1].end)
+        self.assertNotEqual(steps[1].action_id, yes.action_id)
+        self.assertEqual(steps[1].action_id.name, 'Company')
+        self.assertFalse(set(steps.ids) & set(hidden.step_ids.ids))
+        # Editing the template is allowed; deleting it removes the hidden copy.
+        self.assertEqual(template.action_edit_template()['params']['workflow_id'], hidden.id)
+        template.unlink()
+        self.assertFalse(hidden.exists())
+        self.assertTrue(draft.exists())
+
+    def test_duplicate_and_list_actions(self):
+        flow = self.flow()
+        self.step(flow, name='Only', action_id=self.action().id)
+        result = flow.action_duplicate()
+        copy = self.env['workflow.definition'].browse(result['params']['workflow_id'])
+        self.assertEqual(copy.name, 'Customer follow-up (copy)')
+        self.assertEqual(copy.step_ids.name, 'Only')
+        self.assertNotEqual(copy.step_ids.action_id, flow.step_ids.action_id)
+        self.assertFalse(copy.ready_to_activate)
+        self.assertTrue(copy.readiness_note)
+        history = flow.action_run_history()
+        self.assertEqual(history['domain'], [('workflow_id', '=', flow.id)])
+        self.assertEqual(flow.run_count, 0)
 
     def test_template_catalog_and_onboarding_shape(self):
         self.assertEqual(len(self.env['workflow.definition'].home_data()['templates']), 11)
@@ -609,3 +669,17 @@ class TestWorkflows(TransactionCase):
         self.assertEqual(self.partner.ref, 'followed-up')
         flow.action_pause()
         self.assertFalse(action.binding_model_id)
+
+    def test_test_dialog_explains_and_guards_run(self):
+        flow = self.flow()
+        self.step(flow, action_id=self.action().id)
+        dialog = self.env['workflow.test'].create({'workflow_id': flow.id, 'record_id': self.partner.id})
+        self.assertEqual(dialog.model_label, 'Contact')
+        self.assertEqual(dialog.record_count, 1)
+        self.assertEqual(dialog._fields['record_id'].string, 'Test on')
+        dialog.mode = 'run'
+        with self.assertRaisesRegex(UserError, 'Run is available once the workflow is active'):
+            dialog.action_start()
+        empty = self.env['workflow.test'].new({'workflow_id': flow.id, 'mode': 'run'})
+        empty._onchange_workflow()
+        self.assertEqual(empty.mode, 'preview')

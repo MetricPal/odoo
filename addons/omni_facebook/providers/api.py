@@ -80,8 +80,10 @@ class Adapter:
         operations=('post', 'reply'),
         formats=('standard', 'carousel'),
         text_limit=TEXT_LIMIT,
+        reply_limit=REPLY_LIMIT,
         media_kinds=('image', 'video'),
         max_media=10,
+        format_media={'standard': (0, 1, ('image', 'video')), 'carousel': (2, 10, ('image',))},
         needs_public_url=True,
         oauth=OAuth(
             authorize_url='https://www.facebook.com/' + VERSION + '/dialog/oauth',

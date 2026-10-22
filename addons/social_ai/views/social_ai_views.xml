@@ -7,8 +7,11 @@
       <xpath expr="//header/button[@name='action_submit']" position="after">
         <button name="action_ai_draft" type="object" string="Draft with AI" invisible="state != 'draft' or ai_drafting"/>
       </xpath>
-      <xpath expr="//field[@name='body']" position="before">
-        <field name="ai_brief" invisible="state != 'draft' or operation != 'post'" placeholder="A few words for the AI agent, e.g. announce the autumn webinar on 4 November"/>
+      <xpath expr="//div[@name='text_block']" position="before">
+        <div invisible="state != 'draft' or operation != 'post'">
+          <label for="ai_brief" string="Brief for AI (optional)" class="o_social_section_label d-block"/>
+          <field name="ai_brief" nolabel="1" placeholder="A few words, e.g. announce the autumn webinar on 4 November. Then click Draft with AI."/>
+        </div>
       </xpath>
       <xpath expr="//sheet" position="inside">
         <field name="ai_drafting" invisible="1"/>

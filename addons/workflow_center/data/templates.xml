@@ -1,0 +1,4 @@
+<odoo>
+  <!-- Built-in templates are refreshed from the code catalogue on every install and upgrade. -->
+  <function model="workflow.template" name="_sync_builtin"/>
+</odoo>

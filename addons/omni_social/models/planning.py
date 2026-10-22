@@ -160,8 +160,12 @@ class Campaign(models.Model):
 
     name = fields.Char(required=True)
     brief = fields.Text(string='Text', required=True, help='Starting text for every version; adapt each one to its platform.')
-    reason = fields.Text(required=True, string='Reason')
+    reason = fields.Text(
+        required=True, string='Note for the approver',
+        help='Why this campaign goes out and anything the approver should check. Only approvers see it.',
+    )
     scheduled_at = fields.Datetime(string='Publish at')
+    purpose_id = fields.Many2one(default=lambda self: self.env['omni.social.connection']._default_social_team())
     connection_ids = fields.Many2many(
         'omni.social.connection', string='Accounts', check_company=True,
         domain="[('connected', '=', True), ('active', '=', True), ('purpose_id', '=', purpose_id), ('company_id', '=', company_id)]",

@@ -81,8 +81,13 @@ class TestOmniUI(HttpCase):
                     await waitFor(() => document.querySelector('.o-autocomplete--dropdown-menu'));
                     await new Promise(resolve => setTimeout(resolve, 300));
                 };
-                await type('purpose_id', 'Customer care');
-                items().find(el => el.textContent.trim() === 'Customer care').click();
+                // Communication team is a row of radio buttons.
+                await waitFor(() => document.querySelector('.o_omni_setup [name="purpose_id"] input[type=radio]'));
+                const team = [...document.querySelectorAll('.o_omni_setup [name="purpose_id"] .o_radio_item')]
+                    .find(el => el.textContent.trim() === 'Customer care');
+                if (!team) throw new Error('Team radio missing');
+                team.querySelector('input').click();
+                await waitFor(() => team.querySelector('input').checked);
                 await type('channel_type_id', 'WhatsApp');
                 const offered = items().some(el => el.textContent.trim() === 'WhatsApp Business');
                 if (offered !== %s) throw new Error('Channel types without a connector must not be offered');

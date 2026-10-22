@@ -72,6 +72,10 @@
     <field name="name">Recruitment</field>
     <field name="code">recruitment</field>
   </record>
+  <record id="purpose_social_media" model="omni.purpose">
+    <field name="name">Social Media</field>
+    <field name="code">social_media</field>
+  </record>
   <record id="purpose_hr" model="omni.purpose">
     <field name="name">Human Resources</field>
     <field name="code">hr</field>

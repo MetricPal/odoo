@@ -98,7 +98,7 @@
           </div>
           <group>
             <group>
-              <field name="purpose_id"/>
+              <field name="purpose_id" widget="radio" options="{'horizontal': true}"/>
               <field name="channel_type_id" domain="[('adapter_ready', '=', True)]" options="{'no_create': True}"/>
               <field name="company_id"/>
             </group>
@@ -182,7 +182,7 @@
           <field name="setup_policy_id" invisible="1"/>
           <field name="setup_policy_state" invisible="1"/>
           <div class="o_omni_setup_stage o_omni_setup_stage_0">
-            <group><field name="name" placeholder="Sales enquiries"/><field name="channel_type_id" readonly="setup_has_bindings" domain="[('adapter_ready', '=', True)]" options="{'no_create': True}" help="Only channel types with an installed connector are offered. More connectors are installed as separate Omnichannel add-ons."/><field name="company_id" readonly="setup_has_bindings"/><field name="purpose_id" readonly="setup_has_bindings"/></group>
+            <group><field name="name" placeholder="Sales enquiries"/><field name="channel_type_id" readonly="setup_has_bindings" domain="[('adapter_ready', '=', True)]" options="{'no_create': True}" help="Only channel types with an installed connector are offered. More connectors are installed as separate Omnichannel add-ons."/><field name="company_id" readonly="setup_has_bindings"/><field name="purpose_id" widget="radio" options="{'horizontal': true}" readonly="setup_has_bindings"/></group>
           </div>
           <div class="o_omni_setup_stage o_omni_setup_stage_1">
             <field name="setup_connection_mode" widget="radio" class="mb-3" options="{'horizontal': True}" readonly="setup_has_bindings"/>
@@ -264,7 +264,7 @@
             <field name="channel_type_id"/>
             <field name="external_account_key" string="Provider account ID" placeholder="Provider-issued ID; never invent a value"/>
             <field name="namespace" string="Account identity scope" placeholder="Provider-specific account scope"/>
-            <field name="purpose_id"/>
+            <field name="purpose_id" widget="radio" options="{'horizontal': true}"/>
             <field name="company_id"/>
             <field name="active"/>
             <field name="credential_reference" string="Provisioned secret reference" groups="omni_channel.group_omni_manager" placeholder="OMNI_SECRET_MARKETING_BOT"/>
@@ -372,7 +372,7 @@
             <field name="health"/>
             <field name="health_checked_at"/>
             <field name="company_id" invisible="1"/>
-            <field name="purpose_id"/>
+            <field name="purpose_id" widget="radio" options="{'horizontal': true}"/>
             <field name="channel_type_id" invisible="1"/>
             <field name="active"/>
           </group>
@@ -541,7 +541,7 @@
         <sheet>
           <div class="alert alert-info" role="status">Queued means approved and waiting for the background sender. It does not mean sent or delivered.</div>
           <div class="o_omni_settings_grid mb-4">
-            <div class="o_omni_setting"><label for="name" string="Name"/><field name="name" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="channel_id" string="Channel"/><field name="channel_id" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="create_date" string="Created on"/><field name="create_date" nolabel="1"/></div><div class="o_omni_setting"><label for="purpose_id" string="Team"/><field name="purpose_id" nolabel="1"/></div><div class="o_omni_setting"><label for="recipient" string="Recipient"/><field name="recipient" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="sender_id" string="Sender"/><field name="sender_id" nolabel="1"/></div><div class="o_omni_setting"><label for="requester_id" string="Requester"/><field name="requester_id" nolabel="1"/></div><div class="o_omni_setting"><label for="expires_at" string="Expires At"/><field name="expires_at" nolabel="1"/></div><div class="o_omni_setting"><label for="approval_request_id" string="Approval Request"/><field name="approval_request_id" nolabel="1" readonly="1"/></div><div class="o_omni_setting" invisible="not held_reason"><label for="held_reason" string="Why this message is held"/><field name="held_reason" nolabel="1" invisible="not held_reason"/></div></div>
+            <div class="o_omni_setting"><label for="name" string="Name"/><field name="name" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="channel_id" string="Channel"/><field name="channel_id" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="create_date" string="Created on"/><field name="create_date" nolabel="1"/></div><div class="o_omni_setting"><label for="purpose_id" string="Team"/><field name="purpose_id" widget="radio" options="{'horizontal': true}" nolabel="1"/></div><div class="o_omni_setting"><label for="recipient" string="Recipient"/><field name="recipient" nolabel="1" readonly="state != 'draft'"/></div><div class="o_omni_setting"><label for="sender_id" string="Sender"/><field name="sender_id" nolabel="1"/></div><div class="o_omni_setting"><label for="requester_id" string="Requester"/><field name="requester_id" nolabel="1"/></div><div class="o_omni_setting"><label for="expires_at" string="Expires At"/><field name="expires_at" nolabel="1"/></div><div class="o_omni_setting"><label for="approval_request_id" string="Approval Request"/><field name="approval_request_id" nolabel="1" readonly="1"/></div><div class="o_omni_setting" invisible="not held_reason"><label for="held_reason" string="Why this message is held"/><field name="held_reason" nolabel="1" invisible="not held_reason"/></div></div>
           <div class="o_omni_settings_grid mb-4">
             <div class="o_omni_setting"><label for="body" string="Message content"/><field name="body" nolabel="1" readonly="state != 'draft'" placeholder="Prepare your message…"/></div><div class="o_omni_setting"><label for="reason" string="Reason"/><field name="reason" nolabel="1" readonly="state != 'draft'" placeholder="Explain why this message should be sent."/></div></div>
         </sheet>

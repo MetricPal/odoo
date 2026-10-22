@@ -1,7 +1,8 @@
 <odoo>
 <record id="platform_kanban" model="ir.ui.view"><field name="name">Social platforms</field><field name="model">omni.channel.type</field><field name="priority">99</field><field name="arch" type="xml"><kanban create="0" edit="0" delete="0" action="action_social_connect" type="object" class="o_social_platforms">
-<field name="social_ready"/>
-<templates><t t-name="card" class="flex-row align-items-center">
+<field name="social_ready"/><field name="code"/>
+<templates><t t-name="card" class="flex-row align-items-start gap-3">
+  <span t-att-class="'o_social_brand o_brand_' + record.code.raw_value + (record.social_ready.raw_value ? '' : ' opacity-50')"><i class="oi" t-att-data-icon="'oi_' + (record.code.raw_value === 'youtube' ? 'youtube-play' : record.code.raw_value)"/></span>
   <div t-att-class="'w-100 d-flex flex-column gap-1' + (record.social_ready.raw_value ? '' : ' opacity-50')">
     <field name="name" class="fw-bold fs-5"/>
     <field name="social_rules" class="text-muted small" invisible="not social_ready"/>
@@ -17,7 +18,7 @@
 <record id="connection_form" model="ir.ui.view"><field name="name">Social account</field><field name="model">omni.social.connection</field><field name="arch" type="xml"><form>
 <header><button name="action_open_setup" type="object" string="Continue setup" class="btn-primary" invisible="setup_step == 'done' and connected" groups="omni_channel.group_omni_manager"/><field name="setup_step" invisible="1"/><button name="action_sync" type="object" string="Sync activity" class="btn-primary" invisible="not connected" groups="omni_channel.group_omni_manager"/><button name="action_new_post" type="object" string="New post" invisible="not connected"/></header>
 <sheet><div class="oe_title"><h1><field name="name" placeholder="Account name"/></h1></div><group><group>
-<field name="provider" readonly="connected"/><field name="account_kind" invisible="provider != 'linkedin'" readonly="connected"/><field name="purpose_id" readonly="connected"/><field name="company_id" readonly="connected" groups="base.group_multi_company"/>
+<field name="provider" readonly="connected"/><field name="account_kind" widget="radio" options="{'horizontal': true}" invisible="provider != 'linkedin'" readonly="connected"/><field name="purpose_id" readonly="connected" widget="radio" options="{'horizontal': true}"/><field name="company_id" readonly="connected" groups="base.group_multi_company"/>
 </group><group><field name="profile_name" invisible="not connected"/><field name="connected"/><field name="approval_type_id"/><field name="public_url" placeholder="https://your-public-server.example"/><field name="retention_days"/><field name="active" invisible="not connected"/>
 <field name="monthly_budget" invisible="not paid_platform" groups="omni_channel.group_omni_manager"/>
 </group></group>
@@ -44,18 +45,57 @@
 <record id="publication_list" model="ir.ui.view"><field name="name">Social publishing</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><list>
 <field name="name"/><field name="connection_id"/><field name="operation"/><field name="state" widget="badge"/><field name="requester_id" optional="show"/><field name="create_date" optional="hide"/><field name="expires_at" optional="hide"/><field name="company_id" optional="hide"/><field name="result_note" optional="hide"/>
 </list></field></record>
-<record id="publication_form" model="ir.ui.view"><field name="name">Social publication</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><form>
+<record id="publication_form" model="ir.ui.view"><field name="name">Social publication</field><field name="model">omni.social.publication</field><field name="arch" type="xml"><form class="o_social_composer">
 <header><button name="action_submit" type="object" string="Submit for approval" class="btn-primary" invisible="state != 'draft'"/>
 <button name="action_publish" type="object" string="Publish / send" class="btn-primary" invisible="state not in ('approved','waiting') or (state == 'approved' and scheduled_at)" confirm="Publish or send this exact approved content to the displayed account and destination?"/>
 <button name="action_approval" type="object" string="View approval" invisible="not approval_request_id"/>
 <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft','pending','approved','waiting','failed')"/><field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,sent"/></header>
-<sheet><div class="oe_title"><h1><field name="name" readonly="state != 'draft'" placeholder="Subject"/></h1></div>
-<group><field name="connection_id" readonly="state != 'draft'" domain="[('connected','=',True),('active','=',True)]"/><field name="provider" invisible="1"/><field name="operation" readonly="state != 'draft' or provider == 'linkedin'"/>
-<field name="target_id" readonly="state != 'draft'" invisible="operation == 'post'" domain="[('connection_id','=',connection_id)]" options="{'no_create': True}"/><field name="format" readonly="state != 'draft'" invisible="operation != 'post'"/><field name="body" readonly="state != 'draft'" invisible="format == 'story' and operation == 'post'"/>
-<field name="image" widget="image" readonly="state != 'draft'" invisible="not image"/><field name="reason" readonly="state != 'draft'"/>
-<field name="scheduled_at" readonly="state != 'draft'" invisible="operation != 'post'"/><field name="published_at" invisible="not published_at"/><field name="campaign_id" readonly="1" invisible="not campaign_id"/></group>
-<div class="alert alert-warning" role="status" invisible="not limit_note"><field name="limit_note" nolabel="1" class="d-inline"/>. Shorten the text before submitting.</div>
-<field name="media_ids" readonly="state != 'draft'" invisible="operation != 'post' or image"><list editable="bottom"><field name="sequence" widget="handle"/><field name="kind"/><field name="preview" widget="image" options="{'size': [64,64]}"/><field name="name"/><field name="file" filename="name"/><field name="alt_text" optional="hide"/></list><form><group><field name="kind"/><field name="preview" widget="image" options="{'size': [64,64]}"/><field name="name"/><field name="file" filename="name"/><field name="alt_text"/></group></form></field><group invisible="not result_note"><field name="result_note"/><field name="result_key" invisible="not result_key"/></group><field name="approval_request_id" invisible="1"/>
+<sheet>
+  <field name="composer_ui" invisible="1"/><field name="composer_operations" invisible="1"/><field name="composer_formats" invisible="1"/>
+  <field name="provider" invisible="1"/><field name="approval_request_id" invisible="1"/>
+  <div class="row">
+    <div class="col-lg-7" name="composer">
+      <div class="oe_title mb-1"><h1><field name="name" readonly="state != 'draft'" placeholder="Subject, e.g. Spring sale announcement"/></h1></div>
+      <widget name="social_title_hint"/>
+
+      <label for="connection_id" string="Account" class="o_social_section_label d-block"/>
+      <field name="connection_id" widget="social_account_cards" readonly="state != 'draft'" domain="[('connected','=',True),('active','=',True)]" nolabel="1"/>
+
+      <div invisible="not connection_id or composer_operations &lt; 2">
+        <label for="operation" string="What do you want to do?" class="o_social_section_label d-block"/>
+        <field name="operation" widget="social_choice_cards" readonly="state != 'draft' or provider == 'linkedin'" nolabel="1"/>
+      </div>
+      <div invisible="operation == 'post'">
+        <label for="target_id" string="Answer to" class="o_social_section_label d-block"/>
+        <field name="target_id" readonly="state != 'draft'" domain="[('connection_id','=',connection_id)]" options="{'no_create': True}" placeholder="Choose the comment or message to answer" nolabel="1"/>
+      </div>
+      <div invisible="not connection_id or operation != 'post' or composer_formats &lt; 2">
+        <label for="format" string="Format" class="o_social_section_label d-block"/>
+        <field name="format" widget="social_choice_cards" readonly="state != 'draft'" nolabel="1"/>
+      </div>
+
+      <div name="text_block" invisible="format == 'story' and operation == 'post'">
+        <label for="body" string="Text" class="o_social_section_label d-block"/>
+        <field name="body" widget="social_text" readonly="state != 'draft'" nolabel="1" placeholder="What do you want to say?"/>
+      </div>
+
+      <div invisible="not connection_id or operation != 'post' or image">
+        <label for="media_ids" string="Photos and videos" class="o_social_section_label d-block"/>
+        <field name="media_ids" widget="social_media_drop" readonly="state != 'draft'" nolabel="1"/>
+      </div>
+      <group invisible="not image"><field name="image" widget="image" readonly="state != 'draft'"/></group>
+
+      <group class="mt-3">
+        <field name="scheduled_at" readonly="state != 'draft'" invisible="operation != 'post'" placeholder="Publish by hand after approval"/>
+        <field name="reason" readonly="state != 'draft'" placeholder="Why this post? Anything the approver should check" help="Why this post goes out and anything the approver should check. Only the approver sees it."/>
+        <field name="published_at" invisible="not published_at"/><field name="campaign_id" readonly="1" invisible="not campaign_id"/>
+      </group>
+      <group invisible="not result_note"><field name="result_note"/><field name="result_key" invisible="not result_key"/></group>
+    </div>
+    <div class="col-lg-5" name="preview">
+      <widget name="social_preview"/>
+    </div>
+  </div>
 </sheet></form></field></record>
 <record id="approval_social_review" model="ir.ui.view"><field name="name">Social review content</field><field name="model">approval.center.request</field><field name="inherit_id" ref="approval_center.approval_center_request_view_form"/><field name="arch" type="xml"><xpath expr="//sheet" position="inside"><group string="Social content" invisible="not social_publication_id"><field name="social_publication_id"/><field name="social_account"/><field name="social_operation"/><field name="social_target" invisible="not social_target"/><field name="social_format"/><field name="social_scheduled_at" invisible="not social_scheduled_at"/><field name="social_campaign_id" invisible="not social_campaign_id"/><field name="social_body"/><field name="social_media_ids" readonly="1"><list create="0" delete="0"><field name="sequence"/><field name="kind"/><field name="preview" widget="image" options="{'size': [64,64]}"/><field name="name"/><field name="file" filename="name"/><field name="alt_text"/></list></field><field name="social_image" widget="image" invisible="not social_image"/></group></xpath></field></record>
 
@@ -76,8 +116,8 @@
     <p class="text-muted">Choose the platform and the team that will post from this account. Team members draft posts; other team members approve them.</p>
     <group>
       <field name="provider" readonly="connected" string="Platform"/>
-      <field name="account_kind" widget="radio" string="Account type" invisible="provider != 'linkedin'" readonly="connected"/>
-      <field name="purpose_id" readonly="connected" placeholder="Choose a team" options="{'no_quick_create': True}"/>
+      <field name="account_kind" widget="radio" options="{'horizontal': true}" string="Account type" invisible="provider != 'linkedin'" readonly="connected"/>
+      <field name="purpose_id" readonly="connected" widget="radio" options="{'horizontal': true}"/>
       <field name="company_id" readonly="connected" groups="base.group_multi_company"/>
     </group>
     <div class="text-muted" invisible="not platform_note"><field name="platform_note" nolabel="1" class="d-inline"/></div>
@@ -114,10 +154,10 @@
   <div invisible="setup_step != 'done'" name="step_done">
     <h3>Ready</h3>
     <ul class="list-unstyled">
-      <li><i class="fa fa-check text-success me-2"/>Connected as <field name="profile_name" nolabel="1" class="d-inline fw-bold"/></li>
-      <li><i class="fa fa-check text-success me-2"/>Approved by <field name="approval_type_id" nolabel="1" class="d-inline" readonly="1"/></li>
-      <li invisible="not webhook_enabled"><i class="fa fa-check text-success me-2"/>New activity arrives through webhooks</li>
-      <li invisible="webhook_enabled"><i class="fa fa-info-circle text-muted me-2"/>Activity is fetched when you click Sync activity</li>
+      <li><i class="oi text-success me-2" data-icon="check"/>Connected as <field name="profile_name" nolabel="1" class="d-inline fw-bold"/></li>
+      <li><i class="oi text-success me-2" data-icon="check"/>Approved by <field name="approval_type_id" nolabel="1" class="d-inline" readonly="1"/></li>
+      <li invisible="not webhook_enabled"><i class="oi text-success me-2" data-icon="check"/>New activity arrives through webhooks</li>
+      <li invisible="webhook_enabled"><i class="oi text-muted me-2" data-icon="info"/>Activity is fetched when you click Sync activity</li>
     </ul>
     <div class="text-muted mb-3" invisible="not platform_note"><field name="platform_note" nolabel="1" class="d-inline"/></div>
     <button name="action_sync" type="object" string="Sync activity now" class="btn btn-secondary me-2"/>
@@ -153,7 +193,7 @@
   <div class="text-muted small"><field name="connection_id"/> · <field name="provider"/></div>
   <field name="body" class="small text-truncate d-block" style="max-height:3.2em;white-space:normal;overflow:hidden"/>
   <footer class="pt-1">
-    <span t-if="record.scheduled_at.raw_value" class="small"><i class="fa fa-clock-o me-1" title="Publish at"/><field name="scheduled_at" widget="datetime"/></span>
+    <span t-if="record.scheduled_at.raw_value" class="small"><i class="oi me-1" data-icon="schedule" title="Publish at"/><field name="scheduled_at" widget="datetime"/></span>
     <span t-if="record.limit_note.raw_value" class="badge text-bg-warning ms-1">Too long</span>
     <field name="requester_id" widget="many2one_avatar_user" class="ms-auto"/>
   </footer>
@@ -185,7 +225,7 @@
   <field name="can_approve" invisible="1"/><field name="version_count" invisible="1"/><field name="missing_versions" invisible="1"/>
   <div class="oe_title"><h1><field name="name" placeholder="Campaign name, e.g. Autumn launch"/></h1></div>
   <group>
-    <group><field name="purpose_id"/><field name="company_id" groups="base.group_multi_company"/><field name="connection_ids" widget="many2many_tags" options="{'no_create': True}"/></group>
+    <group><field name="purpose_id" widget="radio" options="{'horizontal': true}"/><field name="company_id" groups="base.group_multi_company"/><field name="connection_ids" widget="many2many_tags" options="{'no_create': True}"/></group>
     <group><field name="scheduled_at"/><field name="progress" invisible="not version_count"/></group>
   </group>
   <field name="brief" placeholder="Write the message once; each account gets its own version you can adapt."/>
