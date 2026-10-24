@@ -1,65 +1,158 @@
 <?xml version='1.0' encoding='utf-8'?>
 <odoo>
-  <!-- One body template for the preview, the HTML file and the PDF. -->
+  <!-- What one box shows; used by the board editor, the HTML file and the PDF. -->
+  <template id="box_content">
+    <t t-set="kind" t-value="box['type']"/>
+    <div t-if="box['error']" class="o_rs_error" t-out="box['error']"/>
+    <t t-elif="kind == 'heading'"/>
+    <div t-elif="kind == 'text'" class="o_rs_text" t-out="box['html']"/>
+    <div t-elif="kind == 'kpi'" class="o_rs_number" t-out="box['display']"/>
+    <div t-elif="box['chart']" class="o_rs_chart_wrap"
+         t-out="chart_svg(box['chart']['kind'], box['chart']['labels'], box['chart']['values'], box['accent'], 170 * box['width'] + 60, 240)"/>
+    <table t-elif="box['columns']" class="o_rs_table">
+      <thead><tr><th t-foreach="box['columns']" t-as="col" t-out="col"/></tr></thead>
+      <tbody>
+        <tr t-foreach="box['rows']" t-as="row"><td t-foreach="row" t-as="value" t-out="value"/></tr>
+        <tr t-if="not box['rows']"><td t-att-colspan="len(box['columns'])" class="o_rs_empty">No records</td></tr>
+      </tbody>
+    </table>
+    <t t-elif="kind == 'list'">
+      <ul t-if="box['items']" class="o_rs_list"><li t-foreach="box['items']" t-as="item" t-out="item"/></ul>
+      <div t-else="" class="o_rs_empty">No records</div>
+    </t>
+    <t t-elif="kind == 'image'">
+      <img t-if="box['image']" class="o_rs_image" t-att-src="'data:%s;base64,%s' % (box.get('image_mime') or 'image/png', box['image'])" alt=""/>
+      <div t-else="" class="o_rs_empty">Upload an image</div>
+    </t>
+    <t t-elif="kind == 'link'">
+      <a t-if="box['url']" class="o_rs_link" t-att-href="box['url']" target="_blank" rel="noopener" t-out="box['link_label']"/>
+      <div t-else="" class="o_rs_empty">Add an address</div>
+    </t>
+    <div t-elif="kind in ('kpi', 'chart', 'table', 'list', 'view')" class="o_rs_empty">No data</div>
+  </template>
+
+  <!-- The page: header and rows of boxes (a row holds boxes until their widths add up to 4 columns).
+       Table layout so the PDF engine (old WebKit, no CSS grid) renders the same rows. -->
   <template id="report_body">
-    <div class="o_rs_report" t-attf-style="--rs-accent: #{report['accent']};">
+    <t t-set="page" t-value="report['page']"/>
+    <div t-attf-class="o_rs_report o_rs_fit_#{page['fit']}" t-att-data-fit="page['fit']"
+         t-att-data-page-ratio="page['content_ratio']"
+         t-attf-style="--rs-accent: #{report['accent']};#{' width: %spx;' % page['content_width_px'] if fixed_width else ''}">
       <header class="o_rs_header">
         <h1 t-out="report['title']"/>
         <p class="o_rs_sub"><t t-out="report['subtitle']"/><t t-if="report['subtitle']"> · </t><t t-out="report['company']"/> · <t t-out="report['date']"/></p>
       </header>
-      <div class="o_rs_kpis" t-if="any(b['type'] == 'kpi' for b in report['blocks'])">
-        <t t-foreach="[b for b in report['blocks'] if b['type'] == 'kpi']" t-as="kpi">
-          <div class="o_rs_kpi"><div class="o_rs_kpi_value" t-out="kpi['display']"/><div class="o_rs_kpi_label" t-out="kpi['title']"/></div>
-        </t>
-      </div>
-      <t t-foreach="report['blocks']" t-as="block">
-        <h2 t-if="block['type'] == 'heading'" class="o_rs_h2" t-out="block['title']"/>
-        <section t-if="block['type'] == 'text'" class="o_rs_text">
-          <h3 t-if="block['title']" t-out="block['title']"/>
-          <div t-out="block['html']"/>
-        </section>
-        <section t-if="block['type'] == 'table'" class="o_rs_table">
-          <h3 t-if="block['title']" t-out="block['title']"/>
-          <table>
-            <thead><tr><th t-foreach="block['columns']" t-as="col" t-out="col"/></tr></thead>
-            <tbody>
-              <tr t-foreach="block['rows']" t-as="row"><td t-foreach="row" t-as="value" t-out="value"/></tr>
-              <tr t-if="not block['rows']"><td t-att-colspan="len(block['columns'])" class="o_rs_empty">No records</td></tr>
-            </tbody>
-          </table>
-        </section>
+      <t t-foreach="report['rows']" t-as="line">
+        <table class="o_rs_row">
+          <tr>
+            <t t-foreach="line" t-as="cell">
+              <t t-set="box" t-value="cell[0]"/>
+              <td t-att-colspan="cell[2]" t-attf-class="o_rs_cell o_rs_span_#{cell[2]} o_rs_type_#{box['type']}">
+                <div class="o_rs_box">
+                  <h2 t-if="box['type'] == 'heading'" class="o_rs_h2" t-out="box['title']"/>
+                  <h3 t-elif="box['title']" class="o_rs_box_title" t-out="box['title']"/>
+                  <t t-call="report_studio.box_content"/>
+                </div>
+              </td>
+            </t>
+            <t t-set="used" t-value="sum(cell[2] for cell in line)"/>
+            <td t-if="used &lt; 4" t-att-colspan="4 - used" class="o_rs_cell o_rs_spacer"/>
+          </tr>
+          <tr class="o_rs_ruler"><td/><td/><td/><td/></tr>
+        </table>
       </t>
     </div>
   </template>
 
   <template id="report_styles">
     <style>
-      .o_rs_report { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #222; max-width: 1000px; margin: 0 auto; }
-      .o_rs_header { border-bottom: 4px solid var(--rs-accent); margin-bottom: 1.5rem; padding-bottom: .5rem; }
-      .o_rs_header h1 { margin: 0; color: var(--rs-accent); font-size: 1.8rem; }
-      .o_rs_sub { color: #666; margin: .25rem 0 0; }
-      .o_rs_kpis { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
-      .o_rs_kpi { flex: 1 1 10rem; border: 1px solid #ddd; border-top: 4px solid var(--rs-accent); border-radius: .5rem; padding: .75rem 1rem; }
-      .o_rs_kpi_value { font-size: 1.8rem; font-weight: 700; }
-      .o_rs_kpi_label { color: #666; }
-      .o_rs_h2 { color: var(--rs-accent); margin-top: 2rem; border-bottom: 1px solid #ddd; }
-      .o_rs_table table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+      .o_rs_report { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #222; font-size: 13px; }
+      .o_rs_header { border-bottom: 4px solid var(--rs-accent); margin-bottom: 12px; padding-bottom: 6px; }
+      .o_rs_header h1 { margin: 0; color: var(--rs-accent); font-size: 26px; }
+      .o_rs_sub { color: #666; margin: 4px 0 0; }
+      table.o_rs_row { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 8px 0; margin: 0 -8px 10px; page-break-inside: avoid; }
+      table.o_rs_row td.o_rs_cell { vertical-align: top; padding: 0; }
+      tr.o_rs_ruler td { height: 0; padding: 0; border: 0; }
+      .o_rs_box { border: 1px solid #e3e3e3; border-radius: 8px; padding: 10px 12px; height: 100%; box-sizing: border-box; -webkit-box-sizing: border-box; background: #fff; overflow: hidden; }
+      .o_rs_type_heading .o_rs_box { border: 0; padding: 4px 0 0; background: transparent; }
+      .o_rs_spacer { border: 0; }
+      .o_rs_h2 { color: var(--rs-accent); font-size: 20px; margin: 6px 0 0; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+      .o_rs_box_title { font-size: 13px; color: #555; margin: 0 0 6px; font-weight: 600; }
+      .o_rs_number { font-size: 30px; font-weight: 700; color: #222; border-top: 4px solid var(--rs-accent); padding-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .o_rs_span_1 .o_rs_number { font-size: 22px; }
+      .o_rs_text p { margin: 0 0 6px; }
+      .o_rs_chart_wrap svg { width: 100%; height: auto; max-height: 340px; display: block; }
+      .o_rs_fit_fill table.o_rs_row td.o_rs_cell { height: 100%; }
+      .o_rs_table { width: 100%; border-collapse: collapse; font-size: 12px; }
       .o_rs_table th { text-align: left; background: #f3f3f3; }
-      .o_rs_table th, .o_rs_table td { border: 1px solid #ddd; padding: .35rem .5rem; }
-      .o_rs_empty { color: #888; text-align: center; }
-      section { margin-bottom: 1.25rem; page-break-inside: avoid; }
+      .o_rs_table th, .o_rs_table td { border: 1px solid #ddd; padding: 4px 6px; }
+      .o_rs_list { margin: 0; padding-left: 18px; }
+      .o_rs_image { max-width: 100%; max-height: 360px; display: block; margin: 0 auto; }
+      .o_rs_link { color: var(--rs-accent); font-weight: 600; word-break: break-all; }
+      .o_rs_empty { color: #888; text-align: center; padding: 8px; }
+      .o_rs_error { color: #b00020; font-style: italic; }
     </style>
   </template>
 
+  <!-- Shrinks the report to one page for "Fit" and "Fill" (zoom works in browsers and in the PDF engine). -->
+  <!-- One page for "Fit" (shrink if too tall) and "Fill" (stretch rows, shrink if too tall). The page height
+       in CSS pixels comes from the rendered width, so it holds in browsers and in the PDF engine alike. -->
+  <template id="report_fit_script">
+    <!-- No angle brackets or ampersands in this script: the template engine would escape them. -->
+    <script>
+      (function () {
+        var reports = document.querySelectorAll('.o_rs_report');
+        for (var i = 0; i !== reports.length; i++) {
+          var el = reports[i];
+          var mode = el.getAttribute('data-fit');
+          var ratio = parseFloat(el.getAttribute('data-page-ratio'));
+          if (mode === 'actual' || !ratio) { continue; }
+          // offsetWidth is 0 in the PDF engine; scrollWidth works in both.
+          var width = el.scrollWidth || el.getBoundingClientRect().width || document.body.scrollWidth;
+          var limit = width * ratio - 4;
+          if (mode === 'fill') {
+            var rows = el.querySelectorAll('table.o_rs_row');
+            var extra = Math.max(limit - el.scrollHeight, 0) * 0.97;
+            if (extra !== 0) {
+              for (var r = 0; r !== rows.length; r++) {
+                rows[r].style.height = (rows[r].offsetHeight + extra / rows.length) + 'px';
+              }
+            }
+          }
+          var over = Math.max(el.scrollHeight - limit * 1.02, 0);  // ignore rounding overshoot
+          if (over !== 0) { el.style.zoom = limit / el.scrollHeight; }
+        }
+      })();
+    </script>
+  </template>
+
   <template id="report_page">
-    <html><head><meta charset="utf-8"/><title t-out="report['title']"/><t t-call="report_studio.report_styles"/></head>
-      <body><t t-out="body"/></body></html>
+    <t t-set="page" t-value="report['page']"/>
+    <html>
+      <head>
+        <meta charset="utf-8"/>
+        <title t-out="report['title']"/>
+        <t t-out="styles"/>
+        <style>
+          @page { size: <t t-out="'%smm %smm' % (page['width_mm'], page['height_mm'])"/>; margin: <t t-out="page['margin_mm']"/>mm; }
+          body { background: #eceff1; margin: 0; }
+          .o_rs_sheet { background: #fff; margin: 24px auto; box-shadow: 0 2px 12px rgba(0,0,0,.15); box-sizing: border-box;
+                        width: <t t-out="page['width_mm']"/>mm; min-height: <t t-out="page['height_mm']"/>mm; padding: <t t-out="page['margin_mm']"/>mm; }
+          @media print { body { background: #fff; } .o_rs_sheet { margin: 0; box-shadow: none; width: auto; min-height: 0; padding: 0; } }
+        </style>
+      </head>
+      <body><div class="o_rs_sheet"><t t-out="body"/></div><t t-call="report_studio.report_fit_script"/></body>
+    </html>
   </template>
 
   <template id="report_pdf">
-    <t t-call="web.html_container">
-      <t t-foreach="docs" t-as="doc">
-        <div class="page"><t t-call="report_studio.report_styles"/><t t-out="doc._render_html()"/></div>
+    <t t-foreach="docs" t-as="doc">
+      <t t-call="web.basic_layout">
+        <div class="page">
+          <t t-call="report_studio.report_styles"/>
+          <t t-out="doc._render_html(fixed_width=True)"/>
+          <t t-call="report_studio.report_fit_script"/>
+        </div>
       </t>
     </t>
   </template>

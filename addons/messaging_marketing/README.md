@@ -7,7 +7,7 @@ through the same approval and dispatch checks as every other message
 
 ## Audience
 
-- **Contacts** (Audience > Contacts): a WhatsApp number (stored in
+- **Contacts** (Mailing List > Contacts): a WhatsApp number (stored in
   international format; local numbers use the contact's or company's country)
   and, for Telegram, the bot conversation the person started. One contact per
   number per company. **Add from Contacts** creates them from Odoo contacts
@@ -33,7 +33,7 @@ the bot.
 
 ## Mailings
 
-1. **Write** (Mailings > New): title, channel (WhatsApp or Telegram), the
+1. **Write** (Messaging Marketing > New): title, channel (WhatsApp or Telegram), the
    Omnichannel channel to send from, lists, and the message. `{first_name}`
    and `{name}` personalise it. The form shows how many people can receive it
    now and why the others are not included, a character counter against the
@@ -52,7 +52,7 @@ the bot.
    People who opted out or were blacklisted since the review are skipped.
    The dispatch worker checks each message again just before sending.
 4. **Results**: Recipients, Sent, Not sent (with the reason), Skipped and Link
-   clicks on the mailing; Reporting > Delivery results across mailings.
+   clicks on the mailing; **Reporting** shows delivery results across mailings.
 
 A submitted mailing cannot be edited: **Duplicate to change** starts a new
 draft. **Cancel mailing** withdraws messages not yet handed to the provider.

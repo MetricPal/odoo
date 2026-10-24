@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="report_studio.BoardField">
+        <div class="o_rs_board">
+            <div class="o_rs_board_toolbar d-flex flex-wrap align-items-center gap-2 mb-3">
+                <Dropdown t-if="!this.readonly">
+                    <button class="btn btn-primary o_rs_add_box">
+                        <i class="oi me-1" data-icon="add"/>Add box
+                    </button>
+                    <t t-set-slot="content">
+                        <DropdownItem t-foreach="this.boxTypes" t-as="type" t-key="type[0]"
+                                      onSelected="() => this.addBox(type[0])">
+                            <i class="oi oi-fw me-2" t-att-data-icon="type[2]"/><t t-out="type[1]"/>
+                        </DropdownItem>
+                    </t>
+                </Dropdown>
+                <span class="text-muted small"><i class="oi me-1" data-icon="description"/><t t-out="this.pageLabel"/></span>
+                <span class="text-muted small ms-auto">Drag <i class="oi" data-icon="drag_indicator"/> to move · 1–4 to set the width</span>
+            </div>
+            <div class="o_rs_canvas_wrap">
+                <div class="o_rs_canvas" t-att-style="this.canvasStyle">
+                    <div class="o_rs_report">
+                        <header class="o_rs_header">
+                            <h1 t-out="this.data.title"/>
+                            <p class="o_rs_sub"><t t-out="this.data.subtitle"/><t t-if="this.data.subtitle"> · </t><t t-out="this.data.company"/> · <t t-out="this.data.date"/></p>
+                        </header>
+                        <div t-if="!this.boxes.length" class="o_rs_board_empty">
+                            <p class="fw-bold mb-1">This report is empty</p>
+                            <p class="mb-0">Click <b>Add box</b>, or open any list, graph or pivot and choose <b>Add to report</b> in its ⋯ menu.</p>
+                        </div>
+                        <div class="o_rs_grid" t-ref="this.gridRef">
+                            <div t-foreach="this.boxes" t-as="box" t-key="box.id" t-att-data-id="box.id"
+                                 t-attf-class="o_rs_gbox o_rs_span_{{box.width}} o_rs_type_{{box.type}}">
+                                <div class="o_rs_gbox_bar" t-if="!this.readonly">
+                                    <span class="o_rs_drag" title="Drag to move"><i class="oi" data-icon="drag_indicator"/></span>
+                                    <span class="o_rs_gbox_kind" t-out="box.type_label"/>
+                                    <span class="btn-group btn-group-sm o_rs_widths" role="group" aria-label="Columns">
+                                        <button t-foreach="[1, 2, 3, 4]" t-as="width" t-key="width" type="button"
+                                                t-attf-class="btn {{box.width === width ? 'btn-primary' : 'btn-light'}}"
+                                                t-att-title="width + ' of 4 columns'" t-on-click="() => this.setWidth(box, width)" t-out="width"/>
+                                    </span>
+                                    <button type="button" class="btn btn-sm btn-light" title="Edit" t-on-click="() => this.editBox(box.id)"><i class="oi" data-icon="edit"/></button>
+                                    <button type="button" class="btn btn-sm btn-light" title="Remove" t-on-click="() => this.removeBox(box)"><i class="oi" data-icon="delete"/></button>
+                                </div>
+                                <div class="o_rs_box" t-on-dblclick="() => !this.readonly and this.editBox(box.id)">
+                                    <h2 t-if="box.type === 'heading'" class="o_rs_h2" t-out="box.title"/>
+                                    <h3 t-elif="box.title" class="o_rs_box_title" t-out="box.title"/>
+                                    <t t-out="box.markup"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div t-if="this.page.fit === 'actual'" class="o_rs_page_break" t-att-style="this.pageBreakStyle"><span>end of page 1</span></div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

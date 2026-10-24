@@ -340,9 +340,10 @@ class Run(models.Model):
             'company_id': self.company_id.id, 'user_id': self.env.user.id,
             'res_model': self._name, 'res_id': self.id, 'accent_color': '#1D6F8A',
             'block_ids': [
-                (0, 0, {'sequence': 1, 'type': 'kpi', 'title': _('Changes'), 'model_id': finding_model.id,
+                (0, 0, {'sequence': 1, 'type': 'kpi', 'width': 2, 'title': _('Changes'), 'model_id': finding_model.id,
                         'domain': repr([('run_id', '=', self.id), ('kind', 'in', ['change', 'new_item'])])}),
-                (0, 0, {'sequence': 2, 'type': 'kpi', 'title': _('Collection errors'), 'model_id': finding_model.id,
+                (0, 0, {'sequence': 2, 'type': 'kpi', 'width': 2, 'title': _('Collection errors'),
+                        'model_id': finding_model.id,
                         'domain': repr([('run_id', '=', self.id), ('kind', '=', 'error')])}),
                 (0, 0, {'sequence': 3, 'type': 'text', 'title': _('Summary'), 'content': summary}),
                 (0, 0, {'sequence': 4, 'type': 'table', 'title': _('What we found'), 'model_id': finding_model.id,

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="report_studio.ExportMenu">
+        <Dropdown>
+            <button class="o_rs_export_menu">
+                <i class="oi oi-fw me-1" data-icon="download"/>Export
+            </button>
+            <t t-set-slot="content">
+                <DropdownItem t-foreach="this.formats" t-as="format" t-key="format[0]" class="'o_menu_item'"
+                              onSelected="() => this.export(format[0])">
+                    <i class="oi oi-fw me-2" t-att-data-icon="format[2]"/><t t-out="format[1]"/>
+                </DropdownItem>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="report_studio.AddToReport">
+        <div class="o_add_to_report">
+            <Dropdown>
+                <button><i class="oi oi-fw me-1" data-icon="dashboard"/>Add to report</button>
+                <t t-set-slot="content">
+                    <div class="px-3 pb-2 o_rs_add_to_report" style="min-width: 16rem">
+                        <label class="form-label mb-1">Box title</label>
+                        <input type="text" class="o_input mb-2" t-ref="this.autofocusRef" t-model.proxy.trim="this.state.name"/>
+                        <label class="form-label mb-1">Report</label>
+                        <select class="o_input mb-2" t-model.proxy="this.state.reportId">
+                            <option t-foreach="this.state.reports" t-as="report" t-key="report.id" t-att-value="report.id" t-out="report.name"/>
+                            <option value="new">New report…</option>
+                        </select>
+                        <input t-if="this.state.reportId === 'new'" type="text" class="o_input mb-2" placeholder="Name of the new report"
+                               t-model.proxy.trim="this.state.newName"/>
+                        <button type="button" class="btn btn-primary" t-on-click="() => this.add()">Add</button>
+                    </div>
+                </t>
+            </Dropdown>
+        </div>
+    </t>
+</templates>

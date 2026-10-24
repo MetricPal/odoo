@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="report_studio.FieldListField">
+        <div class="o_rs_field_list d-flex flex-wrap align-items-center gap-1">
+            <span t-foreach="this.names" t-as="name" t-key="name" class="badge rounded-pill text-bg-light border o_rs_field_tag">
+                <a t-if="!this.props.readonly and !name_first" href="#" class="text-muted me-1" title="Move left"
+                   t-on-click.prevent="() => this.move(name, -1)">‹</a>
+                <t t-out="this.label(name)"/>
+                <a t-if="!this.props.readonly" href="#" class="ms-1 text-muted" title="Remove"
+                   t-on-click.prevent="() => this.remove(name)">×</a>
+            </span>
+            <span t-if="!this.names.length" class="text-muted small">Record name</span>
+            <div t-if="!this.props.readonly and this.resModel" class="o_rs_field_add">
+                <ModelFieldSelector resModel="this.resModel" path="''" readonly="false" followRelation="false"
+                                    update="(path) => this.add(path)"/>
+            </div>
+        </div>
+    </t>
+</templates>

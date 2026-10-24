@@ -12,6 +12,35 @@ Format:
 
 
 
+## 2026-10-24 — Report Studio becomes the Reports page of Dashboards (boxes, grid, page sizes)
+
+- `report_studio` 20.0.2.0.0 (depends on `spreadsheet_dashboard`; own app menu
+  removed): **Dashboards › Reports**. Boxes on a 4-column grid (span 1–4):
+  title, text, number, chart (SVG, bar/hbar/line/pie/donut), table, list,
+  image, hyperlink, view from an app. Visual board editor (add, drag, resize,
+  edit dialog with domain editor and field pickers, remove).
+- **Add to report** in the ⋯ menu of any list/graph/pivot/kanban (keeps
+  filters, grouping, measures); `/report_studio/add_view`.
+- Page: A5/A4/A3/Letter/Legal/Tabloid, portrait/landscape, actual/fit/fill;
+  per-report PDF paper format.
+- **⋯ › Export** submenu (PDF, Excel, PowerPoint, Word, HTML) replaces the
+  flat server actions; every format keeps the grid and the page settings
+  (native charts in Excel/PowerPoint).
+- Fixes: PDF body now uses `web.basic_layout` (UTF-8: "·" no longer "Â·");
+  fit script free of template-escaped characters.
+
+## 2026-10-24 — Report Studio: exports moved to the gear menu
+
+- `report_studio` 20.0.1.1.0: PDF, Excel, PowerPoint, Word and HTML exports are
+  server actions in the form's gear (⋯) menu ("Export: …") instead of header
+  buttons.
+
+## 2026-10-24 — Report Studio: clear message when an export package is missing
+
+- Export buttons check for `xlsxwriter` / `python-pptx` / `python-docx`
+  first and explain in a dialog how to install a missing one; the download
+  address shows a readable page (400) instead of an internal server error.
+
 ## 2026-10-24 — Fix: Report Studio downloads returned an error
 
 - `report_studio`: the download route (`/report_studio/<id>/<format>`) used

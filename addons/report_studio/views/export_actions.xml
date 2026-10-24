@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Exports live in the form's gear (⋯) menu. Each one downloads the report built from its blocks. -->
+  <record id="action_export_pdf" model="ir.actions.server">
+    <field name="name">Export: PDF</field>
+    <field name="model_id" ref="model_report_studio_report"/>
+    <field name="binding_model_id" ref="model_report_studio_report"/>
+    <field name="binding_view_types">form</field>
+    <field name="sequence">1</field>
+    <field name="state">code</field>
+    <field name="code">action = records.action_export_pdf()</field>
+  </record>
+  <record id="action_export_xlsx" model="ir.actions.server">
+    <field name="name">Export: Excel</field>
+    <field name="model_id" ref="model_report_studio_report"/>
+    <field name="binding_model_id" ref="model_report_studio_report"/>
+    <field name="binding_view_types">form</field>
+    <field name="sequence">2</field>
+    <field name="state">code</field>
+    <field name="code">action = records.action_export_xlsx()</field>
+  </record>
+  <record id="action_export_pptx" model="ir.actions.server">
+    <field name="name">Export: PowerPoint</field>
+    <field name="model_id" ref="model_report_studio_report"/>
+    <field name="binding_model_id" ref="model_report_studio_report"/>
+    <field name="binding_view_types">form</field>
+    <field name="sequence">3</field>
+    <field name="state">code</field>
+    <field name="code">action = records.action_export_pptx()</field>
+  </record>
+  <record id="action_export_docx" model="ir.actions.server">
+    <field name="name">Export: Word</field>
+    <field name="model_id" ref="model_report_studio_report"/>
+    <field name="binding_model_id" ref="model_report_studio_report"/>
+    <field name="binding_view_types">form</field>
+    <field name="sequence">4</field>
+    <field name="state">code</field>
+    <field name="code">action = records.action_export_docx()</field>
+  </record>
+  <record id="action_export_html" model="ir.actions.server">
+    <field name="name">Export: HTML</field>
+    <field name="model_id" ref="model_report_studio_report"/>
+    <field name="binding_model_id" ref="model_report_studio_report"/>
+    <field name="binding_view_types">form</field>
+    <field name="sequence">5</field>
+    <field name="state">code</field>
+    <field name="code">action = records.action_export_html()</field>
+  </record>
+</odoo>
