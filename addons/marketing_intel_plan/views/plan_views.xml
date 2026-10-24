@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="plan_form" model="ir.ui.view">
+    <field name="name">mi.plan.form</field><field name="model">mi.plan</field>
+    <field name="arch" type="xml"><form>
+      <header>
+        <button name="action_prepare" type="object" string="Prepare drafts" class="btn-primary" invisible="state not in ('draft', 'prepared', 'running')"
+                help="Creates a draft in each app (Social, Messaging, Email, SMS, Events). Each one still needs its own approval."/>
+        <button name="action_refresh_results" type="object" string="Refresh results" invisible="state == 'draft'"/>
+        <button name="action_start" type="object" string="Mark running" invisible="state not in ('draft', 'prepared')"/>
+        <button name="action_done" type="object" string="Mark done" invisible="state not in ('draft', 'prepared', 'running')"/>
+        <button name="action_cancel" type="object" string="Cancel plan" invisible="state not in ('draft', 'prepared', 'running')"/>
+        <button name="action_reset" type="object" string="Back to draft" invisible="state != 'cancelled'"/>
+        <field name="state" widget="statusbar" statusbar_visible="draft,prepared,running,done"/>
+      </header>
+      <sheet>
+        <div class="alert alert-warning" role="status" invisible="not clash_note"><field name="clash_note" nolabel="1"/></div>
+        <div class="oe_title"><label for="name"/><h1><field name="name"/></h1></div>
+        <group>
+          <group><field name="recommendation_id" readonly="1"/><field name="brand_id"/><field name="user_id" widget="many2one_avatar_user"/>
+            <field name="utm_campaign_id" invisible="not utm_campaign_id"/></group>
+          <group><label for="date_start" string="Dates"/><div class="o_row"><field name="date_start"/> → <field name="date_end"/></div>
+            <field name="budget"/><field name="currency_id" invisible="1"/></group>
+        </group>
+        <notebook>
+          <page string="Channels" name="channels">
+            <field name="item_ids">
+              <list editable="bottom" create="1">
+                <field name="channel"/><field name="app"/><field name="available" column_invisible="1"/>
+                <field name="draft_name"/><field name="draft_status" widget="badge"/>
+                <field name="result_sent" optional="show"/><field name="result_clicks" optional="show"/>
+                <field name="activity_done" widget="boolean_toggle" invisible="channel not in ('content', 'ads', 'partnership')"/>
+                <field name="note" class="text-muted"/>
+                <field name="res_id" column_invisible="1"/>
+                <button name="action_open" type="object" string="Open" icon="arrow_forward" invisible="not res_id"/>
+              </list>
+            </field>
+            <div class="text-muted small">Drafts are created with your permissions in each app and go through that app's approval before anything is sent or published.</div>
+          </page>
+          <page string="Results" name="results">
+            <group>
+              <group string="Actual">
+                <field name="result_sent"/><field name="result_clicks"/><field name="result_leads"/>
+                <field name="result_won"/><field name="result_revenue"/><field name="result_registrations"/>
+              </group>
+              <group string="Efficiency">
+                <field name="cost_per_lead"/><field name="return_on_budget" widget="percentage"/>
+                <field name="results_at"/>
+              </group>
+            </group>
+            <field name="kpi_ids">
+              <list editable="bottom">
+                <field name="metric"/><field name="target"/><field name="actual"/>
+                <field name="progress" widget="progressbar"/>
+              </list>
+            </field>
+            <label for="learning_note" class="fw-bold mt-3"/>
+            <field name="learning_note" placeholder="What worked, what did not, what to try next. The next AI analysis reads this."/>
+            <div class="text-muted small mt-2">Clicks count tracked links of this plan's campaign; leads, won deals and revenue come from CRM and Sales records tagged with the campaign. Updated daily and when the plan is marked done.</div>
+          </page>
+          <page string="Message &amp; audience" name="message">
+            <group><field name="message"/><field name="audience"/><field name="kpis"/></group>
+          </page>
+        </notebook>
+      </sheet>
+      <chatter/>
+    </form></field>
+  </record>
+  <record id="plan_list" model="ir.ui.view">
+    <field name="name">mi.plan.list</field><field name="model">mi.plan</field>
+    <field name="arch" type="xml"><list>
+      <field name="name"/><field name="brand_id"/><field name="date_start"/><field name="date_end"/>
+      <field name="budget" sum="Total"/><field name="currency_id" column_invisible="1"/>
+      <field name="result_leads" sum="Total" optional="show"/><field name="result_revenue" sum="Total" optional="show"/>
+      <field name="user_id" widget="many2one_avatar_user"/>
+      <field name="state" widget="badge" decoration-info="state == 'prepared'" decoration-success="state == 'running'" decoration-muted="state in ('done', 'cancelled')"/>
+    </list></field>
+  </record>
+  <record id="plan_calendar" model="ir.ui.view">
+    <field name="name">mi.plan.calendar</field><field name="model">mi.plan</field>
+    <field name="arch" type="xml"><calendar date_start="date_start" date_stop="date_end" color="color" mode="month" quick_create="0" all_day="date_start">
+      <field name="name"/><field name="brand_id"/><field name="state"/>
+    </calendar></field>
+  </record>
+  <record id="plan_pivot" model="ir.ui.view">
+    <field name="name">mi.plan.pivot</field><field name="model">mi.plan</field>
+    <field name="arch" type="xml"><pivot string="Campaign results">
+      <field name="brand_id" type="row"/><field name="state" type="col"/>
+      <field name="budget" type="measure"/><field name="result_leads" type="measure"/>
+      <field name="result_won" type="measure"/><field name="result_revenue" type="measure"/>
+    </pivot></field>
+  </record>
+  <record id="plan_search" model="ir.ui.view">
+    <field name="name">mi.plan.search</field><field name="model">mi.plan</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="brand_id"/>
+      <filter name="active_plans" string="Active" domain="[('state', 'in', ('draft', 'prepared', 'running'))]"/>
+      <filter name="mine" string="My plans" domain="[('user_id', '=', uid)]"/>
+      <group><filter name="group_brand" string="Brand" context="{'group_by': 'brand_id'}"/>
+        <filter name="group_state" string="Status" context="{'group_by': 'state'}"/></group>
+    </search></field>
+  </record>
+  <record id="action_plans" model="ir.actions.act_window">
+    <field name="name">Campaign plans</field><field name="res_model">mi.plan</field>
+    <field name="view_mode">calendar,list,pivot,form</field><field name="context">{'search_default_active_plans': 1}</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No campaign plan yet</p>
+      <p>Choose a campaign option, then click Create campaign plan.</p></field>
+  </record>
+  <menuitem id="menu_plans" name="Campaign plans" parent="marketing_intel.menu_root" action="action_plans" sequence="26"/>
+
+  <record id="recommendation_form_plan" model="ir.ui.view">
+    <field name="name">mi.recommendation.form.plan</field><field name="model">mi.recommendation</field>
+    <field name="inherit_id" ref="marketing_intel.recommendation_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_choose']" position="before">
+        <button name="action_create_plan" type="object" string="Create campaign plan" class="btn-primary"
+                invisible="state != 'chosen' or plan_count"/>
+      </xpath>
+      <xpath expr="//div[hasclass('oe_title')]" position="before">
+        <div class="oe_button_box" name="button_box">
+          <button name="action_open_plans" type="object" class="oe_stat_button" icon="calendar_today" invisible="not plan_count">
+            <field name="plan_count" widget="statinfo" string="Plans"/>
+          </button>
+        </div>
+      </xpath>
+    </field>
+  </record>
+</odoo>

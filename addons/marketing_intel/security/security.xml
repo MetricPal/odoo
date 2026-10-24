@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="privilege_mi" model="res.groups.privilege">
+    <field name="name">Marketing Intelligence</field>
+    <field name="category_id" ref="base.module_category_marketing"/>
+  </record>
+  <record id="group_mi_user" model="res.groups">
+    <field name="name">User</field>
+    <field name="privilege_id" ref="privilege_mi"/>
+    <field name="implied_ids" eval="[(4, ref('report_studio.group_report_user'))]"/>
+  </record>
+  <record id="group_mi_manager" model="res.groups">
+    <field name="name">Administrator</field>
+    <field name="privilege_id" ref="privilege_mi"/>
+    <field name="implied_ids" eval="[(4, ref('group_mi_user'))]"/>
+  </record>
+  <record id="base.group_system" model="res.groups">
+    <field name="implied_ids" eval="[(4, ref('group_mi_manager'))]"/>
+  </record>
+  <record id="scope_brand" model="ir.access">
+    <field name="name">Marketing intelligence: company brands</field>
+    <field name="model_id" ref="model_mi_brand"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_competitor" model="ir.access">
+    <field name="name">Marketing intelligence: company competitors</field>
+    <field name="model_id" ref="model_mi_competitor"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_source" model="ir.access">
+    <field name="name">Marketing intelligence: company sources</field>
+    <field name="model_id" ref="model_mi_source"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_snapshot" model="ir.access">
+    <field name="name">Marketing intelligence: company evidence</field>
+    <field name="model_id" ref="model_mi_snapshot"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_finding" model="ir.access">
+    <field name="name">Marketing intelligence: company findings</field>
+    <field name="model_id" ref="model_mi_finding"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_run" model="ir.access">
+    <field name="name">Marketing intelligence: company research runs</field>
+    <field name="model_id" ref="model_mi_run"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_recommendation" model="ir.access">
+    <field name="name">Marketing intelligence: company campaign options</field>
+    <field name="model_id" ref="model_mi_recommendation"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_risk" model="ir.access">
+    <field name="name">Marketing intelligence: company risks</field>
+    <field name="model_id" ref="model_mi_risk"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+</odoo>

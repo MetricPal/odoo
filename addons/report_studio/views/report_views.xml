@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="report_form" model="ir.ui.view">
+    <field name="name">report.studio.report.form</field>
+    <field name="model">report.studio.report</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_export_pdf" type="object" string="PDF" class="btn-primary" icon="picture_as_pdf"/>
+          <button name="action_export_xlsx" type="object" string="Excel" icon="table"/>
+          <button name="action_export_pptx" type="object" string="PowerPoint" icon="slideshow"/>
+          <button name="action_export_docx" type="object" string="Word" icon="description"/>
+          <button name="action_export_html" type="object" string="HTML" icon="code"/>
+        </header>
+        <sheet>
+          <div class="oe_title"><h1><field name="name" placeholder="e.g. Weekly marketing brief"/></h1></div>
+          <group>
+            <group><field name="subtitle" placeholder="e.g. Week 43, all channels"/><field name="accent_color" widget="color"/></group>
+            <group><field name="user_id" widget="many2one_avatar_user"/><field name="shared"/>
+              <field name="company_id" groups="base.group_multi_company"/></group>
+          </group>
+          <notebook>
+            <page string="Preview" name="preview">
+              <field name="preview_html" readonly="1" nolabel="1"/>
+            </page>
+            <page string="Blocks" name="blocks">
+              <p class="text-muted small">Add headings, text, KPI tiles and tables. Data blocks read records with each
+                reader's own access rights. The preview, PDF, Excel, PowerPoint and Word files all use these blocks.</p>
+              <field name="block_ids" nolabel="1">
+                <list editable="bottom">
+                  <field name="sequence" widget="handle"/>
+                  <field name="type"/>
+                  <field name="title"/>
+                  <field name="model_id" options="{'no_create': true}" invisible="type not in ('kpi', 'table')"/>
+                  <field name="domain" invisible="type not in ('kpi', 'table')"/>
+                  <field name="measure" invisible="type != 'kpi'"/>
+                  <field name="measure_field" invisible="type != 'kpi' or measure == 'count'"/>
+                  <field name="field_names" invisible="type != 'table'"/>
+                  <field name="order" invisible="type != 'table'" optional="hide"/>
+                  <field name="limit" invisible="type != 'table'" optional="show"/>
+                  <field name="content" invisible="type != 'text'" widget="html"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+  <record id="report_list" model="ir.ui.view">
+    <field name="name">report.studio.report.list</field>
+    <field name="model">report.studio.report</field>
+    <field name="arch" type="xml">
+      <list><field name="name"/><field name="subtitle"/><field name="user_id" widget="many2one_avatar_user"/>
+        <field name="shared"/><field name="write_date" string="Updated"/></list>
+    </field>
+  </record>
+  <record id="action_reports" model="ir.actions.act_window">
+    <field name="name">Reports</field>
+    <field name="res_model">report.studio.report</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Create a report</p>
+      <p>Combine headings, text, key figures and tables from any app, preview them, and export to PDF, Excel,
+        PowerPoint or Word.</p></field>
+  </record>
+  <menuitem id="menu_root" name="Report Studio" action="action_reports" sequence="90" web_icon="report_studio,static/description/icon.svg"/>
+</odoo>

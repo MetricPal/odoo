@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="run_form_ai" model="ir.ui.view">
+    <field name="name">mi.run.form.ai</field>
+    <field name="model">mi.run</field>
+    <field name="inherit_id" ref="marketing_intel.run_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_refresh_brief']" position="before">
+        <button name="action_ai_analyse" type="object" string="Analyse with AI" class="btn-secondary"
+                invisible="ai_state == 'running'"
+                confirm="AI rewrites the analysis and SWOT and replaces AI options and risks that are still undecided. Options and risks people wrote or decided are kept. Continue?"/>
+      </xpath>
+      <xpath expr="//notebook" position="before">
+        <field name="ai_state" invisible="1"/>
+        <div class="alert alert-secondary" role="status" invisible="ai_state != 'running'">
+          AI is analysing this run. Reload in a moment to see the analysis, campaign options and risks.
+        </div>
+        <div class="alert alert-warning" role="status" invisible="ai_state != 'failed'">
+          <field name="ai_error" nolabel="1"/>
+        </div>
+        <div class="alert alert-info" role="status" invisible="ai_state != 'done'">
+          AI proposed the analysis, options and risks below. Check the evidence of each option before choosing one;
+          nothing is sent or published from here.
+        </div>
+      </xpath>
+    </field>
+  </record>
+  <record id="brand_form_ai" model="ir.ui.view">
+    <field name="name">mi.brand.form.ai</field>
+    <field name="model">mi.brand</field>
+    <field name="inherit_id" ref="marketing_intel.brand_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//notebook" position="inside">
+        <page string="AI analysis" name="ai">
+          <group>
+            <group>
+              <field name="ai_agent_id"/>
+              <field name="ai_auto"/>
+              <field name="ai_requester_id" invisible="not ai_auto" required="ai_auto"/>
+            </group>
+            <div class="text-muted">
+              After each research run the agent proposes an analysis, a SWOT, up to four campaign options and risks.
+              It only sees this brand profile, goals, approved competitors and the run's findings. It cannot send,
+              publish or spend anything.
+            </div>
+          </group>
+        </page>
+      </xpath>
+    </field>
+  </record>
+</odoo>

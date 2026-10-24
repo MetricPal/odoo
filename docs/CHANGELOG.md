@@ -11,6 +11,54 @@ Format:
 
 
 
+
+## 2026-10-24 — Fix: Report Studio downloads returned an error
+
+- `report_studio`: the download route (`/report_studio/<id>/<format>`) used
+  `odoo.http.content_disposition`, which Odoo 20 keeps in
+  `odoo.http.stream`; every HTML/PDF/XLSX/PPTX/DOCX download failed with an
+  internal server error. Import fixed; HTTP test covers the route.
+
+## 2026-10-24 — Intelligent marketing phase 4a: results and learning
+
+- `marketing_intel_plan` 20.0.1.1.0: results per plan (sent, clicks, leads,
+  won deals, revenue, registrations) from mailings, link tracker, CRM, Sales
+  and Events by UTM campaign; per-draft sent/clicks; targets vs actual with
+  progress; cost per lead and revenue / budget; "What we learned"; daily
+  refresh; pivot view.
+- `marketing_intel` / `marketing_intel_ai`: brand learning hook; the AI
+  analysis now receives past campaigns' targets, results and lessons.
+
+## 2026-10-24 — Intelligent marketing phase 3: campaign plans and drafts
+
+- New `marketing_intel_plan` (auto-installs with Marketing Intelligence):
+  campaign plans from chosen options, one UTM campaign, drafts in Social,
+  Messaging Marketing, Email, SMS and Events created with the person's own
+  permissions (each keeps its own approval), to-dos for channels without an
+  app, live draft status, calendar view with overlap warnings.
+
+## 2026-10-24 — Intelligent marketing phase 2: AI brief, options and risks
+
+- `marketing_intel` 20.0.1.1.0: campaign options (`mi.recommendation`, choose /
+  reject), risk register (`mi.risk`, likelihood × impact), channels, analysis
+  and SWOT on research runs, brief rebuilt with these sections, automatic
+  budget and evidence checks, company rules on every record.
+- New `marketing_intel_ai` (auto-installs with AI Agent): asks an AI agent for
+  a structured analysis per run (manually or after each research run),
+  validates the JSON strictly before storing anything, keeps people's work.
+- `workflow_center`: built-in template "Market brief review" (12 templates).
+
+## 2026-10-24 — Intelligent marketing phase 1: Report Studio and Marketing Intelligence
+
+- New **report_studio**: block reports (heading, text, KPI, table) over any
+  model with the reader's access rights; HTML preview; PDF, Excel, PowerPoint,
+  Word and HTML exports. Needs python-pptx / python-docx for PPTX/DOCX.
+- New **marketing_intel**: brand and goals; competitors and sources approved by
+  an administrator; scheduled collection of public pages and RSS feeds (HTTPS,
+  robots.txt, size/time limits); dated evidence with change detection;
+  findings; each research run produces a shared brief in Report Studio.
+- Plan progress and next steps: docs/exec-plans/active/2026-10-23-intelligent-marketing-gap-analysis.md §10.
+
 ## 2026-10-23 — Contacts: Customers filter, social and chat channels
 
 - New module **omni_contacts** (auto-installs with Contacts, Invoicing,

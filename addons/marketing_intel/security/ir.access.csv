@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,operation
+access_brand_user,Brands,model_mi_brand,group_mi_user,r
+access_brand_manager,Brands manage,model_mi_brand,group_mi_manager,crud
+access_goal_user,Goals,model_mi_goal,group_mi_user,crud
+access_competitor_user,Competitors,model_mi_competitor,group_mi_user,cru
+access_competitor_manager,Competitors manage,model_mi_competitor,group_mi_manager,crud
+access_source_user,Sources,model_mi_source,group_mi_user,cru
+access_source_manager,Sources manage,model_mi_source,group_mi_manager,crud
+access_snapshot_user,Evidence,model_mi_snapshot,group_mi_user,r
+access_finding_user,Findings,model_mi_finding,group_mi_user,ru
+access_run_user,Research runs,model_mi_run,group_mi_user,ru
+access_channel_user,Channels,model_mi_channel,group_mi_user,r
+access_channel_manager,Channels manage,model_mi_channel,group_mi_manager,crud
+access_recommendation_user,Campaign options,model_mi_recommendation,group_mi_user,crud
+access_risk_user,Risks,model_mi_risk,group_mi_user,crud

@@ -1,7 +1,7 @@
 # Intelligent Marketing — vision, scenarios and gap analysis
 
-Status: analysis only, nothing implemented. Written 2026-10-23 from the
-product owner's brief. Use this as the starting point for an exec plan.
+Status: **phases 1–3 and 4a delivered 2026-10-24** (see section 10). Written 2026-10-23
+from the product owner's brief.
 
 ## 1. The brief (owner's words, condensed)
 
@@ -207,3 +207,120 @@ Severity: **H** blocks the vision, **M** limits it, **L** polish.
   capped policy.
 - Data sprawl / privacy → one consent ledger, retention, export/erase.
 - Cost → per-run and weekly AI/ads budgets with hard stops.
+
+## 10. Progress log
+
+### 2026-10-24 — Phase 1 (foundations) delivered
+
+Defaults taken for section 8 (owner asked to proceed): (1) Odoo-side
+collectors, AI stays tool-free; (2) first sources: public web pages and
+RSS/Atom feeds; (3) execution: none yet (drafts come in phase 3);
+(4) formats: PDF, XLSX, PPTX, DOCX, HTML all in the first report generator;
+(5) no AI/ads spend yet; (6) Malaysia PDPA default; (7) data hub not started.
+
+- `report_studio`: reports as blocks (heading, text, KPI, table) over any
+  model with the reader's rights; HTML preview = single source; exports PDF /
+  XLSX / PPTX / DOCX / HTML; private unless shared. 4 tests.
+- `marketing_intel`: brand profile and goals; competitors and sources with
+  administrator approval (reason required; re-approval when the address
+  changes); collector (HTTPS only, robots.txt, no cross-host redirects, 2 MB,
+  timeouts, safe XML); dated evidence with SHA-256 and text; change detection
+  (page diffs, new feed items, errors); research runs on a per-brand interval
+  (hourly cron check) or on demand; weekly brief generated as a shared Report
+  Studio report. 4 tests.
+
+Known gaps to pick up next:
+- Source/competitor approval uses an in-app Approve (administrators) rather
+  than an Approval Center request; move it there if the owner wants an audit
+  trail beside other approvals.
+- Company record rules exist on brands only; add them to competitors,
+  sources, evidence, findings and runs before multi-company use.
+- python-pptx / python-docx must be installed on the owner's server
+  (`pip install python-pptx python-docx` in the venv).
+- Live collection not tested from the sandbox (no internet); tests mock it.
+
+### 2026-10-24 — Phase 2 (weekly brief with AI) delivered
+
+- `marketing_intel`: `mi.channel` (9 channels), `mi.recommendation` (campaign
+  options: problem, channel mix, audience, budget, duration, KPIs, expected
+  result, confidence, evidence, risk notes; choose / reject / reset, origin
+  person / AI / rule), `mi.risk` (category, likelihood × impact → score and
+  level, owner, mitigation, status), analysis + SWOT fields on `mi.run`,
+  brief rebuilt with Analysis, SWOT, Campaign options and Risks
+  (`action_refresh_brief`). Deterministic checks: options above the monthly
+  budget raise a budget risk; options without evidence drop to low
+  confidence. Company `ir.access` scopes added to every model (closes the
+  phase 1 gap).
+- `marketing_intel_ai`: brand settings (agent, automatic analysis, "ask AI
+  as"); prompt from brand, goals, approved competitors and findings (bounded,
+  untrusted data); answer must match `schema.SCHEMA_TEXT`; strict parser
+  (`schema.parse`) rejects invalid answers as a whole; evidence limited to the
+  run's findings; re-analysis replaces only undecided AI work. Uses the
+  existing `ai.agent.run` origin callback (`_ai_agent_finished`).
+- `workflow_center`: recipe `market_brief` on `mi.run` (watch `report_id`,
+  domain `change_count > 0`): review activity + post to followers.
+- Tests: marketing_intel 5, marketing_intel_ai 5, workflow_center 40 — pass.
+
+Still open from phase 1: Approval Center for source approval; live network
+test on the owner's server; `pip install python-pptx python-docx`.
+
+### 2026-10-24 — Phase 3 (recommendations → drafts) delivered
+
+- `marketing_intel_plan` (depends marketing_intel, utm; auto_install):
+  `mi.plan` (from a chosen `mi.recommendation`; dates from duration; owner,
+  budget, key message, audience, KPIs; one `utm.campaign`; states draft →
+  drafts ready → running → done / cancelled) and `mi.plan.item` (one per
+  channel; `res_model`/`res_id` link to the draft; live status read from the
+  draft; note when an app is missing or the person lacks rights).
+- Drafts per channel (person's own permissions, savepoint per line):
+  Social → `omni.social.campaign`; Messaging → `mm.mailing` (with UTM);
+  Email / SMS → `mailing.mailing` (with UTM; SMS ≤ 160 chars); events →
+  `event.event` (2 h on the last day, note to add link or venue); content /
+  ads / partnership → to-do activity for the owner. Apps are detected at
+  run time, so no hard dependency on mass_mailing, event, omni_social or
+  messaging_marketing.
+- Calendar view of plans; overlap warning when another active plan of the
+  same brand shares a channel and dates (fatigue hint, not a block).
+- Tests: 4 (plan + drafts across all apps, missing rights, idempotent
+  prepare, clash warning); marketing_intel + _ai + _plan: 16 pass.
+
+Not done in phase 3 (moved to phase 4): Email/SMS (`mass_mailing`) under
+Approval Center (they keep Odoo's own test/send flow for now); per-contact
+frequency caps across channels; AI drafting of each child.
+
+### 2026-10-24 — Phase 4a (results and learning) delivered
+
+- `mi.plan` stored results (`result_sent/clicks/leads/won/revenue/
+  registrations`, `results_at`), `_measure()` reads: item drafts
+  (`mailing.mailing.sent/clicked`, `mm.mailing.sent_count/click_count`,
+  `event.registration` open/done), `link.tracker.click` by campaign,
+  `crm.lead` by campaign (all, won via `won_status`, expected revenue),
+  `sale.order` confirmed by campaign (untaxed, converted; max with CRM).
+  Aggregates read with sudo (totals only). Daily cron for active plans and
+  plans done in the last 30 days; refresh on "Mark done".
+- `mi.plan.kpi` targets (metric, target, actual, progress); cost per lead;
+  revenue / budget; `learning_note`; pivot view.
+- Learning loop: `mi.brand._learning_lines()` (hook in marketing_intel,
+  filled by the plan module) → "PAST CAMPAIGNS" section in the AI prompt.
+- Tests: plan module 5 (results with CRM leads/won and link clicks, targets,
+  learning lines); marketing_intel + _ai + _plan: 17 pass.
+
+### Next: phase 4b
+
+1. Bridge `mass_mailing` (Email/SMS) to Approval Center: freeze subject,
+   body and recipients on submit, send only after approval (same pattern as
+   `messaging_marketing` / ADR 0011).
+2. Contact-level frequency caps and quiet hours across Messaging, Email and
+   SMS (skip and log, never silently drop).
+3. Data hub v1: consent ledger and touchpoints per contact.
+4. Optional: AI drafting of each plan draft (reuse `social_ai` pattern).
+
+### (Done) phase 2 plan as written on 2026-10-24
+
+
+1. Structured-output skill for `ai_agent`: input = run findings + brand
+   profile (bounded text), output JSON {summary, swot, risks[], options[]}
+   validated against a schema; reject invalid output.
+2. `mi.recommendation` (options with channel mix, budget, KPIs, risks,
+   evidence links) and `mi.risk` register; shown in the brief.
+3. Workflow template "Weekly market brief" in workflow_center.

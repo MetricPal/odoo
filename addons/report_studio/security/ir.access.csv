@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,operation
+access_report_user,Reports,model_report_studio_report,group_report_user,crud
+access_block_user,Report blocks,model_report_studio_block,group_report_user,crud

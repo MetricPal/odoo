@@ -26,7 +26,7 @@ class TestWorkflowUI(HttpCase):
                 const facet = document.querySelector('.o_searchview_facet .o_facet_remove');
                 if (facet) {
                     facet.click();
-                    await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
+                    await waitFor(() => document.querySelectorAll('.wf_template').length === 12);
                 }
                 if (document.querySelector('.wf_home .wf_link')) throw new Error('Existing workflows still on overview');
                 if (document.querySelector('.wf_describe')) throw new Error('Creation panel remains on overview');
@@ -157,7 +157,7 @@ class TestWorkflowUI(HttpCase):
                 await waitFor(() => document.querySelector('.o_searchview_facet'));
                 if (document.querySelector('.wf_template_unavailable')) throw new Error('Unavailable template shown by default');
                 document.querySelector('.o_searchview_facet .o_facet_remove').click();
-                await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
+                await waitFor(() => document.querySelectorAll('.wf_template').length === 12);
                 if (%(missing)s) await waitFor(() => document.querySelector('.wf_template_unavailable'));
                 await waitFor(() => document.querySelector('.o_search_panel .o_search_panel_label[data-tooltip="CRM"]'));
                 const main = document.querySelector('.o_kanban_view > main');
@@ -168,7 +168,7 @@ class TestWorkflowUI(HttpCase):
                 if (galleryBounds.left < panelBounds.right - 1 || galleryBounds.height < 100) throw new Error('Template gallery is not beside the search panel');
                 if (cardBounds.top >= window.innerHeight || cardBounds.bottom <= galleryBounds.top || cardBounds.width <= 0) throw new Error('Template cards are outside the visible area');
                 document.querySelector('.o_search_panel_label[data-tooltip="CRM"]').click();
-                await waitFor(() => document.querySelectorAll('.wf_template').length < 11);
+                await waitFor(() => document.querySelectorAll('.wf_template').length < 12);
                 if (![...document.querySelectorAll('.wf_template')].every(card => [...card.querySelectorAll('.badge')].some(badge => badge.textContent === 'CRM'))) throw new Error('Application category does not filter cards');
                 const filteredCount = document.querySelectorAll('.wf_template').length;
                 document.querySelector('.o_switch_view.o_list').click();
@@ -179,9 +179,9 @@ class TestWorkflowUI(HttpCase):
                 await waitFor(() => document.querySelectorAll('.wf_template').length === filteredCount);
                 const appsSection = [...document.querySelectorAll('.o_search_panel_section')].find(section => section.textContent.includes('Applications'));
                 appsSection.querySelector('.o_search_panel_label[data-tooltip="All"]').click();
-                await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
+                await waitFor(() => document.querySelectorAll('.wf_template').length === 12);
                 if (document.querySelector('.o_kanban_renderer').textContent.includes('Start from a template')) throw new Error('Removed template heading remains');
-                if (document.querySelectorAll('.o_kanban_renderer > article.o_card_record.o_kanban_record').length !== 11) throw new Error('Templates are not native-style article cards');
+                if (document.querySelectorAll('.o_kanban_renderer > article.o_card_record.o_kanban_record').length !== 12) throw new Error('Templates are not native-style article cards');
                 if (!document.querySelector('.o_content > .o_kanban_renderer') || document.querySelector('.o_kanban_view .o_form_sheet, .o_kanban_view .o_form_renderer')) throw new Error('Kanban should be a direct sibling of the search panel without form wrappers');
                 if (document.querySelector('.o_kanban_renderer > .wf_chips')) throw new Error('Old category buttons remain');
                 const left = document.querySelector('.o_kanban_renderer');
@@ -216,15 +216,15 @@ class TestWorkflowUI(HttpCase):
                 }
                 document.querySelector('.o_searchview_dropdown_toggler').click();
                 categories.querySelector('.o_search_panel_label[data-tooltip="Reminders"]').click();
-                await waitFor(() => document.querySelectorAll('.wf_template').length < 11);
+                await waitFor(() => document.querySelectorAll('.wf_template').length < 12);
                 if (![...document.querySelectorAll('.wf_template')].every(n => n.textContent.includes('Reminders'))) throw new Error('Category filter mismatch');
                 categories.querySelector('.o_search_panel_label[data-tooltip="All"]').click();
-                await waitFor(() => document.querySelectorAll('.wf_template').length === 11);
+                await waitFor(() => document.querySelectorAll('.wf_template').length === 12);
                 if (!document.querySelector('.o_group_by_menu')) document.querySelector('.o_searchview_dropdown_toggler').click();
                 await waitFor(() => find('.o_group_by_menu .dropdown-item', 'Application'));
                 find('.o_group_by_menu .dropdown-item', 'Application').click();
                 await waitFor(() => document.querySelectorAll('.o_kanban_header').length > 1);
-                if (document.querySelectorAll('.wf_template').length !== 11) throw new Error('Grouping lost templates');
+                if (document.querySelectorAll('.wf_template').length !== 12) throw new Error('Grouping lost templates');
                 console.log('test successful');
             })();
         """.replace('%(missing)s', str(missing_apps)), login='admin', timeout=90)

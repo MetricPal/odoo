@@ -1,0 +1,362 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <!-- Brand -->
+  <record id="brand_form" model="ir.ui.view">
+    <field name="name">mi.brand.form</field><field name="model">mi.brand</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_run_research" type="object" string="Run research now" class="btn-primary"
+                  invisible="not approved_source_count"/>
+        </header>
+        <sheet>
+          <div class="oe_title"><h1><field name="name" placeholder="e.g. metric.io"/></h1></div>
+          <div class="alert alert-info" role="status" invisible="approved_source_count">
+            Add competitors and sources below. An administrator approves each source before anything is collected.
+          </div>
+          <group>
+            <group string="Business">
+              <field name="offering" placeholder="e.g. Cloud ERP for SMEs: accounting, inventory, CRM"/>
+              <field name="audience" placeholder="e.g. Malaysian SMEs with 10–200 staff, retail and distribution"/>
+              <field name="value_proposition" placeholder="e.g. AI assistants built in, local support"/>
+            </group>
+            <group string="Plan">
+              <field name="tone" placeholder="e.g. friendly and expert"/>
+              <field name="markets" placeholder="e.g. Malaysia, Singapore"/>
+              <field name="monthly_budget"/>
+              <field name="research_interval"/>
+              <field name="next_research_at"/>
+              <field name="approved_source_count" invisible="1"/><field name="currency_id" invisible="1"/>
+              <field name="company_id" groups="base.group_multi_company"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Goals" name="goals">
+              <field name="goal_ids"><list editable="bottom">
+                <field name="name"/><field name="metric"/><field name="target"/><field name="current"/>
+                <field name="progress" widget="progressbar"/><field name="date_start"/><field name="date_end"/>
+              </list></field>
+            </page>
+            <page string="Competitors" name="competitors">
+              <field name="competitor_ids"><list>
+                <field name="name"/><field name="website" widget="url"/><field name="state" widget="badge"
+                  decoration-success="state == 'approved'" decoration-warning="state == 'proposed'"/>
+                <field name="finding_count"/>
+              </list></field>
+            </page>
+            <page string="Sources" name="sources">
+              <field name="source_ids"><list>
+                <field name="name"/><field name="competitor_id"/><field name="url" widget="url"/><field name="kind"/>
+                <field name="state" widget="badge" decoration-success="state == 'approved'"
+                       decoration-warning="state == 'proposed'" decoration-danger="state == 'rejected'"/>
+                <field name="last_collected_at"/><field name="last_error" optional="show"/>
+              </list></field>
+            </page>
+            <page string="Research runs" name="runs">
+              <field name="run_ids" readonly="1"><list>
+                <field name="started_at"/><field name="source_count"/><field name="change_count"/>
+                <field name="error_count"/><field name="report_id"/>
+              </list></field>
+            </page>
+          </notebook>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+  <record id="brand_list" model="ir.ui.view">
+    <field name="name">mi.brand.list</field><field name="model">mi.brand</field>
+    <field name="arch" type="xml"><list><field name="name"/><field name="markets"/><field name="approved_source_count" string="Approved sources"/>
+      <field name="open_finding_count" string="New findings"/><field name="next_research_at"/></list></field>
+  </record>
+  <record id="action_brands" model="ir.actions.act_window">
+    <field name="name">Brands</field><field name="res_model">mi.brand</field><field name="view_mode">list,form</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Describe your brand</p>
+      <p>What you sell, to whom, your goals and budget. Then add the competitors and sources the research should follow.</p></field>
+  </record>
+
+  <!-- Competitors and sources (approval) -->
+  <record id="competitor_form" model="ir.ui.view">
+    <field name="name">mi.competitor.form</field><field name="model">mi.competitor</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_approve" type="object" string="Approve" class="btn-primary" invisible="state == 'approved'"
+                  groups="marketing_intel.group_mi_manager"/>
+          <button name="action_pause" type="object" string="Pause" invisible="state != 'approved'" groups="marketing_intel.group_mi_manager"/>
+          <button name="action_reject" type="object" string="Reject" invisible="state == 'rejected'" groups="marketing_intel.group_mi_manager"/>
+          <field name="state" widget="statusbar" statusbar_visible="proposed,approved"/>
+        </header>
+        <sheet>
+          <div class="oe_title"><h1><field name="name" placeholder="Competitor name"/></h1></div>
+          <group><group><field name="brand_id"/><field name="website" widget="url"/></group>
+            <group><field name="approved_by" invisible="not approved_by"/><field name="approved_at" invisible="not approved_at"/></group></group>
+          <field name="approval_note" placeholder="Why they are a competitor worth following"/>
+          <field name="notes" placeholder="Positioning, products, prices: what we know"/>
+          <field name="source_ids" context="{'default_competitor_id': id, 'default_brand_id': brand_id}"><list>
+            <field name="name"/><field name="url" widget="url"/><field name="kind"/><field name="state" widget="badge"/></list></field>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+  <record id="source_form" model="ir.ui.view">
+    <field name="name">mi.source.form</field><field name="model">mi.source</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_approve" type="object" string="Approve" class="btn-primary" invisible="state == 'approved'"
+                  groups="marketing_intel.group_mi_manager"/>
+          <button name="action_collect_now" type="object" string="Collect now" invisible="state != 'approved'"/>
+          <button name="action_pause" type="object" string="Pause" invisible="state != 'approved'" groups="marketing_intel.group_mi_manager"/>
+          <button name="action_reject" type="object" string="Reject" invisible="state == 'rejected'" groups="marketing_intel.group_mi_manager"/>
+          <field name="state" widget="statusbar" statusbar_visible="proposed,approved"/>
+        </header>
+        <sheet>
+          <div class="oe_title"><h1><field name="name" placeholder="e.g. Competitor pricing page"/></h1></div>
+          <div class="alert alert-warning" role="status" invisible="not last_error"><field name="last_error" nolabel="1"/></div>
+          <group>
+            <group><field name="brand_id"/><field name="competitor_id"/><field name="kind" widget="radio" options="{'horizontal': true}"/>
+              <field name="url" widget="url" placeholder="https://example.com/pricing"/></group>
+            <group><field name="last_collected_at"/><field name="change_count"/>
+              <field name="approved_by" invisible="not approved_by"/><field name="approved_at" invisible="not approved_at"/></group>
+          </group>
+          <label for="approval_note"/>
+          <field name="approval_note" placeholder="Public page, no login; terms allow reading; it states their official prices"/>
+          <field name="snapshot_ids" readonly="1"><list>
+            <field name="fetched_at"/><field name="title"/><field name="changed"/><field name="content_hash" optional="hide"/></list></field>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+  <record id="source_list" model="ir.ui.view">
+    <field name="name">mi.source.list</field><field name="model">mi.source</field>
+    <field name="arch" type="xml"><list><field name="name"/><field name="brand_id"/><field name="competitor_id"/>
+      <field name="url" widget="url"/><field name="kind"/><field name="state" widget="badge" decoration-success="state == 'approved'"
+      decoration-warning="state == 'proposed'"/><field name="last_collected_at"/><field name="last_error" optional="show"/></list></field>
+  </record>
+  <record id="action_competitors" model="ir.actions.act_window">
+    <field name="name">Competitors</field><field name="res_model">mi.competitor</field><field name="view_mode">list,form</field>
+  </record>
+  <record id="action_sources" model="ir.actions.act_window">
+    <field name="name">Sources</field><field name="res_model">mi.source</field><field name="view_mode">list,form</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Add a source of truth</p>
+      <p>A public web page or news feed to follow: a competitor's pricing page, their blog feed, an industry news site.
+        It is collected only after an administrator approves it.</p></field>
+  </record>
+
+  <!-- Findings, evidence, runs -->
+  <record id="finding_list" model="ir.ui.view">
+    <field name="name">mi.finding.list</field><field name="model">mi.finding</field>
+    <field name="arch" type="xml">
+      <list decoration-muted="state == 'dismissed'" decoration-danger="kind == 'error'">
+        <field name="create_date" string="Found on"/><field name="kind" widget="badge"/><field name="title"/>
+        <field name="competitor_id"/><field name="source_id"/><field name="summary" optional="show"/>
+        <field name="state" widget="badge" decoration-info="state == 'new'"/>
+        <button name="action_reviewed" type="object" string="Reviewed" icon="check" invisible="state != 'new'"/>
+        <button name="action_dismiss" type="object" string="Dismiss" icon="close" invisible="state != 'new'"/>
+      </list>
+    </field>
+  </record>
+  <record id="finding_form" model="ir.ui.view">
+    <field name="name">mi.finding.form</field><field name="model">mi.finding</field>
+    <field name="arch" type="xml">
+      <form create="0">
+        <header>
+          <button name="action_reviewed" type="object" string="Mark reviewed" class="btn-primary" invisible="state != 'new'"/>
+          <button name="action_dismiss" type="object" string="Dismiss" invisible="state != 'new'"/>
+          <field name="state" widget="statusbar"/>
+        </header>
+        <sheet>
+          <div class="oe_title"><h1><field name="title" readonly="1"/></h1></div>
+          <group><group><field name="kind" readonly="1"/><field name="brand_id" readonly="1"/><field name="competitor_id" readonly="1"/></group>
+            <group><field name="source_id" readonly="1"/><field name="snapshot_id" readonly="1"/><field name="run_id" readonly="1"/></group></group>
+          <field name="summary" readonly="1"/>
+          <group string="Evidence" invisible="not snapshot_id">
+            <field name="snapshot_id" readonly="1" string="Collected"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="finding_search" model="ir.ui.view">
+    <field name="name">mi.finding.search</field><field name="model">mi.finding</field>
+    <field name="arch" type="xml"><search><field name="title"/><field name="competitor_id"/><field name="source_id"/>
+      <filter name="new" string="New" domain="[('state', '=', 'new')]"/>
+      <filter name="changes" string="Changes" domain="[('kind', 'in', ('change', 'new_item'))]"/>
+      <filter name="errors" string="Errors" domain="[('kind', '=', 'error')]"/>
+      <group><filter name="by_competitor" string="Competitor" context="{'group_by': 'competitor_id'}"/>
+        <filter name="by_kind" string="Kind" context="{'group_by': 'kind'}"/></group></search></field>
+  </record>
+  <record id="action_findings" model="ir.actions.act_window">
+    <field name="name">Findings</field><field name="res_model">mi.finding</field><field name="view_mode">list,form</field>
+    <field name="context">{'search_default_new': 1}</field>
+    <field name="help" type="html"><p class="o_view_nocontent_empty_folder">No findings yet</p>
+      <p>After each research run, what changed on approved sources appears here with its evidence.</p></field>
+  </record>
+  <record id="snapshot_form" model="ir.ui.view">
+    <field name="name">mi.snapshot.form</field><field name="model">mi.snapshot</field>
+    <field name="arch" type="xml"><form create="0" edit="0"><sheet>
+      <group><group><field name="source_id"/><field name="url" widget="url"/><field name="fetched_at"/></group>
+        <group><field name="status_code"/><field name="content_hash"/><field name="changed"/></group></group>
+      <group string="What changed" invisible="not diff_summary"><field name="diff_summary" nolabel="1" colspan="2"/></group>
+      <group string="Collected text"><field name="text" nolabel="1" colspan="2"/></group>
+    </sheet></form></field>
+  </record>
+  <record id="run_form" model="ir.ui.view">
+    <field name="name">mi.run.form</field><field name="model">mi.run</field>
+    <field name="arch" type="xml"><form create="0">
+      <header>
+        <button name="action_open_brief" type="object" string="Open brief" class="btn-primary" invisible="not report_id"/>
+        <button name="action_refresh_brief" type="object" string="Refresh brief"
+                help="Rebuild the brief after editing the analysis, options or risks."/>
+      </header>
+      <sheet>
+        <div class="oe_title"><h1><field name="name"/></h1></div>
+        <group><group><field name="brand_id" readonly="1"/><field name="started_at" readonly="1"/><field name="finished_at" readonly="1"/></group>
+          <group><field name="source_count" readonly="1"/><field name="change_count" readonly="1"/><field name="error_count" readonly="1"/><field name="report_id" readonly="1"/></group></group>
+        <notebook>
+          <page string="Findings" name="findings">
+            <field name="finding_ids" readonly="1"><list><field name="kind" widget="badge"/><field name="title"/><field name="competitor_id"/>
+              <field name="summary"/><field name="state" widget="badge"/></list></field>
+          </page>
+          <page string="Analysis &amp; SWOT" name="analysis">
+            <field name="analysed_at" invisible="not analysed_at" readonly="1"/>
+            <field name="summary" placeholder="What the evidence means for us: market moves, competitor changes, gaps."/>
+            <group>
+              <group><field name="strengths" placeholder="One per line"/><field name="opportunities" placeholder="One per line"/></group>
+              <group><field name="weaknesses" placeholder="One per line"/><field name="threats" placeholder="One per line"/></group>
+            </group>
+          </page>
+          <page string="Campaign options" name="options">
+            <field name="recommendation_ids" context="{'default_brand_id': brand_id}">
+              <list><field name="sequence" widget="handle"/><field name="name"/><field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="budget" sum="Total"/><field name="currency_id" column_invisible="1"/><field name="duration_days"/>
+                <field name="confidence" widget="badge" decoration-success="confidence == 'high'" decoration-warning="confidence == 'low'"/>
+                <field name="origin" widget="badge"/><field name="state" widget="badge" decoration-success="state == 'chosen'" decoration-muted="state == 'rejected'"/></list>
+            </field>
+          </page>
+          <page string="Risks" name="risks">
+            <field name="risk_ids" context="{'default_brand_id': brand_id}">
+              <list editable="bottom"><field name="name"/><field name="category"/><field name="likelihood"/><field name="impact"/>
+                <field name="level" widget="badge" decoration-danger="level == 'high'" decoration-warning="level == 'medium'"/>
+                <field name="mitigation"/><field name="owner_id" widget="many2one_avatar_user"/><field name="origin" widget="badge" readonly="1"/><field name="state"/></list>
+            </field>
+          </page>
+        </notebook>
+      </sheet>
+      <chatter/>
+    </form></field>
+  </record>
+  <record id="run_list" model="ir.ui.view">
+    <field name="name">mi.run.list</field><field name="model">mi.run</field>
+    <field name="arch" type="xml"><list create="0"><field name="started_at"/><field name="brand_id"/><field name="source_count"/>
+      <field name="change_count"/><field name="error_count"/><field name="report_id"/></list></field>
+  </record>
+  <record id="action_runs" model="ir.actions.act_window">
+    <field name="name">Research runs</field><field name="res_model">mi.run</field><field name="view_mode">list,form</field>
+  </record>
+
+  <record id="recommendation_form" model="ir.ui.view">
+    <field name="name">mi.recommendation.form</field><field name="model">mi.recommendation</field>
+    <field name="arch" type="xml"><form>
+      <header>
+        <button name="action_choose" type="object" string="Choose this option" class="btn-primary" invisible="state != 'proposed'"
+                help="Marks it to prepare. Nothing is sent or published; drafts still go through their own approval."/>
+        <button name="action_reject" type="object" string="Reject" invisible="state != 'proposed'"/>
+        <button name="action_reset" type="object" string="Back to proposed" invisible="state == 'proposed'"/>
+        <field name="state" widget="statusbar"/>
+      </header>
+      <sheet>
+        <div class="oe_title"><label for="name"/><h1><field name="name" placeholder="e.g. Webinar for clinic owners"/></h1></div>
+        <group>
+          <group><field name="brand_id"/><field name="run_id" domain="[('brand_id', '=', brand_id)]"/>
+            <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}"/>
+            <field name="budget"/><field name="currency_id" invisible="1"/><field name="duration_days"/></group>
+          <group><field name="confidence"/><field name="origin"/><field name="decided_by" invisible="not decided_by"/>
+            <field name="decided_at" invisible="not decided_at"/></group>
+        </group>
+        <group string="Why and for whom"><field name="problem"/><field name="audience"/></group>
+        <group string="Success"><field name="kpis"/><field name="expected_result"/></group>
+        <group string="Risks"><field name="risk_notes"/></group>
+        <group string="Decision" invisible="state == 'proposed'"><field name="decision_note"/></group>
+        <field name="finding_ids" string="Evidence"><list><field name="kind" widget="badge"/><field name="title"/><field name="competitor_id"/><field name="summary"/></list></field>
+      </sheet>
+      <chatter/>
+    </form></field>
+  </record>
+  <record id="recommendation_list" model="ir.ui.view">
+    <field name="name">mi.recommendation.list</field><field name="model">mi.recommendation</field>
+    <field name="arch" type="xml"><list>
+      <field name="name"/><field name="brand_id"/><field name="run_id"/>
+      <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+      <field name="budget"/><field name="currency_id" column_invisible="1"/><field name="confidence" widget="badge"/>
+      <field name="origin" widget="badge"/><field name="state" widget="badge" decoration-success="state == 'chosen'" decoration-muted="state == 'rejected'"/>
+    </list></field>
+  </record>
+  <record id="recommendation_search" model="ir.ui.view">
+    <field name="name">mi.recommendation.search</field><field name="model">mi.recommendation</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="brand_id"/><field name="channel_ids"/>
+      <filter name="proposed" string="To decide" domain="[('state', '=', 'proposed')]"/>
+      <filter name="chosen" string="Chosen" domain="[('state', '=', 'chosen')]"/>
+      <separator/>
+      <filter name="by_ai" string="From AI" domain="[('origin', '=', 'ai')]"/>
+      <group><filter name="group_brand" string="Brand" context="{'group_by': 'brand_id'}"/>
+        <filter name="group_run" string="Research run" context="{'group_by': 'run_id'}"/></group>
+    </search></field>
+  </record>
+  <record id="action_recommendations" model="ir.actions.act_window">
+    <field name="name">Campaign options</field><field name="res_model">mi.recommendation</field>
+    <field name="view_mode">list,form</field><field name="context">{'search_default_proposed': 1}</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No campaign options yet</p>
+      <p>Options come from a research run: write them yourself, or ask AI on the run (Marketing Intelligence AI).</p></field>
+  </record>
+  <record id="risk_list" model="ir.ui.view">
+    <field name="name">mi.risk.list</field><field name="model">mi.risk</field>
+    <field name="arch" type="xml"><list editable="bottom">
+      <field name="name"/><field name="brand_id"/><field name="category"/><field name="likelihood"/><field name="impact"/>
+      <field name="level" widget="badge" decoration-danger="level == 'high'" decoration-warning="level == 'medium'"/>
+      <field name="mitigation"/><field name="owner_id" widget="many2one_avatar_user"/><field name="origin" widget="badge" readonly="1"/><field name="state"/>
+    </list></field>
+  </record>
+  <record id="risk_form" model="ir.ui.view">
+    <field name="name">mi.risk.form</field><field name="model">mi.risk</field>
+    <field name="arch" type="xml"><form>
+      <header><field name="state" widget="statusbar" options="{'clickable': '1'}"/></header>
+      <sheet>
+        <div class="oe_title"><h1><field name="name" placeholder="e.g. Contacts without SMS consent"/></h1></div>
+        <group><group><field name="brand_id"/><field name="category"/><field name="likelihood"/><field name="impact"/><field name="level"/></group>
+          <group><field name="owner_id"/><field name="run_id"/><field name="recommendation_id"/><field name="origin"/></group></group>
+        <group><field name="description"/><field name="mitigation"/></group>
+      </sheet>
+      <chatter/>
+    </form></field>
+  </record>
+  <record id="risk_search" model="ir.ui.view">
+    <field name="name">mi.risk.search</field><field name="model">mi.risk</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="brand_id"/>
+      <filter name="open" string="Open" domain="[('state', '=', 'open')]"/>
+      <filter name="high" string="High" domain="[('level', '=', 'high')]"/>
+      <group><filter name="group_category" string="Category" context="{'group_by': 'category'}"/>
+        <filter name="group_level" string="Level" context="{'group_by': 'level'}"/></group>
+    </search></field>
+  </record>
+  <record id="action_risks" model="ir.actions.act_window">
+    <field name="name">Risk register</field><field name="res_model">mi.risk</field>
+    <field name="view_mode">list,form</field><field name="context">{'search_default_open': 1}</field>
+  </record>
+
+  <menuitem id="menu_root" name="Marketing Intelligence" sequence="37" action="action_findings"
+            web_icon="marketing_intel,static/description/icon.svg" groups="group_mi_user"/>
+  <menuitem id="menu_findings" name="Findings" parent="menu_root" action="action_findings" sequence="10"/>
+  <menuitem id="menu_runs" name="Research runs" parent="menu_root" action="action_runs" sequence="20"/>
+  <menuitem id="menu_recommendations" name="Campaign options" parent="menu_root" action="action_recommendations" sequence="25"/>
+  <menuitem id="menu_risks" name="Risk register" parent="menu_root" action="action_risks" sequence="27"/>
+  <menuitem id="menu_setup" name="Setup" parent="menu_root" sequence="90"/>
+  <menuitem id="menu_brands" name="Brands &amp; goals" parent="menu_setup" action="action_brands" sequence="10"/>
+  <menuitem id="menu_competitors" name="Competitors" parent="menu_setup" action="action_competitors" sequence="20"/>
+  <menuitem id="menu_sources" name="Sources" parent="menu_setup" action="action_sources" sequence="30"/>
+</odoo>

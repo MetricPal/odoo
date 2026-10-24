@@ -396,7 +396,7 @@ class TestWorkflows(TransactionCase):
         self.assertEqual(flow.run_count, 0)
 
     def test_template_catalog_and_onboarding_shape(self):
-        self.assertEqual(len(self.env['workflow.definition'].home_data()['templates']), 11)
+        self.assertEqual(len(self.env['workflow.definition'].home_data()['templates']), 12)
         flow = self.env['workflow.definition'].browse(self.env['workflow.definition'].from_template('onboarding'))
         self.assertNotIn('branch', flow.step_ids.mapped('kind'))
         self.assertEqual(flow.state, 'draft')

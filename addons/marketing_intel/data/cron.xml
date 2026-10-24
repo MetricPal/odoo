@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <!-- Checks hourly which brands are due (each brand sets its own interval, weekly by default).
+       It only reads approved public sources and records evidence; it never publishes or sends. -->
+  <record id="cron_research" model="ir.cron">
+    <field name="name">Marketing Intelligence: scheduled research</field>
+    <field name="model_id" ref="model_mi_brand"/>
+    <field name="state">code</field>
+    <field name="code">model._cron_research()</field>
+    <field name="interval_number">1</field>
+    <field name="interval_type">hours</field>
+    <field name="active">True</field>
+  </record>
+</odoo>

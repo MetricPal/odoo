@@ -49,6 +49,10 @@ RECIPES = [
     ('expenses', 'Expense report approval', 'Expenses', 'Approvals', 'hr.expense', 'manual',
      'Ask the configured approvers to review the expense, then notify its owner.',
      [('approval', 'Review the expense'), ('mail_post', 'Notify the employee')]),
+    ('market_brief', 'Market brief review', 'Marketing Intelligence', 'Reminders', 'mi.run', 'write',
+     'When a research brief is ready and found changes, ask the marketing team to review it and decide on '
+     'the campaign options.',
+     [('next_activity', 'Review the brief and decide on options'), ('mail_post', 'Post the brief to followers')]),
 ]
 
 
@@ -90,6 +94,9 @@ def create_template(model, key):
         created[5].end = True
     elif key == 'stock':
         created[2].false_id = created[4]
+    elif key == 'market_brief':
+        workflow.write({'trigger_field_id': model.env['ir.model.fields']._get(model_name, 'report_id').id,
+                        'domain': "[('change_count', '>', 0)]"})
     elif trigger == 'stage':
         field = 'stage_id' if model_name in ('crm.lead', 'hr.applicant') else 'state'
         workflow.trigger_field_id = model.env['ir.model.fields']._get(model_name, field)

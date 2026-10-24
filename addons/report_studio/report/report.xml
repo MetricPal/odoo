@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <!-- One body template for the preview, the HTML file and the PDF. -->
+  <template id="report_body">
+    <div class="o_rs_report" t-attf-style="--rs-accent: #{report['accent']};">
+      <header class="o_rs_header">
+        <h1 t-out="report['title']"/>
+        <p class="o_rs_sub"><t t-out="report['subtitle']"/><t t-if="report['subtitle']"> · </t><t t-out="report['company']"/> · <t t-out="report['date']"/></p>
+      </header>
+      <div class="o_rs_kpis" t-if="any(b['type'] == 'kpi' for b in report['blocks'])">
+        <t t-foreach="[b for b in report['blocks'] if b['type'] == 'kpi']" t-as="kpi">
+          <div class="o_rs_kpi"><div class="o_rs_kpi_value" t-out="kpi['display']"/><div class="o_rs_kpi_label" t-out="kpi['title']"/></div>
+        </t>
+      </div>
+      <t t-foreach="report['blocks']" t-as="block">
+        <h2 t-if="block['type'] == 'heading'" class="o_rs_h2" t-out="block['title']"/>
+        <section t-if="block['type'] == 'text'" class="o_rs_text">
+          <h3 t-if="block['title']" t-out="block['title']"/>
+          <div t-out="block['html']"/>
+        </section>
+        <section t-if="block['type'] == 'table'" class="o_rs_table">
+          <h3 t-if="block['title']" t-out="block['title']"/>
+          <table>
+            <thead><tr><th t-foreach="block['columns']" t-as="col" t-out="col"/></tr></thead>
+            <tbody>
+              <tr t-foreach="block['rows']" t-as="row"><td t-foreach="row" t-as="value" t-out="value"/></tr>
+              <tr t-if="not block['rows']"><td t-att-colspan="len(block['columns'])" class="o_rs_empty">No records</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </t>
+    </div>
+  </template>
+
+  <template id="report_styles">
+    <style>
+      .o_rs_report { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #222; max-width: 1000px; margin: 0 auto; }
+      .o_rs_header { border-bottom: 4px solid var(--rs-accent); margin-bottom: 1.5rem; padding-bottom: .5rem; }
+      .o_rs_header h1 { margin: 0; color: var(--rs-accent); font-size: 1.8rem; }
+      .o_rs_sub { color: #666; margin: .25rem 0 0; }
+      .o_rs_kpis { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+      .o_rs_kpi { flex: 1 1 10rem; border: 1px solid #ddd; border-top: 4px solid var(--rs-accent); border-radius: .5rem; padding: .75rem 1rem; }
+      .o_rs_kpi_value { font-size: 1.8rem; font-weight: 700; }
+      .o_rs_kpi_label { color: #666; }
+      .o_rs_h2 { color: var(--rs-accent); margin-top: 2rem; border-bottom: 1px solid #ddd; }
+      .o_rs_table table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+      .o_rs_table th { text-align: left; background: #f3f3f3; }
+      .o_rs_table th, .o_rs_table td { border: 1px solid #ddd; padding: .35rem .5rem; }
+      .o_rs_empty { color: #888; text-align: center; }
+      section { margin-bottom: 1.25rem; page-break-inside: avoid; }
+    </style>
+  </template>
+
+  <template id="report_page">
+    <html><head><meta charset="utf-8"/><title t-out="report['title']"/><t t-call="report_studio.report_styles"/></head>
+      <body><t t-out="body"/></body></html>
+  </template>
+
+  <template id="report_pdf">
+    <t t-call="web.html_container">
+      <t t-foreach="docs" t-as="doc">
+        <div class="page"><t t-call="report_studio.report_styles"/><t t-out="doc._render_html()"/></div>
+      </t>
+    </t>
+  </template>
+
+  <record id="action_report_pdf" model="ir.actions.report">
+    <field name="name">Report (PDF)</field>
+    <field name="model">report.studio.report</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">report_studio.report_pdf</field>
+    <field name="print_report_name">object.name</field>
+    <field name="binding_model_id" eval="False"/>
+  </record>
+</odoo>
