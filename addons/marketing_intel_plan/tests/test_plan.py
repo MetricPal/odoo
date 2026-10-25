@@ -352,6 +352,16 @@ class TestCampaignPlan(TransactionCase):
         # Templates never run and do not count as campaigns.
         template = self.env['mi.plan'].browse(plan.action_save_template()['res_id'])
         self.assertTrue(template.is_template)
+        plan.invalidate_recordset(['saved_template_id'])
+        self.assertEqual(plan.saved_template_id, template)
+        email.sudo().subject = 'Autumn webinar, take two'
+        again = self.env['mi.plan'].browse(plan.action_save_template()['res_id'])
+        self.assertEqual(again, template, 'saving again updates the same template')
+        self.assertEqual(self.env['mi.plan'].search_count([('template_source_id', '=', plan.id)]), 1)
+        self.assertEqual(template.item_ids.filtered(lambda i: i.channel == 'email').content_subject,
+                         'Autumn webinar, take two')
+        with self.assertRaises(UserError):
+            template.action_save_template()
         with self.assertRaises(UserError):
             template.action_prepare()
         self.assertNotIn(template, self.brand.plan_ids)
@@ -393,3 +403,12 @@ class TestCampaignPlan(TransactionCase):
         self.assertTrue(any(e['recurring'] for e in data['timeline']['upcoming'] if e['kind'] == 'repeat'))
         mine = self.env['mi.panel'].with_user(approver).get_panel()
         self.assertIn(plan.id, [t['res_id'] for t in mine['todos']], 'the approver sees it under For you')
+
+    def test_menus_open_the_control_panel_and_todos(self):
+        self.assertEqual(self.env.ref('marketing_intel.menu_root').action,
+                         self.env.ref('marketing_intel_plan.action_control_panel'))
+        todos = self.env.ref('marketing_intel_plan.action_my_todos')
+        self.assertEqual(todos.tag, 'marketing_intel_plan.control_panel')
+        self.assertEqual(self.env.ref('marketing_intel_plan.menu_needs_me').action, todos)
+        menus = self.env['ir.ui.menu'].with_user(self.user).load_menus(False)
+        self.assertTrue(menus)

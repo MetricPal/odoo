@@ -6,7 +6,7 @@
     <field name="arch" type="xml">
       <xpath expr="//header/button[@name='action_submit_review']" position="before">
         <button name="action_ai_write" type="object" string="✨ Let AI write it" class="btn-primary"
-                invisible="state not in ('brief', 'content') or ai_state == 'running'"
+                invisible="is_template or state not in ('brief', 'content') or ai_state == 'running'"
                 help="The AI assistant fills the brief, writes every channel and sends the campaign for review."/>
       </xpath>
       <xpath expr="//header/field[@name='status']" position="before">

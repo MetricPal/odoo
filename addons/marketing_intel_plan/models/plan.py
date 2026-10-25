@@ -117,7 +117,7 @@ class Plan(models.Model):
     waiting_for = fields.Char(compute='_compute_progress', string='Waiting for')
     next_step = fields.Char(compute='_compute_needs_me', string='Next step',
                             help='What has to happen next, and who does it.')
-    needs_me = fields.Boolean(compute='_compute_needs_me', search='_search_needs_me', string='For me',
+    needs_me = fields.Boolean(compute='_compute_needs_me', search='_search_needs_me', string='Your action needed',
                               help='You have something to do on this campaign.')
     my_todo = fields.Char(compute='_compute_needs_me', string='What you need to do')
     can_review = fields.Boolean(compute='_compute_needs_me')
@@ -127,6 +127,9 @@ class Plan(models.Model):
                                  help='A reusable campaign: it never runs; "Use this template" starts a campaign from it.')
     template_id = fields.Many2one('mi.plan', string='From template', readonly=True, copy=False,
                                   domain=[('is_template', '=', True)])
+    template_source_id = fields.Many2one('mi.plan', string='Saved from', readonly=True, copy=False, index=True,
+                                         help='The campaign this template was saved from.')
+    saved_template_id = fields.Many2one('mi.plan', compute='_compute_saved_template', string='Its template')
     repeat = fields.Selection([('none', 'Does not repeat'), ('weekly', 'Every week'), ('monthly', 'Every month')],
                               default='none', required=True, string='Repeat', tracking=True,
                               help='Each period a new copy of this campaign is created a few days before it starts '
@@ -136,6 +139,11 @@ class Plan(models.Model):
     series_id = fields.Many2one('mi.plan', string='Series', readonly=True, copy=False, index=True,
                                 help='The first campaign of a repeating series.')
     next_run_date = fields.Date(compute='_compute_next_run', string='Next run starts')
+
+    def _compute_saved_template(self):
+        for plan in self:
+            plan.saved_template_id = self.search([('is_template', '=', True), ('template_source_id', '=', plan.id)],
+                                                 limit=1) if plan.id and not plan.is_template else False
 
     @api.depends('repeat', 'repeat_until', 'date_start', 'state')
     def _compute_next_run(self):
@@ -566,9 +574,21 @@ class Plan(models.Model):
         return copy._open_form()
 
     def action_save_template(self):
+        """One template per campaign: saving again updates it with the campaign's current channels and texts."""
         self.ensure_one()
-        template = self.create(self._copy_values(is_template=True, worker='me', repeat='none'))
-        template.message_post(body=_('Template saved from “%s”.', self.name))
+        if self.is_template:
+            raise UserError(_('This is already a template.'))
+        values = self._copy_values(is_template=True, worker='me', repeat='none', template_source_id=self.id)
+        template = self.search([('is_template', '=', True), ('template_source_id', '=', self.id)], limit=1)
+        if template:
+            values['item_ids'] = [(5, 0, 0)] + values['item_ids']
+            for name in ('date_start', 'date_end', 'user_id'):
+                values.pop(name, None)
+            template.write(values)
+            template.message_post(body=_('Template updated from “%s”.', self.name))
+        else:
+            template = self.create(values)
+            template.message_post(body=_('Template saved from “%s”.', self.name))
         return template._open_form()
 
     def action_use_template(self):
@@ -891,7 +911,9 @@ class PlanItem(models.Model):
             if plan.state in BEFORE_REVIEW:
                 return _('Sent from %s before the campaign review', app)
             sent = self.result_sent
-            return _('Sent to %s', sent) if sent else _('Published')
+            if sent:
+                return _('Sent to %s', sent)
+            return _('Published') if record._name in ('omni.social.campaign', 'event.event') else _('Sent')
         if stage == 'failed':
             if record._name in ('mailing.mailing', 'mm.mailing') and record.state == 'done':
                 return _('Sent to nobody: the lists had no one who can receive it')

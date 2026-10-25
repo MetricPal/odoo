@@ -12,6 +12,16 @@ Format:
 
 
 
+## 2026-10-25 — Marketing roadmap and P0 fixes
+
+- Change: roadmap saved (`docs/exec-plans/active/2026-10-25-marketing-roadmap.md`: P0 fixes, P1 portfolio,
+  P2 consent ledger, P3 work management, P4 client portal, P5 custom panel, P6 AI chat). P0: templates are
+  clean (only "Use this template" and saved texts), one template per campaign ("Update template"),
+  "Your action needed" label, My to-dos shows campaigns and workflows that need the user, with an
+  explanation.
+- Reason: owner review of templates and labels; benchmarks Ketch, Wrike, DirectLync.
+- Affected: `marketing_intel_plan`, `marketing_intel_ai` (views).
+
 ## 2026-10-25 — Marketing control panel, templates and repeats, workflows
 
 - Change:

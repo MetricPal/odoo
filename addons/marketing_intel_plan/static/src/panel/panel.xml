@@ -6,7 +6,13 @@
             <t t-else="">
                 <t t-set="data" t-value="this.state.data"/>
                 <header class="o_mi_panel_head">
-                    <div>
+                    <div t-if="this.mode === 'todos'">
+                        <h1>My to-dos</h1>
+                        <p class="text-muted mb-0">What needs <b>your</b> action now: approvals assigned to you, campaigns
+                            you are writing, and fixes on your campaigns and workflows. Everything else runs on its own or
+                            waits for someone else (see Next step on each campaign).</p>
+                    </div>
+                    <div t-else="">
                         <h1>Marketing control panel</h1>
                         <p class="text-muted mb-0">
                             <t t-esc="data.counts.active"/> active campaigns · <t t-esc="data.flows.length"/> workflows ·
@@ -32,6 +38,16 @@
                     </div>
                 </header>
 
+                <section t-if="this.mode === 'todos'" class="o_mi_card o_mi_todo_page">
+                    <p t-if="!data.todos.length" class="o_mi_empty">Nothing needs your action right now.</p>
+                    <button t-foreach="data.todos" t-as="todo" t-key="todo_index" type="button" class="o_mi_todo"
+                            t-on-click="() => this.open(todo.model, todo.res_id)">
+                        <i class="oi" t-att-data-icon="todo.icon"/>
+                        <span><strong t-esc="todo.title"/><small t-esc="todo.subtitle"/></span>
+                        <i class="oi ms-auto" data-icon="arrow_forward"/>
+                    </button>
+                </section>
+                <t t-if="this.mode !== 'todos'">
                 <section class="o_mi_kpis">
                     <button t-foreach="data.kpis" t-as="kpi" t-key="kpi.key" type="button" class="o_mi_kpi"
                             t-att-class="'o_mi_kpi_' + kpi.key" t-on-click="() => this.openKpi(kpi)">
@@ -93,9 +109,9 @@
 
                     <aside class="o_mi_side">
                         <section class="o_mi_card">
-                            <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="checklist"/>For you</h2>
+                            <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="checklist"/>Your action needed</h2>
                                 <span class="badge rounded-pill text-bg-primary" t-esc="data.todos.length"/></div>
-                            <p t-if="!data.todos.length" class="o_mi_empty">Nothing waits for you. Campaigns and workflows run on their own.</p>
+                            <p t-if="!data.todos.length" class="o_mi_empty">Nothing needs your action. Campaigns and workflows run on their own.</p>
                             <button t-foreach="data.todos" t-as="todo" t-key="todo_index" type="button" class="o_mi_todo"
                                     t-on-click="() => this.open(todo.model, todo.res_id)">
                                 <i class="oi" t-att-data-icon="todo.icon"/>
@@ -134,7 +150,7 @@
                             <span class="o_mi_tags">
                                 <span t-if="row.worker === 'ai'" class="badge text-bg-light">✨ AI</span>
                                 <span t-if="row.repeat" class="badge text-bg-light"><i class="oi" data-icon="repeat"/></span>
-                                <span t-if="row.needs_me" class="badge text-bg-warning">For you</span>
+                                <span t-if="row.needs_me" class="badge text-bg-warning">Your action needed</span>
                             </span>
                         </div>
                         <span class="o_mi_status" t-att-class="'o_mi_status_' + row.status" t-esc="row.status_label"/>
@@ -178,6 +194,7 @@
                         </button>
                     </div>
                 </section>
+                </t>
             </t>
         </div>
     </t>

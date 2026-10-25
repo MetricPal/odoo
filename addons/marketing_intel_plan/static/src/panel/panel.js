@@ -53,6 +53,7 @@ export class MarketingPanel extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.state = proxy({ data: null, brandId: false, tab: "upcoming", loading: true });
+        this.mode = this.props.action?.params?.mode || "panel";
         onWillStart(() => this.load());
     }
 
