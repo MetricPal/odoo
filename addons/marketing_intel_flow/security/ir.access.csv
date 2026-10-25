@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,operation
+access_flow_user,Marketing workflows,model_mi_flow,marketing_intel.group_mi_user,crud
+access_flow_step_user,Marketing workflow steps,model_mi_flow_step,marketing_intel.group_mi_user,crud
+access_flow_run_user,Marketing workflow runs,model_mi_flow_run,marketing_intel.group_mi_user,r
+access_flow_recipe_user,Marketing workflow recipes,model_mi_flow_recipe,marketing_intel.group_mi_user,r
+access_flow_recipe_manager,Marketing workflow recipes manage,model_mi_flow_recipe,marketing_intel.group_mi_manager,crud

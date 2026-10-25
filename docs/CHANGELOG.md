@@ -12,6 +12,25 @@ Format:
 
 
 
+## 2026-10-25 — Marketing control panel, templates and repeats, workflows
+
+- Change:
+  - *Marketing* opens on a **control panel**: KPI cards with 8-week trends, timeline (upcoming/recent,
+    recurring marked), campaign progress bars per channel, workflows today, For you, alerts, brand filter.
+  - **Reuse**: Duplicate & edit, Save as template / Use this template, Repeat weekly or monthly (new copy
+    three days ahead, sent for the quick review).
+  - New module **`marketing_intel_flow`**: "when → then" workflows (comment/keyword, private message, event
+    registration, email click, lead → WhatsApp/Telegram message, add to list, lead, to-do), approved once then
+    automatic, opted-in contacts only, daily limit, run log, 4 recipes.
+  - Icons use Odoo 20 Material Symbols.
+- Reason: owner asked for a war-room home, reusable campaigns, recurring schedules and workflows such as
+  "DM on WhatsApp those who engage with an Instagram post" (likes are not exposed by the platforms; comment
+  keyword is the supported equivalent).
+- Affected: `marketing_intel_plan` (panel, reuse, repeat cron), `marketing_intel_ai` (fill via shared
+  helper), new `marketing_intel_flow` (depends on `messaging_marketing`, `omni_social`).
+- Migration: upgrade `marketing_intel_plan,marketing_intel_ai`; install `marketing_intel_flow` (auto-installs
+  when its dependencies are present). The Marketing menu now opens the control panel.
+
 ## 2026-10-25 — Marketing: clearer statuses, results per channel, My to-dos
 
 - Change: campaign stays in Review until approved (no "Live" from a channel sent outside the review,

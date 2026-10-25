@@ -3,6 +3,7 @@
     'version': '1.4',
     'category': 'Productivity',
     'summary': 'AI Home: my work, items needing attention, automations, workflow runs and recent activity',
+    'author': 'metric.io',
     'icon': '/ai_home/static/description/icon.svg',
     'depends': ['web', 'website'],
     'data': [

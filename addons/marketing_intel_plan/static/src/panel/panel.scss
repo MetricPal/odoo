@@ -1,0 +1,106 @@
+.o_mi_panel {
+    --mi-out: #2a9d8f;
+    --mi-scheduled: #3d7dd8;
+    --mi-waiting: #e9a23b;
+    --mi-fix: #d64545;
+    --mi-todo: #c9ccd3;
+    background: var(--body-bg, #f6f7f9);
+    padding: 1.25rem 1.5rem 2rem;
+
+    .o_mi_panel_head {
+        display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center;
+        margin-bottom: 1.25rem;
+        h1 { font-size: 1.6rem; margin: 0; font-weight: 600; }
+    }
+    .o_mi_panel_tools { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+        .form-select { min-width: 200px; } }
+
+    .o_mi_kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .9rem; margin-bottom: 1.25rem; }
+    .o_mi_kpi {
+        text-align: left; border: 1px solid var(--border-color, #e3e5ea); border-radius: .9rem; background: #fff;
+        padding: .9rem 1rem; display: flex; flex-direction: column; gap: .2rem; transition: box-shadow .15s, transform .15s;
+        &:hover { box-shadow: 0 6px 18px rgba(30, 40, 60, .08); transform: translateY(-1px); }
+    }
+    .o_mi_kpi_top { display: flex; align-items: center; gap: .5rem; }
+    .o_mi_kpi_icon { width: 2rem; height: 2rem; border-radius: .6rem; display: inline-flex; align-items: center;
+        justify-content: center; background: #efe9ee; color: #714b67; }
+    .o_mi_kpi_label { font-weight: 500; color: #555; }
+    .o_mi_kpi_value { font-size: 1.8rem; font-weight: 700; line-height: 1.1; }
+    .o_mi_kpi_foot { display: flex; align-items: center; gap: .5rem; min-height: 32px; font-size: .85rem; }
+    .o_mi_spark { width: 100px; height: 32px; polyline { fill: none; stroke: #714b67; stroke-width: 2; } }
+    .o_mi_meter { flex: 1; height: 8px; border-radius: 4px; background: #eceef2; overflow: hidden;
+        span { display: block; height: 100%; background: var(--mi-out); border-radius: 4px; } }
+    .o_mi_kpi_leads .o_mi_kpi_icon, .o_mi_kpi_revenue .o_mi_kpi_icon { background: #e3f4f1; color: var(--mi-out); }
+    .o_mi_kpi_budget .o_mi_kpi_icon, .o_mi_kpi_goals .o_mi_kpi_icon { background: #fdf0dc; color: #b9741a; }
+
+    .o_mi_grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 991px) { .o_mi_grid { grid-template-columns: 1fr; } }
+    .o_mi_side { display: flex; flex-direction: column; gap: 1rem; }
+    .o_mi_card { background: #fff; border: 1px solid var(--border-color, #e3e5ea); border-radius: .9rem; padding: 1rem 1.1rem;
+        margin-bottom: 1rem; }
+    .o_mi_side .o_mi_card { margin-bottom: 0; }
+    .o_mi_card_head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-bottom: .75rem;
+        h2 { font-size: 1.05rem; font-weight: 600; margin: 0; display: flex; align-items: center; } }
+    .o_mi_empty { color: #8a8f99; margin: .5rem 0; }
+
+    .o_mi_timeline { max-height: 460px; overflow: auto; }
+    .o_mi_day h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: #8a8f99; margin: .75rem 0 .35rem; }
+    .o_mi_event {
+        display: flex; align-items: center; gap: .75rem; width: 100%; text-align: left; border: 0; background: transparent;
+        padding: .45rem .5rem; border-radius: .6rem; position: relative;
+        &:hover { background: #f4f2f4; }
+    }
+    .o_mi_event_icon { width: 2rem; height: 2rem; flex: 0 0 2rem; border-radius: 50%; display: inline-flex; align-items: center;
+        justify-content: center; background: #eef0f4; color: #555; }
+    .o_mi_event_sent .o_mi_event_icon { background: #e3f4f1; color: var(--mi-out); }
+    .o_mi_event_scheduled .o_mi_event_icon, .o_mi_event_start .o_mi_event_icon { background: #e6effb; color: var(--mi-scheduled); }
+    .o_mi_event_review .o_mi_event_icon { background: #fdf0dc; color: #b9741a; }
+    .o_mi_event_repeat .o_mi_event_icon, .o_mi_event_flow .o_mi_event_icon { background: #efe9ee; color: #714b67; }
+    .o_mi_event_text { display: flex; flex-direction: column; min-width: 0;
+        small { color: #8a8f99; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+    .o_mi_event_meta { margin-left: auto; display: flex; align-items: center; gap: .35rem; color: #8a8f99; }
+
+    .o_mi_todo, .o_mi_alert {
+        display: flex; align-items: center; gap: .65rem; width: 100%; text-align: left; border: 0; background: #faf8fa;
+        padding: .6rem .7rem; border-radius: .6rem; margin-bottom: .4rem;
+        span { display: flex; flex-direction: column; } small { color: #8a8f99; }
+        &:hover { background: #f1ecf0; }
+    }
+    .o_mi_alert_danger { background: #fdecec; color: #9b2c2c; }
+    .o_mi_alert_warning { background: #fdf4e3; color: #8a5a12; }
+
+    .o_mi_legend { display: flex; flex-wrap: wrap; gap: .25rem .6rem; align-items: center; font-size: .8rem; color: #6b7080; }
+    .o_mi_dot { display: inline-block; width: .65rem; height: .65rem; border-radius: 50%; margin-right: .2rem; }
+    .o_mi_seg_out { background: var(--mi-out); } .o_mi_seg_scheduled { background: var(--mi-scheduled); }
+    .o_mi_seg_waiting { background: var(--mi-waiting); } .o_mi_seg_fix { background: var(--mi-fix); }
+    .o_mi_seg_todo { background: var(--mi-todo); }
+
+    .o_mi_campaign {
+        display: grid; grid-template-columns: minmax(180px, 2fr) auto minmax(220px, 3fr) minmax(160px, 2fr);
+        gap: 1rem; align-items: center; padding: .75rem .5rem; border-top: 1px solid #f0f1f4; cursor: pointer;
+        &:hover { background: #fbfafb; }
+        @media (max-width: 991px) { grid-template-columns: 1fr; }
+    }
+    .o_mi_campaign_name { display: flex; flex-direction: column; .o_mi_tags { display: flex; gap: .25rem; margin-top: .2rem; } }
+    .o_mi_status { font-size: .78rem; font-weight: 600; padding: .2rem .6rem; border-radius: 1rem; background: #eef0f4; color: #555;
+        white-space: nowrap; }
+    .o_mi_status_review { background: #fdf0dc; color: #8a5a12; } .o_mi_status_scheduled { background: #e6effb; color: #2b5ea8; }
+    .o_mi_status_live { background: #e3f4f1; color: #1e7268; } .o_mi_status_content, .o_mi_status_brief { background: #f1f2f5; }
+    .o_mi_flow_active { background: #e3f4f1; color: #1e7268; } .o_mi_flow_pending { background: #fdf0dc; color: #8a5a12; }
+    .o_mi_bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #eceef2;
+        span { display: block; height: 100%; } }
+    .o_mi_channels { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .45rem; }
+    .o_mi_chip { font-size: .75rem; padding: .1rem .5rem; border-radius: 1rem; border: 1px solid; display: inline-flex;
+        align-items: center; gap: .2rem; }
+    .o_mi_chip_out { border-color: var(--mi-out); color: #1e7268; background: #f0faf8; }
+    .o_mi_chip_scheduled { border-color: var(--mi-scheduled); color: #2b5ea8; background: #f2f6fd; }
+    .o_mi_chip_waiting { border-color: var(--mi-waiting); color: #8a5a12; background: #fff8ec; }
+    .o_mi_chip_fix { border-color: var(--mi-fix); color: #9b2c2c; background: #fdf1f1; }
+    .o_mi_chip_todo { border-color: #d5d8de; color: #6b7080; background: #fafbfc; }
+    .o_mi_campaign_next { display: flex; flex-direction: column; font-size: .9rem; }
+
+    .o_mi_flows { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .75rem; }
+    .o_mi_flow { text-align: left; border: 1px solid #eceef2; border-radius: .75rem; background: #fcfbfc; padding: .75rem;
+        &:hover { box-shadow: 0 4px 14px rgba(30, 40, 60, .07); } }
+    .o_mi_flow_stats { display: flex; gap: .75rem; margin-top: .4rem; font-size: .85rem; }
+}

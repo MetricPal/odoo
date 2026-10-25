@@ -224,3 +224,14 @@ frozen content) and audit. The campaign request is the only gate for Email, SMS 
 approved, `action_release` runs as the requester and queues the mailings for the start day and
 publishes the events. `action_release` refuses to run without an approved campaign request. An AI
 assistant may write drafts and send the campaign for review, never approve it.
+
+## Marketing workflows: approved once, then automatic (2026-10-25)
+
+`marketing_intel_flow`: a workflow (trigger + steps + limits) is approved once in Approval Center. When it
+sends messages, the request uses the sending channel's own message approval type, so its approver lines are
+exactly what Omnichannel's dispatch expects; each queued message references the request and passes through
+`omni.command._approval_targets_command`, which accepts it only while the workflow is active and unchanged
+(digest of trigger, texts, channel and limits). The dispatch still checks the channel policy approvers and
+the recipient's current opt-in (`mm.contact._send_refusal`) before every message. Any edit pauses the workflow
+and voids the evidence of messages not yet sent. Messages go only to opted-in known contacts, with a per-person
+daily limit across workflows, every run logged.

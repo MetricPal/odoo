@@ -1,5 +1,17 @@
 # Marketing: campaigns
 
+**Control panel.** *Marketing* opens on one screen: key numbers with 8-week trends (messages sent, link
+clicks, leads, won revenue, budget this month, goals on track), a timeline of upcoming and recent events
+(sends, posts, events, reviews, campaign starts/ends, next runs of repeating campaigns, workflow runs; repeating
+items marked), every running campaign with a coloured progress bar per channel, workflows with today's runs,
+*For you* (your approvals, writing and fixes) and alerts (failed channels, overspend, goals behind). A brand
+selector (grouped by company or client) filters everything.
+
+**Reuse.** *Duplicate & edit* copies a campaign with its channels and texts (new drafts, new review). *Save as
+template* keeps it under Campaigns › Templates; *Use this template* starts a new one. *Repeat* every week or
+month: a new copy is created three days before each run and sent for the one-click review (the AI assistant
+rewrites the text when it does the work).
+
 A campaign runs on any of the company's channels (Social, Messaging, Email, SMS, Events, plus to-dos
 for content, ads and partnerships) and moves through one status line:
 

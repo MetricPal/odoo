@@ -333,3 +333,63 @@ class TestCampaignPlan(TransactionCase):
         result = plan.action_submit_review()
         self.assertIn('Marketing campaign', result['params']['message'])
         self.assertNotEqual(plan.state, 'review')
+
+    def test_duplicate_template_and_repeat(self):
+        if 'mailing.mailing' not in self.env:
+            self.skipTest('Email Marketing not installed')
+        approver, plan = self._review_setup()
+        plan.action_prepare()
+        email = plan.item_ids.filtered(lambda i: i.channel == 'email')._record()
+        email.sudo().subject = 'Join our autumn webinar'
+        # Duplicate & edit keeps channels and texts, with new drafts.
+        copy = self.env['mi.plan'].browse(plan.action_duplicate()['res_id'])
+        self.assertEqual(copy.state, 'brief')
+        self.assertEqual(sorted(copy.item_ids.mapped('channel')), sorted(plan.item_ids.mapped('channel')))
+        copy.action_prepare()
+        copied = copy.item_ids.filtered(lambda i: i.channel == 'email')._record()
+        self.assertNotEqual(copied, email)
+        self.assertEqual(copied.subject, 'Join our autumn webinar')
+        # Templates never run and do not count as campaigns.
+        template = self.env['mi.plan'].browse(plan.action_save_template()['res_id'])
+        self.assertTrue(template.is_template)
+        with self.assertRaises(UserError):
+            template.action_prepare()
+        self.assertNotIn(template, self.brand.plan_ids)
+        started = self.env['mi.plan'].browse(template.action_use_template()['res_id'])
+        self.assertEqual(started.template_id, template)
+        self.assertFalse(started.is_template)
+        # Weekly repeat: the next run is created a few days before it starts and sent for review, once.
+        today = fields.Date.today()
+        plan.sudo().write({'repeat': 'weekly', 'date_start': today - timedelta(days=5),
+                           'date_end': today + timedelta(days=1)})
+        self.assertEqual(plan.next_run_date, today + timedelta(days=2))
+        self.env['mi.plan']._cron_repeat()
+        run = self.env['mi.plan'].search([('series_id', '=', plan.id)])
+        self.assertEqual(len(run), 1)
+        self.assertEqual(run.date_start, today + timedelta(days=2))
+        self.assertEqual(run.state, 'review', 'quick review: the copy is sent for review by itself')
+        plan.invalidate_recordset(['next_run_date'])
+        self.assertFalse(plan.next_run_date, 'the newest run carries the series on')
+        self.assertEqual(run.next_run_date, today + timedelta(days=9))
+        self.env['mi.plan']._cron_repeat()
+        self.assertEqual(self.env['mi.plan'].search_count([('series_id', '=', plan.id)]), 1)
+
+    def test_control_panel_shows_progress_timeline_and_todos(self):
+        if 'mailing.mailing' not in self.env:
+            self.skipTest('Email Marketing not installed')
+        approver, plan = self._review_setup()
+        plan.write({'repeat': 'monthly'})
+        plan.action_submit_review()
+        data = self.env['mi.panel'].with_user(self.user).get_panel(brand_id=self.brand.id)
+        self.assertEqual({k['key'] for k in data['kpis']},
+                         {'sent', 'clicks', 'leads', 'revenue', 'budget', 'goals'})
+        self.assertTrue(all(len(k['trend']) == 8 for k in data['kpis'] if k['trend']))
+        row = next(r for r in data['campaigns'] if r['id'] == plan.id)
+        self.assertEqual(row['status'], 'review')
+        self.assertEqual(row['groups']['waiting'], 3)
+        self.assertTrue(row['repeat'])
+        kinds = {e['kind'] for e in data['timeline']['upcoming'] + data['timeline']['recent']}
+        self.assertTrue({'review', 'repeat'} <= kinds, kinds)
+        self.assertTrue(any(e['recurring'] for e in data['timeline']['upcoming'] if e['kind'] == 'repeat'))
+        mine = self.env['mi.panel'].with_user(approver).get_panel()
+        self.assertIn(plan.id, [t['res_id'] for t in mine['todos']], 'the approver sees it under For you')

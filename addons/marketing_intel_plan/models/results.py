@@ -239,13 +239,13 @@ class Goal(models.Model):
 class BrandCampaigns(models.Model):
     _inherit = 'mi.brand'
 
-    plan_ids = fields.One2many('mi.plan', 'brand_id', string='Campaigns')
+    plan_ids = fields.One2many('mi.plan', 'brand_id', string='Campaigns', domain=[('is_template', '=', False)])
     campaign_count = fields.Integer(compute='_compute_campaign_count', string='Campaigns')
     active_campaign_count = fields.Integer(compute='_compute_campaign_count', string='Running')
 
     def _compute_campaign_count(self):
         for brand in self:
-            plans = self.env['mi.plan'].search([('brand_id', '=', brand.id)])
+            plans = self.env['mi.plan'].search([('brand_id', '=', brand.id), ('is_template', '=', False)])
             brand.campaign_count = len(plans)
             brand.active_campaign_count = len(plans.filtered(lambda p: p.state in ('brief', 'content', 'review', 'scheduled', 'live')))
 
@@ -255,7 +255,8 @@ class BrandCampaigns(models.Model):
                 'name': _('New campaign'), 'context': {'default_brand_id': self.id}}
 
     def action_open_campaigns(self):
-        return self._open('mi.plan', _('Campaigns'), [('brand_id', '=', self.id)], views='list,calendar,form')
+        return self._open('mi.plan', _('Campaigns'), [('brand_id', '=', self.id), ('is_template', '=', False)],
+                          views='kanban,list,calendar,form')
 
 
 
@@ -292,6 +293,7 @@ class BrandAttention(models.Model):
                 if goal.progress < 100 and goal.progress < expected - 10:
                     behind += 1
             plans = self.env['mi.plan'].search([('brand_id', '=', brand.id), ('state', '!=', 'cancelled'),
+                                                ('is_template', '=', False),
                                                 ('date_start', '>=', month_start),
                                                 ('date_start', '<=', date_utils.end_of(today, 'month'))])
             brand.goals_behind_count = behind

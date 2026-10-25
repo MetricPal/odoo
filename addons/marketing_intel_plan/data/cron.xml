@@ -10,4 +10,14 @@
     <field name="interval_type">hours</field>
     <field name="active">True</field>
   </record>
+  <!-- Creates the next run of repeating campaigns a few days before they start (as their owner). -->
+  <record id="cron_repeat" model="ir.cron">
+    <field name="name">Marketing: create the next run of repeating campaigns</field>
+    <field name="model_id" ref="model_mi_plan"/>
+    <field name="state">code</field>
+    <field name="code">model._cron_repeat()</field>
+    <field name="interval_number">1</field>
+    <field name="interval_type">days</field>
+    <field name="active">True</field>
+  </record>
 </odoo>

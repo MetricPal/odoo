@@ -340,6 +340,25 @@ of campaigns through the AI Agent later; no mode switch (brand owner type instea
 - Approval type *Marketing campaign*; Messaging/Social approvals decided from the campaign screen.
 - AI autopilot: brief + content per channel + send for review; learning note at the end.
 
+### 2026-10-25 — Control panel, reuse and repeat, workflows
+
+Owner: "a control panel, war-room reports, timeline of historical and scheduled (recurring and single)
+events, progress of each actionable; extend and change a bit then create a new one; workflows, e.g. DM on
+WhatsApp those who like an Instagram post; easy to use visually." Decisions: workflows approved once then
+automatic; repeats create a new copy with the quick review.
+
+- Control panel (client action) as the Marketing home.
+- Duplicate & edit, templates, weekly/monthly repeats.
+- `marketing_intel_flow`: triggers, steps, limits, run log, recipes; messages via Omnichannel with the
+  workflow approval as evidence (dispatch re-checks approvers and opt-in).
+- Platform limit recorded: likers are not available from Instagram/Facebook APIs; comment keyword instead.
+
+### Later: workflows v2
+
+- Private reply on the same social platform as a step (needs Social's approval model for batches).
+- Wait/delay steps (e.g. reminder one day before the event) and branching.
+- Run campaigns and workflows from AI Agent chat (owner: "later").
+
 ### Later: run campaigns from AI Agent chat (owner: "Later")
 
 - Agent tools to create, change, pause and report on campaigns from a conversation ("start a 2-week

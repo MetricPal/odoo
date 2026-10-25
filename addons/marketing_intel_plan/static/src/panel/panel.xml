@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="marketing_intel_plan.Panel">
+        <div class="o_mi_panel h-100 overflow-auto">
+            <div t-if="!this.state.data" class="p-5 text-center text-muted">Loading…</div>
+            <t t-else="">
+                <t t-set="data" t-value="this.state.data"/>
+                <header class="o_mi_panel_head">
+                    <div>
+                        <h1>Marketing control panel</h1>
+                        <p class="text-muted mb-0">
+                            <t t-esc="data.counts.active"/> active campaigns · <t t-esc="data.flows.length"/> workflows ·
+                            <t t-esc="data.counts.brands"/> brand(s)
+                        </p>
+                    </div>
+                    <div class="o_mi_panel_tools">
+                        <select class="form-select" t-on-change="(ev) => this.onBrand(ev)" aria-label="Brand">
+                            <option value="" t-att-selected="!this.state.brandId">All brands</option>
+                            <t t-foreach="this.brandGroups" t-as="group" t-key="group.name">
+                                <optgroup t-att-label="group.name">
+                                    <option t-foreach="group.brands" t-as="brand" t-key="brand.id" t-att-value="brand.id"
+                                            t-att-selected="brand.id === this.state.brandId" t-esc="brand.name"/>
+                                </optgroup>
+                            </t>
+                        </select>
+                        <button class="btn btn-primary" t-on-click="() => this.newCampaign()">
+                            <i class="oi me-1" data-icon="add"/>New campaign</button>
+                        <button class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_plan.action_templates')">
+                            <i class="oi me-1" data-icon="bookmark"/>Templates</button>
+                        <button class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_flow.action_flows')">
+                            <i class="oi me-1" data-icon="flash_on"/>Workflows</button>
+                    </div>
+                </header>
+
+                <section class="o_mi_kpis">
+                    <button t-foreach="data.kpis" t-as="kpi" t-key="kpi.key" type="button" class="o_mi_kpi"
+                            t-att-class="'o_mi_kpi_' + kpi.key" t-on-click="() => this.openKpi(kpi)">
+                        <div class="o_mi_kpi_top">
+                            <span class="o_mi_kpi_icon"><i class="oi" t-att-data-icon="kpi.icon"/></span>
+                            <span class="o_mi_kpi_label" t-esc="kpi.label"/>
+                        </div>
+                        <div class="o_mi_kpi_value" t-esc="this.formatValue(kpi)"/>
+                        <div class="o_mi_kpi_foot">
+                            <t t-if="kpi.trend.length">
+                                <svg viewBox="0 0 100 32" preserveAspectRatio="none" class="o_mi_spark" aria-hidden="true">
+                                    <polyline t-att-points="this.spark(kpi.trend)"/>
+                                </svg>
+                                <span t-att-class="kpi.delta &gt;= 0 ? 'text-success' : 'text-danger'">
+                                    <t t-if="kpi.delta &gt;= 0">▲</t><t t-else="">▼</t> <t t-esc="Math.abs(kpi.delta)"/>%
+                                </span>
+                            </t>
+                            <t t-else="">
+                                <div class="o_mi_meter"><span t-att-style="'width:' + Math.min(kpi.pct, 100) + '%'"
+                                    t-att-class="kpi.pct &gt; 100 ? 'bg-danger' : ''"/></div>
+                            </t>
+                        </div>
+                        <small class="text-muted" t-esc="kpi.hint"/>
+                    </button>
+                </section>
+
+                <div class="o_mi_grid">
+                    <section class="o_mi_card o_mi_timeline">
+                        <div class="o_mi_card_head">
+                            <h2><i class="oi me-1" data-icon="view_timeline"/>Timeline</h2>
+                            <div class="btn-group btn-group-sm" role="tablist">
+                                <button class="btn" t-att-class="this.state.tab === 'upcoming' ? 'btn-primary' : 'btn-light'"
+                                        t-on-click="() => this.state.tab = 'upcoming'">Upcoming</button>
+                                <button class="btn" t-att-class="this.state.tab === 'recent' ? 'btn-primary' : 'btn-light'"
+                                        t-on-click="() => this.state.tab = 'recent'">Recent</button>
+                            </div>
+                        </div>
+                        <p t-if="!this.timeline.length" class="o_mi_empty">
+                            <t t-if="this.state.tab === 'upcoming'">Nothing planned yet. Start a campaign or set one to repeat.</t>
+                            <t t-else="">Nothing happened in the last two weeks.</t>
+                        </p>
+                        <div t-foreach="this.timeline" t-as="day" t-key="day.key" class="o_mi_day">
+                            <h3 t-esc="day.label"/>
+                            <button t-foreach="day.events" t-as="event" t-key="event_index" type="button"
+                                    class="o_mi_event" t-att-class="'o_mi_event_' + event.kind"
+                                    t-on-click="() => this.open(event.model, event.res_id)">
+                                <span class="o_mi_event_icon"><i class="oi" t-att-data-icon="event.icon"/></span>
+                                <span class="o_mi_event_text">
+                                    <strong t-esc="event.title"/>
+                                    <small t-esc="event.subtitle"/>
+                                </span>
+                                <span class="o_mi_event_meta">
+                                    <i t-if="event.recurring" class="oi" data-icon="repeat" title="Recurring"/>
+                                    <small t-esc="event.time"/>
+                                </span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <aside class="o_mi_side">
+                        <section class="o_mi_card">
+                            <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="checklist"/>For you</h2>
+                                <span class="badge rounded-pill text-bg-primary" t-esc="data.todos.length"/></div>
+                            <p t-if="!data.todos.length" class="o_mi_empty">Nothing waits for you. Campaigns and workflows run on their own.</p>
+                            <button t-foreach="data.todos" t-as="todo" t-key="todo_index" type="button" class="o_mi_todo"
+                                    t-on-click="() => this.open(todo.model, todo.res_id)">
+                                <i class="oi" t-att-data-icon="todo.icon"/>
+                                <span><strong t-esc="todo.title"/><small t-esc="todo.subtitle"/></span>
+                                <i class="oi ms-auto" data-icon="arrow_forward"/>
+                            </button>
+                        </section>
+                        <section class="o_mi_card" t-if="data.alerts.length">
+                            <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="notifications"/>Alerts</h2></div>
+                            <button t-foreach="data.alerts" t-as="alert" t-key="alert_index" type="button"
+                                    class="o_mi_alert" t-att-class="'o_mi_alert_' + alert.level"
+                                    t-on-click="() => this.open(alert.model, alert.res_id)">
+                                <i class="oi" t-att-data-icon="alert.level === 'danger' ? 'error' : 'warning'"/>
+                                <span t-esc="alert.text"/>
+                            </button>
+                        </section>
+                    </aside>
+                </div>
+
+                <section class="o_mi_card">
+                    <div class="o_mi_card_head">
+                        <h2><i class="oi me-1" data-icon="campaign"/>Campaigns in progress</h2>
+                        <div class="o_mi_legend">
+                            <span class="o_mi_dot o_mi_seg_out"/>Sent <span class="o_mi_dot o_mi_seg_scheduled"/>Scheduled
+                            <span class="o_mi_dot o_mi_seg_waiting"/>Waiting for approval <span class="o_mi_dot o_mi_seg_fix"/>Needs fixing
+                            <span class="o_mi_dot o_mi_seg_todo"/>Being prepared
+                        </div>
+                    </div>
+                    <p t-if="!data.campaigns.length" class="o_mi_empty">No campaign is running.
+                        <a href="#" t-on-click.prevent="() => this.newCampaign()">Start one</a> or use a template.</p>
+                    <div t-foreach="data.campaigns" t-as="row" t-key="row.id" class="o_mi_campaign"
+                         t-on-click="() => this.open('mi.plan', row.id)">
+                        <div class="o_mi_campaign_name">
+                            <strong t-esc="row.name"/>
+                            <small class="text-muted"><t t-esc="row.brand"/> · <t t-esc="row.dates"/></small>
+                            <span class="o_mi_tags">
+                                <span t-if="row.worker === 'ai'" class="badge text-bg-light">✨ AI</span>
+                                <span t-if="row.repeat" class="badge text-bg-light"><i class="oi" data-icon="repeat"/></span>
+                                <span t-if="row.needs_me" class="badge text-bg-warning">For you</span>
+                            </span>
+                        </div>
+                        <span class="o_mi_status" t-att-class="'o_mi_status_' + row.status" t-esc="row.status_label"/>
+                        <div class="o_mi_progress">
+                            <div class="o_mi_bar">
+                                <span t-foreach="this.segments(row)" t-as="seg" t-key="seg.key"
+                                      t-att-class="'o_mi_seg_' + seg.key" t-att-style="'width:' + seg.width"
+                                      t-att-title="seg.count + ' · ' + seg.label"/>
+                            </div>
+                            <div class="o_mi_channels">
+                                <span t-foreach="row.items" t-as="item" t-key="item_index" class="o_mi_chip"
+                                      t-att-class="'o_mi_chip_' + item.group" t-att-title="item.stage_label + ': ' + item.next">
+                                    <i class="oi" t-att-data-icon="item.icon"/> <t t-esc="item.channel"/>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="o_mi_campaign_next">
+                            <small class="text-muted" t-esc="row.day"/>
+                            <span t-esc="row.next"/>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="o_mi_card" t-if="data.flows.length">
+                    <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="flash_on"/>Workflows</h2>
+                        <button class="btn btn-link btn-sm" t-on-click="() => this.go('marketing_intel_flow.action_flows')">All workflows</button></div>
+                    <div class="o_mi_flows">
+                        <button t-foreach="data.flows" t-as="flow" t-key="flow.id" type="button" class="o_mi_flow"
+                                t-on-click="() => this.open('mi.flow', flow.id)">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <strong t-esc="flow.name"/>
+                                <span class="o_mi_status" t-att-class="'o_mi_flow_' + flow.state" t-esc="flow.state_label"/>
+                            </div>
+                            <small class="text-muted d-block" t-esc="flow.summary"/>
+                            <div class="o_mi_flow_stats">
+                                <span><b t-esc="flow.runs"/> today</span>
+                                <span><b t-esc="flow.sent"/> sent</span>
+                                <span><b t-esc="flow.skipped"/> skipped</span>
+                                <span t-if="flow.failed" class="text-danger"><b t-esc="flow.failed"/> errors</span>
+                            </div>
+                        </button>
+                    </div>
+                </section>
+            </t>
+        </div>
+    </t>
+</templates>

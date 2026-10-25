@@ -8,8 +8,6 @@ Nothing is sent or published by the AI: the review releases it.
 
 import logging
 
-from markupsafe import Markup, escape
-
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
@@ -57,11 +55,6 @@ def parse_content(text, wanted):
                 raise schema.InvalidAnswer(f'"{key}.text" is longer than {limits[key]} characters.')
             result[key] = {'text': text_value}
     return result
-
-
-def _html(text):
-    return Markup('').join(Markup('<p>%s</p>') % escape(p).replace('\n', Markup('<br/>'))
-                           for p in text.split('\n\n') if p.strip())
 
 
 class Plan(models.Model):
@@ -267,25 +260,12 @@ class PlanItem(models.Model):
 
     def _ai_fill(self, part):
         """Write the AI text into the draft, only while it is still a draft."""
-        record = self._record()
-        if not record or self.stage not in ('draft', 'writing', 'not_started'):
-            return
-        try:
-            with self.env.cr.savepoint():
-                if record._name == 'mailing.mailing' and 'subject' in part:
-                    html = _html(part['body'])
-                    record.write({'subject': part['subject'], 'body_html': html, 'body_arch': html})
-                elif record._name == 'mailing.mailing':
-                    record.write({'body_plaintext': part['text']})
-                elif record._name == 'mm.mailing':
-                    record.write({'body': part['text']})
-                elif record._name == 'omni.social.campaign':
-                    record.write({'brief': part['text']})
-                    record.publication_ids.filtered(lambda p: p.state == 'draft').write({'body': part['text']})
-                elif record._name == 'event.event':
-                    values = {'name': part['name']}
-                    if 'description' in record._fields and part.get('description'):
-                        values['description'] = _html(part['description'])
-                    record.write(values)
-        except (AccessError, UserError, ValidationError) as error:
-            self.note = _('AI text not saved: %s', str(error).splitlines()[0][:200])
+        if 'subject' in part:
+            subject, text = part['subject'], part['body']
+        elif 'name' in part:
+            subject, text = part['name'], part.get('description')
+        else:
+            subject, text = None, part['text']
+        error = self._fill(subject, text)
+        if error:
+            self.note = _('AI text not saved: %s', error)

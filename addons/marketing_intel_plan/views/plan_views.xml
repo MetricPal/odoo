@@ -5,10 +5,10 @@
     <field name="arch" type="xml"><form>
       <header>
         <button name="action_prepare" type="object" string="Prepare drafts" class="btn-primary"
-                invisible="state not in ('brief', 'content') or worker != 'me'"
+                invisible="is_template or state not in ('brief', 'content') or worker != 'me'"
                 help="Creates a draft in each app (Social, Messaging, Email, SMS, Events) for you to write."/>
         <button name="action_submit_review" type="object" string="Send for review" class="btn-primary"
-                invisible="state not in ('brief', 'content')"
+                invisible="is_template or state not in ('brief', 'content')"
                 help="One review for the whole campaign. Nothing goes out before it is approved."/>
         <button name="action_approve_review" type="object" string="Approve campaign" class="btn-success"
                 invisible="not can_review" help="Approves every part of this campaign that waits for you."/>
@@ -17,8 +17,12 @@
         <button name="action_done" type="object" string="Mark done" invisible="state not in ('scheduled', 'live')"/>
         <button name="action_cancel" type="object" string="Cancel campaign" invisible="state in ('done', 'cancelled')"/>
         <button name="action_reset" type="object" string="Start again" invisible="state != 'cancelled'"/>
+        <button name="action_use_template" type="object" string="Use this template" class="btn-primary"
+                invisible="not is_template"/>
+        <field name="is_template" invisible="1"/>
         <field name="state" invisible="1"/><field name="can_review" invisible="1"/>
-        <field name="status" widget="statusbar" statusbar_visible="brief,content,review,scheduled,live,done"/>
+        <field name="status" widget="statusbar" statusbar_visible="brief,content,review,scheduled,live,done"
+               invisible="is_template"/>
       </header>
       <sheet>
         <field name="needs_me" invisible="1"/>
@@ -31,6 +35,17 @@
           <span class="fw-bold">Next step:</span> <field name="next_step" nolabel="1"/>
         </div>
         <div class="alert alert-warning" role="status" invisible="not clash_note"><field name="clash_note" nolabel="1"/></div>
+        <div class="oe_button_box" name="button_box">
+          <button name="action_duplicate" type="object" class="oe_stat_button" icon="content_copy" invisible="is_template"
+                  help="A new campaign with the same channels and texts, ready to change.">
+            <div class="o_stat_info"><span class="o_stat_text">Duplicate</span><span class="o_stat_text">&amp; edit</span></div>
+          </button>
+          <button name="action_save_template" type="object" class="oe_stat_button" icon="bookmark" invisible="is_template"
+                  help="Keep this campaign as a template to start new ones in one click.">
+            <div class="o_stat_info"><span class="o_stat_text">Save as</span><span class="o_stat_text">template</span></div>
+          </button>
+        </div>
+        <span class="badge text-bg-primary mb-2" invisible="not is_template">Template</span>
         <div class="oe_title"><label for="name" string="Campaign"/><h1><field name="name" placeholder="e.g. Clinic owners webinar"/></h1></div>
         <div class="d-flex flex-wrap align-items-center gap-4 mb-3" invisible="state == 'brief'">
           <div class="d-flex align-items-center gap-2">
@@ -53,6 +68,11 @@
             <field name="budget"/><field name="currency_id" invisible="1"/>
             <field name="recommendation_id" readonly="1" invisible="not recommendation_id"/>
             <field name="review_request_id" invisible="not review_request_id"/>
+            <field name="repeat"/>
+            <field name="repeat_until" invisible="repeat == 'none'"/>
+            <field name="next_run_date" invisible="not next_run_date"/>
+            <field name="series_id" invisible="not series_id"/>
+            <field name="template_id" invisible="not template_id"/>
             <field name="utm_campaign_id" invisible="not utm_campaign_id"/></group>
         </group>
         <notebook>
@@ -141,7 +161,8 @@
   <record id="plan_list" model="ir.ui.view">
     <field name="name">mi.plan.list</field><field name="model">mi.plan</field>
     <field name="arch" type="xml"><list>
-      <field name="name"/><field name="brand_id"/><field name="goal_id" optional="hide"/>
+      <field name="name"/><field name="repeat" optional="show" string="Repeats" widget="badge" invisible="repeat == 'none'"/>
+      <field name="brand_id"/><field name="goal_id" optional="hide"/>
       <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}" optional="show"/>
       <field name="date_start"/><field name="date_end" optional="hide"/>
       <field name="budget" sum="Total" optional="show"/><field name="currency_id" column_invisible="1"/>
@@ -209,6 +230,7 @@
   <record id="action_plans" model="ir.actions.act_window">
     <field name="name">Campaigns</field><field name="res_model">mi.plan</field>
     <field name="view_mode">kanban,list,calendar,pivot,form</field><field name="context">{'search_default_active_plans': 1}</field>
+    <field name="domain">[('is_template', '=', False)]</field>
     <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No campaign yet</p>
       <p>Create one yourself (brand, goal, channels, dates, budget), or start from a suggested campaign with
         <i>Use this idea</i>. Drafts are then prepared in Social, Messaging, Email, SMS and Events.</p></field>
@@ -246,8 +268,26 @@
         Every other campaign shows its <i>Next step</i> (who it waits for, or that it runs by itself) in
         Campaigns.</p></field>
   </record>
+  <record id="action_control_panel" model="ir.actions.client">
+    <field name="name">Marketing</field><field name="tag">marketing_intel_plan.control_panel</field>
+    <field name="path">marketing-panel</field>
+  </record>
+  <record id="marketing_intel.menu_root" model="ir.ui.menu">
+    <field name="action" ref="action_control_panel"/>
+  </record>
+  <menuitem id="menu_control_panel" name="Control panel" parent="marketing_intel.menu_root" action="action_control_panel" sequence="1"/>
   <menuitem id="menu_needs_me" name="My to-dos" parent="marketing_intel.menu_root" action="action_needs_me" sequence="5"/>
-  <menuitem id="menu_plans" name="Campaigns" parent="marketing_intel.menu_root" action="action_plans" sequence="10"/>
+  <record id="action_templates" model="ir.actions.act_window">
+    <field name="name">Campaign templates</field><field name="res_model">mi.plan</field>
+    <field name="view_mode">list,form</field><field name="domain">[('is_template', '=', True)]</field>
+    <field name="context">{'default_is_template': True}</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No template yet</p>
+      <p>Open any campaign and click <b>Save as template</b>; then <b>Use this template</b> starts a new campaign
+        with the same channels and texts.</p></field>
+  </record>
+  <menuitem id="menu_campaigns_root" name="Campaigns" parent="marketing_intel.menu_root" sequence="10"/>
+  <menuitem id="menu_plans" name="All campaigns" parent="menu_campaigns_root" action="action_plans" sequence="10"/>
+  <menuitem id="menu_templates" name="Templates" parent="menu_campaigns_root" action="action_templates" sequence="20"/>
   <menuitem id="menu_campaign_results" name="Campaign results" parent="marketing_intel.menu_reporting" action="action_campaign_results" sequence="10"/>
   <menuitem id="menu_goals" name="Goals" parent="marketing_intel.menu_reporting" action="action_goals" sequence="20"/>
 

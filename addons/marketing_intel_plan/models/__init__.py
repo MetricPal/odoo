@@ -1,1 +1,1 @@
-from . import plan, results, approval
+from . import plan, results, approval, panel

@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="recipe_comment_whatsapp" model="mi.flow.recipe">
+    <field name="sequence">10</field>
+    <field name="icon">forum</field>
+    <field name="name">Comment a keyword → get the link on WhatsApp</field>
+    <field name="description">People comment a word (e.g. "INFO") on your post; contacts who opted in to WhatsApp get the link right away. The usual way to reach people who engage with a post.</field>
+    <field name="trigger">social_comment</field>
+    <field name="keyword">INFO</field>
+    <field name="steps" eval="[['message', 'Hi {first_name}, thanks for your comment! Here is the link: ', ''], ['todo', '', 'Follow up on the comment']]"/>
+  </record>
+  <record id="recipe_dm_lead" model="mi.flow.recipe">
+    <field name="sequence">20</field>
+    <field name="icon">mail</field>
+    <field name="name">Private message → new lead and a to-do</field>
+    <field name="description">Every private message on your social pages becomes a lead in CRM and a to-do for the owner, so nobody waits for an answer.</field>
+    <field name="trigger">social_message</field>
+    <field name="steps" eval="[['lead', '', 'From a social private message'], ['todo', '', 'Answer the private message']]"/>
+  </record>
+  <record id="recipe_event_whatsapp" model="mi.flow.recipe">
+    <field name="sequence">30</field>
+    <field name="icon">event_available</field>
+    <field name="name">Registered for the event → WhatsApp thank-you</field>
+    <field name="description">Thank people on WhatsApp as soon as they register for the campaign's event (contacts with an opt-in only).</field>
+    <field name="trigger">event_registration</field>
+    <field name="steps" eval="[['message', 'Thanks for registering, {first_name}! See you there.', '']]"/>
+  </record>
+  <record id="recipe_click_lead" model="mi.flow.recipe">
+    <field name="sequence">40</field>
+    <field name="icon">mouse</field>
+    <field name="name">Clicked the email → lead for sales</field>
+    <field name="description">Whoever clicks a link in the campaign's email becomes a lead with a to-do, while the interest is fresh.</field>
+    <field name="trigger">email_click</field>
+    <field name="steps" eval="[['lead', '', 'Clicked the campaign email'], ['todo', '', 'Call the person who clicked']]"/>
+  </record>
+</odoo>

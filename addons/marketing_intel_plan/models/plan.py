@@ -20,6 +20,8 @@ import html as htmllib
 import re
 from datetime import datetime, time, timedelta
 
+from dateutil.relativedelta import relativedelta
+
 from zoneinfo import ZoneInfo
 from markupsafe import Markup, escape
 
@@ -48,6 +50,12 @@ ITEM_STAGES = [('not_started', 'Not started'), ('writing', 'AI is writing'), ('d
                ('todo_done', 'Done'), ('unavailable', 'App not installed')]
 BEFORE_REVIEW = ('brief', 'content', 'review')
 SEND_HOUR = 9  # local time the campaign's email and SMS go out on the start day
+
+
+def text_to_html(text):
+    """Plain text with blank-line paragraphs as simple HTML."""
+    return Markup('').join(Markup('<p>%s</p>') % escape(p).replace('\n', Markup('<br/>'))
+                           for p in (text or '').split('\n\n') if p.strip())
 
 
 def html2plaintext(html):
@@ -115,6 +123,46 @@ class Plan(models.Model):
     can_review = fields.Boolean(compute='_compute_needs_me')
     clash_note = fields.Char(compute='_compute_clash_note', string='Calendar clash')
     color = fields.Integer(compute='_compute_color')
+    is_template = fields.Boolean(string='Template', copy=False, index=True,
+                                 help='A reusable campaign: it never runs; "Use this template" starts a campaign from it.')
+    template_id = fields.Many2one('mi.plan', string='From template', readonly=True, copy=False,
+                                  domain=[('is_template', '=', True)])
+    repeat = fields.Selection([('none', 'Does not repeat'), ('weekly', 'Every week'), ('monthly', 'Every month')],
+                              default='none', required=True, string='Repeat', tracking=True,
+                              help='Each period a new copy of this campaign is created a few days before it starts '
+                                   'and sent for the one-click review (the AI assistant refreshes the text when it '
+                                   'does the work).')
+    repeat_until = fields.Date(string='Repeat until')
+    series_id = fields.Many2one('mi.plan', string='Series', readonly=True, copy=False, index=True,
+                                help='The first campaign of a repeating series.')
+    next_run_date = fields.Date(compute='_compute_next_run', string='Next run starts')
+
+    @api.depends('repeat', 'repeat_until', 'date_start', 'state')
+    def _compute_next_run(self):
+        for plan in self:
+            plan.next_run_date = plan._next_start() if plan._repeats_next() else False
+
+    def _next_start(self):
+        self.ensure_one()
+        if self.repeat == 'weekly':
+            return self.date_start + timedelta(days=7)
+        if self.repeat == 'monthly':
+            return self.date_start + relativedelta(months=1)
+        return False
+
+    def _repeats_next(self):
+        """True when this is the latest campaign of a live series and it has a next run."""
+        self.ensure_one()
+        if self.is_template or self.repeat == 'none' or self.state == 'cancelled' or not self.date_start:
+            return False
+        nxt = self._next_start()
+        if self.repeat_until and nxt > self.repeat_until:
+            return False
+        series = self.series_id or self
+        if not self.id:
+            return True
+        return not self.search_count([('id', '!=', self.id), ('date_start', '>', self.date_start), '|',
+                                      ('series_id', '=', series.id), ('id', '=', series.id)])
 
     @api.constrains('date_start', 'date_end')
     def _check_dates(self):
@@ -216,6 +264,9 @@ class Plan(models.Model):
         for plan in self:
             mine = plan._my_reviews()
             plan.can_review = bool(mine)
+            if plan.is_template:
+                plan.next_step, plan.my_todo, plan.needs_me = _('Template: use it to start a campaign'), False, False
+                continue
             step, owner_step = plan._next_step()
             plan.next_step = step
             if mine:
@@ -260,7 +311,7 @@ class Plan(models.Model):
     def _search_needs_me(self, operator, value):
         if operator not in ('=', '!=') or not isinstance(value, bool):
             raise UserError(_('Unsupported search.'))
-        plans = self.search([('state', 'in', ACTIVE)]).filtered('needs_me')
+        plans = self.search([('state', 'in', ACTIVE), ('is_template', '=', False)]).filtered('needs_me')
         positive = (operator == '=') == value
         return [('id', 'in' if positive else 'not in', plans.ids)]
 
@@ -288,10 +339,10 @@ class Plan(models.Model):
         """Other active plans of the brand on the same channel and dates: a fatigue warning, never a block."""
         for plan in self:
             plan.clash_note = False
-            if not plan.id or plan.state not in ACTIVE or not plan.date_start or not plan.date_end:
+            if not plan.id or plan.is_template or plan.state not in ACTIVE or not plan.date_start or not plan.date_end:
                 continue
             channels = set(plan.item_ids.mapped('channel'))
-            others = self.search([('id', '!=', plan.id), ('brand_id', '=', plan.brand_id.id),
+            others = self.search([('id', '!=', plan.id), ('brand_id', '=', plan.brand_id.id), ('is_template', '=', False),
                                   ('state', 'in', ACTIVE), ('date_start', '<=', plan.date_end),
                                   ('date_end', '>=', plan.date_start)])
             clashes = others.filtered(lambda other: channels & set(other.item_ids.mapped('channel')))
@@ -323,6 +374,8 @@ class Plan(models.Model):
         """Create the tracking campaign and every missing draft (Content step)."""
         for plan in self:
             plan.check_access('write')
+            if plan.is_template:
+                raise UserError(_('This is a template: click “Use this template” to start a campaign from it.'))
             if plan.state not in ACTIVE:
                 raise UserError(_('Only an active campaign can prepare drafts.'))
             if not plan.utm_campaign_id:
@@ -359,6 +412,8 @@ class Plan(models.Model):
         problems = []
         for plan in self:
             plan.check_access('write')
+            if plan.is_template:
+                raise UserError(_('This is a template: click “Use this template” to start a campaign from it.'))
             if plan.state not in BEFORE_REVIEW:
                 raise UserError(_('This campaign was already reviewed.'))
             plan.action_prepare()  # creates any missing draft, retries failed ones
@@ -479,6 +534,83 @@ class Plan(models.Model):
             lines.append('— %s: %s' % (dict(CHANNELS)[item.channel], (item.preview or '').strip()[:300] or '-'))
         return '\n'.join(lines)
 
+    # ------------------------------------------------------------------ reuse
+
+    def _copy_values(self, **overrides):
+        """A new campaign like this one: brief, channels and each channel's text; new drafts, new review."""
+        self.ensure_one()
+        duration = (self.date_end - self.date_start).days if self.date_start and self.date_end else 29
+        start = overrides.pop('date_start', None) or fields.Date.context_today(self)
+        lines = []
+        for item in self.item_ids:
+            subject, text = item._content()
+            lines.append((0, 0, {'channel': item.channel, 'content_subject': subject, 'content_text': text}))
+        values = {
+            'name': self.name, 'brand_id': self.brand_id.id, 'goal_id': self.goal_id.id, 'budget': self.budget,
+            'message': self.message, 'audience': self.audience, 'kpis': self.kpis, 'worker': self.worker,
+            'user_id': self.env.user.id, 'date_start': start, 'date_end': start + timedelta(days=max(duration, 0)),
+            'channel_ids': [(6, 0, self.channel_ids.ids)], 'item_ids': lines,
+        }
+        values.update(overrides)
+        return values
+
+    def _open_form(self, name=None):
+        return {'type': 'ir.actions.act_window', 'res_model': 'mi.plan', 'res_id': self.id, 'view_mode': 'form',
+                'views': [(False, 'form')], 'target': 'current', 'name': name or self.name}
+
+    def action_duplicate(self):
+        """Duplicate & edit: same channels and texts, today's dates, ready to change."""
+        self.ensure_one()
+        copy = self.create(self._copy_values(name=_('%s (copy)', self.name), worker='me'))
+        copy.message_post(body=_('Copied from “%s”.', self.name))
+        return copy._open_form()
+
+    def action_save_template(self):
+        self.ensure_one()
+        template = self.create(self._copy_values(is_template=True, worker='me', repeat='none'))
+        template.message_post(body=_('Template saved from “%s”.', self.name))
+        return template._open_form()
+
+    def action_use_template(self):
+        self.ensure_one()
+        if not self.is_template:
+            raise UserError(_('This campaign is not a template.'))
+        brand = self.env['mi.brand'].browse(self.env.context.get('default_brand_id')).exists() or self.brand_id
+        plan = self.create(self._copy_values(is_template=False, template_id=self.id, brand_id=brand.id,
+                                             repeat=self.repeat, repeat_until=False))
+        plan.message_post(body=_('Started from the template “%s”.', self.name))
+        return plan._open_form()
+
+    @api.model
+    def _cron_repeat(self, lead_days=3):
+        """Create the next run of each repeating series a few days before it starts and send it for review."""
+        today = fields.Date.context_today(self)
+        for plan in self.search([('repeat', '!=', 'none'), ('is_template', '=', False),
+                                 ('state', '!=', 'cancelled')]):
+            if not plan._repeats_next():
+                continue
+            start = plan._next_start()
+            if start - timedelta(days=lead_days) > today:
+                continue
+            owner = plan.user_id
+            try:
+                with self.env.cr.savepoint():
+                    run = plan.with_user(owner).with_context(allowed_company_ids=[plan.company_id.id])._repeat_run(
+                        start)
+                    plan.message_post(body=_('Next run created: %s', run._get_html_link()))
+            except (AccessError, UserError, ValidationError) as error:
+                plan.message_post(body=_('The next run could not be created: %s', error))
+                plan.activity_schedule('mail.mail_activity_data_todo', user_id=owner.id,
+                                       summary=_('Next run of the campaign not created'), note=str(error))
+
+    def _repeat_run(self, start):
+        self.ensure_one()
+        run = self.create(self._copy_values(date_start=start, series_id=(self.series_id or self).id,
+                                            repeat=self.repeat, repeat_until=self.repeat_until))
+        if run.worker == 'me':
+            run.action_submit_review()  # quick review; problems are left on the lines for the owner
+        return run
+
     def action_done(self):
         plans = self.filtered(lambda p: p.state in ACTIVE)
         plans.state = 'done'
@@ -551,6 +683,9 @@ class PlanItem(models.Model):
     available = fields.Boolean(compute='_compute_app')
     activity_done = fields.Boolean(string='Done', help='For channels without an app: tick when it is ready.')
     note = fields.Char(readonly=True)
+    content_subject = fields.Char(string='Saved subject', copy=False,
+                                  help='Text kept from a copied campaign or template; written into the new draft.')
+    content_text = fields.Text(string='Saved text', copy=False)
     live = fields.Boolean(compute='_compute_draft', string='Out',
                           help='Sent, scheduled or published in its app (not a draft or waiting for approval).')
 
@@ -663,6 +798,53 @@ class PlanItem(models.Model):
             text = html2plaintext(record.description or '') if 'description' in record._fields else ''
             return '%s\n%s' % (record.name, text)
         return record.display_name
+
+    def _content(self):
+        """(subject, text) of this channel: from its draft, or what was saved on the line."""
+        record = self._record()
+        if not record:
+            return self.content_subject or False, self.content_text or False
+        record = record.sudo()
+        if record._name == 'mailing.mailing':
+            if record.mailing_type == 'sms':
+                return False, record.body_plaintext
+            return record.subject, html2plaintext(record.body_html or '')
+        if record._name == 'mm.mailing':
+            return False, record.body
+        if record._name == 'omni.social.campaign':
+            return False, record.brief
+        if record._name == 'event.event':
+            return record.name, html2plaintext(record.description or '') if 'description' in record._fields else False
+        return False, False
+
+    def _fill(self, subject=None, text=None):
+        """Write a subject/text into the draft while it is still a draft. Returns an error or None."""
+        record = self._record()
+        if not record or self.stage not in ('draft', 'blocked', 'writing', 'not_started') or not (subject or text):
+            return None
+        try:
+            with self.env.cr.savepoint():
+                if record._name == 'mailing.mailing' and record.mailing_type == 'mail':
+                    values = {'subject': subject} if subject else {}
+                    if text:
+                        html = text_to_html(text)
+                        values.update({'body_html': html, 'body_arch': html})
+                    record.write(values)
+                elif record._name == 'mailing.mailing' and text:
+                    record.write({'body_plaintext': text})
+                elif record._name == 'mm.mailing' and text:
+                    record.write({'body': text})
+                elif record._name == 'omni.social.campaign' and text:
+                    record.write({'brief': text})
+                    record.publication_ids.filtered(lambda p: p.state == 'draft').write({'body': text})
+                elif record._name == 'event.event':
+                    values = {'name': subject} if subject else {}
+                    if text and 'description' in record._fields:
+                        values['description'] = text_to_html(text)
+                    record.write(values)
+        except (AccessError, UserError, ValidationError) as error:
+            return str(error).splitlines()[0][:200]
+        return None
 
     def _app_requests(self):
         record = self._record()
@@ -829,6 +1011,10 @@ class PlanItem(models.Model):
             self.note = _('Not created: %s', str(error).splitlines()[0][:200])
             return
         self.write({'res_model': record._name, 'res_id': record.id, 'note': False})
+        if self.content_subject or self.content_text:
+            error = self._fill(self.content_subject, self.content_text)
+            if error:
+                self.note = _('Saved text not used: %s', error)
         if hasattr(record, 'message_post'):
             record.message_post(body=_('Draft created from the campaign “%s”. It goes out after the campaign review.',
                                        plan.name))

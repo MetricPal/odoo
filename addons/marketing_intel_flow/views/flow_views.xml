@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="flow_form" model="ir.ui.view">
+    <field name="name">mi.flow.form</field><field name="model">mi.flow</field>
+    <field name="arch" type="xml"><form>
+      <header>
+        <button name="action_request_approval" type="object" string="Ask for approval" class="btn-primary"
+                invisible="state not in ('draft', 'paused') or (state == 'paused' and not changed)"
+                help="A manager approves the workflow and its exact message once; then it runs on its own."/>
+        <button name="action_pause" type="object" string="Pause" invisible="state != 'active'"/>
+        <button name="action_resume" type="object" string="Resume" class="btn-primary"
+                invisible="state != 'paused' or changed"/>
+        <field name="changed" invisible="1"/>
+        <field name="state" widget="statusbar" statusbar_visible="draft,pending,active,paused"/>
+      </header>
+      <sheet>
+        <div class="oe_button_box" name="button_box">
+          <button name="action_open_runs" type="object" class="oe_stat_button" icon="history">
+            <field name="runs_today" widget="statinfo" string="Runs today"/>
+          </button>
+          <button name="action_open_runs" type="object" class="oe_stat_button" icon="send">
+            <field name="sent_today" widget="statinfo" string="Messages today"/>
+          </button>
+          <button name="action_open_runs" type="object" class="oe_stat_button" icon="warning"
+                  invisible="not failed_today">
+            <field name="failed_today" widget="statinfo" string="Errors today"/>
+          </button>
+        </div>
+        <div class="alert alert-warning" role="status" invisible="not changed or state == 'pending'">
+          Changed since it was approved: ask for approval again before it runs.
+        </div>
+        <div class="alert alert-info" role="status" invisible="state != 'pending'">
+          Waiting for approval. It starts on its own once approved, with what happens from then on.
+        </div>
+        <div class="oe_title"><label for="name"/><h1><field name="name" placeholder="e.g. Comment INFO → WhatsApp link"/></h1>
+          <div class="text-muted"><field name="summary" nolabel="1"/></div>
+        </div>
+        <group><group><field name="brand_id" readonly="state in ('active', 'pending')"/>
+          <field name="user_id" widget="many2one_avatar_user"/></group><group/></group>
+        <div class="row g-3 mt-1">
+          <div class="col-lg-5">
+            <div class="card border-primary h-100">
+              <div class="card-header bg-primary-subtle fw-bold"><i class="oi me-1" data-icon="flash_on"/> When</div>
+              <div class="card-body">
+                <group>
+                  <field name="trigger" nolabel="1" colspan="2" widget="radio"/>
+                  <field name="keyword" invisible="trigger not in ('social_comment', 'social_message')"
+                         placeholder="e.g. INFO (empty: every one)"/>
+                  <field name="connection_ids" widget="many2many_tags"
+                         invisible="trigger not in ('social_comment', 'social_message')"
+                         placeholder="The brand's social pages"/>
+                  <field name="plan_id" required="trigger in ('event_registration', 'email_click', 'lead')"
+                         placeholder="Any post of these pages"/>
+                </group>
+                <div class="text-muted small">Social platforms do not tell who <i>liked</i> a post, only how many:
+                  ask people to comment a keyword instead.</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <div class="card border-success h-100">
+              <div class="card-header bg-success-subtle fw-bold"><i class="oi me-1" data-icon="arrow_forward"/> Then</div>
+              <div class="card-body">
+                <field name="step_ids" nolabel="1">
+                  <list editable="bottom">
+                    <field name="sequence" widget="handle"/>
+                    <field name="action" width="230px"/>
+                    <field name="message" placeholder="Hi {first_name}, ..." invisible="action != 'message'" class="o_mi_wrap"/>
+                    <field name="list_id" invisible="action != 'add_list'" width="140px"/>
+                    <field name="note" string="Note" invisible="action not in ('lead', 'todo')" width="160px"/>
+                  </list>
+                </field>
+                <group>
+                  <field name="channel_id" placeholder="The brand's Messaging channel"/>
+                  <field name="once_per_person"/>
+                  <field name="daily_cap"/>
+                </group>
+                <div class="text-muted small">Messages go only to known contacts with a current opt-in on that
+                  channel; everyone else is skipped with the reason in the run log.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <notebook class="mt-3">
+          <page string="Recent runs" name="runs">
+            <field name="run_ids" readonly="1">
+              <list limit="20">
+                <field name="create_date" string="When"/><field name="person"/><field name="trigger_text"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'" decoration-muted="state == 'skipped'"
+                       decoration-danger="state == 'failed'"/>
+                <field name="log"/>
+              </list>
+            </field>
+          </page>
+          <page string="Approval" name="approval">
+            <group><field name="approval_request_id"/><field name="requester_id"/><field name="approved_at"/>
+              <field name="last_checked"/></group>
+          </page>
+        </notebook>
+      </sheet>
+      <chatter/>
+    </form></field>
+  </record>
+  <record id="flow_kanban" model="ir.ui.view">
+    <field name="name">mi.flow.kanban</field><field name="model">mi.flow</field>
+    <field name="arch" type="xml"><kanban default_group_by="state" group_create="0" records_draggable="0" quick_create="0">
+      <templates><t t-name="card">
+        <field name="name" class="fw-bold fs-5"/>
+        <div class="text-muted small"><field name="brand_id"/></div>
+        <div class="small my-1"><field name="summary"/></div>
+        <div class="d-flex gap-3 small">
+          <span><i class="oi me-1" data-icon="history"/><field name="runs_today"/> today</span>
+          <span><i class="oi me-1" data-icon="send"/><field name="sent_today"/> sent</span>
+          <span class="text-danger" invisible="not failed_today"><i class="oi me-1" data-icon="warning"/><field name="failed_today"/></span>
+        </div>
+      </t></templates>
+    </kanban></field>
+  </record>
+  <record id="flow_list" model="ir.ui.view">
+    <field name="name">mi.flow.list</field><field name="model">mi.flow</field>
+    <field name="arch" type="xml"><list>
+      <field name="name"/><field name="brand_id"/><field name="summary"/>
+      <field name="runs_today"/><field name="sent_today"/><field name="failed_today"/>
+      <field name="state" widget="badge" decoration-success="state == 'active'" decoration-warning="state == 'pending'"
+             decoration-muted="state == 'paused'"/>
+    </list></field>
+  </record>
+  <record id="action_flows" model="ir.actions.act_window">
+    <field name="name">Workflows</field><field name="res_model">mi.flow</field><field name="view_mode">kanban,list,form</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Automate the repetitive part</p>
+      <p>Start from a <b>recipe</b> (Workflows › Recipes) or create one: <i>when</i> something happens (a comment, a
+        private message, an event registration, an email click, a lead) <i>then</i> send a WhatsApp/Telegram message,
+        add to a list, create a lead or a to-do. Approved once, then automatic.</p></field>
+  </record>
+  <record id="recipe_kanban" model="ir.ui.view">
+    <field name="name">mi.flow.recipe.kanban</field><field name="model">mi.flow.recipe</field>
+    <field name="arch" type="xml"><kanban create="0" class="o_mi_recipes">
+      <field name="icon"/>
+      <templates><t t-name="card">
+        <div class="d-flex gap-3">
+          <div class="fs-2 text-primary"><i class="oi" t-att-data-icon="record.icon.raw_value"/></div>
+          <div class="flex-grow-1">
+            <field name="name" class="fw-bold"/>
+            <div class="text-muted small my-1"><field name="description"/></div>
+            <button name="action_use" type="object" class="btn btn-sm btn-primary">Use this recipe</button>
+          </div>
+        </div>
+      </t></templates>
+    </kanban></field>
+  </record>
+  <record id="action_recipes" model="ir.actions.act_window">
+    <field name="name">Workflow recipes</field><field name="res_model">mi.flow.recipe</field><field name="view_mode">kanban</field>
+  </record>
+  <record id="run_list" model="ir.ui.view">
+    <field name="name">mi.flow.run.list</field><field name="model">mi.flow.run</field>
+    <field name="arch" type="xml"><list create="0">
+      <field name="create_date" string="When"/><field name="flow_id"/><field name="brand_id"/><field name="person"/>
+      <field name="trigger_text"/><field name="message_count"/>
+      <field name="state" widget="badge" decoration-success="state == 'done'" decoration-muted="state == 'skipped'"
+             decoration-danger="state == 'failed'"/>
+      <field name="log"/>
+    </list></field>
+  </record>
+  <record id="run_form" model="ir.ui.view">
+    <field name="name">mi.flow.run.form</field><field name="model">mi.flow.run</field>
+    <field name="arch" type="xml"><form create="0" edit="0"><sheet>
+      <group><group><field name="flow_id"/><field name="person"/><field name="partner_id"/><field name="mm_contact_id"/></group>
+        <group><field name="create_date" string="When"/><field name="state"/><field name="source_ref"/></group></group>
+      <group><field name="trigger_text"/><field name="log"/></group>
+      <field name="command_ids"><list><field name="recipient"/><field name="body"/><field name="state"/></list></field>
+    </sheet></form></field>
+  </record>
+  <record id="action_runs" model="ir.actions.act_window">
+    <field name="name">Workflow history</field><field name="res_model">mi.flow.run</field><field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_flows_root" name="Workflows" parent="marketing_intel.menu_root" sequence="15"/>
+  <menuitem id="menu_flows" name="Workflows" parent="menu_flows_root" action="action_flows" sequence="10"/>
+  <menuitem id="menu_recipes" name="Recipes" parent="menu_flows_root" action="action_recipes" sequence="20"/>
+  <menuitem id="menu_runs" name="History" parent="menu_flows_root" action="action_runs" sequence="30"/>
+</odoo>
