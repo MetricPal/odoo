@@ -26,3 +26,17 @@ Adds an AI-written analysis to each research run of `marketing_intel`:
 
 The agent has no tools. Choosing an option only marks it; drafts in each app
 come in phase 3 and still go through their own approvals.
+
+## Campaign autopilot
+
+On a campaign, choose **Who does the work: AI assistant** (or click **✨ Let AI write it**). The AI
+agent of the brand (or the only agent available to you):
+
+1. fills the key message, audience and KPIs when they are empty;
+2. writes every channel in its own format: email subject and body, SMS (max 160 characters),
+   Messaging text (max 900), social post (max 2000), event title and description;
+3. prepares the drafts with your permissions, fills them and sends the campaign for review.
+
+The answer is strict JSON; anything invalid or too long is rejected as a whole and the campaign keeps
+a note. The AI never approves: the campaign review releases it. When the campaign is done, the AI
+writes *What we learned*, which feeds the next suggestions.

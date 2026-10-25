@@ -1,18 +1,31 @@
-"""Campaign plans: a chosen option becomes linked drafts in each marketing app.
+"""Campaigns: brief, content, one review, then every channel goes out in its own app.
 
-Marketing Intelligence never sends, publishes or spends. A plan creates one
-UTM campaign and, per channel, a draft in the app that owns that channel
-(Social, Messaging Marketing, Email, SMS, Events). Each draft is created with
-the person's own permissions and still goes through its own approval in its
-app. Channels without an app (content, ads, partnerships) become activities.
+A campaign creates one UTM campaign and, per channel, a draft in the app that
+owns it (Social, Messaging Marketing, Email, SMS, Events). Drafts are written
+by a person or by the AI assistant. One review covers the whole campaign:
+
+* Messaging and Social keep their own approvals (assigned approvers, frozen
+  content). Sending the campaign for review submits them; the campaign review
+  screen lets an approver decide them all at once, each decision checked and
+  audited by its own app.
+* Email, SMS and Events have no approval of their own: the campaign approval
+  request (Approval Center, type "Marketing campaign") is their gate. Only once
+  it is approved does the campaign schedule them (``action_release``).
+
+Status follows the channels: Brief → Content → Review → Scheduled → Live →
+Done. Channels without an app (content, ads, partnerships) become to-dos.
 """
 
+import html as htmllib
+import re
 from datetime import datetime, time, timedelta
 
+from zoneinfo import ZoneInfo
 from markupsafe import Markup, escape
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools import format_date
 
 from odoo.addons.marketing_intel.models.strategy import CHANNELS
 
@@ -26,7 +39,27 @@ TARGETS = {
     'event_physical': ('event.event', 'Events'),
     'content': None, 'ads': None, 'partnership': None,
 }
-ACTIVE = ('draft', 'prepared', 'running')
+STAGES = [('brief', 'Brief'), ('content', 'Content'), ('review', 'Review'), ('scheduled', 'Scheduled'),
+          ('live', 'Live'), ('done', 'Done'), ('cancelled', 'Cancelled')]
+ACTIVE = ('brief', 'content', 'review', 'scheduled', 'live')
+ITEM_STAGES = [('not_started', 'Not started'), ('writing', 'AI is writing'), ('draft', 'Being written'),
+               ('blocked', 'Needs fixing'), ('needs_review', 'Waiting for approval'), ('approved', 'Approved'),
+               ('scheduled', 'Scheduled'), ('out', 'Sent'), ('failed', 'Failed'), ('todo', 'To-do'),
+               ('todo_done', 'Done'), ('unavailable', 'App not installed')]
+BEFORE_REVIEW = ('brief', 'content', 'review')
+SEND_HOUR = 9  # local time the campaign's email and SMS go out on the start day
+
+
+def html2plaintext(html):
+    """Readable text for the review: paragraphs kept, no markup symbols."""
+    text = re.sub(r'(?i)</(p|div|h[1-6]|tr)>', '\n\n', str(html or ''))
+    text = re.sub(r'(?i)<br\s*/?>|</li>', '\n', text)
+    text = htmllib.unescape(re.sub(r'<[^>]+>', '', text)).replace('\xa0', ' ')
+    return re.sub(r'\n\s*\n+', '\n\n', '\n'.join(line.strip() for line in text.splitlines())).strip()
+
+
+class _Problems(Exception):
+    """Internal: undo a partial submission; the problems are written on the channel lines."""
 
 
 class Plan(models.Model):
@@ -48,6 +81,10 @@ class Plan(models.Model):
     currency_id = fields.Many2one(related='brand_id.currency_id')
     user_id = fields.Many2one('res.users', string='Owner', default=lambda self: self.env.user, required=True,
                               tracking=True)
+    worker = fields.Selection([('me', 'Me'), ('ai', 'AI assistant')], string='Who does the work', default='me',
+                              required=True, tracking=True,
+                              help='Me: you write each channel. AI assistant: it fills the brief, writes every channel '
+                                   'and sends the campaign for review; you only approve.')
     date_start = fields.Date(string='Start', required=True, default=fields.Date.context_today, tracking=True)
     date_end = fields.Date(string='End', required=True, tracking=True,
                            default=lambda self: fields.Date.context_today(self) + timedelta(days=29))
@@ -56,10 +93,26 @@ class Plan(models.Model):
     audience = fields.Text()
     kpis = fields.Text(string='KPIs')
     utm_campaign_id = fields.Many2one('utm.campaign', string='Tracking campaign', readonly=True, copy=False)
-    item_ids = fields.One2many('mi.plan.item', 'plan_id', string='Channels')
-    state = fields.Selection([('draft', 'Draft'), ('prepared', 'Ready'), ('running', 'Running'),
-                              ('done', 'Done'), ('cancelled', 'Cancelled')],
-                             default='draft', required=True, readonly=True, tracking=True, string='Status')
+    item_ids = fields.One2many('mi.plan.item', 'plan_id', string='Channel lines')
+    state = fields.Selection(STAGES, default='brief', required=True, readonly=True, tracking=True,
+                             string='Stage', copy=False, group_expand=True)
+    status = fields.Selection(STAGES, compute='_compute_status', string='Status',
+                              help='Brief: nothing prepared yet. Content: drafts are being written. Review: waiting '
+                                   'for approval. Scheduled: approved, going out at the planned time. Live: at least '
+                                   'one channel is out. Done: finished (automatically after the end date).')
+    review_request_id = fields.Many2one('approval.center.request', string='Campaign approval', readonly=True,
+                                        copy=False)
+    channels_out = fields.Integer(compute='_compute_progress', string='Channels sent',
+                                  help='Channels already sent or published (or to-dos done), out of all channels.')
+    channel_count = fields.Integer(compute='_compute_progress', string='Channels')
+    day_label = fields.Char(compute='_compute_progress', string='Timing')
+    waiting_for = fields.Char(compute='_compute_progress', string='Waiting for')
+    next_step = fields.Char(compute='_compute_needs_me', string='Next step',
+                            help='What has to happen next, and who does it.')
+    needs_me = fields.Boolean(compute='_compute_needs_me', search='_search_needs_me', string='For me',
+                              help='You have something to do on this campaign.')
+    my_todo = fields.Char(compute='_compute_needs_me', string='What you need to do')
+    can_review = fields.Boolean(compute='_compute_needs_me')
     clash_note = fields.Char(compute='_compute_clash_note', string='Calendar clash')
     color = fields.Integer(compute='_compute_color')
 
@@ -99,11 +152,136 @@ class Plan(models.Model):
             if commands:
                 super(Plan, plan).write({'item_ids': commands})
 
-    @api.depends('state')
+    @api.depends('status')
     def _compute_color(self):
-        colors = {'draft': 0, 'prepared': 4, 'running': 10, 'done': 7, 'cancelled': 1}
+        colors = {'brief': 0, 'content': 3, 'review': 2, 'scheduled': 4, 'live': 10, 'done': 7, 'cancelled': 1}
         for plan in self:
-            plan.color = colors.get(plan.state, 0)
+            plan.color = colors.get(plan.status, 0)
+
+    # ------------------------------------------------------------------ status and progress
+
+    @api.depends('state', 'item_ids.stage')
+    def _compute_status(self):
+        """Before and during the review the campaign stays in its step, whatever a channel app shows; after the
+        approval it follows the channels (Scheduled until one is out, then Live)."""
+        for plan in self:
+            if plan.state in BEFORE_REVIEW + ('done', 'cancelled'):
+                plan.status = plan.state
+            elif 'out' in plan.item_ids.mapped('stage'):
+                plan.status = 'live'
+            else:
+                plan.status = 'scheduled'
+
+    @api.depends('item_ids.stage', 'review_request_id.state', 'date_start', 'date_end')
+    def _compute_progress(self):
+        today = fields.Date.context_today(self)
+        for plan in self:
+            counted = plan.item_ids.filtered(lambda i: i.stage != 'unavailable')
+            plan.channel_count = len(counted)
+            plan.channels_out = len(counted.filtered(lambda i: i.stage in ('out', 'todo_done')))
+            waiting = plan._pending_requests().sudo().approver_ids.filtered(
+                lambda line: line.status == 'submitted').user_id
+            plan.waiting_for = ', '.join(waiting.mapped('name')) or False
+            if not plan.date_start or not plan.date_end:
+                plan.day_label = False
+            elif today < plan.date_start:
+                plan.day_label = _('Starts in %s day(s)', (plan.date_start - today).days)
+            elif today > plan.date_end:
+                plan.day_label = _('Ended %s', format_date(self.env, plan.date_end))
+            else:
+                plan.day_label = _('Day %(day)s of %(total)s', day=(today - plan.date_start).days + 1,
+                                   total=(plan.date_end - plan.date_start).days + 1)
+
+    def _app_requests(self):
+        """Approval requests of the channel apps (Messaging, Social) for this campaign's drafts."""
+        requests = self.env['approval.center.request']
+        for item in self.item_ids:
+            requests |= item._app_requests()
+        return requests
+
+    def _pending_requests(self):
+        requests = (self.review_request_id | self._app_requests()).sudo()
+        return requests.filtered(lambda r: r.state == 'submitted')
+
+    def _my_reviews(self):
+        """Requests of this campaign I can decide now (assigned, pending, and not my own unless allowed)."""
+        user = self.env.user
+        return self._pending_requests().filtered(
+            lambda r: r.approver_ids.filtered(lambda line: line.user_id == user and line.status == 'submitted')
+            and (r.requester_id != user or r.policy_id.allow_self_approval))
+
+    @api.depends_context('uid')
+    @api.depends('state', 'user_id', 'worker', 'item_ids.stage', 'review_request_id.state')
+    def _compute_needs_me(self):
+        for plan in self:
+            mine = plan._my_reviews()
+            plan.can_review = bool(mine)
+            step, owner_step = plan._next_step()
+            plan.next_step = step
+            if mine:
+                plan.my_todo = _('Approve or refuse the campaign')
+            elif plan.user_id == self.env.user and owner_step:
+                plan.my_todo = step
+            else:
+                plan.my_todo = False
+            plan.needs_me = bool(plan.my_todo)
+
+    def _next_step(self):
+        """(text, owner must act) for the campaign as it is now."""
+        self.ensure_one()
+        stages = self.item_ids.mapped('stage')
+        fix = len([s for s in stages if s in ('blocked', 'failed')])
+        if self.state == 'cancelled':
+            return _('Cancelled'), False
+        if self.state == 'done':
+            return _('Finished'), False
+        if self._ai_busy():
+            return _('The AI assistant is writing the channels'), False
+        if fix:
+            return _('Fix %s channel(s): see Next step on each line', fix), True
+        if self.state == 'brief':
+            if not self.item_ids:
+                return _('Choose the channels'), True
+            return (_('Prepare the drafts') if self.worker == 'me' else _('Start the AI assistant')), True
+        if self.state == 'content':
+            return _('Finish the drafts, then send the campaign for review'), True
+        if self.state == 'review':
+            requests = self._pending_requests().sudo()
+            approvers = requests.approver_ids.filtered(lambda line: line.status == 'submitted').user_id
+            others = approvers - requests.requester_id
+            if approvers and not others and not requests.policy_id.filtered('allow_self_approval'):
+                return _('Nobody else can approve it: add another approver (Approvals › Configuration › '
+                         'Marketing campaign) or allow self-approval there'), True
+            return _('Waiting for approval by %s', ', '.join(approvers.mapped('name')) or '-'), False
+        if self.state == 'scheduled':
+            return _('Approved: goes out on %s', format_date(self.env, self.date_start)), False
+        return _('Running until %s', format_date(self.env, self.date_end)), False
+
+    def _search_needs_me(self, operator, value):
+        if operator not in ('=', '!=') or not isinstance(value, bool):
+            raise UserError(_('Unsupported search.'))
+        plans = self.search([('state', 'in', ACTIVE)]).filtered('needs_me')
+        positive = (operator == '=') == value
+        return [('id', 'in' if positive else 'not in', plans.ids)]
+
+    def _sync_state(self):
+        """Store the status the channels show and write the timeline: one note per channel change."""
+        for plan in self:
+            for item in plan.item_ids:
+                if item.stage != item.last_stage:
+                    if item.last_stage or item.stage not in ('not_started', 'unavailable'):
+                        plan.message_post(body=item._timeline_text(), subtype_xmlid='mail.mt_note')
+                    item.sudo().last_stage = item.stage
+            plan.invalidate_recordset(['status'])
+            if plan.state == 'review':
+                refused = (plan.review_request_id | plan._app_requests()).sudo().filtered(
+                    lambda r: r.state == 'refused')
+                if refused:
+                    plan._back_to_content(_('Refused: %s. Edit and send the campaign for review again.',
+                                            ', '.join(refused.mapped('name'))))
+                    continue
+            if plan.state in ('scheduled', 'live') and plan.status != plan.state:
+                plan.sudo().state = plan.status
 
     @api.depends('date_start', 'date_end', 'item_ids.channel', 'brand_id', 'state')
     def _compute_clash_note(self):
@@ -139,38 +317,199 @@ class Plan(models.Model):
         plan.message_post(body=_('Campaign started from the suggestion “%s”.', option.name))
         return plan
 
-    # ------------------------------------------------------------------ actions
+    # ------------------------------------------------------------------ steps
 
     def action_prepare(self):
-        """Create the tracking campaign and every missing draft. Each draft keeps its own approval."""
+        """Create the tracking campaign and every missing draft (Content step)."""
         for plan in self:
             plan.check_access('write')
-            if plan.state not in ('draft', 'prepared', 'running'):
-                raise UserError(_('Only an active plan can prepare drafts.'))
+            if plan.state not in ACTIVE:
+                raise UserError(_('Only an active campaign can prepare drafts.'))
             if not plan.utm_campaign_id:
                 plan.utm_campaign_id = self.env['utm.campaign'].sudo().create(
                     {'title': plan.name, 'user_id': plan.user_id.id}).id
             for item in plan.item_ids.filtered(lambda i: not i.res_id and not i.activity_done):
                 item._prepare()
-            if plan.state == 'draft':
-                plan.state = 'prepared'
+            if plan.state == 'brief':
+                plan.state = 'content'
+            plan._sync_state()
         return True
 
-    def action_start(self):
-        self.filtered(lambda p: p.state in ('draft', 'prepared')).state = 'running'
+    def _campaign_policy(self):
+        """The company's "Marketing campaign" approval type (created on first use, approvers set by a manager)."""
+        self.ensure_one()
+        Policy = self.env['approval.center.policy'].sudo().with_context(active_test=False)
+        model = self.env['ir.model']._get('mi.plan')
+        policy = Policy.search([('model_id', '=', model.id), ('action_name', '=', 'action_release'),
+                                ('company_id', '=', self.company_id.id)], limit=1)
+        if not policy:
+            template = self.env.ref('marketing_intel_plan.policy_campaign', raise_if_not_found=False)
+            policy = template.sudo().copy({'company_id': self.company_id.id, 'name': template.name}) \
+                if template and template.company_id != self.company_id else template.sudo()
+            if template and template.company_id != self.company_id:
+                policy.company_id = self.company_id
+        if not policy or not policy.active:
+            raise UserError(_('Campaign reviews are switched off: activate the approval type “Marketing campaign”.'))
+        return policy
+
+    def action_submit_review(self):
+        """Review step, all or nothing: every draft must exist and be accepted by its app's own approval (Messaging,
+        Social); then one campaign request is opened for the approver. If a channel has a problem, nothing is
+        submitted, each line says what to fix, and the campaign stays where it was."""
+        problems = []
+        for plan in self:
+            plan.check_access('write')
+            if plan.state not in BEFORE_REVIEW:
+                raise UserError(_('This campaign was already reviewed.'))
+            plan.action_prepare()  # creates any missing draft, retries failed ones
+            notes = {item: item.note for item in plan.item_ids.filtered(lambda i: not i.res_id and i.stage == 'blocked')}
+            if not notes:
+                try:
+                    with self.env.cr.savepoint():
+                        for item in plan.item_ids.filtered(lambda i: i.res_id and i.stage in ('draft', 'blocked')):
+                            error = item._submit()
+                            if error:
+                                notes[item] = error
+                        if notes:
+                            raise _Problems()
+                        plan._open_review_request()
+                except _Problems:
+                    pass
+                except UserError as error:
+                    problems.append('%s: %s' % (plan.name, error))
+                    continue
+            if notes:
+                for item, note in notes.items():
+                    item.note = note
+                problems.append('%s:\n%s' % (plan.name, '\n'.join(
+                    '• %s: %s' % (dict(CHANNELS)[item.channel], note) for item, note in notes.items())))
+                continue
+            plan.item_ids.filtered(lambda i: i.res_id).note = False
+            plan.state = 'review'
+            plan.message_post(body=_('Sent for review. %s', plan._next_step()[0]))
+            plan._sync_state()
+        if problems:
+            return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+                'type': 'warning', 'sticky': True, 'title': _('Not sent for review yet'),
+                'message': '\n\n'.join(problems),
+                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}}}
         return True
+
+    def _open_review_request(self):
+        self.ensure_one()
+        if self.review_request_id and self.review_request_id.state not in ('refused', 'cancelled'):
+            return
+        policy = self._campaign_policy()
+        request = self.env['approval.center.request'].sudo().create({
+            'name': _('Campaign: %(name)s (%(brand)s)', name=self.name, brand=self.brand_id.name),
+            'policy_id': policy.id, 'company_id': self.company_id.id, 'requester_id': self.env.uid,
+            'target_model': self._name, 'target_res_id': self.id, 'reason': self._review_summary(),
+        })
+        try:
+            request.with_user(self.env.user).sudo().action_submit()
+        except UserError as error:
+            raise UserError(_('%(error)s Set who approves campaigns in Approvals › Configuration › '
+                              '“Marketing campaign”.', error=str(error))) from None
+        self.sudo().review_request_id = request
+
+    def action_approve_review(self):
+        """Approve everything in this campaign that waits for me: each channel's own approval, then the campaign."""
+        self.ensure_one()
+        mine = self._my_reviews()
+        if not mine:
+            raise UserError(_('Nothing in this campaign is waiting for your approval.'))
+        campaign = mine.filtered(lambda r: r == self.review_request_id)
+        for request in (mine - campaign) | campaign:
+            request.with_user(self.env.user).sudo(False).action_approve()
+        self.invalidate_recordset()
+        self._sync_state()
+        return True
+
+    def action_refuse_review(self):
+        self.ensure_one()
+        mine = self._my_reviews()
+        if not mine:
+            raise UserError(_('Nothing in this campaign is waiting for your approval.'))
+        for request in mine:
+            request.with_user(self.env.user).sudo(False).action_refuse()
+        self._back_to_content(_('Refused by %s. Edit the drafts and send the campaign for review again.',
+                                self.env.user.name))
+        return True
+
+    def _back_to_content(self, note):
+        for plan in self.filtered(lambda p: p.state == 'review'):
+            plan.sudo().state = 'content'
+            plan.message_post(body=note)
+            plan.activity_schedule('mail.mail_activity_data_todo', user_id=plan.user_id.id,
+                                   summary=_('Campaign refused: update it'), note=note)
+
+    def action_release(self):
+        """After the campaign approval: schedule Email and SMS for the start day, publish events.
+        Runs from the approval (as the requester); idempotent, and only with an approved campaign request."""
+        for plan in self:
+            request = plan.sudo().review_request_id
+            if not request or request.state != 'approved':
+                raise AccessError(_('This campaign has no approved campaign review.'))
+            for item in plan.item_ids.filtered('res_id'):
+                item._release()
+            plan.sudo().state = 'scheduled'
+            plan.message_post(body=_('Approved by %s. Email, SMS and events are scheduled; Messaging and Social go '
+                                     'out as their own approvals allow.', request.approver_id.name or '-'))
+            plan._sync_state()
+        return True
+
+    def _send_at(self):
+        """Start day at SEND_HOUR in the owner's time zone, or a few minutes from now if that has passed."""
+        try:
+            zone = ZoneInfo(self.user_id.tz or 'UTC')
+        except (KeyError, ValueError):
+            zone = ZoneInfo('UTC')
+        local = datetime.combine(self.date_start, time(SEND_HOUR, 0), tzinfo=zone)
+        planned = local.astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+        return max(planned, fields.Datetime.now() + timedelta(minutes=5))
+
+    def _review_summary(self):
+        lines = [_('Brand: %s', self.brand_id.name), _('Dates: %(start)s to %(end)s', start=self.date_start,
+                                                       end=self.date_end)]
+        if self.budget:
+            lines.append(_('Budget: %(amount)s %(currency)s', amount=self.budget, currency=self.currency_id.name))
+        if self.goal_id:
+            lines.append(_('Goal: %s', self.goal_id.name))
+        for item in self.item_ids:
+            lines.append('— %s: %s' % (dict(CHANNELS)[item.channel], (item.preview or '').strip()[:300] or '-'))
+        return '\n'.join(lines)
 
     def action_done(self):
-        self.filtered(lambda p: p.state in ACTIVE).state = 'done'
+        plans = self.filtered(lambda p: p.state in ACTIVE)
+        plans.state = 'done'
+        plans._on_done()
         return True
 
+    def _on_done(self):
+        """Hook: the AI assistant writes what we learned."""
+        return True
+
+    def _ai_busy(self):
+        """Hook: True while the AI assistant is writing this campaign."""
+        return False
+
+    @api.model
+    def _cron_close_finished(self):
+        plans = self.search([('state', 'in', ('scheduled', 'live')), ('date_end', '<', fields.Date.today())])
+        for plan in plans:
+            plan.message_post(body=_('The end date has passed: campaign closed automatically.'))
+        plans.action_done()
+
     def action_cancel(self):
-        """Cancelling the plan does not touch drafts already in their apps: cancel them there."""
-        self.filtered(lambda p: p.state in ACTIVE).state = 'cancelled'
+        """Cancelling does not touch what already went out: withdraw or cancel those in their apps."""
+        for plan in self.filtered(lambda p: p.state in ACTIVE):
+            if plan.review_request_id.state == 'submitted':
+                plan.review_request_id.with_user(plan.review_request_id.requester_id).sudo().action_cancel()
+            plan.state = 'cancelled'
         return True
 
     def action_reset(self):
-        self.filtered(lambda p: p.state == 'cancelled').state = 'draft'
+        self.filtered(lambda p: p.state == 'cancelled').write({'state': 'brief', 'review_request_id': False})
         return True
 
     # ------------------------------------------------------------------ texts
@@ -183,7 +522,7 @@ class Plan(models.Model):
         parts = [Markup('<h2>%s</h2>') % self.name]
         parts += [Markup('<p>%s</p>') % escape(p).replace('\n', Markup('<br/>'))
                   for p in self._plain().split('\n\n') if p.strip()]
-        parts.append(Markup('<p><em>%s</em></p>') % _('Draft from a campaign plan: rewrite before sending.'))
+        parts.append(Markup('<p><em>%s</em></p>') % _('Draft from a campaign: rewrite before sending.'))
         return Markup('').join(parts)
 
     def _reason(self):
@@ -203,39 +542,260 @@ class PlanItem(models.Model):
     res_model = fields.Char(readonly=True, string='Created in')
     res_id = fields.Many2oneReference(model_field='res_model', readonly=True)
     draft_name = fields.Char(compute='_compute_draft', string='Draft')
-    draft_status = fields.Char(compute='_compute_draft', string='Status in its app')
+    draft_status = fields.Char(compute='_compute_draft', string='In its app')
+    stage = fields.Selection(ITEM_STAGES, compute='_compute_draft', string='Status')
+    next_step = fields.Char(compute='_compute_draft', string='Next step')
+    preview = fields.Text(compute='_compute_draft', string='Content')
+    last_stage = fields.Char(readonly=True, copy=False)
     app = fields.Char(compute='_compute_app', string='App')
     available = fields.Boolean(compute='_compute_app')
     activity_done = fields.Boolean(string='Done', help='For channels without an app: tick when it is ready.')
     note = fields.Char(readonly=True)
+    live = fields.Boolean(compute='_compute_draft', string='Out',
+                          help='Sent, scheduled or published in its app (not a draft or waiting for approval).')
 
     @api.depends('channel')
     def _compute_app(self):
         for item in self:
             target = TARGETS.get(item.channel)
-            item.app = target[1] if target else _('To-do on the plan')
+            item.app = target[1] if target else _('To-do on the campaign')
             item.available = not target or target[0] in self.env
 
-    @api.depends('res_model', 'res_id', 'activity_done')
+    @api.depends('res_model', 'res_id', 'activity_done', 'note', 'plan_id.state')
     def _compute_draft(self):
         for item in self:
+            # Shown read-only to everyone who can read the campaign (an approver reads what they approve);
+            # opening or changing the draft still needs that app's own rights.
             record = item._record()
-            if record:
-                item.draft_name = record.display_name
-                field = record._fields.get('state') or record._fields.get('stage_id')
-                value = record[field.name] if field else False
-                if field and field.type == 'selection':
-                    value = dict(field._description_selection(self.env)).get(value, value)
-                elif field:
-                    value = value.display_name
-                item.draft_status = value or _('Created')
-            else:
-                item.draft_name = False
-                item.draft_status = (
-                    _('Ready') if item.activity_done
-                    else _('App not installed') if not item.available
-                    else _('To-do scheduled') if item.note and not TARGETS.get(item.channel)
-                    else _('Not prepared yet'))
+            record = record.sudo() if record else record
+            item.draft_name = record.display_name if record else False
+            item.draft_status = item._app_status(record) if record else False
+            stage = item._stage(record)
+            if stage in ('draft', 'not_started') and item.plan_id._ai_busy():
+                stage = 'writing'
+            item.stage = stage
+            item.next_step = item._item_next_step(record)
+            item.live = item.stage in ('scheduled', 'out')
+            item.preview = item._preview(record) if record else False
+
+    @staticmethod
+    def _app_status(record):
+        field = record._fields.get('state') or record._fields.get('stage_id')
+        if not field:
+            return _('Created')
+        value = record[field.name]
+        if field.type == 'selection':
+            return dict(field._description_selection(record.env)).get(value, value)
+        return value.display_name
+
+    def _stage(self, record):
+        """One status vocabulary for every app."""
+        if not record:
+            if not TARGETS.get(self.channel):
+                return 'todo_done' if self.activity_done else 'todo'
+            if not self.available:
+                return 'unavailable'
+            if self.note:
+                return 'blocked'
+            return 'not_started'
+        record = record.sudo()
+        now = fields.Datetime.now()
+        name = record._name
+        draft = 'blocked' if self.note else 'draft'
+        if name == 'mailing.mailing':
+            if record.state == 'draft':
+                return 'needs_review' if self.plan_id.state == 'review' else draft
+            if record.state == 'in_queue' and record.schedule_date and record.schedule_date > now:
+                return 'scheduled'
+            if record.state == 'done' and not record.sent:
+                return 'failed'
+            return 'out'
+        if name == 'mm.mailing':
+            if record.state == 'draft':
+                return draft
+            if record.state == 'pending':
+                return 'needs_review'
+            if record.state == 'approved':
+                later = record.schedule == 'later' and record.scheduled_at and record.scheduled_at > now
+                return 'scheduled' if later else 'approved'
+            if record.state == 'done' and not record.sent_count:
+                return 'failed'
+            if record.state in ('sending', 'done'):
+                return 'out'
+            return 'failed'
+        if name == 'omni.social.campaign':
+            if record.state == 'draft':
+                return draft
+            if record.state == 'review':
+                return 'needs_review'
+            if record.state == 'approved':
+                return 'scheduled' if record.scheduled_at and record.scheduled_at > now else 'approved'
+            if record.state == 'done':
+                return 'out'
+            return 'failed'
+        if name == 'event.event':
+            if self._event_published(record):
+                return 'out'
+            return 'needs_review' if self.plan_id.state == 'review' else draft
+        return draft
+
+    @staticmethod
+    def _event_published(event):
+        if 'is_published' in event._fields:
+            return bool(event.is_published)
+        return bool(event.stage_id) and event.stage_id != event._get_default_stage_id()
+
+    def _preview(self, record):
+        """What the approver reads: the text that goes out, in plain words."""
+        record = record.sudo()
+        if record._name == 'mailing.mailing':
+            if record.mailing_type == 'sms':
+                return record.body_plaintext or ''
+            return '%s\n\n%s' % (record.subject or '', html2plaintext(record.body_html or ''))
+        if record._name == 'mm.mailing':
+            return record.body or ''
+        if record._name == 'omni.social.campaign':
+            versions = record.publication_ids.filtered(lambda p: p.state != 'cancelled')
+            if versions:
+                return '\n\n'.join('%s: %s' % (v.connection_id.name, v.body or '') for v in versions)
+            return record.brief or ''
+        if record._name == 'event.event':
+            text = html2plaintext(record.description or '') if 'description' in record._fields else ''
+            return '%s\n%s' % (record.name, text)
+        return record.display_name
+
+    def _app_requests(self):
+        record = self._record()
+        if not record:
+            return self.env['approval.center.request']
+        record = record.sudo()
+        if record._name == 'mm.mailing':
+            return record.approval_request_id
+        if record._name == 'omni.social.campaign':
+            return record.publication_ids.approval_request_id
+        return self.env['approval.center.request']
+
+    def _item_next_step(self, record):
+        """One plain sentence: what happens next on this channel, and who does it."""
+        app = self.app
+        stage = self.stage
+        plan = self.plan_id
+        if stage == 'unavailable':
+            return _('Install %s to use this channel', app)
+        if stage == 'todo':
+            return _('To-do for %s: switch Done on when it is ready', plan.user_id.name)
+        if stage == 'todo_done':
+            return _('Done')
+        if stage == 'not_started':
+            return _('Created when the drafts are prepared')
+        if stage == 'writing':
+            return _('The AI assistant is writing it')
+        if stage in ('blocked', 'failed') and self.note:
+            return self.note
+        record = record.sudo()
+        when = self._planned_at(record)
+        when = fields.Datetime.context_timestamp(self, when).strftime('%d %b %H:%M') if when else False
+        if stage == 'draft':
+            return _('Write it in %s (Open), then send the campaign for review', app)
+        if stage == 'needs_review':
+            approvers = (self._app_requests() or plan.review_request_id).sudo().filtered(
+                lambda r: r.state == 'submitted').approver_ids.filtered(lambda l: l.status == 'submitted').user_id
+            return _('Waiting for approval by %s', ', '.join(approvers.mapped('name')) or '-')
+        if stage == 'approved':
+            return _('Approved: %s sends it', app)
+        if stage == 'scheduled':
+            return _('Goes out on %s', when) if when else _('Scheduled')
+        if stage == 'out':
+            if plan.state in BEFORE_REVIEW:
+                return _('Sent from %s before the campaign review', app)
+            sent = self.result_sent
+            return _('Sent to %s', sent) if sent else _('Published')
+        if stage == 'failed':
+            if record._name in ('mailing.mailing', 'mm.mailing') and record.state == 'done':
+                return _('Sent to nobody: the lists had no one who can receive it')
+            return _('Stopped in %(app)s (%(status)s): open it to see why', app=app, status=self.draft_status)
+        return False
+
+    @staticmethod
+    def _planned_at(record):
+        if record._name == 'mailing.mailing':
+            return record.schedule_date
+        if record._name in ('mm.mailing', 'omni.social.campaign'):
+            return record.scheduled_at
+        if record._name == 'event.event':
+            return record.date_begin
+        return False
+
+    def _readiness(self, record):
+        """What would stop this draft in its app, said with where to fix it (None when ready)."""
+        accounts = _('Brand › Settings › Channels & accounts')
+        if record._name == 'mailing.mailing':
+            if not record.contact_list_ids:
+                return _('Choose the mailing lists to send to (%s, or open the draft).', accounts)
+            if record.mailing_type == 'mail' and not record.subject:
+                return _('Write the email subject.')
+            if record.mailing_type == 'sms' and not (record.body_plaintext or '').strip():
+                return _('Write the SMS text.')
+        elif record._name == 'mm.mailing':
+            if not record.channel_id:
+                return _('Choose the Messaging channel to send from (%s, or open the draft).', accounts)
+            if not record.list_ids:
+                return _('Choose the Messaging lists to send to (%s, or open the draft).', accounts)
+        elif record._name == 'omni.social.campaign':
+            if not record.connection_ids:
+                return _('Choose the social pages to post to (%s, or open the draft).', accounts)
+        return None
+
+    def _submit(self):
+        """Check the draft and submit it to its app's own approval (Messaging, Social). Email, SMS and Events wait
+        for the campaign approval. Returns what to fix, or None."""
+        self.ensure_one()
+        record = self._record()
+        problem = self._readiness(record)
+        if problem:
+            return problem
+        try:
+            with self.env.cr.savepoint():
+                if record._name == 'mm.mailing':
+                    if not (record.reason or '').strip():
+                        record.reason = self.plan_id._reason()
+                    record.action_submit()
+                elif record._name == 'omni.social.campaign':
+                    if record.missing_versions:
+                        record.action_create_versions()
+                    record.action_submit_all()
+        except (AccessError, UserError, ValidationError) as error:
+            return str(error).splitlines()[0][:250]
+        return None
+
+    def _release(self):
+        """After the campaign approval: Email/SMS are queued for the start day; events are published."""
+        self.ensure_one()
+        record = self._record()
+        try:
+            with self.env.cr.savepoint():
+                if record._name == 'mailing.mailing' and record.state == 'draft':
+                    record.write({'schedule_type': 'scheduled', 'schedule_date': self.plan_id._send_at()})
+                    record.action_put_in_queue()
+                elif record._name == 'event.event' and not self._event_published(record):
+                    if 'is_published' in record._fields:
+                        record.is_published = True
+                    else:
+                        stage = self.env['event.stage'].search([('pipe_end', '=', False)], order='sequence desc',
+                                                               limit=1)
+                        if stage:
+                            record.stage_id = stage
+            self.note = False
+        except (AccessError, UserError, ValidationError) as error:
+            self.note = _('Not scheduled: %s', str(error).splitlines()[0][:200])
+
+    def _timeline_text(self):
+        label = dict(CHANNELS)[self.channel]
+        stage = dict(ITEM_STAGES).get(self.stage, self.stage)
+        text = _('%(channel)s: %(stage)s', channel=label, stage=stage)
+        if self.note and self.stage in ('failed', 'blocked'):
+            text += ' — ' + self.note
+        return text
 
     def _record(self):
         self.ensure_one()
@@ -270,7 +830,7 @@ class PlanItem(models.Model):
             return
         self.write({'res_model': record._name, 'res_id': record.id, 'note': False})
         if hasattr(record, 'message_post'):
-            record.message_post(body=_('Draft created from campaign plan “%s”. It still needs its own approval.',
+            record.message_post(body=_('Draft created from the campaign “%s”. It goes out after the campaign review.',
                                        plan.name))
 
     # One method per channel: drafts only, with the person's permissions.
@@ -353,7 +913,12 @@ class PlanItem(models.Model):
         self.ensure_one()
         record = self._record()
         if not record:
-            raise UserError(_('This draft is not available to you.'))
+            raise UserError(_('This draft no longer exists.'))
+        try:
+            record.check_access('read')
+        except AccessError:
+            raise UserError(_('You need access to %s to open this draft. Its text is on the Review tab.',
+                              self.app)) from None
         return {'type': 'ir.actions.act_window', 'res_model': record._name, 'res_id': record.id,
                 'view_mode': 'form', 'target': 'current'}
 

@@ -1,0 +1,6 @@
+// Long sentences (next step, what to do) wrap instead of being cut with an ellipsis.
+.o_list_table td.o_mi_wrap {
+    white-space: normal !important;
+    text-overflow: clip !important;
+    min-width: 220px;
+}

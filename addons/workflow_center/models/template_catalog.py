@@ -25,7 +25,7 @@ CATEGORY_KEYS = {label: key for key, label in CATEGORIES}
 APP_MODULES = {
     'Invoicing': 'account', 'CRM': 'crm', 'Employees': 'hr', 'Expenses': 'hr_expense',
     'Inventory': 'stock', 'Sales': 'sale_management', 'Purchase': 'purchase', 'Recruitment': 'hr_recruitment',
-    'Marketing Intelligence': 'marketing_intel',
+    'Marketing': 'marketing_intel',
 }
 TRIGGERS = {
     'manual': 'Button / run manually', 'create': 'Record created', 'write': 'Record changed',

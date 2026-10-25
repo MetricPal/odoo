@@ -1,1 +1,1 @@
-from . import schema, brief
+from . import schema, brief, autopilot

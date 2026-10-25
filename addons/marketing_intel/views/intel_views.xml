@@ -84,11 +84,13 @@
                   <field name="monthly_budget" help="Ceiling for campaigns: suggestions above it are flagged as a budget risk."/>
                   <field name="research_interval" help="How often the approved sources are checked automatically."/>
                   <field name="next_research_at" help="When the next automatic research happens. Empty: at the next hourly check."/>
-                  <field name="company_id" groups="base.group_multi_company"/>
                 </group>
-                <group string="Team &amp; client">
+                <group string="Owner &amp; team">
+                  <field name="owner_type" widget="radio" options="{'horizontal': true}"/>
+                  <field name="company_id" groups="base.group_multi_company" string="Company"/>
+                  <field name="partner_id" invisible="owner_type != 'client'" required="owner_type == 'client'"
+                         placeholder="The client this brand belongs to"/>
                   <field name="member_ids" widget="many2many_avatar_user" placeholder="Everyone in marketing"/>
-                  <field name="partner_id" placeholder="For advisors: the client this brand belongs to"/>
                 </group>
               </group>
               <separator string="Channels &amp; accounts"/>
@@ -117,7 +119,7 @@
             <div class="d-flex align-items-start">
               <div class="flex-grow-1">
                 <field name="name" class="fw-bold fs-4"/>
-                <div class="text-muted small"><field name="partner_id"/> <field name="markets"/></div>
+                <div class="text-muted small"><field name="portfolio"/> · <field name="markets"/></div>
               </div>
               <field name="member_ids" widget="many2many_avatar_user"/>
             </div>
@@ -147,7 +149,10 @@
     <field name="arch" type="xml"><search>
       <field name="name"/><field name="partner_id"/><field name="member_ids"/>
       <filter name="my_brands" string="My brands" domain="['|', ('member_ids', 'in', [uid]), ('member_ids', '=', False)]"/>
-      <group><filter name="group_client" string="Client" context="{'group_by': 'partner_id'}"/></group>
+      <filter name="own" string="Our brands" domain="[('owner_type', '=', 'own')]"/>
+      <filter name="clients" string="Client brands" domain="[('owner_type', '=', 'client')]"/>
+      <group><filter name="group_portfolio" string="Company or client" context="{'group_by': 'portfolio'}"/>
+        <filter name="group_client" string="Client" context="{'group_by': 'partner_id'}"/></group>
     </search></field>
   </record>
   <record id="action_brands" model="ir.actions.act_window">

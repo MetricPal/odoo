@@ -327,6 +327,25 @@ own Social pages, Messaging channel/lists and mailing lists; (3) client access s
   another brand's account. A one-brand company keeps using the apps' defaults.
 - Brand cards show goals behind schedule and the share of the monthly budget planned this month.
 
+### 2026-10-25 — Two ways of working, AI autopilot, one review
+
+Owner: an in-house marketer manages the company's campaigns on any channel; an advisor manages
+several client brands; a group of companies can have different brands under one umbrella. Every
+channel must be workable by an AI assistant or by people, with as little human interaction as
+possible, and with visible status and progress. Decisions: one review per campaign; chat control
+of campaigns through the AI Agent later; no mode switch (brand owner type instead).
+
+- Brand owner type (our company / a client); cards grouped by company or client.
+- Campaign stages, per-channel statuses, progress, history notes, Needs you, auto close.
+- Approval type *Marketing campaign*; Messaging/Social approvals decided from the campaign screen.
+- AI autopilot: brief + content per channel + send for review; learning note at the end.
+
+### Later: run campaigns from AI Agent chat (owner: "Later")
+
+- Agent tools to create, change, pause and report on campaigns from a conversation ("start a 2-week
+  email + social campaign for Client B"), always ending in the same campaign review.
+- AI progress notes while live (e.g. suggest a follow-up SMS to people who clicked).
+
 ### Later: client sharing (owner: "keep track, later we will implement it")
 
 - Portal access for an advisor's client: read-only brand page with campaigns, results and the

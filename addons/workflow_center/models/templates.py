@@ -49,7 +49,7 @@ RECIPES = [
     ('expenses', 'Expense report approval', 'Expenses', 'Approvals', 'hr.expense', 'manual',
      'Ask the configured approvers to review the expense, then notify its owner.',
      [('approval', 'Review the expense'), ('mail_post', 'Notify the employee')]),
-    ('market_brief', 'Market brief review', 'Marketing Intelligence', 'Reminders', 'mi.run', 'write',
+    ('market_brief', 'Market brief review', 'Marketing', 'Reminders', 'mi.run', 'write',
      'When a research brief is ready and found changes, ask the marketing team to review it and decide on '
      'the campaign options.',
      [('next_activity', 'Review the brief and decide on options'), ('mail_post', 'Post the brief to followers')]),

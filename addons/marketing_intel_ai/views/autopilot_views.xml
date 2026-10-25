@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="plan_form_autopilot" model="ir.ui.view">
+    <field name="name">mi.plan.form.autopilot</field><field name="model">mi.plan</field>
+    <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_submit_review']" position="before">
+        <button name="action_ai_write" type="object" string="✨ Let AI write it" class="btn-primary"
+                invisible="state not in ('brief', 'content') or ai_state == 'running'"
+                help="The AI assistant fills the brief, writes every channel and sends the campaign for review."/>
+      </xpath>
+      <xpath expr="//header/field[@name='status']" position="before">
+        <field name="ai_state" invisible="1"/>
+      </xpath>
+      <xpath expr="//div[hasclass('oe_title')]" position="before">
+        <div class="alert alert-primary" role="status" invisible="ai_state != 'running'">
+          ✨ The AI assistant is writing every channel. The campaign goes to review by itself when it is done.
+        </div>
+      </xpath>
+    </field>
+  </record>
+</odoo>

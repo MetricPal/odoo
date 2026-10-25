@@ -258,21 +258,40 @@ class BrandTeam(models.Model):
                                   domain="[('share', '=', False)]",
                                   help='People working on this brand. They find it under "My brands". '
                                        'Empty: everyone in marketing works on it.')
+    owner_type = fields.Selection([('own', 'Our company'), ('client', 'A client')], string='Brand of',
+                                  default='own', required=True,
+                                  help='Our company: a brand of one of our (group) companies. A client: a brand we '
+                                       'market for someone else, as an advisor or agency.')
     partner_id = fields.Many2one('res.partner', string='Client contact',
                                  help='For advisors and agencies: the client this brand belongs to (internal for now).')
+    portfolio = fields.Char(compute='_compute_portfolio', store=True, string='Company or client',
+                            help='How brand cards are grouped: the company for our brands, the client otherwise.')
     email_from = fields.Char(string='Email sender', help='e.g. "Brand <hello@brand.com>"; used for email drafts.')
     account_ids = fields.One2many('mi.brand.account', 'brand_id', string='Channels & accounts')
 
+    @api.depends('owner_type', 'company_id.name', 'partner_id.commercial_partner_id.name')
+    def _compute_portfolio(self):
+        for brand in self:
+            if brand.owner_type == 'client':
+                brand.portfolio = brand.partner_id.commercial_partner_id.name or _('Clients')
+            else:
+                brand.portfolio = brand.company_id.name
+
     @api.model
     def _marketing_home(self):
-        """One brand: open it. Several: the portfolio, starting with the person's own brands."""
+        """One brand: open it. Several: brand cards, the person's own first, grouped when they span
+        several companies of the group or several clients."""
         brands = self.search([])
         if len(brands) == 1:
             return {'type': 'ir.actions.act_window', 'res_model': 'mi.brand', 'res_id': brands.id,
                     'views': [(False, 'form')], 'name': brands.name}
         action = self.env['ir.actions.act_window']._for_xml_id('marketing_intel.action_brands')
-        mine = brands.filtered(lambda b: self.env.user in b.member_ids)
-        action['context'] = {'search_default_my_brands': 1} if mine else {}
+        context = {}
+        if brands.filtered(lambda b: self.env.user in b.member_ids):
+            context['search_default_my_brands'] = 1
+        if len(set(brands.mapped('portfolio'))) > 1:
+            context['search_default_group_portfolio'] = 1
+        action['context'] = context
         return action
 
     def _accounts(self, model):

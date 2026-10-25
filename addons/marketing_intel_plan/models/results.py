@@ -20,6 +20,8 @@ class Plan(models.Model):
     _inherit = 'mi.plan'
 
     result_sent = fields.Integer(string='Messages sent', readonly=True)
+    result_opened = fields.Integer(string='Opened', readonly=True)
+    result_replied = fields.Integer(string='Replies', readonly=True)
     result_clicks = fields.Integer(string='Link clicks', readonly=True)
     result_leads = fields.Integer(string='Leads', readonly=True)
     result_won = fields.Integer(string='Won deals', readonly=True)
@@ -42,12 +44,16 @@ class Plan(models.Model):
         """Current numbers from each installed app, read with the caller's rights where it matters."""
         self.ensure_one()
         campaign = self.utm_campaign_id
-        values = dict.fromkeys(['result_sent', 'result_clicks', 'result_leads', 'result_won',
-                                'result_registrations'], 0)
+        values = dict.fromkeys(['result_sent', 'result_opened', 'result_replied', 'result_clicks', 'result_leads',
+                                'result_won', 'result_registrations'], 0)
         values['result_revenue'] = 0.0
+        item_clicks = 0
         for item in self.item_ids:
             values['result_sent'] += item.result_sent
+            values['result_opened'] += item.result_opened
+            values['result_replied'] += item.result_replied + item.result_comments
             values['result_registrations'] += item.result_registrations
+            item_clicks += item.result_clicks
         if campaign:
             values['result_clicks'] = self.env['link.tracker.click'].sudo().search_count(
                 [('campaign_id', '=', campaign.id)]) if 'link.tracker.click' in self.env else 0
@@ -64,21 +70,25 @@ class Plan(models.Model):
                                                    o.date_order or fields.Date.today()) for o in orders)
                 # Sales are the better revenue figure when the team confirms orders.
                 values['result_revenue'] = max(values['result_revenue'], sales)
+        values['result_clicks'] = max(values['result_clicks'], item_clicks)
         return values
 
     def action_refresh_results(self):
         for plan in self:
             plan.check_access('read')
             plan.sudo().write(dict(plan._measure(), results_at=fields.Datetime.now()))
+            plan._sync_state()
         return True
 
     @api.model
     def _cron_refresh_results(self):
         since = fields.Date.today() - timedelta(days=30)
-        plans = self.search(['|', ('state', 'in', ('prepared', 'running')),
+        plans = self.search(['|', ('state', 'in', ('content', 'review', 'scheduled', 'live')),
                              '&', ('state', '=', 'done'), ('date_end', '>=', since)])
         for plan in plans:
             plan.write(dict(plan._measure(), results_at=fields.Datetime.now()))
+            plan._sync_state()
+        self._cron_close_finished()
 
     def action_done(self):
         self.action_refresh_results()
@@ -97,28 +107,73 @@ class Plan(models.Model):
         return line
 
 
+RESULT_FIELDS = ('result_audience', 'result_sent', 'result_delivered', 'result_opened', 'result_clicks',
+                 'result_replied', 'result_failed', 'result_likes', 'result_comments', 'result_registrations',
+                 'result_attended')
+
+
 class PlanItem(models.Model):
+    """Each channel's numbers, read live from the app that owns it (what that app records, nothing invented)."""
     _inherit = 'mi.plan.item'
 
+    result_audience = fields.Integer(compute='_compute_results', string='Audience',
+                                     help='Email/SMS/Messaging: people it is (or was) addressed to. Social: posts. '
+                                          'Events: seats.')
     result_sent = fields.Integer(compute='_compute_results', string='Sent')
-    result_clicks = fields.Integer(compute='_compute_results', string='Clicks')
+    result_delivered = fields.Integer(compute='_compute_results', string='Delivered')
+    result_opened = fields.Integer(compute='_compute_results', string='Opened')
+    result_clicks = fields.Integer(compute='_compute_results', string='Clicked')
+    result_replied = fields.Integer(compute='_compute_results', string='Replies')
+    result_failed = fields.Integer(compute='_compute_results', string='Not delivered',
+                                   help='Bounced, failed, skipped or not sent.')
+    result_likes = fields.Integer(compute='_compute_results', string='Likes')
+    result_comments = fields.Integer(compute='_compute_results', string='Comments')
     result_registrations = fields.Integer(compute='_compute_results', string='Registrations')
+    result_attended = fields.Integer(compute='_compute_results', string='Attended')
 
     @api.depends('res_model', 'res_id')
     def _compute_results(self):
         for item in self:
-            sent = clicks = registrations = 0
+            values = dict.fromkeys(RESULT_FIELDS, 0)
             record = item._record()
             if record:
-                record = record.sudo()
-                if record._name == 'mailing.mailing':
-                    sent, clicks = record.sent, record.clicked
-                elif record._name == 'mm.mailing':
-                    sent, clicks = record.sent_count, record.click_count
-                elif record._name == 'event.event':
-                    registrations = self.env['event.registration'].sudo().search_count(
-                        [('event_id', '=', record.id), ('state', 'in', ('open', 'done'))])
-            item.result_sent, item.result_clicks, item.result_registrations = sent, clicks, registrations
+                values.update(item._results(record.sudo()))
+            item.update(values)
+
+    def _results(self, record):
+        if record._name == 'mailing.mailing':
+            if record.state != 'draft':
+                audience = record.expected
+            else:
+                lists = record.contact_list_ids
+                field = 'contact_count_email' if record.mailing_type == 'mail' else 'contact_count_sms'
+                audience = sum(lists.mapped(field if field in lists._fields else 'contact_count'))
+            return {'result_audience': audience, 'result_sent': record.sent, 'result_delivered': record.delivered,
+                    'result_opened': record.opened if record.mailing_type == 'mail' else 0,
+                    'result_clicks': record.clicked, 'result_replied': record.replied,
+                    'result_failed': record.bounced + record.failed + record.canceled}
+        if record._name == 'mm.mailing':
+            audience = record.recipient_count or record.audience_count
+            return {'result_audience': audience, 'result_sent': record.sent_count,
+                    'result_delivered': record.sent_count, 'result_clicks': record.click_count,
+                    'result_failed': record.failed_count + record.skipped_count}
+        if record._name == 'omni.social.campaign':
+            versions = record.publication_ids.filtered(lambda p: p.state != 'cancelled')
+            published = versions.filtered(lambda p: p.state == 'sent')
+            values = {'result_audience': len(versions), 'result_sent': len(published),
+                      'result_failed': len(versions.filtered(lambda p: p.state == 'failed'))}
+            keys = [key for key in published.mapped('result_key') if key]
+            if keys and 'omni.social.activity' in self.env:
+                posts = self.env['omni.social.activity'].sudo().search([('external_key', 'in', keys)])
+                values.update({'result_likes': sum(posts.mapped('likes')),
+                               'result_comments': sum(posts.mapped('comments'))})
+            return values
+        if record._name == 'event.event':
+            registrations = self.env['event.registration'].sudo().search([('event_id', '=', record.id)])
+            return {'result_audience': record.seats_max,
+                    'result_registrations': len(registrations.filtered(lambda r: r.state in ('open', 'done'))),
+                    'result_attended': len(registrations.filtered(lambda r: r.state == 'done'))}
+        return {}
 
 
 class PlanKpi(models.Model):
@@ -152,7 +207,7 @@ class Brand(models.Model):
     _inherit = 'mi.brand'
 
     def _learning_lines(self, limit=5):
-        plans = self.env['mi.plan'].search([('brand_id', '=', self.id), ('state', 'in', ('running', 'done'))],
+        plans = self.env['mi.plan'].search([('brand_id', '=', self.id), ('state', 'in', ('live', 'done'))],
                                            order='date_end desc, id desc', limit=limit)
         return super()._learning_lines(limit) + [plan._learning_line() for plan in plans]
 
@@ -192,7 +247,7 @@ class BrandCampaigns(models.Model):
         for brand in self:
             plans = self.env['mi.plan'].search([('brand_id', '=', brand.id)])
             brand.campaign_count = len(plans)
-            brand.active_campaign_count = len(plans.filtered(lambda p: p.state in ('draft', 'prepared', 'running')))
+            brand.active_campaign_count = len(plans.filtered(lambda p: p.state in ('brief', 'content', 'review', 'scheduled', 'live')))
 
     def action_new_campaign(self):
         self.ensure_one()
@@ -212,6 +267,17 @@ class BrandAttention(models.Model):
     budget_month = fields.Monetary(compute='_compute_attention', currency_field='currency_id',
                                    string='Planned this month', help='Budget of campaigns starting this month.')
     budget_month_pct = fields.Integer(compute='_compute_attention', string='Monthly budget used (%)')
+    needs_me_count = fields.Integer(compute='_compute_needs_me_count', string='To-dos for you')
+
+    @api.depends_context('uid')
+    def _compute_needs_me_count(self):
+        for brand in self:
+            brand.needs_me_count = self.env['mi.plan'].search_count([('brand_id', '=', brand.id),
+                                                                     ('needs_me', '=', True)])
+
+    def action_open_needs_me(self):
+        return self._open('mi.plan', _('My to-dos'), [('brand_id', '=', self.id), ('needs_me', '=', True)],
+                          views='list,form')
 
     def _compute_attention(self):
         today = fields.Date.today()

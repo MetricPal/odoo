@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+  <!-- One review per campaign. Approvers are chosen by an Approvals manager; until then, sending a campaign
+       for review explains where to set them. Other companies of a group get their own copy on first use. -->
+  <record id="policy_campaign" model="approval.center.policy">
+    <field name="name">Marketing campaign</field>
+    <field name="description">One review for a whole campaign: Email, SMS and Events go out only after this approval. Messaging and Social drafts keep their own approval, shown on the same campaign screen.</field>
+    <field name="model_id" ref="model_mi_plan"/>
+    <field name="action_name">action_release</field>
+    <field name="approval_minimum">1</field>
+  </record>
+</odoo>

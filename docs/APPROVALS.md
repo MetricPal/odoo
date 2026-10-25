@@ -213,3 +213,14 @@ the next mutation. Uncertain attempts stop without retry. One Publish action
 continues preparation for a bounded period; pending processing resumes saved IDs.
 Signed webhook hints authorize read-only inbound synchronization only. They never
 create recipient agreement, approve a publication, or invoke provider dispatch.
+
+## Marketing campaigns: one review (2026-10-25)
+
+`marketing_intel_plan` adds the approval type **Marketing campaign** (`mi.plan`, `action_release`).
+Sending a campaign for review submits its Messaging and Social drafts to their own approvals and
+opens one campaign request. The campaign screen lets an approver decide all requests waiting for them
+at once; each decision still goes through its app's checks (assigned approver, not the requester,
+frozen content) and audit. The campaign request is the only gate for Email, SMS and Events: when it is
+approved, `action_release` runs as the requester and queues the mailings for the start day and
+publishes the events. `action_release` refuses to run without an approved campaign request. An AI
+assistant may write drafts and send the campaign for review, never approve it.

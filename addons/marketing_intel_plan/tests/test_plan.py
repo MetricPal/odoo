@@ -44,7 +44,7 @@ class TestCampaignPlan(TransactionCase):
         self.assertEqual(len(plan.item_ids), 6)
         self.assertEqual((plan.date_end - plan.date_start).days, 20)
         plan.action_prepare()
-        self.assertEqual(plan.state, 'prepared')
+        self.assertEqual(plan.state, 'content')
         self.assertTrue(plan.utm_campaign_id)
         items = {item.channel: item for item in plan.item_ids}
         expected = {'social': 'omni.social.campaign', 'messaging': 'mm.mailing', 'email': 'mailing.mailing',
@@ -78,7 +78,7 @@ class TestCampaignPlan(TransactionCase):
         option.action_create_plan()
         plan = option.plan_ids
         plan.action_prepare()
-        self.assertEqual(plan.state, 'prepared')
+        self.assertEqual(plan.state, 'content')
         for item in plan.item_ids.filtered(lambda i: i.channel in ('email', 'event_virtual') and i.available):
             self.assertFalse(item.res_id)
             self.assertTrue(item.note)
@@ -191,3 +191,145 @@ class TestCampaignPlan(TransactionCase):
         self.assertEqual(brand.goals_behind_count, 1)
         self.assertEqual(brand.budget_month, 1200)
         self.assertEqual(brand.budget_month_pct, 120)
+
+    def _review_setup(self):
+        approver = new_test_user(self.env, 'mip_approver',
+                                 groups='marketing_intel.group_mi_user,approval_center.group_approval_center_approver')
+        policy = self.env.ref('marketing_intel_plan.policy_campaign')
+        policy.write({'company_id': self.env.company.id,
+                      'approver_ids': [Command.clear(), Command.create({'user_id': approver.id})]})
+        if 'mailing.list' in self.env and not self.brand.account_ids:
+            lists = self.env['mailing.list'].sudo().create({'name': 'metric.io subscribers'})
+            self.brand.account_ids = [Command.create({'account': f'mailing.list,{lists.id}'})]
+        channels = self.env['mi.channel'].search([('code', 'in', ('email', 'sms', 'event_virtual'))])
+        plan = self.env['mi.plan'].with_user(self.user).create({
+            'brand_id': self.brand.id, 'name': 'Autumn webinar', 'message': 'Join our clinic webinar.',
+            'channel_ids': [Command.set(channels.ids)]})
+        return approver, plan
+
+    def test_one_review_releases_the_campaign(self):
+        if 'mailing.mailing' not in self.env or 'event.event' not in self.env:
+            self.skipTest('Email Marketing and Events are needed')
+        approver, plan = self._review_setup()
+        self.assertEqual(plan.status, 'brief')
+        self.assertEqual(set(plan.item_ids.mapped('stage')), {'not_started'})
+        plan.action_prepare()
+        self.assertEqual(plan.state, 'content')
+        self.assertEqual(set(plan.item_ids.mapped('stage')), {'draft'})
+        self.assertTrue(plan.needs_me, 'the owner writes the content')
+        self.assertIn('send the campaign for review', plan.my_todo)
+        plan.action_submit_review()
+        self.assertEqual(plan.state, 'review')
+        self.assertEqual(plan.review_request_id.state, 'submitted')
+        self.assertEqual(set(plan.item_ids.mapped('stage')), {'needs_review'})
+        self.assertIn(approver.name, plan.waiting_for)
+        self.assertIn(approver.name, plan.next_step)
+        self.assertFalse(plan.can_review, 'nobody approves their own campaign')
+        self.assertFalse(plan.needs_me, 'the owner waits; it is not on their to-do list')
+        self.assertEqual(plan.with_user(approver).my_todo, 'Approve or refuse the campaign')
+        mine = self.env['mi.plan'].with_user(approver).search([('needs_me', '=', True)])
+        self.assertIn(plan, mine)
+        as_approver = plan.with_user(approver)
+        self.assertTrue(all(as_approver.item_ids.mapped('preview')), 'the approver reads every channel')
+        self.assertIn('Join our clinic webinar.', as_approver.item_ids.filtered(lambda i: i.channel == 'sms').preview)
+        with self.assertRaisesRegex(UserError, 'Review tab'):
+            as_approver.item_ids[0].action_open()
+        email = plan.item_ids.filtered(lambda i: i.channel == 'email')._record()
+        self.assertEqual(email.state, 'draft', 'nothing goes out before the approval')
+        plan.with_user(approver).action_approve_review()
+        plan.invalidate_recordset()
+        self.assertEqual(plan.review_request_id.state, 'approved')
+        self.assertTrue(plan.review_request_id.executed_at, 'the approval released the campaign')
+        self.assertEqual(email.state, 'in_queue')
+        self.assertTrue(email.schedule_date)
+        stages = {i.channel: i.stage for i in plan.item_ids}
+        self.assertEqual(stages['email'], 'scheduled')
+        self.assertEqual(stages['event_virtual'], 'out', 'the event is published')
+        self.assertEqual((plan.state, plan.status), ('live', 'live'))
+        self.assertEqual((plan.channels_out, plan.channel_count), (1, 3))
+        self.assertIn('Goes out on', plan.item_ids.filtered(lambda i: i.channel == 'email').next_step)
+        email.sudo().state = 'done'
+        self.env.invalidate_all()
+        plan.action_refresh_results()
+        email_line = plan.item_ids.filtered(lambda i: i.channel == 'email')
+        self.assertEqual(email_line.stage, 'failed', 'sent to nobody is a failure, not a success')
+        self.assertIn('nobody', email_line.next_step)
+        self.assertIn('Fix 1 channel', plan.next_step)
+        notes = ' '.join(plan.message_ids.mapped('body'))
+        self.assertIn('Email: Scheduled', notes)
+        self.assertIn('Email: Failed', notes)
+        plan.sudo().write({'date_start': fields.Date.today() - timedelta(days=10),
+                           'date_end': fields.Date.today() - timedelta(days=1)})
+        self.env['mi.plan']._cron_refresh_results()
+        self.assertEqual(plan.state, 'done', 'closed automatically after the end date')
+
+    def test_refused_review_goes_back_to_content(self):
+        if 'mailing.mailing' not in self.env:
+            self.skipTest('Email Marketing not installed')
+        approver, plan = self._review_setup()
+        plan.action_submit_review()
+        plan.with_user(approver).action_refuse_review()
+        self.assertEqual(plan.state, 'content')
+        self.assertTrue(plan.activity_ids.filtered(lambda a: a.user_id == self.user))
+        plan.action_submit_review()
+        self.assertEqual(plan.state, 'review', 'a new review can be asked')
+        self.assertEqual(plan.review_request_id.state, 'submitted')
+
+    def test_review_needs_every_channel_ready(self):
+        if 'mailing.mailing' not in self.env:
+            self.skipTest('Email Marketing not installed')
+        approver, plan = self._review_setup()
+        self.brand.account_ids = [Command.clear()]
+        self.env['mi.brand'].sudo().create({'name': 'Second brand'})  # now each brand needs its own lists
+        result = plan.action_submit_review()
+        self.assertEqual(result['params']['title'], 'Not sent for review yet')
+        self.assertIn('mailing lists', result['params']['message'])
+        self.assertEqual(plan.state, 'content', 'nothing was submitted')
+        self.assertFalse(plan.review_request_id)
+        lists = self.env['mailing.list'].sudo().create({'name': 'metric.io subscribers'})
+        self.brand.account_ids = [Command.create({'account': f'mailing.list,{lists.id}'})]
+        self.assertIs(plan.action_submit_review(), True)
+        self.assertEqual(plan.state, 'review')
+
+    def test_draft_without_lists_needs_fixing(self):
+        if 'mailing.mailing' not in self.env:
+            self.skipTest('Email Marketing not installed')
+        approver, plan = self._review_setup()
+        plan.action_prepare()
+        email_line = plan.item_ids.filtered(lambda i: i.channel == 'email')
+        email_line._record().sudo().contact_list_ids = [Command.clear()]
+        plan.action_submit_review()
+        self.assertEqual(email_line.stage, 'blocked')
+        self.assertIn('Choose the mailing lists', email_line.next_step)
+        self.assertEqual(plan.state, 'content')
+
+    def test_status_stays_in_review_and_flags_sending_outside(self):
+        if 'mailing.mailing' not in self.env:
+            self.skipTest('Email Marketing not installed')
+        approver, plan = self._review_setup()
+        plan.action_submit_review()
+        email = plan.item_ids.filtered(lambda i: i.channel == 'email')._record().sudo()
+        email.write({'state': 'sending'})
+        self.env.invalidate_all()
+        plan._sync_state()
+        self.assertEqual((plan.state, plan.status), ('review', 'review'), 'not live before the approval')
+        self.assertIn('before the campaign review', plan.item_ids.filtered(lambda i: i.channel == 'email').next_step)
+
+    def test_only_approver_is_the_owner(self):
+        if 'mailing.mailing' not in self.env:
+            self.skipTest('Email Marketing not installed')
+        approver, plan = self._review_setup()
+        self.env.ref('marketing_intel_plan.policy_campaign').approver_ids = [
+            Command.clear(), Command.create({'user_id': self.user.id})]
+        plan.action_submit_review()
+        self.assertFalse(plan.can_review)
+        self.assertIn('Nobody else can approve', plan.my_todo)
+
+    def test_review_without_approvers_explains_where_to_set_them(self):
+        if 'mailing.mailing' not in self.env:
+            self.skipTest('Email Marketing not installed')
+        approver, plan = self._review_setup()
+        self.env.ref('marketing_intel_plan.policy_campaign').approver_ids = [Command.clear()]
+        result = plan.action_submit_review()
+        self.assertIn('Marketing campaign', result['params']['message'])
+        self.assertNotEqual(plan.state, 'review')

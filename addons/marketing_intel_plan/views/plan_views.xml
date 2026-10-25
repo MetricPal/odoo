@@ -4,53 +4,115 @@
     <field name="name">mi.plan.form</field><field name="model">mi.plan</field>
     <field name="arch" type="xml"><form>
       <header>
-        <button name="action_prepare" type="object" string="Prepare drafts" class="btn-primary" invisible="state not in ('draft', 'prepared', 'running')"
-                help="Creates a draft in each app (Social, Messaging, Email, SMS, Events). Each one still needs its own approval."/>
-        <button name="action_refresh_results" type="object" string="Refresh results" invisible="state == 'draft'"/>
-        <button name="action_start" type="object" string="Mark running" invisible="state not in ('draft', 'prepared')"/>
-        <button name="action_done" type="object" string="Mark done" invisible="state not in ('draft', 'prepared', 'running')"/>
-        <button name="action_cancel" type="object" string="Cancel campaign" invisible="state not in ('draft', 'prepared', 'running')"/>
-        <button name="action_reset" type="object" string="Back to draft" invisible="state != 'cancelled'"/>
-        <field name="state" widget="statusbar" statusbar_visible="draft,prepared,running,done"/>
+        <button name="action_prepare" type="object" string="Prepare drafts" class="btn-primary"
+                invisible="state not in ('brief', 'content') or worker != 'me'"
+                help="Creates a draft in each app (Social, Messaging, Email, SMS, Events) for you to write."/>
+        <button name="action_submit_review" type="object" string="Send for review" class="btn-primary"
+                invisible="state not in ('brief', 'content')"
+                help="One review for the whole campaign. Nothing goes out before it is approved."/>
+        <button name="action_approve_review" type="object" string="Approve campaign" class="btn-success"
+                invisible="not can_review" help="Approves every part of this campaign that waits for you."/>
+        <button name="action_refuse_review" type="object" string="Refuse" invisible="not can_review"/>
+        <button name="action_refresh_results" type="object" string="Refresh" invisible="state in ('brief', 'cancelled')"/>
+        <button name="action_done" type="object" string="Mark done" invisible="state not in ('scheduled', 'live')"/>
+        <button name="action_cancel" type="object" string="Cancel campaign" invisible="state in ('done', 'cancelled')"/>
+        <button name="action_reset" type="object" string="Start again" invisible="state != 'cancelled'"/>
+        <field name="state" invisible="1"/><field name="can_review" invisible="1"/>
+        <field name="status" widget="statusbar" statusbar_visible="brief,content,review,scheduled,live,done"/>
       </header>
       <sheet>
+        <field name="needs_me" invisible="1"/>
+        <div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="status"
+             invisible="not needs_me or state in ('done', 'cancelled')">
+          <span class="fw-bold">Your next step:</span> <field name="my_todo" nolabel="1"/>
+        </div>
+        <div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="status"
+             invisible="needs_me or not next_step or state in ('done', 'cancelled')">
+          <span class="fw-bold">Next step:</span> <field name="next_step" nolabel="1"/>
+        </div>
         <div class="alert alert-warning" role="status" invisible="not clash_note"><field name="clash_note" nolabel="1"/></div>
         <div class="oe_title"><label for="name" string="Campaign"/><h1><field name="name" placeholder="e.g. Clinic owners webinar"/></h1></div>
+        <div class="d-flex flex-wrap align-items-center gap-4 mb-3" invisible="state == 'brief'">
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted">Channels sent</span>
+            <div style="min-width: 180px;"><field name="channels_out" widget="progressbar" options="{'max_value': 'channel_count'}"/></div>
+            <field name="channel_count" invisible="1"/>
+          </div>
+          <span class="text-muted"><field name="day_label"/></span>
+        </div>
         <group>
           <group>
-            <field name="brand_id" readonly="state != 'draft'"/>
+            <field name="brand_id" readonly="state not in ('brief', 'content')"/>
             <field name="goal_id" options="{'no_create': True}"/>
             <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}"
-                   placeholder="e.g. Social, Email, SMS"/>
+                   placeholder="e.g. Social, Email, SMS" readonly="state not in ('brief', 'content')"/>
+            <field name="worker" widget="radio" options="{'horizontal': true}" readonly="state not in ('brief', 'content')"/>
             <field name="user_id" widget="many2one_avatar_user"/>
           </group>
           <group><label for="date_start" string="Dates"/><div class="o_row"><field name="date_start"/> → <field name="date_end"/></div>
             <field name="budget"/><field name="currency_id" invisible="1"/>
             <field name="recommendation_id" readonly="1" invisible="not recommendation_id"/>
+            <field name="review_request_id" invisible="not review_request_id"/>
             <field name="utm_campaign_id" invisible="not utm_campaign_id"/></group>
         </group>
         <notebook>
           <page string="Channels" name="channels">
             <field name="item_ids">
-              <list editable="bottom" create="1">
-                <field name="channel"/><field name="app"/><field name="available" column_invisible="1"/>
-                <field name="draft_name"/><field name="draft_status" widget="badge"/>
-                <field name="result_sent" optional="show"/><field name="result_clicks" optional="show"/>
-                <field name="activity_done" widget="boolean_toggle" invisible="channel not in ('content', 'ads', 'partnership')"/>
-                <field name="note" class="text-muted"/>
+              <list editable="bottom" create="0">
+                <field name="channel" readonly="1" width="120px"/><field name="app" width="150px" optional="show"/>
+                <field name="available" column_invisible="1"/>
+                <field name="stage" widget="badge" width="170px" decoration-success="stage in ('out', 'todo_done')"
+                       decoration-info="stage in ('scheduled', 'approved')" decoration-warning="stage in ('needs_review', 'writing')"
+                       decoration-danger="stage in ('failed', 'blocked')" decoration-muted="stage in ('not_started', 'unavailable', 'draft')"/>
+                <field name="next_step" class="o_mi_wrap"/>
+                <field name="activity_done" widget="boolean_toggle" width="70px" invisible="channel not in ('content', 'ads', 'partnership')"/>
+                <field name="draft_status" string="In its app" optional="hide"/>
+                <field name="note" column_invisible="1"/><field name="res_id" column_invisible="1"/>
+                <button name="action_open" type="object" string="Open" icon="arrow_forward" invisible="not res_id"/>
+              </list>
+            </field>
+            <div class="text-muted small">Statuses: <b>Being written</b> → <b>Waiting for approval</b> → <b>Scheduled</b>
+              → <b>Sent</b>. <b>Needs fixing</b> and <b>Failed</b> say what to do in Next step. One review covers the
+              campaign: Email, SMS and Events go out only after it; Messaging and Social keep their own approval,
+              decided from this screen. Every change is written in the history.</div>
+          </page>
+          <page string="Review" name="review" invisible="state == 'brief'">
+            <field name="item_ids" readonly="1">
+              <list create="0" delete="0">
+                <field name="channel"/><field name="preview" string="What goes out"/>
+                <field name="stage" widget="badge" decoration-success="stage in ('out', 'todo_done')"
+                       decoration-info="stage in ('scheduled', 'approved')" decoration-warning="stage in ('needs_review', 'writing')"
+                       decoration-danger="stage == 'failed'"/>
                 <field name="res_id" column_invisible="1"/>
                 <button name="action_open" type="object" string="Open" icon="arrow_forward" invisible="not res_id"/>
               </list>
             </field>
-            <div class="text-muted small">Drafts are created with your permissions in each app and go through that app's approval before anything is sent or published.</div>
           </page>
           <page string="Results" name="results">
+            <field name="item_ids" readonly="1">
+              <list create="0" delete="0">
+                <field name="channel"/>
+                <field name="result_audience" invisible="not res_id"/>
+                <field name="result_sent" invisible="channel not in ('email', 'sms', 'messaging', 'social')"/>
+                <field name="result_delivered" optional="show" invisible="channel not in ('email', 'sms', 'messaging')"/>
+                <field name="result_opened" invisible="channel != 'email'"/>
+                <field name="result_clicks" invisible="channel not in ('email', 'sms', 'messaging')"/>
+                <field name="result_replied" invisible="channel != 'email'"/>
+                <field name="result_likes" optional="show" invisible="channel != 'social'"/>
+                <field name="result_comments" optional="show" invisible="channel != 'social'"/>
+                <field name="result_registrations" optional="show" invisible="channel not in ('event_virtual', 'event_physical')"/>
+                <field name="result_attended" optional="hide" invisible="channel not in ('event_virtual', 'event_physical')"/>
+                <field name="result_failed" invisible="channel not in ('email', 'sms', 'messaging', 'social')"/>
+                <field name="res_id" column_invisible="1"/>
+              </list>
+            </field>
             <group>
-              <group string="Actual">
-                <field name="result_sent"/><field name="result_clicks"/><field name="result_leads"/>
-                <field name="result_won"/><field name="result_revenue"/><field name="result_registrations"/>
+              <group string="Campaign totals">
+                <field name="result_sent"/><field name="result_opened"/><field name="result_clicks"/>
+                <field name="result_replied"/><field name="result_registrations"/>
               </group>
-              <group string="Efficiency">
+              <group string="Business results">
+                <field name="result_leads"/><field name="result_won"/><field name="result_revenue"/>
                 <field name="cost_per_lead"/><field name="return_on_budget" widget="percentage"/>
                 <field name="results_at"/>
               </group>
@@ -63,7 +125,10 @@
             </field>
             <label for="learning_note" class="fw-bold mt-3"/>
             <field name="learning_note" placeholder="What worked, what did not, what to try next. The next AI analysis reads this."/>
-            <div class="text-muted small mt-2">Clicks count tracked links of this plan's campaign; leads, won deals and revenue come from CRM and Sales records tagged with the campaign. Updated daily and when the plan is marked done.</div>
+            <div class="text-muted small mt-2">Each channel's numbers come from its app: Email and SMS (audience, sent,
+              delivered, opened, clicked, replies, bounced), Messaging (recipients, sent, clicks, not sent), Social
+              (posts, published, likes, comments), Events (seats, registrations, attended). Leads, won deals and revenue
+              come from CRM and Sales records tagged with the campaign. Updated every hour and on Refresh.</div>
           </page>
           <page string="Message &amp; audience" name="message">
             <group><field name="message"/><field name="audience"/><field name="kpis"/></group>
@@ -76,19 +141,49 @@
   <record id="plan_list" model="ir.ui.view">
     <field name="name">mi.plan.list</field><field name="model">mi.plan</field>
     <field name="arch" type="xml"><list>
-      <field name="name"/><field name="brand_id"/><field name="goal_id" optional="show"/>
+      <field name="name"/><field name="brand_id"/><field name="goal_id" optional="hide"/>
       <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}" optional="show"/>
-      <field name="date_start"/><field name="date_end"/>
-      <field name="budget" sum="Total"/><field name="currency_id" column_invisible="1"/>
-      <field name="result_leads" sum="Total" optional="show"/><field name="result_revenue" sum="Total" optional="show"/>
+      <field name="date_start"/><field name="date_end" optional="hide"/>
+      <field name="budget" sum="Total" optional="show"/><field name="currency_id" column_invisible="1"/>
+      <field name="result_leads" sum="Total" optional="hide"/><field name="result_revenue" sum="Total" optional="hide"/>
       <field name="user_id" widget="many2one_avatar_user"/>
-      <field name="state" widget="badge" decoration-info="state == 'prepared'" decoration-success="state == 'running'" decoration-muted="state in ('done', 'cancelled')"/>
+      <field name="channels_out" widget="progressbar" options="{'max_value': 'channel_count'}" string="Channels sent" optional="show"/>
+      <field name="channel_count" column_invisible="1"/>
+      <field name="next_step" optional="show" class="o_mi_wrap"/>
+      <field name="my_todo" optional="hide"/>
+      <field name="status" widget="badge" decoration-warning="status == 'review'" decoration-info="status == 'scheduled'"
+             decoration-success="status == 'live'" decoration-muted="status in ('done', 'cancelled')"/>
     </list></field>
+  </record>
+  <record id="plan_kanban" model="ir.ui.view">
+    <field name="name">mi.plan.kanban</field><field name="model">mi.plan</field>
+    <field name="arch" type="xml"><kanban default_group_by="state" group_create="0" group_delete="0" group_edit="0"
+                                          records_draggable="0" quick_create="0">
+      <field name="needs_me"/><field name="worker"/>
+      <templates><t t-name="card">
+        <div class="d-flex justify-content-between">
+          <field name="name" class="fw-bold"/>
+          <span class="badge text-bg-warning" invisible="not needs_me">For you</span>
+        </div>
+        <div class="text-muted small d-flex flex-wrap gap-1"><field name="brand_id"/><span>·</span>
+          <field name="date_start" widget="date"/><span>→</span><field name="date_end" widget="date"/></div>
+        <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+        <div class="d-flex align-items-center gap-2 mt-1"><span class="small text-muted">Sent</span>
+          <field name="channels_out" widget="progressbar" options="{'max_value': 'channel_count'}"/></div>
+        <field name="channel_count" invisible="1"/>
+        <div class="small mt-1" t-att-class="record.needs_me.raw_value ? 'text-warning-emphasis fw-bold' : 'text-muted'">
+          <field name="next_step"/></div>
+        <footer class="pt-1">
+          <span class="small text-muted" invisible="worker != 'ai'">✨ AI assistant</span>
+          <field name="user_id" widget="many2one_avatar_user" class="ms-auto"/>
+        </footer>
+      </t></templates>
+    </kanban></field>
   </record>
   <record id="plan_calendar" model="ir.ui.view">
     <field name="name">mi.plan.calendar</field><field name="model">mi.plan</field>
     <field name="arch" type="xml"><calendar date_start="date_start" date_stop="date_end" color="color" mode="month" quick_create="0" all_day="date_start">
-      <field name="name"/><field name="brand_id"/><field name="state"/>
+      <field name="name"/><field name="brand_id"/><field name="status"/>
     </calendar></field>
   </record>
   <record id="plan_pivot" model="ir.ui.view">
@@ -103,15 +198,17 @@
     <field name="name">mi.plan.search</field><field name="model">mi.plan</field>
     <field name="arch" type="xml"><search>
       <field name="name"/><field name="brand_id"/>
-      <filter name="active_plans" string="Active" domain="[('state', 'in', ('draft', 'prepared', 'running'))]"/>
-      <filter name="mine" string="My plans" domain="[('user_id', '=', uid)]"/>
+      <filter name="needs_me" string="For me" domain="[('needs_me', '=', True)]"/>
+      <filter name="active_plans" string="Active" domain="[('state', 'in', ('brief', 'content', 'review', 'scheduled', 'live'))]"/>
+      <filter name="mine" string="My campaigns" domain="[('user_id', '=', uid)]"/>
+      <filter name="by_ai" string="Run by the AI assistant" domain="[('worker', '=', 'ai')]"/>
       <group><filter name="group_brand" string="Brand" context="{'group_by': 'brand_id'}"/>
         <filter name="group_state" string="Status" context="{'group_by': 'state'}"/></group>
     </search></field>
   </record>
   <record id="action_plans" model="ir.actions.act_window">
     <field name="name">Campaigns</field><field name="res_model">mi.plan</field>
-    <field name="view_mode">list,calendar,pivot,form</field><field name="context">{'search_default_active_plans': 1}</field>
+    <field name="view_mode">kanban,list,calendar,pivot,form</field><field name="context">{'search_default_active_plans': 1}</field>
     <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No campaign yet</p>
       <p>Create one yourself (brand, goal, channels, dates, budget), or start from a suggested campaign with
         <i>Use this idea</i>. Drafts are then prepared in Social, Messaging, Email, SMS and Events.</p></field>
@@ -131,6 +228,25 @@
     <field name="name">Goals</field><field name="res_model">mi.goal</field><field name="view_mode">list</field>
     <field name="view_id" ref="goal_report_list"/><field name="context">{'group_by': 'brand_id'}</field>
   </record>
+  <record id="plan_todo_list" model="ir.ui.view">
+    <field name="name">mi.plan.todo.list</field><field name="model">mi.plan</field><field name="priority">30</field>
+    <field name="arch" type="xml"><list create="0">
+      <field name="my_todo" string="What you need to do" class="fw-bold o_mi_wrap"/>
+      <field name="name"/><field name="brand_id"/><field name="date_start"/>
+      <field name="status" widget="badge" decoration-warning="status == 'review'" decoration-info="status == 'scheduled'"
+             decoration-success="status == 'live'"/>
+    </list></field>
+  </record>
+  <record id="action_needs_me" model="ir.actions.act_window">
+    <field name="name">My to-dos</field><field name="res_model">mi.plan</field>
+    <field name="view_mode">list,form</field><field name="view_id" ref="plan_todo_list"/>
+    <field name="context">{'search_default_needs_me': 1}</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Nothing for you to do right now</p>
+      <p>Your personal list: campaigns waiting for <b>your</b> approval, your writing, or a fix you need to make.
+        Every other campaign shows its <i>Next step</i> (who it waits for, or that it runs by itself) in
+        Campaigns.</p></field>
+  </record>
+  <menuitem id="menu_needs_me" name="My to-dos" parent="marketing_intel.menu_root" action="action_needs_me" sequence="5"/>
   <menuitem id="menu_plans" name="Campaigns" parent="marketing_intel.menu_root" action="action_plans" sequence="10"/>
   <menuitem id="menu_campaign_results" name="Campaign results" parent="marketing_intel.menu_reporting" action="action_campaign_results" sequence="10"/>
   <menuitem id="menu_goals" name="Goals" parent="marketing_intel.menu_reporting" action="action_goals" sequence="20"/>
@@ -168,12 +284,15 @@
       <xpath expr="//page[@name='overview']" position="after">
         <page string="Campaigns" name="campaigns">
           <field name="plan_ids" context="{'default_brand_id': id}">
-            <list>
+            <list create="0">
               <field name="name"/><field name="goal_id"/><field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
               <field name="date_start"/><field name="date_end"/><field name="budget"/><field name="currency_id" column_invisible="1"/>
               <field name="result_leads" optional="show"/><field name="result_revenue" optional="show"/>
-              <field name="state" widget="badge" decoration-info="state == 'prepared'" decoration-success="state == 'running'"
-                     decoration-muted="state in ('done', 'cancelled')"/>
+              <field name="channels_out" widget="progressbar" options="{'max_value': 'channel_count'}" string="Channels sent"/>
+              <field name="channel_count" column_invisible="1"/>
+              <field name="next_step" class="o_mi_wrap"/>
+              <field name="status" widget="badge" decoration-warning="status == 'review'" decoration-info="status == 'scheduled'"
+                     decoration-success="status == 'live'" decoration-muted="status in ('done', 'cancelled')"/>
             </list>
           </field>
         </page>
@@ -196,6 +315,8 @@
       <xpath expr="//kanban" position="inside"><field name="monthly_budget"/></xpath>
       <xpath expr="//div[@name='next']" position="before">
         <div class="d-flex flex-wrap gap-2 mb-1" name="attention">
+          <a name="action_open_needs_me" type="object" class="badge text-bg-danger text-decoration-none"
+             invisible="not needs_me_count"><field name="needs_me_count"/> to-do(s) for you</a>
           <span class="badge text-bg-warning" invisible="not goals_behind_count">
             <field name="goals_behind_count"/> goal(s) behind schedule</span>
           <span class="badge" invisible="not monthly_budget"

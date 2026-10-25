@@ -12,6 +12,50 @@ Format:
 
 
 
+## 2026-10-25 — Marketing: clearer statuses, results per channel, My to-dos
+
+- Change: campaign stays in Review until approved (no "Live" from a channel sent outside the review,
+  which is flagged); channel statuses Being written / Needs fixing / Waiting for approval / Scheduled /
+  Sent / Failed (sent to nobody counts as failed) with a plain Next step per line; Send for review is
+  all or nothing with fix instructions; Results tab shows every number each app records per channel;
+  "Channels sent 1 / 4" and campaign day replace the bare percentage; "Needs you" became **My to-dos**
+  with what to do, and every campaign shows its Next step; the requester is never offered to approve
+  their own campaign (and is told when nobody else can).
+- Reason: owner feedback on the campaign screen (status unclear, Live while channels were drafts,
+  numbers and percentage unclear).
+- Affected: `marketing_intel_plan`, `marketing_intel_ai`.
+
+## 2026-10-25 — Marketing: one flow for company marketers and advisors, AI autopilot, one review
+
+- Change:
+  - Brands record who owns them (one of our group's companies, or a client); cards are grouped by
+    company or client; one brand opens directly.
+  - Campaign status line Brief → Content → Review → Scheduled → Live → Done, one status per channel,
+    progress bar, history note on every change, **Needs you** menu and brand-card count, automatic
+    close after the end date.
+  - One review per campaign: new Approval Center type *Marketing campaign* gates Email/SMS/Events;
+    Messaging/Social keep their own approvals, decided from the same campaign screen.
+  - *Who does the work*: Me or AI assistant. The AI fills the brief, writes every channel (validated
+    JSON), sends the campaign for review, and writes the learning note when it is done.
+  - Fix: workflow template app label "Marketing" (was "Marketing Intelligence").
+- Reason: owner asked for two straightforward ways of working (company marketer, advisor with
+  clients, group of companies), AI or human for every channel, less human interaction, visible
+  progress.
+- Affected: `marketing_intel` (owner type, portfolio), `marketing_intel_plan` (stages, review,
+  release, depends on `approval_center`), `marketing_intel_ai` (autopilot, depends on
+  `marketing_intel_plan`), `workflow_center` (label).
+- Migration: upgrade `marketing_intel,marketing_intel_plan,marketing_intel_ai,workflow_center`.
+  Old statuses map Draft→Brief, Ready/Running→Content; brands with a client contact become client
+  brands. Set approvers on *Marketing campaign* before the first review.
+
+## 2026-10-25 — Campaign status follows its channels
+
+- Change: a campaign shows Draft (nothing prepared), Ready (drafts waiting in their apps) or Running
+  (at least one channel sent, scheduled after approval, or published). "Mark running" removed; Done
+  and Cancelled stay manual. The stored status is synced on Prepare, Refresh results and an hourly job.
+- Reason: owner saw a campaign marked Running while every channel was still a draft.
+- Affected: `marketing_intel_plan` (`mi.plan.status`, `mi.plan.item.live`, cron now hourly).
+
 ## 2026-10-25 — Marketing: one brand or many
 
 - Change: Marketing adapts to in-house marketers (one brand: opens the brand) and advisors (several

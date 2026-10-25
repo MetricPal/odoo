@@ -2,12 +2,12 @@
 <odoo>
   <!-- Reads results back from the apps (clicks, sends, leads, sales, registrations); changes nothing in them. -->
   <record id="cron_refresh_results" model="ir.cron">
-    <field name="name">Marketing Intelligence: refresh campaign results</field>
+    <field name="name">Marketing Intelligence: refresh campaign status and results</field>
     <field name="model_id" ref="model_mi_plan"/>
     <field name="state">code</field>
     <field name="code">model._cron_refresh_results()</field>
     <field name="interval_number">1</field>
-    <field name="interval_type">days</field>
+    <field name="interval_type">hours</field>
     <field name="active">True</field>
   </record>
 </odoo>

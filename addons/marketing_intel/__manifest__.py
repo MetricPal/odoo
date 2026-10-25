@@ -1,6 +1,6 @@
 {
     'name': 'Marketing',
-    'version': '20.0.1.1.0',
+    'version': '20.0.1.2.0',
     'category': 'Marketing',
     'summary': 'Brands, goals, campaigns and market research, with or without an AI assistant',
     'description': 'Manage brands and goals, run campaigns, watch competitors and get market insights. Works by hand; an AI assistant can suggest campaigns.',
