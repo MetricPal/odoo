@@ -1,19 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <t t-name="report_studio.ExportMenu">
-        <Dropdown>
-            <button class="o_rs_export_menu">
-                <i class="oi oi-fw me-1" data-icon="download"/>Export
-            </button>
-            <t t-set-slot="content">
-                <DropdownItem t-foreach="this.formats" t-as="format" t-key="format[0]" class="'o_menu_item'"
-                              onSelected="() => this.export(format[0])">
-                    <i class="oi oi-fw me-2" t-att-data-icon="format[2]"/><t t-out="format[1]"/>
-                </DropdownItem>
-            </t>
-        </Dropdown>
-    </t>
-
     <t t-name="report_studio.AddToReport">
         <div class="o_add_to_report">
             <Dropdown>

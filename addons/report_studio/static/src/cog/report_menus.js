@@ -1,6 +1,5 @@
 import { _t } from "@web/core/l10n/translation";
 import { Dropdown } from "@web/core/dropdown/dropdown";
-import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { useAutofocus, useService } from "@web/core/utils/hooks";
@@ -15,40 +14,6 @@ export const EXPORT_FORMATS = [
     ["docx", _t("Word"), "description"],
     ["html", _t("HTML"), "code"],
 ];
-
-/** ⋯ > Export > PDF / Excel / PowerPoint / Word / HTML on a report. */
-export class ReportExportMenu extends Component {
-    static template = "report_studio.ExportMenu";
-    static components = { Dropdown, DropdownItem };
-
-    setup() {
-        this.formats = EXPORT_FORMATS;
-    }
-
-    async export(format) {
-        // The menu closes (and this component goes away) on click: use the services directly.
-        const { action, orm } = this.env.services;
-        const record = this.env.model.root;
-        if (record.isNew || (await record.isDirty())) {
-            if (!(await record.save())) {
-                return;
-            }
-        }
-        const exportAction = await orm.call("report.studio.report", "action_export", [[record.resId], format]);
-        await action.doAction(exportAction);
-    }
-}
-
-cogMenuRegistry.add(
-    "report-studio-export",
-    {
-        Component: ReportExportMenu,
-        groupNumber: 5,
-        isDisplayed: ({ config, searchModel }) =>
-            config.viewType === "form" && searchModel.resModel === "report.studio.report",
-    },
-    { sequence: 1 }
-);
 
 /** ⋯ > Add to report, on any list, graph, pivot or kanban opened from a menu. */
 export class AddToReport extends Component {

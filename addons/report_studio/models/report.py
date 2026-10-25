@@ -11,7 +11,9 @@ every export.
 
 import ast
 import base64
+import hashlib
 import json
+import logging
 import re
 
 from markupsafe import Markup
@@ -21,6 +23,8 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools import html2plaintext
 
 from . import charts
+
+_logger = logging.getLogger(__name__)
 
 MAX_ROWS = 500
 BLOCK_TYPES = [('heading', 'Title'), ('text', 'Text'), ('kpi', 'Number'), ('chart', 'Chart'), ('table', 'Table'),
@@ -40,7 +44,7 @@ MARGIN_MM = 10
 class Report(models.Model):
     _name = 'report.studio.report'
     _description = 'Report'
-    _inherit = ['mail.thread']
+    _inherit = ['mail.thread.main.attachment']
     _order = 'write_date desc, id desc'
 
     name = fields.Char(required=True, tracking=True)
@@ -61,6 +65,8 @@ class Report(models.Model):
     preview_html = fields.Html(compute='_compute_preview', sanitize=False, string='Preview')
     res_model = fields.Char(readonly=True, help='Record this report was generated for, if any.')
     res_id = fields.Integer(readonly=True)
+    preview_attachment_id = fields.Many2one('ir.attachment', readonly=True, copy=False, string='Preview file')
+    preview_signature = fields.Char(readonly=True, copy=False)
 
     @api.depends('block_ids')
     def _compute_box_count(self):
@@ -193,6 +199,39 @@ class Report(models.Model):
 
     def action_export_html(self):
         return self._download('html')
+
+    # ------------------------------------------------------------------ side preview
+
+    def _preview_signature(self):
+        data = self._data()
+        data.pop('date', None)
+        return hashlib.sha256(json.dumps(data, default=str, sort_keys=True).encode()).hexdigest()
+
+    def action_refresh_preview(self):
+        """Render the report as a PDF shown in the form's side preview; only when its content changed.
+
+        Returns True when a new preview file was made.
+        """
+        self.ensure_one()
+        self.check_access('write')
+        signature = self._preview_signature()
+        if signature == self.preview_signature and self.preview_attachment_id.exists():
+            return False
+        try:
+            _name, _mime, content = self._export('pdf')
+        except Exception as error:  # noqa: BLE001 - no PDF engine: the board still works, no side preview
+            _logger.info('Report Studio preview not rendered for %s: %s', self.id, error)
+            return False
+        old = self.preview_attachment_id
+        attachment = self.env['ir.attachment'].create({
+            'name': f'{self.name or "Report"} (preview).pdf', 'raw': content, 'mimetype': 'application/pdf',
+            'res_model': self._name, 'res_id': self.id,
+        })
+        self.write({'preview_attachment_id': attachment.id, 'preview_signature': signature,
+                    'message_main_attachment_id': attachment.id})
+        if old.exists():
+            old.unlink()
+        return True
 
     def action_open_board(self):
         self.ensure_one()

@@ -7,7 +7,9 @@ import { useService } from "@web/core/utils/hooks";
 import { useSortable } from "@web/core/utils/sortable_owl";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
-import { Component, markup, signal, useProps } from "@odoo/owl";
+import { useDebounced } from "@web/core/utils/timing";
+import { Component, markup, onMounted, onPatched, signal, useProps } from "@odoo/owl";
+import { EXPORT_FORMATS } from "../cog/report_menus";
 
 const MM_TO_PX = 96 / 25.4;
 
@@ -38,7 +40,14 @@ export class ReportBoardField extends Component {
         this.orm = useService("orm");
         this.dialog = useService("dialog");
         this.notification = useService("notification");
+        this.action = useService("action");
         this.boxTypes = BOX_TYPES;
+        this.exportFormats = EXPORT_FORMATS;
+        this.previewKey = null;
+        // The side preview is a PDF of the saved report: refresh it when the saved content changed.
+        this.schedulePreview = useDebounced(() => this.refreshPreview(), 600);
+        onMounted(() => this.schedulePreview());
+        onPatched(() => this.schedulePreview());
         useSortable({
             ref: this.gridRef,
             elements: ".o_rs_gbox",
@@ -101,6 +110,36 @@ export class ReportBoardField extends Component {
     async reload() {
         await this.props.record.load();
         this.props.record.model.notify();
+        this.schedulePreview();
+    }
+
+    async refreshPreview() {
+        const record = this.props.record;
+        if (!record.resId || record.isNew || (await record.isDirty())) {
+            return;
+        }
+        const key = `${record.resId}:${JSON.stringify(this.data)}`;
+        if (key === this.previewKey) {
+            return;
+        }
+        this.previewKey = key;
+        const changed = await this.orm.call("report.studio.report", "action_refresh_preview", [[record.resId]]);
+        if (changed) {
+            const store = this.env.services["mail.store"];
+            if (store) {
+                const thread = store["mail.thread"].insert({ model: record.resModel, id: record.resId });
+                await thread.fetchThreadData(["attachments"]);
+            }
+        }
+    }
+
+    async export(format) {
+        const reportId = await this.ensureSaved();
+        if (!reportId) {
+            return;
+        }
+        const exportAction = await this.orm.call("report.studio.report", "action_export", [[reportId], format]);
+        await this.action.doAction(exportAction);
     }
 
     async addBox(type) {

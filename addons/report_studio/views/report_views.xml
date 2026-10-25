@@ -8,17 +8,6 @@
         <sheet>
           <div class="oe_title"><h1><field name="name" placeholder="e.g. Weekly marketing brief"/></h1>
             <field name="subtitle" placeholder="Subtitle, e.g. Week 43, all channels"/></div>
-          <group class="o_rs_page_settings">
-            <group string="Page">
-              <field name="paper"/><field name="orientation" widget="radio" options="{'horizontal': true}"/>
-              <field name="fit" widget="radio"/>
-            </group>
-            <group string="Report">
-              <field name="accent_color" widget="color"/>
-              <field name="user_id" widget="many2one_avatar_user"/><field name="shared"/>
-              <field name="company_id" groups="base.group_multi_company"/>
-            </group>
-          </group>
           <notebook>
             <page string="Board" name="board">
               <field name="board_data" widget="report_studio_board" nolabel="1" class="w-100"/>
@@ -31,8 +20,23 @@
                 </list>
               </field>
             </page>
+            <page string="Settings" name="settings">
+              <group class="o_rs_page_settings">
+                <group string="Page">
+                  <field name="paper"/><field name="orientation" widget="radio" options="{'horizontal': true}"/>
+                  <field name="fit" widget="radio"/>
+                </group>
+                <group string="Report">
+                  <field name="accent_color" widget="color"/>
+                  <field name="user_id" widget="many2one_avatar_user"/><field name="shared"/>
+                  <field name="company_id" groups="base.group_multi_company"/>
+                </group>
+              </group>
+            </page>
           </notebook>
         </sheet>
+        <!-- Side preview: the report as a PDF of the chosen page size (refreshed when the report changes). -->
+        <div class="o_attachment_preview"/>
         <chatter/>
       </form>
     </field>

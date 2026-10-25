@@ -14,6 +14,17 @@
                         </DropdownItem>
                     </t>
                 </Dropdown>
+                <Dropdown>
+                    <button class="btn btn-secondary o_rs_export_menu">
+                        <i class="oi me-1" data-icon="download"/>Export
+                    </button>
+                    <t t-set-slot="content">
+                        <DropdownItem t-foreach="this.exportFormats" t-as="format" t-key="format[0]"
+                                      onSelected="() => this.export(format[0])">
+                            <i class="oi oi-fw me-2" t-att-data-icon="format[2]"/><t t-out="format[1]"/>
+                        </DropdownItem>
+                    </t>
+                </Dropdown>
                 <span class="text-muted small"><i class="oi me-1" data-icon="description"/><t t-out="this.pageLabel"/></span>
                 <span class="text-muted small ms-auto">Drag <i class="oi" data-icon="drag_indicator"/> to move · 1–4 to set the width</span>
             </div>

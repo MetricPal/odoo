@@ -189,3 +189,18 @@ class TestReportStudioDownload(HttpCase):
         new = self.env['report.studio.report'].browse(created['report_id'])
         self.assertEqual(new.name, 'From the contacts list')
         self.assertTrue(new.block_ids._data()['columns'])
+
+    def test_side_preview_is_a_pdf_refreshed_on_change(self):
+        admin = self.env.ref('base.user_admin')
+        report = self.env['report.studio.report'].with_user(admin).create({
+            'name': 'Preview', 'block_ids': [(0, 0, {'type': 'heading', 'title': 'Hello'})]})
+        self.assertTrue(report.action_refresh_preview())
+        first = report.preview_attachment_id
+        self.assertEqual(report.message_main_attachment_id, first)
+        self.assertEqual(first.mimetype, 'application/pdf')
+        self.assertFalse(report.action_refresh_preview(), 'nothing changed: no new PDF')
+        report.block_ids.title = 'Hello again'
+        self.assertTrue(report.action_refresh_preview())
+        self.assertNotEqual(report.preview_attachment_id, first)
+        self.assertFalse(first.exists(), 'the old preview file is removed')
+

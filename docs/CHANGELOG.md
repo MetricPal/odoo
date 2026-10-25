@@ -12,6 +12,14 @@ Format:
 
 
 
+## 2026-10-25 — Reports: side PDF preview, Export in the Board tab, Settings tab
+
+- `report_studio`: the right side of a report shows a PDF preview of the page
+  (attachment preview via `mail.thread.main.attachment`, regenerated only when
+  the saved content changes, old preview file removed); Export dropdown in
+  the Board toolbar (replaces ⋯ › Export); Page and Report options moved to a
+  Settings tab.
+
 ## 2026-10-24 — Report Studio becomes the Reports page of Dashboards (boxes, grid, page sizes)
 
 - `report_studio` 20.0.2.0.0 (depends on `spreadsheet_dashboard`; own app menu

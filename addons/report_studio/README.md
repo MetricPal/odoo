@@ -12,8 +12,12 @@ Box-based reports and dashboards, on the **Reports** page of the Dashboards app
   by any field, dates by day/week/month/quarter/year), **Table** (chosen
   columns, sort, up to 500 rows), **List**, **Image**, **Hyperlink** and
   **View from an app**.
-- On the **Board** tab: *Add box*, drag ⠿ to move, 1–4 to set the width, ✎ to
-  edit (filter editor and field pickers), 🗑 to remove. Double-click a box to edit.
+- Tabs: **Board** (*Add box*, *Export*, drag ⠿ to move, 1–4 to set the width,
+  ✎ to edit with filter editor and field pickers, 🗑 to remove; double-click a
+  box to edit), **Boxes** (list) and **Settings** (page and report options).
+- **Side preview**: on wide screens the right side shows the report as a PDF of
+  the chosen page size (Odoo's attachment preview; the chatter moves under the
+  form). It is regenerated when the saved report changes.
 - **Add to report**: in the ⋯ menu of any list, graph, pivot or kanban opened
   from a menu, add that view (with its filters, grouping and measures) to an
   existing or new report. Graphs become charts, pivots become grouped tables,
@@ -27,7 +31,7 @@ Box-based reports and dashboards, on the **Reports** page of the Dashboards app
 - **Scaling**: *Actual size* (content flows over pages), *Fit on one page*
   (shrinks if too tall), *Fill the page* (rows stretched to the page height,
   shrunk if too tall).
-- **⋯ › Export**: PDF, Excel, PowerPoint, Word, HTML. Every format keeps the
+- **Board › Export**: PDF, Excel, PowerPoint, Word, HTML. Every format keeps the
   grid and the page settings: PDF uses the paper size and margins; Excel sets
   paper, orientation and fit-to-page with native charts; PowerPoint uses
   slides of the paper size with native charts and tables (Fit/Fill: one
