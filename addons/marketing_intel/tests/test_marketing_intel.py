@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from odoo import Command
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
@@ -123,7 +124,7 @@ class TestMarketingIntel(TransactionCase):
         self.assertEqual(run.risk_ids.filtered(lambda r: r.name == 'Consent gaps').level, 'high')
         self.assertFalse(old_report.exists())
         titles = run.report_id.block_ids.mapped('title')
-        for title in ('Analysis', 'SWOT', 'Campaign options', 'Risks'):
+        for title in ('Analysis', 'SWOT', 'Suggested campaigns', 'Risks'):
             self.assertIn(title, titles)
         html = run.report_id.with_user(self.user)._render_html()
         self.assertIn('Webinar', html)
@@ -135,3 +136,19 @@ class TestMarketingIntel(TransactionCase):
         # Refreshing again does not duplicate the automatic flag.
         run.with_user(self.user).action_refresh_brief()
         self.assertEqual(len(run.risk_ids.filtered(lambda r: r.origin == 'rule')), 1)
+
+    def test_home_opens_the_single_brand_or_my_brands_first(self):
+        company = self.env['res.company'].create({'name': 'Solo Clinic Sdn Bhd'})
+        marketer = new_test_user(self.env, 'mi_solo', groups='marketing_intel.group_mi_manager',
+                                 company_id=company.id, company_ids=[company.id])
+        Brand = self.env['mi.brand'].with_user(marketer).with_company(company)
+        solo = Brand.create({'name': 'Solo Clinic'})
+        action = Brand._marketing_home()
+        self.assertEqual((action['res_model'], action['res_id']), ('mi.brand', solo.id), 'one brand opens directly')
+        other = Brand.create({'name': 'Client B', 'member_ids': [Command.set([marketer.id])]})
+        action = Brand._marketing_home()
+        self.assertFalse(action.get('res_id'))
+        self.assertEqual(action['context'], {'search_default_my_brands': 1})
+        mine = Brand.search(['|', ('member_ids', 'in', [marketer.id]), ('member_ids', '=', False)])
+        self.assertEqual(mine, solo | other, 'brands without a team count as everyone\'s')
+        self.assertFalse(other._accounts('res.partner'), 'no accounts set yet')

@@ -65,4 +65,17 @@
     <field name="operation">crud</field>
     <field name="domain">[('company_id', 'in', company_ids)]</field>
   </record>
+  <record id="scope_brand_account" model="ir.access">
+    <field name="name">Marketing intelligence: company brand accounts</field>
+    <field name="model_id" ref="model_mi_brand_account"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <!-- Home: one brand opens directly; several open the portfolio with the person's own brands first. -->
+  <record id="action_marketing_home" model="ir.actions.server">
+    <field name="name">Marketing</field>
+    <field name="model_id" ref="model_mi_brand"/>
+    <field name="state">code</field>
+    <field name="code">action = model._marketing_home()</field>
+  </record>
 </odoo>

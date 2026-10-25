@@ -1,17 +1,16 @@
 {
-    'name': 'Marketing Intelligence: AI analysis',
+    'name': 'Marketing: AI assistant',
     'version': '20.0.1.0.0',
     'category': 'Marketing',
-    'summary': 'AI-written analysis, SWOT, campaign options and risks for each research run',
-    'description': 'An AI agent reads the brand profile, goals and the evidence of a research run and proposes an '
-                   'analysis, a SWOT, campaign options and risks as validated structured output. Nothing is executed: '
-                   'people review the options and choose one.',
+    'summary': 'AI-suggested campaigns, analysis and risks from your brand, goals and research',
+    'description': 'An AI agent suggests campaigns, an analysis and risks as validated structured output. Nothing is executed: people review the suggestions and choose.',
     'author': 'metric.io',
     'depends': ['marketing_intel', 'ai_agent'],
     'data': [
         'views/brief_views.xml',
     ],
     'auto_install': True,
+    'icon': '/marketing_intel_ai/static/description/icon.svg',
     'license': 'LGPL-3',
     'installable': True,
 }

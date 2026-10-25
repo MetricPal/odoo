@@ -23,6 +23,7 @@
             'report_studio/static/src/**/*.xml',
         ],
     },
+    'icon': '/report_studio/static/description/icon.svg',
     'license': 'LGPL-3',
     'installable': True,
 }

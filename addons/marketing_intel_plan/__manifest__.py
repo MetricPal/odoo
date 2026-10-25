@@ -1,13 +1,9 @@
 {
-    'name': 'Marketing Intelligence: campaign plans',
+    'name': 'Marketing: campaigns',
     'version': '20.0.1.1.0',
     'category': 'Marketing',
-    'summary': 'Turn a chosen campaign option into linked drafts in Social, Messaging, Email, SMS and Events',
-    'description': 'A campaign plan creates one tracking campaign and a draft in each marketing app the option '
-                   'uses. Drafts are created with your permissions and still need their own approval; nothing is '
-                   'sent from Marketing Intelligence. Includes a marketing calendar with overlap warnings, '
-                   'results per plan (sends, clicks, leads, won deals, revenue, registrations), targets vs actual and '
-                   'lessons learned that feed the next analysis.',
+    'summary': 'Campaigns with drafts in Social, Messaging, Email, SMS and Events, results and goals',
+    'description': 'Create campaigns by hand or from a suggestion. Drafts are prepared in each app (with your permissions, each under its own approval); results are read back and count towards your goals.',
     'author': 'metric.io',
     'depends': ['marketing_intel', 'utm'],
     'data': [
@@ -17,6 +13,7 @@
         'data/cron.xml',
     ],
     'auto_install': True,
+    'icon': '/marketing_intel_plan/static/description/icon.svg',
     'license': 'LGPL-3',
     'installable': True,
 }

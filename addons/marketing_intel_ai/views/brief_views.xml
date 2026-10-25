@@ -6,20 +6,20 @@
     <field name="inherit_id" ref="marketing_intel.run_form"/>
     <field name="arch" type="xml">
       <xpath expr="//header/button[@name='action_refresh_brief']" position="before">
-        <button name="action_ai_analyse" type="object" string="Analyse with AI" class="btn-secondary"
+        <button name="action_ai_analyse" type="object" string="✨ Suggest campaigns" class="btn-secondary"
                 invisible="ai_state == 'running'"
-                confirm="AI rewrites the analysis and SWOT and replaces AI options and risks that are still undecided. Options and risks people wrote or decided are kept. Continue?"/>
+                confirm="The AI assistant rewrites the analysis and replaces its suggestions and risks that are still undecided. Anything people wrote or decided is kept. Continue?"/>
       </xpath>
       <xpath expr="//notebook" position="before">
         <field name="ai_state" invisible="1"/>
         <div class="alert alert-secondary" role="status" invisible="ai_state != 'running'">
-          AI is analysing this run. Reload in a moment to see the analysis, campaign options and risks.
+          The AI assistant is working. Reload in a moment to see the analysis, suggested campaigns and risks.
         </div>
         <div class="alert alert-warning" role="status" invisible="ai_state != 'failed'">
           <field name="ai_error" nolabel="1"/>
         </div>
         <div class="alert alert-info" role="status" invisible="ai_state != 'done'">
-          AI proposed the analysis, options and risks below. Check the evidence of each option before choosing one;
+          The AI assistant suggested the analysis, campaigns and risks below. Check the evidence of each suggestion before using it;
           nothing is sent or published from here.
         </div>
       </xpath>
@@ -30,8 +30,12 @@
     <field name="model">mi.brand</field>
     <field name="inherit_id" ref="marketing_intel.brand_form"/>
     <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_run_research']" position="after">
+        <button name="action_ai_suggest" type="object" string="✨ Suggest campaigns" class="btn-secondary"
+                help="The AI assistant suggests campaigns from the brand profile, goals and latest research. Nothing is sent or published."/>
+      </xpath>
       <xpath expr="//notebook" position="inside">
-        <page string="AI analysis" name="ai">
+        <page string="AI assistant" name="ai">
           <group>
             <group>
               <field name="ai_agent_id"/>
@@ -39,7 +43,8 @@
               <field name="ai_requester_id" invisible="not ai_auto" required="ai_auto"/>
             </group>
             <div class="text-muted">
-              After each research run the agent proposes an analysis, a SWOT, up to four campaign options and risks.
+              The assistant reads the brand profile, goals and latest research, and suggests up to four campaigns
+              with risks.
               It only sees this brand profile, goals, approved competitors and the run's findings. It cannot send,
               publish or spend anything.
             </div>

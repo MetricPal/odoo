@@ -24,11 +24,32 @@ class Brand(models.Model):
     _inherit = 'mi.brand'
 
     ai_agent_id = fields.Many2one('ai.agent', string='AI agent', domain="[('state', '=', 'active')]",
-                                  help='Agent that writes the analysis, campaign options and risks for each run.')
-    ai_auto = fields.Boolean(string='Analyse every research run',
+                                  help='Assistant that suggests campaigns and risks from the brand profile, goals and research.')
+    ai_auto = fields.Boolean(string='Suggest after each research',
                              help='Ask the AI agent automatically when a scheduled or manual research run finishes.')
     ai_requester_id = fields.Many2one('res.users', string='Ask AI as', default=lambda self: self.env.user,
                                       help='The request runs with this person\'s AI quota and permissions.')
+
+    def action_ai_suggest(self):
+        """One button: the AI assistant suggests campaigns from the latest research (researching first if needed)."""
+        self.ensure_one()
+        self.check_access('read')
+        run = self.latest_run_id
+        if not run:
+            if not self.approved_source_count:
+                # No research possible yet: analyse the brand profile and goals alone.
+                run = self.env['mi.run'].sudo().create({'brand_id': self.id})
+                run._finish()
+            else:
+                run = self.sudo()._research()
+        run = run.with_user(self.env.user).sudo(False)
+        agent = run._agent_for()
+        run._ai_ask(agent)
+        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+            'type': 'info', 'sticky': False, 'title': _('The AI assistant is preparing suggestions'),
+            'message': _('They appear under Insights › Suggested campaigns in a moment. Review them, then click '
+                         '“Use this idea” to start a campaign.'),
+        }}
 
     def _research(self):
         run = super()._research()

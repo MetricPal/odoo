@@ -305,6 +305,34 @@ frequency caps across channels; AI drafting of each child.
 - Tests: plan module 5 (results with CRM leads/won and link clicks, targets,
   learning lines); marketing_intel + _ai + _plan: 17 pass.
 
+### 2026-10-25 — Usability pass (owner: "everything must be straightforward")
+
+Brands are the home and the hub; campaigns can be created by hand (suggestion optional); goals
+measure themselves from linked campaigns; one AI button; plain names (Campaign, Suggested
+campaign, Market change, Research, Risks); app renamed Marketing; new app icon (variant 2C:
+Odoo purple frame, teal megaphone, AI sparkles).
+
+### 2026-10-25 — One brand or many (in-house marketer vs advisor)
+
+Owner: some users market their own company's single brand; advisors manage several client brands.
+Decisions: (1) no hard isolation, people simply see their own brands first; (2) each brand has its
+own Social pages, Messaging channel/lists and mailing lists; (3) client access stays internal for now.
+
+- Marketing opens the brand itself when the company has one brand, the brand cards (filtered to
+  **My brands**) when it has several. Brands with no team count as everyone's.
+- Brand › Settings: **Team** (members), **Client contact**, **Channels & accounts** (Social pages,
+  Messaging channel, Messaging lists, Email/SMS mailing lists) and **Email sender**.
+- Campaign drafts use only the brand's own accounts. With several brands, a missing account leaves
+  the line "Not created: set the … of <brand> in Brand › Settings › Channels & accounts"; never
+  another brand's account. A one-brand company keeps using the apps' defaults.
+- Brand cards show goals behind schedule and the share of the monthly budget planned this month.
+
+### Later: client sharing (owner: "keep track, later we will implement it")
+
+- Portal access for an advisor's client: read-only brand page with campaigns, results and the
+  report (Report Studio PDF), and approval of drafts by the client contact.
+- Optional per-brand record rules for strict separation between advisors, if asked for.
+
 ### Next: phase 4b
 
 1. Bridge `mass_mailing` (Email/SMS) to Approval Center: freeze subject,

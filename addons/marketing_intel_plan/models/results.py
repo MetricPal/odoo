@@ -10,6 +10,7 @@ past plans stay comparable and can feed the next analysis.
 from datetime import timedelta
 
 from odoo import _, api, fields, models
+from odoo.tools import date_utils
 
 METRICS = [('sent', 'Messages sent'), ('clicks', 'Link clicks'), ('leads', 'Leads'), ('won', 'Won deals'),
            ('revenue', 'Revenue'), ('registrations', 'Event registrations')]
@@ -154,3 +155,79 @@ class Brand(models.Model):
         plans = self.env['mi.plan'].search([('brand_id', '=', self.id), ('state', 'in', ('running', 'done'))],
                                            order='date_end desc, id desc', limit=limit)
         return super()._learning_lines(limit) + [plan._learning_line() for plan in plans]
+
+
+GOAL_MEASURES = [('manual', 'Entered by hand')] + METRICS
+
+
+class Goal(models.Model):
+    _inherit = 'mi.goal'
+
+    measure = fields.Selection(GOAL_MEASURES, default='manual', required=True, string='Measured by',
+                               help='Entered by hand, or added up from the results of the campaigns linked to this goal.')
+    plan_ids = fields.One2many('mi.plan', 'goal_id', string='Campaigns')
+    achieved = fields.Float(compute='_compute_progress', string='Achieved')
+
+    @api.depends('target', 'current', 'measure', 'plan_ids.result_sent', 'plan_ids.result_clicks',
+                 'plan_ids.result_leads', 'plan_ids.result_won', 'plan_ids.result_revenue',
+                 'plan_ids.result_registrations', 'plan_ids.state')
+    def _compute_progress(self):
+        for goal in self:
+            if goal.measure == 'manual':
+                goal.achieved = goal.current
+            else:
+                plans = goal.plan_ids.filtered(lambda p: p.state != 'cancelled')
+                goal.achieved = sum(plans.mapped(f'result_{goal.measure}'))
+            goal.progress = 100.0 * goal.achieved / goal.target if goal.target else 0.0
+
+
+class BrandCampaigns(models.Model):
+    _inherit = 'mi.brand'
+
+    plan_ids = fields.One2many('mi.plan', 'brand_id', string='Campaigns')
+    campaign_count = fields.Integer(compute='_compute_campaign_count', string='Campaigns')
+    active_campaign_count = fields.Integer(compute='_compute_campaign_count', string='Running')
+
+    def _compute_campaign_count(self):
+        for brand in self:
+            plans = self.env['mi.plan'].search([('brand_id', '=', brand.id)])
+            brand.campaign_count = len(plans)
+            brand.active_campaign_count = len(plans.filtered(lambda p: p.state in ('draft', 'prepared', 'running')))
+
+    def action_new_campaign(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'res_model': 'mi.plan', 'view_mode': 'form', 'target': 'current',
+                'name': _('New campaign'), 'context': {'default_brand_id': self.id}}
+
+    def action_open_campaigns(self):
+        return self._open('mi.plan', _('Campaigns'), [('brand_id', '=', self.id)], views='list,calendar,form')
+
+
+
+class BrandAttention(models.Model):
+    """What needs a look on each brand card: goals behind schedule and budget planned this month."""
+    _inherit = 'mi.brand'
+
+    goals_behind_count = fields.Integer(compute='_compute_attention', string='Goals behind')
+    budget_month = fields.Monetary(compute='_compute_attention', currency_field='currency_id',
+                                   string='Planned this month', help='Budget of campaigns starting this month.')
+    budget_month_pct = fields.Integer(compute='_compute_attention', string='Monthly budget used (%)')
+
+    def _compute_attention(self):
+        today = fields.Date.today()
+        month_start = today.replace(day=1)
+        for brand in self:
+            behind = 0
+            for goal in brand.goal_ids:
+                if not (goal.target and goal.date_start and goal.date_end) or goal.date_start > today:
+                    continue
+                span = max((goal.date_end - goal.date_start).days, 1)
+                expected = 100.0 * min((today - goal.date_start).days, span) / span
+                if goal.progress < 100 and goal.progress < expected - 10:
+                    behind += 1
+            plans = self.env['mi.plan'].search([('brand_id', '=', brand.id), ('state', '!=', 'cancelled'),
+                                                ('date_start', '>=', month_start),
+                                                ('date_start', '<=', date_utils.end_of(today, 'month'))])
+            brand.goals_behind_count = behind
+            brand.budget_month = sum(plans.mapped('budget'))
+            brand.budget_month_pct = round(100 * brand.budget_month / brand.monthly_budget) if brand.monthly_budget else 0

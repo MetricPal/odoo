@@ -9,18 +9,25 @@
         <button name="action_refresh_results" type="object" string="Refresh results" invisible="state == 'draft'"/>
         <button name="action_start" type="object" string="Mark running" invisible="state not in ('draft', 'prepared')"/>
         <button name="action_done" type="object" string="Mark done" invisible="state not in ('draft', 'prepared', 'running')"/>
-        <button name="action_cancel" type="object" string="Cancel plan" invisible="state not in ('draft', 'prepared', 'running')"/>
+        <button name="action_cancel" type="object" string="Cancel campaign" invisible="state not in ('draft', 'prepared', 'running')"/>
         <button name="action_reset" type="object" string="Back to draft" invisible="state != 'cancelled'"/>
         <field name="state" widget="statusbar" statusbar_visible="draft,prepared,running,done"/>
       </header>
       <sheet>
         <div class="alert alert-warning" role="status" invisible="not clash_note"><field name="clash_note" nolabel="1"/></div>
-        <div class="oe_title"><label for="name"/><h1><field name="name"/></h1></div>
+        <div class="oe_title"><label for="name" string="Campaign"/><h1><field name="name" placeholder="e.g. Clinic owners webinar"/></h1></div>
         <group>
-          <group><field name="recommendation_id" readonly="1"/><field name="brand_id"/><field name="user_id" widget="many2one_avatar_user"/>
-            <field name="utm_campaign_id" invisible="not utm_campaign_id"/></group>
+          <group>
+            <field name="brand_id" readonly="state != 'draft'"/>
+            <field name="goal_id" options="{'no_create': True}"/>
+            <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}"
+                   placeholder="e.g. Social, Email, SMS"/>
+            <field name="user_id" widget="many2one_avatar_user"/>
+          </group>
           <group><label for="date_start" string="Dates"/><div class="o_row"><field name="date_start"/> → <field name="date_end"/></div>
-            <field name="budget"/><field name="currency_id" invisible="1"/></group>
+            <field name="budget"/><field name="currency_id" invisible="1"/>
+            <field name="recommendation_id" readonly="1" invisible="not recommendation_id"/>
+            <field name="utm_campaign_id" invisible="not utm_campaign_id"/></group>
         </group>
         <notebook>
           <page string="Channels" name="channels">
@@ -69,7 +76,9 @@
   <record id="plan_list" model="ir.ui.view">
     <field name="name">mi.plan.list</field><field name="model">mi.plan</field>
     <field name="arch" type="xml"><list>
-      <field name="name"/><field name="brand_id"/><field name="date_start"/><field name="date_end"/>
+      <field name="name"/><field name="brand_id"/><field name="goal_id" optional="show"/>
+      <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}" optional="show"/>
+      <field name="date_start"/><field name="date_end"/>
       <field name="budget" sum="Total"/><field name="currency_id" column_invisible="1"/>
       <field name="result_leads" sum="Total" optional="show"/><field name="result_revenue" sum="Total" optional="show"/>
       <field name="user_id" widget="many2one_avatar_user"/>
@@ -101,27 +110,101 @@
     </search></field>
   </record>
   <record id="action_plans" model="ir.actions.act_window">
-    <field name="name">Campaign plans</field><field name="res_model">mi.plan</field>
-    <field name="view_mode">calendar,list,pivot,form</field><field name="context">{'search_default_active_plans': 1}</field>
-    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No campaign plan yet</p>
-      <p>Choose a campaign option, then click Create campaign plan.</p></field>
+    <field name="name">Campaigns</field><field name="res_model">mi.plan</field>
+    <field name="view_mode">list,calendar,pivot,form</field><field name="context">{'search_default_active_plans': 1}</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No campaign yet</p>
+      <p>Create one yourself (brand, goal, channels, dates, budget), or start from a suggested campaign with
+        <i>Use this idea</i>. Drafts are then prepared in Social, Messaging, Email, SMS and Events.</p></field>
   </record>
-  <menuitem id="menu_plans" name="Campaign plans" parent="marketing_intel.menu_root" action="action_plans" sequence="26"/>
+  <record id="action_campaign_results" model="ir.actions.act_window">
+    <field name="name">Campaign results</field><field name="res_model">mi.plan</field>
+    <field name="view_mode">pivot,list,form</field>
+  </record>
+  <record id="goal_report_list" model="ir.ui.view">
+    <field name="name">mi.goal.report.list</field><field name="model">mi.goal</field>
+    <field name="arch" type="xml"><list create="0">
+      <field name="brand_id"/><field name="name"/><field name="measure"/><field name="target"/><field name="achieved"/>
+      <field name="progress" widget="progressbar"/><field name="date_start"/><field name="date_end"/>
+    </list></field>
+  </record>
+  <record id="action_goals" model="ir.actions.act_window">
+    <field name="name">Goals</field><field name="res_model">mi.goal</field><field name="view_mode">list</field>
+    <field name="view_id" ref="goal_report_list"/><field name="context">{'group_by': 'brand_id'}</field>
+  </record>
+  <menuitem id="menu_plans" name="Campaigns" parent="marketing_intel.menu_root" action="action_plans" sequence="10"/>
+  <menuitem id="menu_campaign_results" name="Campaign results" parent="marketing_intel.menu_reporting" action="action_campaign_results" sequence="10"/>
+  <menuitem id="menu_goals" name="Goals" parent="marketing_intel.menu_reporting" action="action_goals" sequence="20"/>
 
   <record id="recommendation_form_plan" model="ir.ui.view">
     <field name="name">mi.recommendation.form.plan</field><field name="model">mi.recommendation</field>
     <field name="inherit_id" ref="marketing_intel.recommendation_form"/>
     <field name="arch" type="xml">
       <xpath expr="//header/button[@name='action_choose']" position="before">
-        <button name="action_create_plan" type="object" string="Create campaign plan" class="btn-primary"
-                invisible="state != 'chosen' or plan_count"/>
+        <button name="action_use_idea" type="object" string="Use this idea" class="btn-primary"
+                invisible="state == 'rejected' or plan_count"
+                help="Starts a campaign from this suggestion, pre-filled with its channels, budget, dates and message."/>
       </xpath>
       <xpath expr="//div[hasclass('oe_title')]" position="before">
         <div class="oe_button_box" name="button_box">
           <button name="action_open_plans" type="object" class="oe_stat_button" icon="calendar_today" invisible="not plan_count">
-            <field name="plan_count" widget="statinfo" string="Plans"/>
+            <field name="plan_count" widget="statinfo" string="Campaigns"/>
           </button>
         </div>
+      </xpath>
+    </field>
+  </record>
+  <record id="brand_form_campaigns" model="ir.ui.view">
+    <field name="name">mi.brand.form.campaigns</field><field name="model">mi.brand</field>
+    <field name="inherit_id" ref="marketing_intel.brand_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_run_research']" position="before">
+        <button name="action_new_campaign" type="object" string="New campaign" class="btn-primary"/>
+      </xpath>
+      <xpath expr="//div[@name='button_box']" position="inside">
+        <button name="action_open_campaigns" type="object" class="oe_stat_button" icon="campaign">
+          <field name="campaign_count" widget="statinfo" string="Campaigns"/>
+        </button>
+      </xpath>
+      <xpath expr="//page[@name='overview']" position="after">
+        <page string="Campaigns" name="campaigns">
+          <field name="plan_ids" context="{'default_brand_id': id}">
+            <list>
+              <field name="name"/><field name="goal_id"/><field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+              <field name="date_start"/><field name="date_end"/><field name="budget"/><field name="currency_id" column_invisible="1"/>
+              <field name="result_leads" optional="show"/><field name="result_revenue" optional="show"/>
+              <field name="state" widget="badge" decoration-info="state == 'prepared'" decoration-success="state == 'running'"
+                     decoration-muted="state in ('done', 'cancelled')"/>
+            </list>
+          </field>
+        </page>
+      </xpath>
+      <xpath expr="//field[@name='goal_ids']/list/field[@name='current']" position="replace">
+        <field name="measure"/>
+        <field name="current" string="Value (by hand)" readonly="measure != 'manual'" optional="hide"/>
+        <field name="achieved"/>
+      </xpath>
+    </field>
+  </record>
+  <record id="brand_kanban_campaigns" model="ir.ui.view">
+    <field name="name">mi.brand.kanban.campaigns</field><field name="model">mi.brand</field>
+    <field name="inherit_id" ref="marketing_intel.brand_kanban"/>
+    <field name="arch" type="xml">
+      <xpath expr="//div[@name='stats']" position="inside">
+        <a name="action_open_campaigns" type="object" class="text-reset">
+          <span class="fw-bold fs-5"><field name="active_campaign_count"/></span> <span class="text-muted small">active campaigns</span></a>
+      </xpath>
+      <xpath expr="//kanban" position="inside"><field name="monthly_budget"/></xpath>
+      <xpath expr="//div[@name='next']" position="before">
+        <div class="d-flex flex-wrap gap-2 mb-1" name="attention">
+          <span class="badge text-bg-warning" invisible="not goals_behind_count">
+            <field name="goals_behind_count"/> goal(s) behind schedule</span>
+          <span class="badge" invisible="not monthly_budget"
+                t-att-class="record.budget_month_pct.raw_value &gt; 100 ? 'text-bg-danger' : 'text-bg-light'">
+            Budget this month: <field name="budget_month_pct"/>%</span>
+        </div>
+      </xpath>
+      <xpath expr="//footer[@name='buttons']" position="inside">
+        <button name="action_new_campaign" type="object" class="btn btn-sm btn-primary">New campaign</button>
       </xpath>
     </field>
   </record>

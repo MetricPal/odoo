@@ -31,27 +31,33 @@ ACTIVE = ('draft', 'prepared', 'running')
 
 class Plan(models.Model):
     _name = 'mi.plan'
-    _description = 'Campaign plan'
+    _description = 'Campaign'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date_start desc, id desc'
 
-    name = fields.Char(required=True, tracking=True)
-    recommendation_id = fields.Many2one('mi.recommendation', string='Campaign option', required=True,
-                                        ondelete='restrict', index=True)
-    brand_id = fields.Many2one(related='recommendation_id.brand_id', store=True, index=True)
+    name = fields.Char(required=True, tracking=True, string='Campaign')
+    recommendation_id = fields.Many2one('mi.recommendation', string='From suggestion', ondelete='restrict', index=True,
+                                        help='The suggested campaign this one was started from, if any.')
+    brand_id = fields.Many2one('mi.brand', required=True, index=True, tracking=True, compute='_compute_brand_id',
+                               store=True, readonly=False, precompute=True)
+    goal_id = fields.Many2one('mi.goal', string='Goal', domain="[('brand_id', '=', brand_id)]", tracking=True,
+                              help='The goal this campaign works towards; its results count towards the goal.')
+    channel_ids = fields.Many2many('mi.channel', string='Channels',
+                                   help='Where the campaign runs; one draft is prepared per channel.')
     company_id = fields.Many2one(related='brand_id.company_id', store=True)
     currency_id = fields.Many2one(related='brand_id.currency_id')
     user_id = fields.Many2one('res.users', string='Owner', default=lambda self: self.env.user, required=True,
                               tracking=True)
     date_start = fields.Date(string='Start', required=True, default=fields.Date.context_today, tracking=True)
-    date_end = fields.Date(string='End', required=True, tracking=True)
+    date_end = fields.Date(string='End', required=True, tracking=True,
+                           default=lambda self: fields.Date.context_today(self) + timedelta(days=29))
     budget = fields.Monetary(currency_field='currency_id')
     message = fields.Text(string='Key message', help='Starting text for every draft; each app adapts it.')
     audience = fields.Text()
     kpis = fields.Text(string='KPIs')
     utm_campaign_id = fields.Many2one('utm.campaign', string='Tracking campaign', readonly=True, copy=False)
     item_ids = fields.One2many('mi.plan.item', 'plan_id', string='Channels')
-    state = fields.Selection([('draft', 'Draft'), ('prepared', 'Drafts ready'), ('running', 'Running'),
+    state = fields.Selection([('draft', 'Draft'), ('prepared', 'Ready'), ('running', 'Running'),
                               ('done', 'Done'), ('cancelled', 'Cancelled')],
                              default='draft', required=True, readonly=True, tracking=True, string='Status')
     clash_note = fields.Char(compute='_compute_clash_note', string='Calendar clash')
@@ -61,7 +67,37 @@ class Plan(models.Model):
     def _check_dates(self):
         for plan in self:
             if plan.date_end < plan.date_start:
-                raise ValidationError(_('The plan cannot end before it starts.'))
+                raise ValidationError(_('The campaign cannot end before it starts.'))
+
+    @api.depends('recommendation_id')
+    def _compute_brand_id(self):
+        default = self.env['mi.brand'].browse(self.env.context.get('default_brand_id')).exists()
+        for plan in self:
+            plan.brand_id = plan.brand_id or plan.recommendation_id.brand_id or default
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        plans = super().create(vals_list)
+        plans._sync_channel_items()
+        return plans
+
+    def write(self, vals):
+        result = super().write(vals)
+        if 'channel_ids' in vals:
+            self._sync_channel_items()
+        return result
+
+    def _sync_channel_items(self):
+        """One line per chosen channel; lines for removed channels go unless a draft or to-do already exists."""
+        for plan in self:
+            wanted = set(plan.channel_ids.mapped('code'))
+            existing = set(plan.item_ids.mapped('channel'))
+            new = [(0, 0, {'channel': code}) for code in sorted(wanted - existing)]
+            stale = plan.item_ids.filtered(lambda i: i.channel not in wanted and not i.res_id and not i.activity_done
+                                           and not i.note)
+            commands = new + [(2, item.id) for item in stale]
+            if commands:
+                super(Plan, plan).write({'item_ids': commands})
 
     @api.depends('state')
     def _compute_color(self):
@@ -89,17 +125,18 @@ class Plan(models.Model):
     def _from_recommendation(self, option):
         option.ensure_one()
         if option.state != 'chosen':
-            raise UserError(_('Choose the option before planning it.'))
+            raise UserError(_('Choose the suggestion first.'))
         start = fields.Date.context_today(self)
         lines = [option.problem, option.expected_result]
         plan = self.create({
-            'name': option.name, 'recommendation_id': option.id, 'budget': option.budget,
+            'name': option.name, 'recommendation_id': option.id, 'brand_id': option.brand_id.id,
+            'budget': option.budget,
             'date_start': start, 'date_end': start + timedelta(days=max(option.duration_days or 14, 1) - 1),
             'message': '\n\n'.join(line.strip() for line in lines if line and line.strip()),
             'audience': option.audience, 'kpis': option.kpis,
-            'item_ids': [(0, 0, {'channel': channel.code}) for channel in option.channel_ids],
+            'channel_ids': [(6, 0, option.channel_ids.ids)],
         })
-        plan.message_post(body=_('Plan created from campaign option “%s”.', option.name))
+        plan.message_post(body=_('Campaign started from the suggestion “%s”.', option.name))
         return plan
 
     # ------------------------------------------------------------------ actions
@@ -157,7 +194,7 @@ class Plan(models.Model):
 
 class PlanItem(models.Model):
     _name = 'mi.plan.item'
-    _description = 'Campaign plan channel'
+    _description = 'Campaign channel'
     _order = 'plan_id, id'
 
     plan_id = fields.Many2one('mi.plan', required=True, ondelete='cascade', index=True)
@@ -238,29 +275,61 @@ class PlanItem(models.Model):
 
     # One method per channel: drafts only, with the person's permissions.
 
+    def _brand_accounts(self, plan, model, what):
+        """The brand's own accounts of one kind. With several brands in the company, a missing account stops
+        the draft (never another brand's account); a company with a single brand uses the app's defaults."""
+        accounts = plan.brand_id._accounts(model)
+        if accounts:
+            return accounts
+        brands = self.env['mi.brand'].sudo().search_count([('company_id', '=', plan.company_id.id)])
+        if brands > 1:
+            raise UserError(_('Set the %(what)s of “%(brand)s” in Brand › Settings › Channels & accounts.',
+                              what=what, brand=plan.brand_id.name))
+        return self.env[model]
+
     def _draft_social(self, plan):
-        return self.env['omni.social.campaign'].create({
-            'name': plan.name, 'brief': plan._plain(2000), 'reason': plan._reason(),
-            'scheduled_at': datetime.combine(plan.date_start, time(2, 0)),
-        })
+        connections = self._brand_accounts(plan, 'omni.social.connection', _('Social pages'))
+        values = {'name': plan.name, 'brief': plan._plain(2000), 'reason': plan._reason(),
+                  'scheduled_at': datetime.combine(plan.date_start, time(2, 0))}
+        if connections:
+            values.update({'purpose_id': connections[0].purpose_id.id,
+                           'connection_ids': [(6, 0, connections.filtered(
+                               lambda c: c.purpose_id == connections[0].purpose_id).ids)]})
+        return self.env['omni.social.campaign'].create(values)
 
     def _draft_messaging(self, plan):
-        return self.env['mm.mailing'].create({
-            'name': plan.name, 'body': plan._plain(900), 'reason': plan._reason(),
-            'utm_campaign_id': plan.utm_campaign_id.id,
-        })
+        channels = self._brand_accounts(plan, 'omni.channel', _('Messaging channel'))
+        values = {'name': plan.name, 'body': plan._plain(900), 'reason': plan._reason(),
+                  'utm_campaign_id': plan.utm_campaign_id.id}
+        if channels:
+            channel = channels[0]
+            values.update({'channel_id': channel.id, 'purpose_id': channel.purpose_id.id,
+                           'channel': channel.channel_type_id.code})
+            lists = plan.brand_id._accounts('mm.list') or self.env['mm.list']
+            lists = lists.filtered(lambda l: l.purpose_id == channel.purpose_id)
+            if lists:
+                values['list_ids'] = [(6, 0, lists.ids)]
+        return self.env['mm.mailing'].create(values)
+
+    def _mailing_values(self, plan, mailing_type):
+        lists = self._brand_accounts(plan, 'mailing.list', _('mailing lists'))
+        values = {'subject': plan.name, 'mailing_type': mailing_type, 'campaign_id': plan.utm_campaign_id.id,
+                  'user_id': plan.user_id.id}
+        if lists:
+            values['contact_list_ids'] = [(6, 0, lists.ids)]
+        if mailing_type == 'mail' and plan.brand_id.email_from:
+            values['email_from'] = plan.brand_id.email_from
+        return values
 
     def _draft_email(self, plan):
-        return self.env['mailing.mailing'].create({
-            'subject': plan.name, 'mailing_type': 'mail', 'body_html': plan._html(), 'body_arch': plan._html(),
-            'campaign_id': plan.utm_campaign_id.id, 'user_id': plan.user_id.id,
-        })
+        values = self._mailing_values(plan, 'mail')
+        values.update({'body_html': plan._html(), 'body_arch': plan._html()})
+        return self.env['mailing.mailing'].create(values)
 
     def _draft_sms(self, plan):
-        return self.env['mailing.mailing'].create({
-            'subject': plan.name, 'mailing_type': 'sms', 'body_plaintext': plan._plain(160),
-            'campaign_id': plan.utm_campaign_id.id, 'user_id': plan.user_id.id,
-        })
+        values = self._mailing_values(plan, 'sms')
+        values['body_plaintext'] = plan._plain(160)
+        return self.env['mailing.mailing'].create(values)
 
     def _draft_event(self, plan, virtual):
         begin = datetime.combine(plan.date_end, time(2, 0))
@@ -304,7 +373,16 @@ class Recommendation(models.Model):
         plan = self.env['mi.plan']._from_recommendation(self)
         return {'type': 'ir.actions.act_window', 'res_model': 'mi.plan', 'res_id': plan.id, 'view_mode': 'form'}
 
+    def action_use_idea(self):
+        """Choose this suggestion and start a campaign from it in one step."""
+        self.ensure_one()
+        if self.state == 'rejected':
+            raise UserError(_('This suggestion was rejected. Reset it to proposed first.'))
+        if self.state == 'proposed':
+            self.action_choose()
+        return self.action_create_plan()
+
     def action_open_plans(self):
         self.ensure_one()
-        return {'type': 'ir.actions.act_window', 'res_model': 'mi.plan', 'name': _('Campaign plans'),
+        return {'type': 'ir.actions.act_window', 'res_model': 'mi.plan', 'name': _('Campaigns'),
                 'view_mode': 'list,form', 'domain': [('recommendation_id', '=', self.id)]}

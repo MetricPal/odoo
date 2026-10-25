@@ -1,4 +1,6 @@
-from odoo import Command
+from datetime import timedelta
+
+from odoo import Command, fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
@@ -18,6 +20,10 @@ class TestCampaignPlan(TransactionCase):
             team = cls.env.ref(xmlid, raise_if_not_found=False)
             if team:
                 team.user_ids = [Command.link(cls.user.id), Command.link(cls.plain.id)]
+        # Start as a one-brand company: drafts may use the apps' defaults.
+        elsewhere = cls.env['res.company'].create({'name': 'Elsewhere'})
+        cls.env.cr.execute('UPDATE mi_brand SET company_id = %s WHERE company_id = %s', (elsewhere.id, cls.env.company.id))
+        cls.env.invalidate_all()
         cls.brand = cls.env['mi.brand'].sudo().create({'name': 'metric.io'})
         codes = ['social', 'messaging', 'email', 'sms', 'event_virtual', 'content']
         cls.channels = cls.env['mi.channel'].search([('code', 'in', codes)])
@@ -124,3 +130,64 @@ class TestCampaignPlan(TransactionCase):
         self.assertEqual(len(lines), 1)
         self.assertIn('Tuesday mornings', lines[0])
         self.assertIn('Leads: target 4', lines[0])
+
+    def test_campaign_without_suggestion_channels_and_goal(self):
+        goal = self.env['mi.goal'].sudo().create({'brand_id': self.brand.id, 'name': 'Leads this quarter',
+                                                   'measure': 'leads', 'target': 10})
+        social, email = (self.env.ref('marketing_intel.channel_social'), self.env.ref('marketing_intel.channel_email'))
+        plan = self.env['mi.plan'].with_user(self.user).with_context(default_brand_id=self.brand.id).create({
+            'name': 'Hand-made webinar', 'goal_id': goal.id, 'channel_ids': [Command.set((social | email).ids)]})
+        self.assertEqual(plan.brand_id, self.brand)
+        self.assertFalse(plan.recommendation_id)
+        self.assertEqual(sorted(plan.item_ids.mapped('channel')), ['email', 'social'])
+        plan.channel_ids = [Command.unlink(email.id)]
+        self.assertEqual(plan.item_ids.mapped('channel'), ['social'])
+        plan.sudo().write({'result_leads': 4})
+        self.assertEqual(goal.achieved, 4)
+        self.assertEqual(goal.progress, 40)
+        brand = self.brand.with_user(self.user)
+        self.assertEqual(brand.campaign_count, 1)
+        self.assertEqual(brand.action_new_campaign()['context']['default_brand_id'], self.brand.id)
+
+    def test_use_this_idea_starts_a_campaign(self):
+        option = self.option.with_user(self.user)
+        action = option.action_use_idea()
+        self.assertEqual(option.state, 'chosen')
+        plan = self.env['mi.plan'].browse(action['res_id'])
+        self.assertEqual(plan.recommendation_id, self.option)
+        self.assertEqual(plan.brand_id, self.brand)
+        self.assertEqual(len(plan.item_ids), 6)
+        self.assertEqual(self.brand.with_user(self.user).idea_count, 0)
+
+    def test_several_brands_use_only_their_own_accounts(self):
+        if 'mailing.mailing' not in self.env:
+            self.skipTest('Email Marketing not installed')
+        client = self.env['mi.brand'].sudo().create({'name': 'Client B', 'email_from': 'news@clientb.example'})
+        email = self.env.ref('marketing_intel.channel_email')
+        plan = self.env['mi.plan'].with_user(self.user).with_context(default_brand_id=client.id).create({
+            'name': 'Client B newsletter', 'channel_ids': [Command.set(email.ids)]})
+        plan.action_prepare()
+        item = plan.item_ids
+        self.assertFalse(item.res_id, 'never another brand\'s list or the default one')
+        self.assertIn('Channels & accounts', item.note)
+        own = self.env['mailing.list'].sudo().create({'name': 'Client B subscribers'})
+        self.env['mailing.list'].sudo().create({'name': 'metric.io subscribers'})
+        client.account_ids = [Command.create({'account': f'mailing.list,{own.id}'})]
+        self.assertEqual(client.account_ids.kind, 'Email / SMS mailing list')
+        plan.action_prepare()
+        mailing = item._record()
+        self.assertEqual(mailing.contact_list_ids, own)
+        self.assertEqual(mailing.email_from, 'news@clientb.example')
+
+    def test_brand_card_attention(self):
+        today = fields.Date.today()
+        self.brand.write({'monthly_budget': 1000})
+        self.env['mi.goal'].sudo().create({
+            'brand_id': self.brand.id, 'name': 'Leads', 'target': 100, 'current': 1,
+            'date_start': today - timedelta(days=30), 'date_end': today + timedelta(days=30)})
+        self.env['mi.plan'].with_user(self.user).create({'brand_id': self.brand.id, 'name': 'Promo',
+                                                         'budget': 1200, 'date_start': today})
+        brand = self.brand.with_user(self.user)
+        self.assertEqual(brand.goals_behind_count, 1)
+        self.assertEqual(brand.budget_month, 1200)
+        self.assertEqual(brand.budget_month_pct, 120)

@@ -36,7 +36,7 @@ class Channel(models.Model):
 
 class Recommendation(models.Model):
     _name = 'mi.recommendation'
-    _description = 'Campaign option'
+    _description = 'Suggested campaign'
     _inherit = ['mail.thread']
     _order = 'run_id desc, sequence, id'
 
@@ -45,7 +45,7 @@ class Recommendation(models.Model):
     company_id = fields.Many2one(related='brand_id.company_id', store=True)
     currency_id = fields.Many2one(related='brand_id.currency_id')
     sequence = fields.Integer(default=10)
-    name = fields.Char(required=True, string='Option', tracking=True)
+    name = fields.Char(required=True, string='Idea', tracking=True)
     problem = fields.Text(string='Problem or opportunity')
     channel_ids = fields.Many2many('mi.channel', string='Channel mix')
     audience = fields.Text(string='Audience')
@@ -117,6 +117,47 @@ class Risk(models.Model):
 class Brand(models.Model):
     _inherit = 'mi.brand'
 
+    recommendation_ids = fields.One2many('mi.recommendation', 'brand_id', string='Suggested campaigns')
+    risk_ids = fields.One2many('mi.risk', 'brand_id', string='Risks')
+    idea_count = fields.Integer(compute='_compute_insight_counts', string='Suggested campaigns')
+    risk_count = fields.Integer(compute='_compute_insight_counts', string='Open risks')
+    run_count = fields.Integer(compute='_compute_insight_counts', string='Research')
+    latest_run_id = fields.Many2one('mi.run', compute='_compute_insight_counts', string='Latest research')
+
+    def _compute_insight_counts(self):
+        for brand in self:
+            brand.idea_count = self.env['mi.recommendation'].search_count(
+                [('brand_id', '=', brand.id), ('state', '=', 'proposed')])
+            brand.risk_count = self.env['mi.risk'].search_count([('brand_id', '=', brand.id), ('state', '=', 'open')])
+            runs = self.env['mi.run'].search([('brand_id', '=', brand.id)], order='started_at desc, id desc')
+            brand.run_count = len(runs)
+            brand.latest_run_id = runs[:1]
+
+    def _open(self, model, name, domain, context=None, views='list,form'):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'res_model': model, 'name': name, 'view_mode': views,
+                'domain': domain, 'context': dict(context or {}, default_brand_id=self.id)}
+
+    def action_open_changes(self):
+        return self._open('mi.finding', _('Market changes'), [('brand_id', '=', self.id)], {'search_default_new': 1})
+
+    def action_open_ideas(self):
+        return self._open('mi.recommendation', _('Suggested campaigns'), [('brand_id', '=', self.id)],
+                          {'search_default_proposed': 1})
+
+    def action_open_risks(self):
+        return self._open('mi.risk', _('Risks'), [('brand_id', '=', self.id)], {'search_default_open': 1})
+
+    def action_open_research(self):
+        return self._open('mi.run', _('Research'), [('brand_id', '=', self.id)])
+
+    def action_open_latest_research(self):
+        self.ensure_one()
+        if not self.latest_run_id:
+            raise UserError(_('No research yet. Add competitors or sources, then click Research now.'))
+        return {'type': 'ir.actions.act_window', 'res_model': 'mi.run', 'res_id': self.latest_run_id.id,
+                'view_mode': 'form'}
+
     def _learning_lines(self, limit=5):
         """Short lines about past campaigns and their results, for analysis. Filled by campaign plans."""
         return []
@@ -130,7 +171,7 @@ class Run(models.Model):
     weaknesses = fields.Text()
     opportunities = fields.Text()
     threats = fields.Text()
-    recommendation_ids = fields.One2many('mi.recommendation', 'run_id', string='Campaign options')
+    recommendation_ids = fields.One2many('mi.recommendation', 'run_id', string='Suggested campaigns')
     risk_ids = fields.One2many('mi.risk', 'run_id', string='Risks')
     analysed_at = fields.Datetime(readonly=True)
 
@@ -185,7 +226,7 @@ class Run(models.Model):
             sequence += 1
         if self.recommendation_ids:
             blocks.append((0, 0, {
-                'sequence': 20, 'type': 'table', 'title': _('Campaign options'),
+                'sequence': 20, 'type': 'table', 'title': _('Suggested campaigns'),
                 'model_id': self.env['ir.model']._get('mi.recommendation').id,
                 'domain': repr([('run_id', '=', self.id)]), 'limit': 20, 'order': 'sequence',
                 'field_names': 'name, problem, channel_ids, budget, duration_days, kpis, confidence, state'}))
@@ -204,3 +245,63 @@ def _text_html(text):
     from markupsafe import escape
     paragraphs = [p.strip() for p in (text or '').split('\n\n') if p.strip()]
     return ''.join('<p>%s</p>' % escape(p).replace('\n', '<br/>') for p in paragraphs)
+
+
+ACCOUNT_MODELS = [('omni.social.connection', 'Social page or account'), ('omni.channel', 'Messaging channel'),
+                  ('mm.list', 'Messaging list'), ('mailing.list', 'Email / SMS mailing list')]
+
+
+class BrandTeam(models.Model):
+    _inherit = 'mi.brand'
+
+    member_ids = fields.Many2many('res.users', 'mi_brand_member_rel', 'brand_id', 'user_id', string='Team',
+                                  domain="[('share', '=', False)]",
+                                  help='People working on this brand. They find it under "My brands". '
+                                       'Empty: everyone in marketing works on it.')
+    partner_id = fields.Many2one('res.partner', string='Client contact',
+                                 help='For advisors and agencies: the client this brand belongs to (internal for now).')
+    email_from = fields.Char(string='Email sender', help='e.g. "Brand <hello@brand.com>"; used for email drafts.')
+    account_ids = fields.One2many('mi.brand.account', 'brand_id', string='Channels & accounts')
+
+    @api.model
+    def _marketing_home(self):
+        """One brand: open it. Several: the portfolio, starting with the person's own brands."""
+        brands = self.search([])
+        if len(brands) == 1:
+            return {'type': 'ir.actions.act_window', 'res_model': 'mi.brand', 'res_id': brands.id,
+                    'views': [(False, 'form')], 'name': brands.name}
+        action = self.env['ir.actions.act_window']._for_xml_id('marketing_intel.action_brands')
+        mine = brands.filtered(lambda b: self.env.user in b.member_ids)
+        action['context'] = {'search_default_my_brands': 1} if mine else {}
+        return action
+
+    def _accounts(self, model):
+        """The brand's own accounts of one kind (records of `model`), readable by the current user."""
+        self.ensure_one()
+        if model not in self.env:
+            return False
+        ids = [a.account.id for a in self.account_ids if a.account and a.account._name == model]
+        return self.env[model].browse(ids).exists()
+
+
+class BrandAccount(models.Model):
+    _name = 'mi.brand.account'
+    _description = 'Brand channel account'
+    _order = 'brand_id, sequence, id'
+
+    brand_id = fields.Many2one('mi.brand', required=True, ondelete='cascade', index=True)
+    company_id = fields.Many2one(related='brand_id.company_id', store=True)
+    sequence = fields.Integer(default=10)
+    account = fields.Reference(selection='_selection_account', string='Account', required=True,
+                               help='A Social page, Messaging channel or list, or mailing list that belongs to this brand.')
+    kind = fields.Char(compute='_compute_kind', string='Kind')
+
+    @api.model
+    def _selection_account(self):
+        return [(model, label) for model, label in ACCOUNT_MODELS if model in self.env]
+
+    @api.depends('account')
+    def _compute_kind(self):
+        labels = dict(ACCOUNT_MODELS)
+        for row in self:
+            row.kind = labels.get(row.account._name, '') if row.account else ''

@@ -13,3 +13,5 @@ access_channel_user,Channels,model_mi_channel,group_mi_user,r
 access_channel_manager,Channels manage,model_mi_channel,group_mi_manager,crud
 access_recommendation_user,Campaign options,model_mi_recommendation,group_mi_user,crud
 access_risk_user,Risks,model_mi_risk,group_mi_user,crud
+access_brand_account_user,Brand accounts,model_mi_brand_account,group_mi_user,r
+access_brand_account_manager,Brand accounts manage,model_mi_brand_account,group_mi_manager,crud

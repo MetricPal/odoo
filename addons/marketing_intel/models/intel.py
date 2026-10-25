@@ -26,7 +26,7 @@ def is_manager(env):
 
 class Brand(models.Model):
     _name = 'mi.brand'
-    _description = 'Brand profile'
+    _description = 'Brand'
     _inherit = ['mail.thread']
 
     name = fields.Char(required=True, tracking=True)
@@ -43,7 +43,7 @@ class Brand(models.Model):
     goal_ids = fields.One2many('mi.goal', 'brand_id', string='Goals')
     competitor_ids = fields.One2many('mi.competitor', 'brand_id', string='Competitors')
     source_ids = fields.One2many('mi.source', 'brand_id', string='Sources')
-    run_ids = fields.One2many('mi.run', 'brand_id', string='Research runs')
+    run_ids = fields.One2many('mi.run', 'brand_id', string='Research')
     approved_source_count = fields.Integer(compute='_compute_counts')
     open_finding_count = fields.Integer(compute='_compute_counts')
 
@@ -270,7 +270,7 @@ class Snapshot(models.Model):
 
 class Finding(models.Model):
     _name = 'mi.finding'
-    _description = 'Research finding'
+    _description = 'Market change'
     _order = 'create_date desc, id desc'
 
     run_id = fields.Many2one('mi.run', ondelete='cascade', index=True)
@@ -295,7 +295,7 @@ class Finding(models.Model):
 
 class Run(models.Model):
     _name = 'mi.run'
-    _description = 'Research run'
+    _description = 'Research'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'started_at desc, id desc'
 
@@ -303,7 +303,7 @@ class Run(models.Model):
     company_id = fields.Many2one(related='brand_id.company_id', store=True)
     started_at = fields.Datetime(default=fields.Datetime.now, required=True)
     finished_at = fields.Datetime()
-    finding_ids = fields.One2many('mi.finding', 'run_id', string='Findings')
+    finding_ids = fields.One2many('mi.finding', 'run_id', string='Market changes')
     source_count = fields.Integer(string='Sources checked')
     change_count = fields.Integer(string='Changes')
     error_count = fields.Integer(string='Errors')

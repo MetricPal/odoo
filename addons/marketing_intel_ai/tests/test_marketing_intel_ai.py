@@ -86,7 +86,7 @@ class TestMarketingIntelAi(TransactionCase):
         self.assertEqual(ai_risk.level, 'high')
         self.assertTrue(run.risk_ids.filtered(lambda r: r.origin == 'rule' and r.category == 'budget'))
         self.assertIn('Rival ERP cut', run.summary)
-        self.assertIn('Campaign options', run.report_id.block_ids.mapped('title'))
+        self.assertIn('Suggested campaigns', run.report_id.block_ids.mapped('title'))
         # Asking again keeps what people decided and replaces only undecided AI work.
         options[0].action_choose()
         run.action_ai_analyse()
@@ -135,3 +135,12 @@ class TestMarketingIntelAi(TransactionCase):
         self.assertEqual(run2.with_user(self.user)._agent_for(), self.agent)
         with self.assertRaises(UserError):
             run2.with_user(self.manager)._agent_for()
+
+    def test_brand_button_suggests_campaigns(self):
+        brand = self.env['mi.brand'].with_user(self.manager).create({'name': 'No sources yet', 'ai_agent_id': self.agent.id})
+        with self.assertRaises(Exception):  # the manager has no AI access: nothing is queued
+            brand.with_user(self.manager).action_ai_suggest()
+        action = brand.with_user(self.user).action_ai_suggest()
+        self.assertEqual(action['tag'], 'display_notification')
+        run = self.env['mi.run'].sudo().search([('brand_id', '=', brand.id)], order='id desc', limit=1)
+        self.assertTrue(run.ai_run_id, 'a research record was created and the assistant asked')

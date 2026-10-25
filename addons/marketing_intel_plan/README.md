@@ -24,6 +24,14 @@ marketing app. Marketing Intelligence never sends, publishes or spends.
 4. **Campaign plans** opens as a calendar. A plan warns when another active
    plan of the same brand overlaps on the same channels (contact fatigue).
 
+## Brand accounts
+
+Drafts take the brand's own accounts from Brand › Settings › Channels & accounts: Social pages for
+the social campaign, the Messaging channel and its matching lists, the Email/SMS mailing lists and
+the email sender. When the company has several brands and one is missing, the draft is not created
+and its line says what to set up; it never uses another brand's account. A company with a single
+brand falls back to the apps' defaults.
+
 ## Results and learning
 
 The **Results** tab shows what each plan achieved, read back from the apps:

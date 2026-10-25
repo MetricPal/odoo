@@ -12,6 +12,45 @@ Format:
 
 
 
+## 2026-10-25 — Marketing: one brand or many
+
+- Change: Marketing adapts to in-house marketers (one brand: opens the brand) and advisors (several
+  brands: brand cards, "My brands" first, grouped by client). Brands get a team, a client contact,
+  an email sender and their own channels & accounts; campaign drafts use only those (no fallback to
+  another brand's account when the company has several brands). Brand cards flag goals behind
+  schedule and budget planned this month.
+- Reason: owner described two user types (own company vs marketing advisor).
+- Affected: `marketing_intel` (`mi.brand.account`, team fields, home action), `marketing_intel_plan`
+  (drafts, brand attention).
+- Migration: upgrade `marketing_intel,marketing_intel_plan,marketing_intel_ai`. Companies with several
+  brands must set each brand's Channels & accounts before preparing campaigns. Client portal: later.
+
+## 2026-10-25 — Marketing made simple: brands home, campaigns first, plain names
+
+- App renamed **Marketing**; opens on **Brands** (cards with changes, suggestions, active campaigns,
+  New campaign / Research now). Menus: Brands · Campaigns · Insights (Market changes, Suggested
+  campaigns, Risks) · Reporting (Campaign results, Goals) · Configuration (Competitors, Sources,
+  Research history).
+- Brand page is the hub: smart buttons and tabs Overview (goals) · Campaigns · Insights ·
+  Competitors & sources · Settings · AI assistant.
+- `marketing_intel_plan`: campaigns no longer need a suggestion (brand, goal, channels as tags kept in
+  sync with the channel lines); **Use this idea** chooses a suggestion and starts its campaign; goals are
+  measured by hand or from linked campaigns' results.
+- `marketing_intel_ai`: one **✨ Suggest campaigns** button on the brand (uses the latest research,
+  researching first if needed).
+- Plain names: Campaign (was campaign plan), Suggested campaign (campaign option), Market change
+  (finding), Research (research run), Risks (risk register).
+- New app icon: AI Agent frame and sparkles with a megaphone (Odoo purple frame, teal megaphone),
+  declared in the manifests (`'icon'`) so it shows in Apps; Report Studio icon declared too.
+- Module names: Marketing, Marketing: AI assistant, Marketing: campaigns.
+
+## 2026-10-25 — Marketing Intelligence menus
+
+- `marketing_intel`: "Setup" renamed "Configuration"; Research runs moved there
+  (below Sources); Findings list shows the Brand, and findings can be searched
+  and grouped by brand. Brand form sections renamed "Brand profile" (offering,
+  audience, value, voice, markets) and "Budget & research" (was "Plan").
+
 ## 2026-10-25 — Reports: side PDF preview, Export in the Board tab, Settings tab
 
 - `report_studio`: the right side of a report shows a PDF preview of the page

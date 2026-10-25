@@ -1,3 +1,37 @@
+# Marketing (Marketing Intelligence)
+
+Manage brands, goals and campaigns, and do marketing with or without an AI assistant.
+
+## How it works
+
+1. **Brands** (home): one card per brand with new market changes, suggestions and active campaigns,
+   plus **New campaign** and **Research now**.
+2. **Brand page** (the hub): **Overview** (goals, measured by hand or from linked campaigns),
+   **Campaigns**, **Insights** (latest research and suggested campaigns), **Competitors & sources**
+   (what research watches; an administrator approves each), **Settings** (profile, budget, research
+   schedule) and **AI assistant**.
+3. **Campaigns**: create one yourself (brand, goal, channels, dates, budget) or click **Use this idea** on
+   a suggested campaign. *Prepare drafts* creates drafts in Social, Messaging, Email, SMS and Events,
+   each under its own approval. Results (sends, clicks, leads, won deals, revenue, registrations) are
+   read back and count towards the goal.
+4. **Insights**: market changes found by research, suggested campaigns (by you or the AI assistant) and
+   risks.
+5. **Reporting**: campaign results and goal progress.
+
+Without AI everything works by hand. With `marketing_intel_ai`, **✨ Suggest campaigns** asks the
+assistant for ideas from the brand profile, goals and latest research.
+
+---
+
+## One brand or many
+
+- **In-house marketer:** with one brand in the company, Marketing opens straight on it.
+- **Advisor with clients:** with several brands, Marketing opens on the brand cards with **My brands**
+  first (brands where you are in the Team, plus brands with no team); group by client.
+- Each brand's **Settings › Channels & accounts** lists its own Social pages, Messaging channel and
+  lists, and Email/SMS mailing lists, plus the email sender. Campaign drafts use only these.
+- Client portal access is planned, not built yet.
+
 # Marketing Intelligence (phase 1)
 
 Recurring, approved research with evidence, per the
