@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-10-26 — Marketing: links and buttons only for who may fix it
+
+- Change: the link to the approval type is shown only to approvals managers, the link to the brand's Channels & accounts only to marketing managers; everyone else reads whom to ask instead ("Nobody else can approve it: ask Ali, Siti to add another approver or allow self-approval").
+- Change: the same for the error buttons (Set the approvers, Open the brand): someone without the rights gets a plain message naming the managers.
+- Change: the owner's next-step activity is worded for the owner (context `mi_step_user`); helpers `can_fix` / `whom_to_ask` in `marketing_intel/models/fixers.py`.
+- Fix: the next-step banner is recomputed per user (`depends_context('uid')`).
+
 ## 2026-10-26 — Marketing: guidance texts link to the place to fix
 
 - Change: next-step banners on the campaign form (`next_step_html`, `my_todo_html`) link "the approval type “Marketing campaign”" to the approval type and "the brand’s Channels & accounts" to the brand, instead of menu paths like "Approvals › Configuration › …".

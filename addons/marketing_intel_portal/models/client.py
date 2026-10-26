@@ -5,6 +5,8 @@ from markupsafe import Markup
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, RedirectWarning, UserError
 
+from odoo.addons.marketing_intel.models.fixers import BRANDS, can_fix, whom_to_ask
+
 CLIENT_STATES = [('none', 'Not asked'), ('waiting', 'Waiting for the client'), ('approved', 'Client approved'),
                  ('changes', 'Client asked for changes')]
 
@@ -46,6 +48,9 @@ class Plan(models.Model):
                 raise UserError(_('This brand does not ask clients to sign off campaigns.'))
             partners = plan.brand_id.portal_partner_ids
             if not partners:
+                if not can_fix(self.env.user, BRANDS):
+                    raise UserError(_('This brand has no client contacts yet: ask %s to add them on the brand.',
+                                      whom_to_ask(self.env, BRANDS, plan.company_id)))
                 raise RedirectWarning(_('Add client contacts on the brand (Client portal, in its Settings) first.'),
                                       {'type': 'ir.actions.act_window', 'res_model': 'mi.brand', 'res_id': plan.brand_id.id, 'views': [(False, 'form')], 'target': 'current'}, _('Open the brand'))
             if plan.state not in ('brief', 'content'):

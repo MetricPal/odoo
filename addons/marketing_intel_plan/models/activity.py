@@ -47,7 +47,7 @@ class Plan(models.Model):
         self.ensure_one()
         if self.is_template or self.state not in ('brief', 'content', 'review', 'scheduled', 'live'):
             return False, False
-        step, owner_must_act = self._next_step()
+        step, owner_must_act = self.with_context(mi_step_user=self.user_id.id)._next_step()
         return (step, self.user_id) if owner_must_act else (False, False)
 
     @api.model_create_multi

@@ -28,6 +28,8 @@ from datetime import timedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
 
+from odoo.addons.marketing_intel.models.fixers import BRANDS, can_fix, whom_to_ask
+
 _logger = logging.getLogger(__name__)
 
 TRIGGERS = [
@@ -335,6 +337,9 @@ class Flow(models.Model):
             if problems:
                 message = _('Fix this first:\n%s', '\n'.join('• ' + p for p in problems))
                 if any(_('the brand’s Channels & accounts') in p for p in problems):
+                    if not can_fix(self.env.user, BRANDS):
+                        raise UserError('%s\n%s' % (message, _('Ask %s to set the brand’s Channels & accounts.',
+                                                               whom_to_ask(self.env, BRANDS, flow.company_id))))
                     raise RedirectWarning(message, {'type': 'ir.actions.act_window', 'res_model': 'mi.brand', 'res_id': flow.brand_id.id, 'views': [(False, 'form')], 'target': 'current'},
                                           _('Open the brand'))
                 raise UserError(message)

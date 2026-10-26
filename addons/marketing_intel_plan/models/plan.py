@@ -27,6 +27,8 @@ from markupsafe import Markup, escape
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
+
+from odoo.addons.marketing_intel.models.fixers import APPROVALS, BRANDS, can_fix, whom_to_ask
 from odoo.tools import format_date
 
 from odoo.addons.marketing_intel.models.strategy import CHANNELS
@@ -299,8 +301,13 @@ class Plan(models.Model):
                 plan.my_todo = False
             plan.needs_me = bool(plan.my_todo)
 
+    def _step_user(self):
+        """Whom the next step is written for: the reader, or the owner for the owner's activity."""
+        uid = self.env.context.get('mi_step_user')
+        return self.env['res.users'].browse(uid) if uid else self.env.user
+
     def _next_step(self):
-        """(text, owner must act) for the campaign as it is now."""
+        """(text, owner must act) for the campaign as it is now, worded for ``_step_user``."""
         self.ensure_one()
         stages = self.item_ids.mapped('stage')
         fix = len([s for s in stages if s in ('blocked', 'failed')])
@@ -313,7 +320,10 @@ class Plan(models.Model):
         if fix:
             if any(_('the brand’s Channels & accounts') in (item.note or '') or
                    _('in the brand’s Channels & accounts') in (item.next_step or '') for item in self.item_ids):
-                return _('Fix %s channel(s): set the brand’s accounts in the brand’s Channels & accounts', fix), True
+                if can_fix(self._step_user(), BRANDS):
+                    return _('Fix %s channel(s): set the brand’s accounts in the brand’s Channels & accounts', fix), True
+                return _('Fix %(count)s channel(s): ask %(who)s to set the brand’s accounts', count=fix,
+                         who=whom_to_ask(self.env, BRANDS, self.company_id)), True
             return _('Fix %s channel(s): see Next step on each line', fix), True
         if self.state == 'brief':
             if not self.item_ids:
@@ -326,8 +336,11 @@ class Plan(models.Model):
             approvers = requests.approver_ids.filtered(lambda line: line.status == 'submitted').user_id
             others = approvers - requests.requester_id
             if approvers and not others and not requests.policy_id.filtered('allow_self_approval'):
-                return _('Nobody else can approve it: add another approver, or allow self-approval, on the approval '
-                         'type “Marketing campaign”'), True
+                if can_fix(self._step_user(), APPROVALS):
+                    return _('Nobody else can approve it: add another approver, or allow self-approval, on the '
+                             'approval type “Marketing campaign”'), True
+                return _('Nobody else can approve it: ask %s to add another approver or allow self-approval',
+                         whom_to_ask(self.env, APPROVALS, self.company_id)), True
             return _('Waiting for approval by %s', ', '.join(approvers.mapped('name')) or '-'), False
         if self.state == 'scheduled':
             return _('Approved: goes out on %s', format_date(self.env, self.date_start)), False
@@ -498,6 +511,9 @@ class Plan(models.Model):
         try:
             request.with_user(self.env.user).sudo().action_submit()
         except UserError as error:
+            if not can_fix(self.env.user, APPROVALS):
+                raise UserError(_('%(error)s Ask %(who)s to set who approves campaigns.', error=str(error),
+                                  who=whom_to_ask(self.env, APPROVALS, self.company_id))) from None
             raise RedirectWarning(
                 _('%(error)s Set who approves campaigns on the approval type “Marketing campaign”.', error=str(error)),
                 {'type': 'ir.actions.act_window', 'res_model': 'approval.center.policy', 'res_id': policy.id, 'views': [(False, 'form')], 'target': 'current'},

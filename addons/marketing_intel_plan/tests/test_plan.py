@@ -184,6 +184,11 @@ class TestCampaignPlan(TransactionCase):
         item = plan.item_ids
         self.assertFalse(item.res_id, 'never another brand\'s list or the default one')
         self.assertIn('Channels & accounts', item.note)
+        boss = new_test_user(self.env, 'mip_brand_manager', name='Brand Boss', groups='marketing_intel.group_mi_manager')
+        self.assertIn('ask', plan.next_step, 'not a marketing manager: told whom to ask')
+        self.assertIn(boss.name, plan.next_step)
+        self.assertNotIn('/odoo/mi.brand/', plan.next_step_html)
+        self.assertIn('/odoo/mi.brand/', plan.with_user(boss).next_step_html, 'a manager gets the link')
         own = self.env['mailing.list'].sudo().create({'name': 'Client B subscribers'})
         self.env['mailing.list'].sudo().create({'name': 'metric.io subscribers'})
         client.account_ids = [Command.create({'account': f'mailing.list,{own.id}'})]
@@ -335,9 +340,18 @@ class TestCampaignPlan(TransactionCase):
         approver, plan = self._review_setup()
         self.env.ref('marketing_intel_plan.policy_campaign').approver_ids = [
             Command.clear(), Command.create({'user_id': self.user.id})]
+        manager = new_test_user(self.env, 'mip_appr_manager', name='Approvals Boss',
+                                groups='approval_center.group_approval_center_manager')
         plan.action_submit_review()
         self.assertFalse(plan.can_review)
-        self.assertIn('Nobody else can approve', plan.my_todo)
+        # The owner may not change the approval type: told whom to ask, no link to a form they cannot edit.
+        self.assertIn('Nobody else can approve it: ask', plan.my_todo)
+        self.assertIn(manager.name, plan.my_todo)
+        self.assertNotIn('/odoo/approval.center.policy/', plan.my_todo_html)
+        self.assertIn(manager.name, plan.mi_activity_id.summary, 'the owner activity is worded for the owner')
+        # An approvals manager gets the link to the approval type.
+        self.user.group_ids = [Command.link(self.env.ref('approval_center.group_approval_center_manager').id)]
+        self.env.invalidate_all()
         self.assertIn('/odoo/approval.center.policy/', plan.my_todo_html)
         self.assertNotIn('›', plan.my_todo)
 
@@ -346,6 +360,10 @@ class TestCampaignPlan(TransactionCase):
             self.skipTest('Email Marketing not installed')
         approver, plan = self._review_setup()
         self.env.ref('marketing_intel_plan.policy_campaign').approver_ids = [Command.clear()]
+        result = plan.action_submit_review()
+        self.assertIn('Ask', result['params']['message'], 'not an approvals manager: told whom to ask')
+        self.assertNotIn('links', result['params'])
+        self.user.group_ids = [Command.link(self.env.ref('approval_center.group_approval_center_manager').id)]
         result = plan.action_submit_review()
         self.assertIn('Marketing campaign', result['params']['message'])
         self.assertTrue(result['params']['links'][0]['url'].startswith('/odoo/approval.center.policy/'))

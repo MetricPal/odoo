@@ -6,6 +6,8 @@ from markupsafe import Markup, escape
 from odoo import _, api, fields, models
 from odoo.tools import format_date, formatLang
 
+from odoo.addons.marketing_intel.models.fixers import APPROVALS, BRANDS, can_fix
+
 # Stage groups of the summary strip, left to right: filter name in the search view, label, states.
 STRIP = [('stage_brief', 'Brief & content', ('brief', 'content')), ('stage_review', 'Waiting approval', ('review',)),
          ('stage_scheduled', 'Scheduled', ('scheduled',)), ('stage_live', 'Running', ('live',)),
@@ -54,6 +56,7 @@ class Plan(models.Model):
             plan.approval_count = len(requests)
             plan.approval_done = len(requests.filtered(lambda r: r.state == 'approved'))
 
+    @api.depends_context('uid')
     @api.depends('next_step', 'my_todo')
     def _compute_step_html(self):
         for plan in self:
@@ -62,16 +65,17 @@ class Plan(models.Model):
             plan.my_todo_html = plan._linked(plan.my_todo, links)
 
     def _step_links(self):
-        """Phrases of the next-step texts that name a place, and where they lead (opened in the same tab)."""
+        """Phrases of the next-step texts that name a place, and where they lead (opened in the same tab); only
+        for a reader who may change that place."""
         self.ensure_one()
         links = {}
         policy = self.sudo().review_request_id.policy_id
         if not policy and self.company_id:
             policy = self.env['approval.center.policy'].sudo().search(
                 [('model_id.model', '=', 'mi.plan'), ('company_id', '=', self.company_id.id)], limit=1)
-        if policy:
+        if policy and can_fix(self.env.user, APPROVALS):
             links[_('the approval type “Marketing campaign”')] = '/odoo/approval.center.policy/%s' % policy.id
-        if self.brand_id:
+        if self.brand_id and can_fix(self.env.user, BRANDS):
             links[_('the brand’s Channels & accounts')] = '/odoo/mi.brand/%s' % self.brand_id.id
         return links
 
