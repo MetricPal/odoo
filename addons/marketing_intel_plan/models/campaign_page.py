@@ -1,6 +1,8 @@
 """What the campaign list and form show in Odoo's own layout: the summary strip above the list (like Expenses and
 Sales), the form's smart buttons (budget, timeline, channels, approvals) and the market research tab."""
 
+from markupsafe import Markup, escape
+
 from odoo import _, api, fields, models
 from odoo.tools import format_date, formatLang
 
@@ -30,6 +32,8 @@ class Plan(models.Model):
     channel_label = fields.Char(compute='_compute_page', string='Channel names')
     approval_count = fields.Integer(compute='_compute_page', string='Approvals')
     approval_done = fields.Integer(compute='_compute_page', string='Approved')
+    next_step_html = fields.Html(compute='_compute_step_html', sanitize=False, string='Next step ')
+    my_todo_html = fields.Html(compute='_compute_step_html', sanitize=False, string='What you need to do ')
     research_problem = fields.Text(related='recommendation_id.problem', string='Problem or opportunity')
     research_expected = fields.Text(related='recommendation_id.expected_result', string='Expected result')
     research_risks = fields.Text(related='recommendation_id.risk_notes', string='Risks')
@@ -49,6 +53,36 @@ class Plan(models.Model):
             requests = plan._approval_requests()
             plan.approval_count = len(requests)
             plan.approval_done = len(requests.filtered(lambda r: r.state == 'approved'))
+
+    @api.depends('next_step', 'my_todo')
+    def _compute_step_html(self):
+        for plan in self:
+            links = plan._step_links()
+            plan.next_step_html = plan._linked(plan.next_step, links)
+            plan.my_todo_html = plan._linked(plan.my_todo, links)
+
+    def _step_links(self):
+        """Phrases of the next-step texts that name a place, and where they lead (opened in the same tab)."""
+        self.ensure_one()
+        links = {}
+        policy = self.sudo().review_request_id.policy_id
+        if not policy and self.company_id:
+            policy = self.env['approval.center.policy'].sudo().search(
+                [('model_id.model', '=', 'mi.plan'), ('company_id', '=', self.company_id.id)], limit=1)
+        if policy:
+            links[_('the approval type “Marketing campaign”')] = '/odoo/approval.center.policy/%s' % policy.id
+        if self.brand_id:
+            links[_('the brand’s Channels & accounts')] = '/odoo/mi.brand/%s' % self.brand_id.id
+        return links
+
+    @staticmethod
+    def _linked(text, links):
+        if not text:
+            return False
+        html = escape(text)
+        for phrase, url in links.items():
+            html = html.replace(escape(phrase), Markup('<a href="%s">%s</a>') % (url, phrase))
+        return Markup(html)
 
     def _approval_requests(self):
         self.ensure_one()

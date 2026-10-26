@@ -26,7 +26,7 @@ import logging
 from datetime import timedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -236,8 +236,7 @@ class Flow(models.Model):
         if not self.step_ids:
             problems.append(_('Add at least one step under “Then”.'))
         if self.trigger in ('social_comment', 'social_message') and not self._connections():
-            problems.append(_('Choose the social pages to watch (or set them in Brand › Settings › Channels & '
-                              'accounts).'))
+            problems.append(_('Choose the social pages to watch (or set them in the brand’s Channels & accounts).'))
         if self.trigger in ('event_registration', 'email_click', 'lead') and not self.plan_id:
             problems.append(_('Choose the campaign whose event, emails or leads it watches.'))
         if self.trigger == 'lead' and 'crm.lead' not in self.env:
@@ -334,7 +333,11 @@ class Flow(models.Model):
                 raise UserError(_('This workflow is already approved or waiting for approval.'))
             problems = flow._problems()
             if problems:
-                raise UserError(_('Fix this first:\n%s', '\n'.join('• ' + p for p in problems)))
+                message = _('Fix this first:\n%s', '\n'.join('• ' + p for p in problems))
+                if any(_('the brand’s Channels & accounts') in p for p in problems):
+                    raise RedirectWarning(message, {'type': 'ir.actions.act_window', 'res_model': 'mi.brand', 'res_id': flow.brand_id.id, 'views': [(False, 'form')], 'target': 'current'},
+                                          _('Open the brand'))
+                raise UserError(message)
             if not flow.channel_id and any(s.action == 'message' for s in flow.step_ids):
                 flow.channel_id = flow._channel()
             policy = flow._policy()

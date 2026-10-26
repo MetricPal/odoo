@@ -3,7 +3,7 @@
 from markupsafe import Markup
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, RedirectWarning, UserError
 
 CLIENT_STATES = [('none', 'Not asked'), ('waiting', 'Waiting for the client'), ('approved', 'Client approved'),
                  ('changes', 'Client asked for changes')]
@@ -46,7 +46,8 @@ class Plan(models.Model):
                 raise UserError(_('This brand does not ask clients to sign off campaigns.'))
             partners = plan.brand_id.portal_partner_ids
             if not partners:
-                raise UserError(_('Add client contacts on the brand (Brand › Client portal) first.'))
+                raise RedirectWarning(_('Add client contacts on the brand (Client portal, in its Settings) first.'),
+                                      {'type': 'ir.actions.act_window', 'res_model': 'mi.brand', 'res_id': plan.brand_id.id, 'views': [(False, 'form')], 'target': 'current'}, _('Open the brand'))
             if plan.state not in ('brief', 'content'):
                 raise UserError(_('Ask the client before the campaign goes to review.'))
             plan.sudo().write({'client_state': 'waiting', 'client_feedback': False, 'client_decided_by': False})

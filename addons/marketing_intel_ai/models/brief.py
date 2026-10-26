@@ -47,8 +47,10 @@ class Brand(models.Model):
         run._ai_ask(agent)
         return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
             'type': 'info', 'sticky': False, 'title': _('The AI assistant is preparing suggestions'),
-            'message': _('They appear under Insights › Suggested campaigns in a moment. Review them, then click '
-                         '“Use this idea” to start a campaign.'),
+            'message': _('They appear in %s in a moment. Review them, then click “Use this idea” to start a '
+                         'campaign.'),
+            'links': [{'label': _('Suggested campaigns'),
+                       'url': '/odoo/action-marketing_intel.action_recommendations'}],
         }}
 
     def _research(self):

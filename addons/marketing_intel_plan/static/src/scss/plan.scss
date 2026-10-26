@@ -4,3 +4,5 @@
     text-overflow: clip !important;
     min-width: 220px;
 }
+
+.o_mi_inline_html, .o_mi_inline_html .o_readonly, .o_mi_inline_html p { display: inline; margin: 0; }

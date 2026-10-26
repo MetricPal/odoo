@@ -30,11 +30,11 @@
         <field name="needs_me" invisible="1"/>
         <div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="status"
              invisible="not needs_me or state in ('done', 'cancelled')">
-          <span class="fw-bold">Your next step:</span> <field name="my_todo" nolabel="1"/>
+          <span class="fw-bold">Your next step:</span> <field name="my_todo_html" nolabel="1" readonly="1" class="o_mi_inline_html"/>
         </div>
         <div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="status"
              invisible="needs_me or not next_step or state in ('done', 'cancelled')">
-          <span class="fw-bold">Next step:</span> <field name="next_step" nolabel="1"/>
+          <span class="fw-bold">Next step:</span> <field name="next_step_html" nolabel="1" readonly="1" class="o_mi_inline_html"/>
         </div>
         <div class="alert alert-warning" role="status" invisible="not clash_note"><field name="clash_note" nolabel="1"/></div>
         <div class="oe_button_box" name="button_box">

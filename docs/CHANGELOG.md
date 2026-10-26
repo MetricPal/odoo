@@ -12,6 +12,12 @@ Format:
 
 
 
+## 2026-10-26 — Marketing: guidance texts link to the place to fix
+
+- Change: next-step banners on the campaign form (`next_step_html`, `my_todo_html`) link "the approval type “Marketing campaign”" to the approval type and "the brand’s Channels & accounts" to the brand, instead of menu paths like "Approvals › Configuration › …".
+- Change: errors that point somewhere raise `RedirectWarning` with a button (Set the approvers, Open the brand, Open the template); the "Not sent for review yet" and AI brief notifications carry links.
+- Fix: the assistant and Send for review handle `RedirectWarning` (it is not a `UserError`).
+
 ## 2026-10-26 — Marketing: campaign list and form in Odoo's layout
 
 - Change: campaign list with a summary strip (stages with arrows, tiles; js_class `mi_campaign_list`, data from

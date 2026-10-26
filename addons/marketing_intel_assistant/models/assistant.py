@@ -15,7 +15,7 @@ from datetime import date, timedelta
 from markupsafe import Markup
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
 from odoo.tools import format_date
 
 from odoo.addons.marketing_intel_ai.models.schema import InvalidAnswer, extract_json
@@ -339,6 +339,9 @@ class AssistantRequest(models.Model):
     def _propose(self, data):
         try:
             intent = self._clean_intent(data)
+        except RedirectWarning as error:
+            self._fail(error.args[0])
+            return
         except (UserError, ValidationError, AccessError) as error:
             self._fail(str(error))
             return
@@ -432,6 +435,9 @@ class AssistantRequest(models.Model):
         try:
             with self.env.cr.savepoint():
                 message, record = getattr(self, '_do_%s' % intent['action'])(intent)
+        except RedirectWarning as error:
+            self._fail(error.args[0])
+            return
         except (UserError, ValidationError, AccessError) as error:
             self._fail(str(error))
             return

@@ -26,7 +26,7 @@ from zoneinfo import ZoneInfo
 from markupsafe import Markup, escape
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
 from odoo.tools import format_date
 
 from odoo.addons.marketing_intel.models.strategy import CHANNELS
@@ -311,6 +311,9 @@ class Plan(models.Model):
         if self._ai_busy():
             return _('The AI assistant is writing the channels'), False
         if fix:
+            if any(_('the brand’s Channels & accounts') in (item.note or '') or
+                   _('in the brand’s Channels & accounts') in (item.next_step or '') for item in self.item_ids):
+                return _('Fix %s channel(s): set the brand’s accounts in the brand’s Channels & accounts', fix), True
             return _('Fix %s channel(s): see Next step on each line', fix), True
         if self.state == 'brief':
             if not self.item_ids:
@@ -323,8 +326,8 @@ class Plan(models.Model):
             approvers = requests.approver_ids.filtered(lambda line: line.status == 'submitted').user_id
             others = approvers - requests.requester_id
             if approvers and not others and not requests.policy_id.filtered('allow_self_approval'):
-                return _('Nobody else can approve it: add another approver (Approvals › Configuration › '
-                         'Marketing campaign) or allow self-approval there'), True
+                return _('Nobody else can approve it: add another approver, or allow self-approval, on the approval '
+                         'type “Marketing campaign”'), True
             return _('Waiting for approval by %s', ', '.join(approvers.mapped('name')) or '-'), False
         if self.state == 'scheduled':
             return _('Approved: goes out on %s', format_date(self.env, self.date_start)), False
@@ -433,7 +436,7 @@ class Plan(models.Model):
         """Review step, all or nothing: every draft must exist and be accepted by its app's own approval (Messaging,
         Social); then one campaign request is opened for the approver. If a channel has a problem, nothing is
         submitted, each line says what to fix, and the campaign stays where it was."""
-        problems = []
+        problems, links = [], []
         for plan in self:
             plan.check_access('write')
             if plan.is_template:
@@ -454,24 +457,32 @@ class Plan(models.Model):
                         plan._open_review_request()
                 except _Problems:
                     pass
+                except RedirectWarning as error:
+                    message, action, label = error.args[0], error.args[1], error.args[2]
+                    problems.append('%s: %s %%s' % (plan.name, message.replace('%', '%%')))
+                    links.append({'label': label, 'url': '/odoo/%s/%s' % (action['res_model'], action['res_id'])})
+                    continue
                 except UserError as error:
-                    problems.append('%s: %s' % (plan.name, error))
+                    problems.append('%s: %s' % (plan.name, str(error).replace('%', '%%')))
                     continue
             if notes:
                 for item, note in notes.items():
                     item.note = note
-                problems.append('%s:\n%s' % (plan.name, '\n'.join(
-                    '• %s: %s' % (dict(CHANNELS)[item.channel], note) for item, note in notes.items())))
+                problems.append(('%s:\n%s' % (plan.name, '\n'.join(
+                    '• %s: %s' % (dict(CHANNELS)[item.channel], note) for item, note in notes.items()))).replace('%', '%%'))
                 continue
             plan.item_ids.filtered(lambda i: i.res_id).note = False
             plan.state = 'review'
             plan.message_post(body=_('Sent for review. %s', plan._next_step()[0]))
             plan._sync_state()
         if problems:
-            return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
-                'type': 'warning', 'sticky': True, 'title': _('Not sent for review yet'),
-                'message': '\n\n'.join(problems),
-                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}}}
+            params = {'type': 'warning', 'sticky': True, 'title': _('Not sent for review yet'),
+                      'message': '\n\n'.join(problems), 'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}}
+            if links:
+                params['links'] = links
+            else:
+                params['message'] = params['message'].replace('%%', '%')
+            return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': params}
         return True
 
     def _open_review_request(self):
@@ -487,8 +498,10 @@ class Plan(models.Model):
         try:
             request.with_user(self.env.user).sudo().action_submit()
         except UserError as error:
-            raise UserError(_('%(error)s Set who approves campaigns in Approvals › Configuration › '
-                              '“Marketing campaign”.', error=str(error))) from None
+            raise RedirectWarning(
+                _('%(error)s Set who approves campaigns on the approval type “Marketing campaign”.', error=str(error)),
+                {'type': 'ir.actions.act_window', 'res_model': 'approval.center.policy', 'res_id': policy.id, 'views': [(False, 'form')], 'target': 'current'},
+                _('Set the approvers')) from None
         self.sudo().review_request_id = request
 
     def action_approve_review(self):
@@ -606,9 +619,10 @@ class Plan(models.Model):
             same = self.search([('is_template', '=', True), ('brand_id', '=', self.brand_id.id),
                                 ('name', '=ilike', self.name)], limit=1)
             if same:
-                raise UserError(_('%(brand)s already has a template called “%(name)s”. Use that template (Campaigns › '
-                                  'Templates), or rename this campaign before saving it as a new template.',
-                                  brand=self.brand_id.name, name=self.name))
+                raise RedirectWarning(
+                    _('%(brand)s already has a template called “%(name)s”. Use that template, or rename this '
+                      'campaign before saving it as a new template.', brand=self.brand_id.name, name=self.name),
+                    {'type': 'ir.actions.act_window', 'res_model': 'mi.plan', 'res_id': same.id, 'views': [(False, 'form')], 'target': 'current'}, _('Open the template'))
             template = self.create(values)
             template.message_post(body=_('Template saved from “%s”.', self.name))
         return template._open_form()
@@ -954,7 +968,7 @@ class PlanItem(models.Model):
 
     def _readiness(self, record):
         """What would stop this draft in its app, said with where to fix it (None when ready)."""
-        accounts = _('Brand › Settings › Channels & accounts')
+        accounts = _('in the brand’s Channels & accounts')
         if record._name == 'mailing.mailing':
             if not record.contact_list_ids:
                 return _('Choose the mailing lists to send to (%s, or open the draft).', accounts)
@@ -1073,8 +1087,8 @@ class PlanItem(models.Model):
             return accounts
         brands = self.env['mi.brand'].sudo().search_count([('company_id', '=', plan.company_id.id)])
         if brands > 1:
-            raise UserError(_('Set the %(what)s of “%(brand)s” in Brand › Settings › Channels & accounts.',
-                              what=what, brand=plan.brand_id.name))
+            raise UserError(_('Set the %(what)s of “%(brand)s” in the brand’s Channels & accounts.', what=what,
+                              brand=plan.brand_id.name))
         return self.env[model]
 
     def _draft_social(self, plan):

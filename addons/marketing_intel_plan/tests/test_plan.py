@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from odoo import Command, fields
-from odoo.exceptions import UserError
+from odoo.exceptions import RedirectWarning, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 APP_GROUPS = ['omni_channel.group_omni_user', 'messaging_marketing.group_mm_user',
@@ -338,6 +338,8 @@ class TestCampaignPlan(TransactionCase):
         plan.action_submit_review()
         self.assertFalse(plan.can_review)
         self.assertIn('Nobody else can approve', plan.my_todo)
+        self.assertIn('/odoo/approval.center.policy/', plan.my_todo_html)
+        self.assertNotIn('›', plan.my_todo)
 
     def test_review_without_approvers_explains_where_to_set_them(self):
         if 'mailing.mailing' not in self.env:
@@ -346,6 +348,8 @@ class TestCampaignPlan(TransactionCase):
         self.env.ref('marketing_intel_plan.policy_campaign').approver_ids = [Command.clear()]
         result = plan.action_submit_review()
         self.assertIn('Marketing campaign', result['params']['message'])
+        self.assertTrue(result['params']['links'][0]['url'].startswith('/odoo/approval.center.policy/'))
+        self.assertIn('%s', result['params']['message'], 'the link goes where %s is')
         self.assertNotEqual(plan.state, 'review')
 
     def test_duplicate_template_and_repeat(self):
@@ -397,7 +401,7 @@ class TestCampaignPlan(TransactionCase):
         # An unrelated campaign with the same name cannot add a second template of that name.
         namesake = self.env['mi.plan'].with_user(plan.user_id).create({
             'name': plan.name, 'brand_id': plan.brand_id.id, 'channel_ids': [Command.set(plan.channel_ids.ids)]})
-        with self.assertRaises(UserError):
+        with self.assertRaises(RedirectWarning):
             namesake.action_save_template()
         # Weekly repeat: the next run is created a few days before it starts and sent for review, once.
         today = fields.Date.today()
