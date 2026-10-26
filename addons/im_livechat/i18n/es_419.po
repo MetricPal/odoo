@@ -9,11 +9,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server saas~18.4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-02 17:39+0000\n"
-"PO-Revision-Date: 2026-08-31 15:01+0000\n"
+"POT-Creation-Date: 2026-10-16 17:41+0000\n"
+"PO-Revision-Date: 2026-10-23 00:33+0000\n"
 "Last-Translator: \"Fernanda Alvarez (mfar)\" <mfar@odoo.com>\n"
 "Language-Team: Spanish (Latin America) <https://translate.odoo.com/projects/"
-"odoo-s19-4/im_livechat/es_419/>\n"
+"odoo-20/im_livechat/es_419/>\n"
 "Language: es_419\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -126,7 +126,7 @@ msgstr "%(title)s - Paso %(sequence)d"
 #. odoo-python
 #: code:addons/im_livechat/models/res_users.py:0
 msgid "%(visitor)s authenticated as %(user)s."
-msgstr ""
+msgstr "%(visitor)s autenticado como %(user)s."
 
 #. module: im_livechat
 #. odoo-python
@@ -164,6 +164,13 @@ msgid ""
 "'Show'.\n"
 "* 'Hide' hides the chat button on the pages.\n"
 msgstr ""
+"* Mostrar muestra el botón de chat en las páginas.\n"
+"* Mostrar con notificación hace lo mismo que Mostrar y agrega un texto "
+"flotante junto al botón.\n"
+"* Abrir de forma automática muestra el botón y abre el panel de conversación "
+"de forma automática en pantallas grandes. En pantallas pequeñas, funciona "
+"como Mostrar.\n"
+"* Ocultar oculta el botón de chat en las páginas.\n"
 
 #. module: im_livechat
 #. odoo-javascript
@@ -478,7 +485,7 @@ msgstr "Historial de la llamada"
 #. odoo-javascript
 #: code:addons/im_livechat/static/src/core/common/livechat_command_dialog.xml:0
 msgid "Cancel"
-msgstr ""
+msgstr "Cancelar"
 
 #. module: im_livechat
 #: model:ir.ui.menu,name:im_livechat.canned_responses
@@ -1100,7 +1107,7 @@ msgstr "PARA SITIOS WEB CREADOS CON ODOO"
 #. odoo-python
 #: code:addons/im_livechat/models/discuss_channel.py:0
 msgid "File"
-msgstr ""
+msgstr "Archivo"
 
 #. module: im_livechat
 #: model:chatbot.script.answer,name:im_livechat.chatbot_script_troubleshooting_answer_firefox_demo
@@ -1163,12 +1170,8 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:im_livechat.im_livechat_channel_view_form
 msgid ""
 "Go to <strong>Website</strong> &gt; <strong>Configuration</strong> &gt; "
-"<strong>Settings</strong> &gt; <strong>Email</strong> &amp; "
-"<strong>Marketing.</strong>"
+"<strong>Settings</strong> &gt; <strong>General.</strong>"
 msgstr ""
-"Vaya a <strong>Sitio web</strong> &gt; <strong>Configuración</strong> &gt; "
-"<strong>Ajustes</strong> &gt; <strong>Correo electrónico</strong> &amp; "
-"<strong>Marketing.</strong>"
 
 #. module: im_livechat
 #. odoo-javascript
@@ -1184,7 +1187,7 @@ msgstr "Invitado"
 #. module: im_livechat
 #: model:ir.model,name:im_livechat.model_ir_http
 msgid "HTTP Routing"
-msgstr ""
+msgstr "Enrutamiento HTTP"
 
 #. module: im_livechat
 #: model:ir.model.fields,field_description:im_livechat.field_im_livechat_report_channel__handled_by_agent
@@ -1968,7 +1971,7 @@ msgstr ""
 #. module: im_livechat
 #: model:res.groups.privilege,placeholder:im_livechat.res_groups_privilege_live_chat
 msgid "No"
-msgstr ""
+msgstr "No"
 
 #. module: im_livechat
 #: model:ir.model.fields,field_description:im_livechat.field_im_livechat_channel__block_assignment_during_call
@@ -1984,7 +1987,7 @@ msgstr "No falló"
 #. odoo-javascript
 #: code:addons/im_livechat/static/src/core/public_web/messaging_menu_model_patch.js:0
 msgid "No Livechat Session!"
-msgstr ""
+msgstr "¡No hay sesión de chat en vivo!"
 
 #. module: im_livechat
 #. odoo-javascript
@@ -2651,7 +2654,7 @@ msgstr "Gracias por sus comentarios"
 #. odoo-python
 #: code:addons/im_livechat/models/im_livechat_channel.py:0
 msgid "The URL Regex '%(regex)s' is not valid."
-msgstr ""
+msgstr "La expresión regular de la URL '%(regex)s' no es válida."
 
 #. module: im_livechat
 #: model:ir.model.fields,help:im_livechat.field_im_livechat_channel_rule__channel_id
@@ -3189,3 +3192,12 @@ msgstr "gestión de mensajes de WebSocket"
 #: model_terms:ir.ui.view,arch_db:im_livechat.livechat_email_template
 msgid "width:40px; height:40px; border-radius:0.5rem; display:block;"
 msgstr "width:40px; height:40px; border-radius:0.5rem; display:block;"
+
+#~ msgid ""
+#~ "Go to <strong>Website</strong> &gt; <strong>Configuration</strong> &gt; "
+#~ "<strong>Settings</strong> &gt; <strong>Email</strong> &amp; "
+#~ "<strong>Marketing.</strong>"
+#~ msgstr ""
+#~ "Vaya a <strong>Sitio web</strong> &gt; <strong>Configuración</strong> "
+#~ "&gt; <strong>Ajustes</strong> &gt; <strong>Correo electrónico</strong> "
+#~ "&amp; <strong>Marketing.</strong>"

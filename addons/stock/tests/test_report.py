@@ -200,10 +200,10 @@ class TestReports(TestReportsCommon):
         self.assertEqual(qweb_type, 'text', 'the report type is not good')
 
     def test_report_quantity_1(self):
-        product_form = Form(self.env['product.product'])
-        product_form.is_storable = True
-        product_form.name = 'Product'
-        product = product_form.save()
+        product = self.env['product.product'].create({
+            'name': 'Product',
+            'is_storable': True,
+        })
 
         warehouse = self.env['stock.warehouse'].search([], limit=1)
         stock = self.env['stock.location'].create({
@@ -316,10 +316,10 @@ class TestReports(TestReportsCommon):
     def test_report_quantity_2(self):
         """ Not supported case.
         """
-        product_form = Form(self.env['product.product'])
-        product_form.is_storable = True
-        product_form.name = 'Product'
-        product = product_form.save()
+        product = self.env['product.product'].create({
+            'name': 'Product',
+            'is_storable': True,
+        })
 
         warehouse = self.env['stock.warehouse'].search([], limit=1)
         stock = self.env['stock.location'].create({
@@ -373,10 +373,10 @@ class TestReports(TestReportsCommon):
         self.assertEqual(sum(product_qty for state, product_qty in report_records if state == 'forecast'), 40.0)
 
     def test_report_quantity_3(self):
-        product_form = Form(self.env['product.product'])
-        product_form.is_storable = True
-        product_form.name = 'Product'
-        product = product_form.save()
+        product = self.env['product.product'].create({
+            'name': 'Product',
+            'is_storable': True,
+        })
 
         warehouse = self.env['stock.warehouse'].search([], limit=1)
         stock = self.env['stock.location'].create({
@@ -2321,3 +2321,26 @@ class TestReports(TestReportsCommon):
             self.assertTrue(self.allocation_report.action_unassign(in_move.ids, out_move.id, 1.0))
 
         self.assertFalse(in_move.move_dest_ids)
+
+    def test_delivery_slip_product_description_with_whitespace(self):
+        """ Test that product name is not printed twice on the delivery slip when
+        the product name has leading/trailing whitespace compared to description_picking.
+        """
+        product = self.env['product.product'].create({
+            'name': ' Customizable Desk ',
+            'is_storable': True,
+        })
+        picking_out = self.env['stock.picking'].create({
+            'picking_type_id': self.ref('stock.picking_type_out'),
+            'location_id': self.stock_location.id,
+            'location_dest_id': self.ref('stock.stock_location_customers'),
+            'move_ids': [Command.create({
+                'product_id': product.id,
+                'product_uom_qty': 1.0,
+                'description_picking': 'Customizable Desk',
+            })],
+        })
+        picking_out.action_confirm()
+
+        html = self.env['ir.actions.report']._render_qweb_html('stock.report_deliveryslip', [picking_out.id])[0]
+        self.assertEqual(len(findall(rb'Customizable Desk', html)), 1)

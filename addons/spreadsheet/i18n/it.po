@@ -10,10 +10,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-25 17:39+0000\n"
-"PO-Revision-Date: 2026-08-31 19:24+0000\n"
+"POT-Creation-Date: 2026-10-23 17:42+0000\n"
+"PO-Revision-Date: 2026-10-06 07:19+0000\n"
 "Last-Translator: \"Marianna Ciofani (cima)\" <cima@odoo.com>\n"
-"Language-Team: Italian <https://translate.odoo.com/projects/odoo-s19-4/"
+"Language-Team: Italian <https://translate.odoo.com/projects/odoo-20/"
 "spreadsheet/it/>\n"
 "Language: it\n"
 "MIME-Version: 1.0\n"
@@ -1529,8 +1529,8 @@ msgstr "Automatico"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Automatic evaluation is disabled. Press F9 to recalculate."
-msgstr "La valutazione automatica è disabilitata. Premi F9 per ricalcolare."
+msgid "Automatic evaluation is disabled. Press"
+msgstr ""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -7135,6 +7135,12 @@ msgstr "Nessun valore numerico da mostrare."
 
 #. module: spreadsheet
 #. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "No region is available"
+msgstr ""
+
+#. module: spreadsheet
+#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "No results"
 msgstr "Nessun risultato"
@@ -8255,6 +8261,12 @@ msgstr ""
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Region"
 msgstr "Regione"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "Region %(region)s is not available"
+msgstr ""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -9960,7 +9972,7 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Table"
-msgstr "Tavolo"
+msgstr "Tabella"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -10523,6 +10535,12 @@ msgstr ""
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "The chart definition is invalid for an unknown reason"
 msgstr "La definizione del grafico non è valida per un motivo sconosciuto"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
+msgid "The chart is deactivated"
+msgstr ""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -14172,6 +14190,14 @@ msgstr "L'operazione non è consentita con selezioni multiple."
 
 #. module: spreadsheet
 #. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid ""
+"This operation would cause tables to overlap. Move or remove the conflicting "
+"table and try again."
+msgstr ""
+
+#. module: spreadsheet
+#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "This pivot has no cell missing on this sheet"
 msgstr "Questa tabella pivot non presenta celle mancanti in questo foglio"
@@ -15785,6 +15811,12 @@ msgstr "data esatta"
 
 #. module: spreadsheet
 #. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
+msgid "here"
+msgstr ""
+
+#. module: spreadsheet
+#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "in the past month"
 msgstr "nel mese passato"
@@ -15884,6 +15916,12 @@ msgstr "un anno fa"
 #: code:addons/spreadsheet/static/src/global_filters/helpers.js:0
 msgid "or"
 msgstr "oppure"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
+msgid "or F9 to recalculate."
+msgstr ""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -16043,6 +16081,9 @@ msgstr ""
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "yesterday"
 msgstr "ieri"
+
+#~ msgid "Automatic evaluation is disabled. Press F9 to recalculate."
+#~ msgstr "La valutazione automatica è disabilitata. Premi F9 per ricalcolare."
 
 #~ msgid "Currency not available for this company."
 #~ msgstr "La valuta non è disponibile per quest'azienda."

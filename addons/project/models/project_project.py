@@ -176,7 +176,14 @@ class ProjectProject(models.Model):
     task_completion_percentage = fields.Float(compute="_compute_task_completion_percentage", export_string_translation=False)
 
     # Project Sharing fields
-    collaborator_ids = fields.One2many('project.collaborator', 'project_id', string='Collaborators', copy=False, export_string_translation=False)
+    collaborator_ids = fields.One2many(
+        'project.collaborator',
+        'project_id',
+        string='Collaborators',
+        copy=False,
+        export_string_translation=False,
+        search='_search_collaborator_ids',
+    )
     collaborator_count = fields.Integer('# Collaborators', compute='_compute_collaborator_count', compute_sudo=True, export_string_translation=False)
 
     # Not `required` since this is an option to enable in project settings.
@@ -216,6 +223,26 @@ class ProjectProject(models.Model):
         'check(date >= date_start)',
         "The project's start date must be before its end date.",
     )
+
+    def _search_collaborator_ids(self, operator, value):
+        """`project_task_rule_portal` OR's two sub-queries, which makes postgresql
+        seq-scan project_task instead of using its indexes. Materialize the ids of
+        each branch when there are few enough, so that it can BitmapOr them.
+        """
+        if operator not in ('any', 'any!') or self.env.user._is_internal():
+            # returning the condition unchanged makes the ORM apply its
+            # standard semantics
+            return Domain('collaborator_ids', operator, value)
+        collaborator_query = self.env['project.collaborator']._search(
+            Domain('id', operator, value), bypass_access=operator == 'any!',
+        )
+        domain = Domain('id', 'in', collaborator_query.subselect(SQL('project_id')))
+        project_ids = self._search(
+            domain, limit=self.env.cr.IN_MAX, active_test=False, bypass_access=True,
+        ).get_result_ids()
+        if len(project_ids) < self.env.cr.IN_MAX:
+            return Domain('id', 'in', project_ids)
+        return domain
 
     @api.onchange('company_id')
     def _onchange_company_id(self):
@@ -1057,7 +1084,7 @@ class ProjectProject(models.Model):
         action['display_name'] = _("%(name)s's Rating", name=self.name)
         action_context = ast.literal_eval(action['context']) if action['context'] else {}
         action_context.update(self.env.context)
-        action_context['search_default_filter_write_date'] = 'custom_write_date_last_30_days'
+        action_context['search_default_filter_rated_on'] = 'custom_rated_on_last_30_days'
         action_context.pop('group_by', None)
         action['domain'] = [('consumed', '=', True), ('parent_res_model', '=', 'project.project'), ('parent_res_id', '=', self.id)]
         if self.rating_count == 1:

@@ -346,7 +346,8 @@ class HrLeaveAllocation(models.Model):
     @api.onchange('employee_id')
     def _inverse_number_of_hours(self):
         for allocation in self.filtered('employee_id'):
-            allocation.number_of_days = allocation.number_of_hours / allocation._get_employee_hours_per_day()
+            hours_per_day = allocation._get_employee_hours_per_day()
+            allocation.number_of_days = allocation.number_of_hours / hours_per_day if hours_per_day else 0
 
     @api.constrains('number_of_days', 'work_entry_type_id', 'employee_id')
     def _check_negative_allocation(self):
@@ -407,7 +408,7 @@ class HrLeaveAllocation(models.Model):
         if carryover_time == 'year_start':
             carryover_date = date(date_from.year, 1, 1)
         elif carryover_time == 'allocation':
-            carryover_date = date(date_from.year, self.date_from.month, self.date_from.day)
+            carryover_date = self.date_from + relativedelta(year=date_from.year)
         else:
             month = int(accrual_plan.carryover_month)
             # 2020/2/31 will be changed to 2020/2/29
@@ -435,7 +436,8 @@ class HrLeaveAllocation(models.Model):
         if dst_unit == 'hour' and src_unit in ('day', 'half_day'):
             return duration * self._get_employee_hours_per_day(allocation_data)
         if dst_unit in ('day', 'half_day') and src_unit == 'hour':
-            return duration / self._get_employee_hours_per_day(allocation_data)
+            hours_per_day = self._get_employee_hours_per_day(allocation_data)
+            return duration / hours_per_day if hours_per_day else 0
         return duration
 
     def _add_days_to_allocation(self, allocation_data, current_level, period_start, period_end, start_date, end_date):

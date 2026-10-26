@@ -1032,7 +1032,13 @@ class ResPartner(models.Model):
             self._clean_additional_identifiers(vals)
             if vals.get('website'):
                 vals['website'] = self._clean_website(vals['website'])
-        partners = super().create(vals_list)
+        create_self = self
+        if 'default_user_ids' in self.env.context:
+            # default_user_ids targets other models (e.g. task assignees); as
+            # user_ids is the inverse of res.users.partner_id, applying it here
+            # would re-link those users to the new partner
+            create_self = self.with_context({k: v for k, v in self.env.context.items() if k != 'default_user_ids'})
+        partners = super(ResPartner, create_self).create(vals_list)
         # due to ir.default, compute is not called as there is a default value
         # hence calling the compute manually
         for partner, values in zip(partners, vals_list):
@@ -1425,6 +1431,7 @@ class ResPartner(models.Model):
             if validation == 'error':
                 raise ValidationError(_("To explicitly indicate no (valid) VAT, use '/', 'na' or 'NA' instead. "))
         vat_prefix, vat_number = split_vat(vat)
+        original_vat = vat
 
         if vat_prefix == 'EU' and country not in self.env.ref('base.europe').country_ids:
             # Foreign companies that trade with non-enterprises in the EU
@@ -1450,14 +1457,24 @@ class ResPartner(models.Model):
 
         vat_to_return = prefixed_country + vat
 
+        # Avoid validating double prefix like BEBE0477472701
+        double_prefix = prefixed_country and vat_to_return.startswith(prefixed_country + prefixed_country)
+        is_valid = self._check_vat_number(code_to_check, vat) and not double_prefix
+
+        if not is_valid and not prefixed_country:
+            company_country = self.env.company.country_id
+            if company_country and company_country != country:
+                if self._get_vat_validation_method(company_country.code):
+                    cross_border_vat, cross_border_code = self._run_vat_checks(company_country, original_vat, partner_name, validation='setnull')
+                    if cross_border_vat:
+                        return cross_border_vat, cross_border_code
+
         # The context key 'no_vat_validation' allows you to store/set a VAT number without doing validations.
         # This is for API pushes from external platforms where you have no control over VAT numbers.
         if not validation or self.env.context.get('no_vat_validation'):
             return vat_to_return, code_to_check
 
-        # Avoid validating double prefix like BEBE0477472701
-        double_prefix = prefixed_country and vat_to_return.startswith(prefixed_country + prefixed_country)
-        if not self._check_vat_number(code_to_check, vat) or double_prefix:
+        if not is_valid:
             partner_label = _("partner%s", f' [{partner_name}]' if partner_name else '')
             if do_eu_check:
                 try:
@@ -1529,6 +1546,14 @@ class ResPartner(models.Model):
                 vat_base = re.sub(r"\s*(TVA|IVA|MWST)?$", "", vat_formatted.upper())
                 vat_variants.extend([f'{vat_base} {suffix}' for suffix in ('TVA', 'IVA', 'MWST')])
         return vat_variants
+
+    @api.model
+    def _get_vat_validation_method(self, country_code):
+        country_code = EU_EXTRA_VAT_CODES_INV.get(country_code.upper(), country_code).lower()
+        check_func_name = 'check_vat_' + country_code
+        stdnum_vat_module = stdnum.util.get_cc_module(country_code, 'vat')
+
+        return getattr(self, check_func_name, None) or getattr(stdnum_vat_module, 'is_valid', None)
 
     @api.model
     def _format_vat_number(self, country_code, vat):

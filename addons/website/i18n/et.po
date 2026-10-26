@@ -24,17 +24,17 @@
 # Leaanika Randmets, 2023
 # Triine Aavik <triine@avalah.ee>, 2023
 # Weblate <noreply-mt-weblate@weblate.org>, 2025.
-# Kristina Pešehodko <kristina@avalah.ee>, 2025.
+# Kristina Pešehodko <kristina@avalah.ee>, 2025, 2026.
 # Odoo Translation Bot <c3p@odoo.com>, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-25 17:37+0000\n"
-"PO-Revision-Date: 2026-08-31 18:39+0000\n"
-"Last-Translator: Anonymous <noreply@weblate.org>\n"
-"Language-Team: Estonian <https://translate.odoo.com/projects/odoo-s19-4/"
-"website/et/>\n"
+"POT-Creation-Date: 2026-10-23 17:40+0000\n"
+"PO-Revision-Date: 2026-10-12 12:39+0000\n"
+"Last-Translator: Kristina Pešehodko <kristina@avalah.ee>\n"
+"Language-Team: Estonian <https://translate.odoo.com/projects/odoo-20/website/"
+"et/>\n"
 "Language: et\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -3413,7 +3413,7 @@ msgstr "Lisa keeled"
 #. odoo-javascript
 #: code:addons/website/static/src/js/send_mail_form.js:0
 msgid "Add multiple emails separated by commas"
-msgstr ""
+msgstr "Lisa mitu e-posti aadressi, eraldades need komadega"
 
 #. module: website
 #: model_terms:ir.ui.view,arch_db:website.view_edit_third_party_domains
@@ -4086,13 +4086,8 @@ msgstr ""
 
 #. module: website
 #. odoo-javascript
-#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
-msgid "Arrow Position"
-msgstr ""
-
-#. module: website
-#. odoo-javascript
 #: code:addons/website/static/src/builder/plugins/carousel_option.xml:0
+#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/image_gallery_option.xml:0
 msgid "Arrows"
 msgstr "Nooled"
@@ -5673,6 +5668,7 @@ msgstr "Kliendid säästsid $32 miljonit meie teenustega"
 #: model_terms:ir.ui.view,arch_db:website.show_website_info
 #: model_terms:ir.ui.view,arch_db:website.template_header_hamburger
 #: model_terms:ir.ui.view,arch_db:website.template_header_mobile
+#: model_terms:ir.ui.view,arch_db:website.website_info
 msgid "Close"
 msgstr "Sulge"
 
@@ -6824,7 +6820,7 @@ msgstr ""
 #. module: website
 #. odoo-python
 #: code:addons/website/models/website.py:0
-msgid "Default website changed"
+msgid "Default website changed to %(default_website_name)s."
 msgstr ""
 
 #. module: website
@@ -7592,6 +7588,12 @@ msgstr "Tee ikoonil topeltklõps, et see ühe enda valikuga asendada."
 #: code:addons/website/static/src/builder/plugins/options/chart_option.xml:0
 msgid "Doughnut"
 msgstr "Sõõrik"
+
+#. module: website
+#. odoo-javascript
+#: code:addons/website/static/src/builder/plugins/options/popup_option_plugin.js:0
+msgid "Drag blocks here"
+msgstr ""
 
 #. module: website
 #: model_terms:ir.ui.view,arch_db:website.s_mega_menu_dropzone
@@ -13503,6 +13505,13 @@ msgid "Note: To hide this page, uncheck it from the Style tab in edit mode."
 msgstr ""
 
 #. module: website
+#: model_terms:ir.ui.view,arch_db:website.website_info
+msgid ""
+"Note: To view the website information, enable it from the Style tab in edit "
+"mode."
+msgstr ""
+
+#. module: website
 #: model:ir.model.fields,field_description:website.field_website_controller_page__notes
 #: model:ir.model.fields,field_description:website.field_website_page__notes
 msgid "Notes"
@@ -14948,6 +14957,7 @@ msgstr "Portfell"
 #: code:addons/website/static/src/builder/plugins/image/grid_image_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/accordion_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/card_image_option.xml:0
+#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/popup_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/table_of_content_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/whatsapp_option.xml:0
@@ -17807,7 +17817,6 @@ msgstr "Struktuur"
 #: code:addons/website/static/src/builder/plugins/carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/accordion_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/blockquote_option.xml:0
-#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/image_gallery_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/language_selector_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/navtabs_style_option.xml:0
@@ -18488,22 +18497,6 @@ msgstr ""
 #: model:ir.model.fields,help:website.field_website_controller_page__name_slugified
 msgid "The name of the page usable in a URL"
 msgstr "Lehe nimi, mida saab kasutada URL-is."
-
-#. module: website
-#. odoo-python
-#: code:addons/website/models/website.py:0
-msgid "The new default website is %(default_website_name)s."
-msgstr ""
-
-#. module: website
-#. odoo-python
-#: code:addons/website/models/website.py:0
-msgid ""
-"The new default website is %(default_website_name)s. The following default "
-"settings were copied from the old default website to the new one: %"
-"(transferred_settings)s. Note that these settings are still present on the "
-"old default website."
-msgstr ""
 
 #. module: website
 #. odoo-python
@@ -19658,7 +19651,7 @@ msgstr ""
 #. module: website
 #: model_terms:ir.ui.view,arch_db:website.cookie_policy
 msgid "Update My Cookie Preferences"
-msgstr ""
+msgstr "Uuenda küpsiste eelistusi"
 
 #. module: website
 #: model_terms:ir.ui.view,arch_db:website.theme_view_kanban

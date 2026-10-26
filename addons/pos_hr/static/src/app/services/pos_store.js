@@ -46,24 +46,33 @@ patch(PosStore.prototype, {
 
         return order;
     },
+    setCashierUpdateSession(employee) {
+        if (this.config.module_pos_hr) {
+            if (!this.data.network.offline && this.session?.id) {
+                this.data
+                    .ormWrite("pos.session", [this.session.id], {
+                        employee_id: employee.id,
+                    })
+                    .catch(async (error) => {
+                        await this.reloadIfSessionDeleted(error);
+                    });
+            } else {
+                this.employeeBuffer.push(employee);
+            }
+        }
+    },
     setCashier(employee) {
         super.setCashier(employee);
 
         if (this.config.module_pos_hr) {
-            if (!this.data.network.offline && this.session?.id) {
-                this.data.write("pos.session", [this.session.id], {
-                    employee_id: employee.id,
-                });
-            } else {
-                this.employeeBuffer.push(employee);
-            }
+            this.setCashierUpdateSession(employee);
             const o = this.getOrder();
             if (o && !o.getOrderlines().length) {
                 // Order without lines can be considered to be un-owned by any employee.
                 // We set the cashier on that order to the currently set employee.
                 o.employee_id = employee;
             }
-            if (!this.accessRight.disablePriceButton && this.numpadMode === "price") {
+            if (this.accessRight.disablePriceButton && this.numpadMode === "price") {
                 this.numpadMode = "quantity";
             }
         }
@@ -74,11 +83,25 @@ patch(PosStore.prototype, {
             if (savedCashier) {
                 this.setCashier(savedCashier);
             } else {
-                this.accessRight.resetCashier();
+                this.resetCashier();
             }
         } else {
             super.checkPreviousLoggedCashier(...arguments);
         }
+    },
+    async setCashierFromBadge(employee, { needsPin = () => true, allowSameCashier = false } = {}) {
+        if (
+            employee &&
+            (allowSameCashier || employee !== this.accessRight.loggedCashier) &&
+            (!employee._pin ||
+                !needsPin(employee) ||
+                (await this.accessRight.checkPin(employee))) &&
+            this.canLoginCashier(employee)
+        ) {
+            this.setCashier(employee);
+            return true;
+        }
+        return false;
     },
     async selectCashier(pin = false, login = false, list = false) {
         if (!this.config.module_pos_hr) {
@@ -130,6 +153,9 @@ patch(PosStore.prototype, {
         }
 
         if (login && employee) {
+            if (!this.canLoginCashier(employee)) {
+                return false;
+            }
             this.accessRight.hasLoggedIn.set(true);
             this.setCashier(employee);
         }

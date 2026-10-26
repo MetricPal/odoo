@@ -47,7 +47,11 @@ class TestL10nFrPdpPartner(TestL10nFrPdpCommon, MailCase):
             'vat': 'FR23334175221',
             'invoice_edi_format': 'ubl_21_fr',
         })
-        self.assertFalse(partner_pdp.l10n_fr_is_pdp)
+        self.assertTrue(partner_pdp.l10n_fr_is_pdp)
+        self.assertEqual(partner_pdp._l10n_fr_pdp_get_siren(), '334175221')
+        self.assertEqual(partner_pdp.routing_identifier, '0225:334175221')
+        contact = self.env['res.partner'].create({'name': 'French contact', 'parent_id': partner_pdp.id})
+        self.assertEqual(contact._l10n_fr_pdp_get_siren(), '334175221')
         # Setting the endpoint explicitly routes the partner via PDP (EAS 0225).
         partner_pdp.routing_identifier = '0225:968515759_96851575905808'
         self.assertTrue(partner_pdp.l10n_fr_is_pdp)
@@ -132,6 +136,13 @@ class TestL10nFrPdpPartner(TestL10nFrPdpCommon, MailCase):
             partner_fields = partner_model.fields_get(['invoice_sending_method'])
         sending_methods = dict(partner_fields['invoice_sending_method']['selection'])
         self.assertEqual(sending_methods['peppol'], "by Peppol")
+
+    def test_einvoicing_terminology_fields_get_without_selection(self):
+        # Mail tracking calls fields_get without attributes during module installs, when
+        # the res.company columns of the installed module may not exist yet
+        with mock.patch.object(self.registry['res.company'], '_l10n_fr_pdp_uses_french_terminology') as mock_terminology:
+            self.env['res.partner'].fields_get(['invoice_sending_method'], attributes=())
+        mock_terminology.assert_not_called()
 
     def test_validate_partner_be_invalid_format(self):
         partner = self.belgian_partner

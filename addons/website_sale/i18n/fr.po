@@ -20,8 +20,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-02 17:39+0000\n"
-"PO-Revision-Date: 2026-09-24 12:16+0000\n"
+"POT-Creation-Date: 2026-10-23 17:40+0000\n"
+"PO-Revision-Date: 2026-10-20 12:33+0000\n"
 "Last-Translator: \"Cécile Collart (cco)\" <cco@odoo.com>\n"
 "Language-Team: French <https://translate.odoo.com/projects/odoo-20/"
 "website_sale/fr/>\n"
@@ -1142,7 +1142,8 @@ msgid ""
 "                                <td width=\"19%\" align=\"right\" "
 "style=\"max-width: 100%; vertical-align: top;\">\n"
 "                                    <t t-"
-"out=\"format_amount(object.list_price, object.currency_id)\">$ 450</t>\n"
+"out=\"format_amount(ctx.get('product_price') or 0, object.currency_id)\">$ "
+"450</t>\n"
 "                                </td>\n"
 "                            </tr>\n"
 "                        </table>\n"
@@ -3339,12 +3340,6 @@ msgstr "Produit de don introuvable."
 #. module: website_sale
 #. odoo-python
 #: code:addons/website_sale/models/product_template.py:0
-msgid "Donation products cannot be archived."
-msgstr "Les produits de don ne peuvent pas être archivés."
-
-#. module: website_sale
-#. odoo-python
-#: code:addons/website_sale/models/product_template.py:0
 msgid "Donation products cannot be deleted."
 msgstr "Les produits de don ne peuvent pas être supprimés."
 
@@ -4640,7 +4635,7 @@ msgstr "Minimum"
 #: model:ir.model.fields,field_description:website_sale.field_product_product__minimum_quantity
 #: model:ir.model.fields,field_description:website_sale.field_product_template__minimum_quantity
 msgid "Minimum Quantity"
-msgstr ""
+msgstr "Quantité minimum"
 
 #. module: website_sale
 #. odoo-javascript
@@ -7621,6 +7616,12 @@ msgid "This product is not eligible for stock notifications."
 msgstr "Ce produit n’est pas éligible aux notifications de stock."
 
 #. module: website_sale
+#. odoo-python
+#: code:addons/website_sale/controllers/cart.py:0
+msgid "This product is part of a combo and can't be updated individually."
+msgstr ""
+
+#. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.coupon_form
 msgid "This promo code is not available."
 msgstr "Ce code promo n'est pas disponible."
@@ -8774,6 +8775,9 @@ msgstr "youremail@gmail.com"
 #: model:mail.template,subject:website_sale.email_template_back_in_stock
 msgid "{{ object.name or 'Product' }} is back in stock"
 msgstr "{{ object.name or 'Product' }} est de retour en stock"
+
+#~ msgid "Donation products cannot be archived."
+#~ msgstr "Les produits de don ne peuvent pas être archivés."
 
 #~ msgid ""
 #~ "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" "

@@ -31,10 +31,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-02 17:39+0000\n"
-"PO-Revision-Date: 2026-09-03 07:11+0000\n"
+"POT-Creation-Date: 2026-10-23 17:40+0000\n"
+"PO-Revision-Date: 2026-10-22 10:41+0000\n"
 "Last-Translator: Hanna Kharraziha <hakha@odoo.com>\n"
-"Language-Team: Swedish <https://translate.odoo.com/projects/odoo-s19-4/"
+"Language-Team: Swedish <https://translate.odoo.com/projects/odoo-20/"
 "website_sale/sv/>\n"
 "Language: sv\n"
 "MIME-Version: 1.0\n"
@@ -907,7 +907,8 @@ msgid ""
 "                                <td width=\"19%\" align=\"right\" "
 "style=\"max-width: 100%; vertical-align: top;\">\n"
 "                                    <t t-"
-"out=\"format_amount(object.list_price, object.currency_id)\">$ 450</t>\n"
+"out=\"format_amount(ctx.get('product_price') or 0, object.currency_id)\">$ "
+"450</t>\n"
 "                                </td>\n"
 "                            </tr>\n"
 "                        </table>\n"
@@ -3063,12 +3064,6 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/website_sale/static/src/snippets/s_donation/donation_snippet.js:0
 msgid "Donation product not found."
-msgstr ""
-
-#. module: website_sale
-#. odoo-python
-#: code:addons/website_sale/models/product_template.py:0
-msgid "Donation products cannot be archived."
 msgstr ""
 
 #. module: website_sale
@@ -6156,7 +6151,7 @@ msgstr "SEO optimerad"
 #: model:ir.model.fields,field_description:website_sale.field_product_feed__message_has_sms_error
 #: model:ir.model.fields,field_description:website_sale.field_product_template__message_has_sms_error
 msgid "SMS Delivery error"
-msgstr "SMS leveransfel"
+msgstr "Leveransfel för sms"
 
 #. module: website_sale
 #: model:product.ribbon,name:website_sale.sale_ribbon
@@ -7298,6 +7293,12 @@ msgstr ""
 #. odoo-python
 #: code:addons/website_sale/controllers/wishlist.py:0
 msgid "This product is not eligible for stock notifications."
+msgstr ""
+
+#. module: website_sale
+#. odoo-python
+#: code:addons/website_sale/controllers/cart.py:0
+msgid "This product is part of a combo and can't be updated individually."
 msgstr ""
 
 #. module: website_sale

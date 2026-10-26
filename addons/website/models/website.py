@@ -418,6 +418,7 @@ class Website(models.CachedModel):
     @api.model
     def _handle_favicon(self, vals):
         if icon := vals.get('favicon'):
+            icon = self._fields['favicon'].convert_to_cache(icon, self)
             filename = icon.filename if isinstance(icon, BinaryValue) else ''
             vals['favicon'] = BinaryBytes(image_process(icon, size=(256, 256), crop='center', output_format='ICO'), filename)
 
@@ -486,17 +487,11 @@ class Website(models.CachedModel):
 
         if default_website.id != first_website.id:
             existing_settings = filter(lambda s: s in self._fields, self._get_settings_to_copy_onto_new_default_website())
-            transferred_settings = []
             for s in existing_settings:
                 if default_website[s] and not first_website[s]:
                     # If s is set in the old default website and not in the new
                     # default website, transfer it
                     first_website[s] = default_website[s]
-                    field_description = self.env['ir.model.fields'].search([
-                        ('name', '=', s),
-                        ('model', '=', 'website'),
-                    ], limit=1).field_description
-                    transferred_settings.append(field_description)
 
             # Mark the first website as default
             self.env['ir.model.data']._update_xmlids([{
@@ -509,26 +504,11 @@ class Website(models.CachedModel):
             self.env['ir.model.data'].invalidate_model()
 
             # Display a notification to inform the user
-            if len(transferred_settings) > 0:
-                self.env.user._bus_send("simple_notification", {
-                    'type': 'info',
-                    'title': _("Default website changed"),
-                    'message': _(
-                        'The new default website is %(default_website_name)s. '
-                        'The following default settings were copied from the old default website '
-                        'to the new one: %(transferred_settings)s. Note that these settings are still '
-                        'present on the old default website.',
-                        default_website_name=first_website.name,
-                        transferred_settings=", ".join(transferred_settings)),
-                    'sticky': True,
-                })
-            else:
-                self.env.user._bus_send("simple_notification", {
-                    'type': 'success',
-                    'title': _("Default website changed"),
-                    'message': _('The new default website is %(default_website_name)s.',
-                        default_website_name=first_website.name),
-                })
+            self.env.user._bus_send("simple_notification", {
+                'type': 'success',
+                'message': _("Default website changed to %(default_website_name)s.",
+                    default_website_name=first_website.name),
+            })
 
     @api.ondelete(at_uninstall=False)
     def _unlink_except_default_website(self):
@@ -879,6 +859,8 @@ class Website(models.CachedModel):
         self._check_configurator_access()
         website = self.env.website or self.env['website'].browse(self.env.context.get('host_id'))
         website.ensure_one()
+        if website.configurator_done:
+            return website.button_go_website()
         theme = self.env["ir.module.module"].search([("name", "=", "theme_default")])
         website.configurator_done = True
         return theme.with_context(website_id=website.id).button_choose_theme()
@@ -2329,13 +2311,15 @@ class Website(models.CachedModel):
         fuzzy_term = False
         search_details = self._search_get_details(search_type, order, options)
         if search and options.get('allowFuzzy', True):
-            fuzzy_term = self._search_find_fuzzy_term(search_details, search)
-            if fuzzy_term:
-                if fuzzy_term.lower() != search.lower():
-                    search = fuzzy_term
+            count, results = self._search_exact(search_details, search, offset, limit, order)
+            if not count:
+                fuzzy_term = self._search_find_fuzzy_term(search_details, search)
+                if fuzzy_term and fuzzy_term.lower() != search.lower():
+                    count, results = self._search_exact(search_details, fuzzy_term, offset, limit, order)
                 else:
                     fuzzy_term = False
-        count, results = self._search_exact(search_details, search, offset, limit, order)
+        else:
+            count, results = self._search_exact(search_details, search, offset, limit, order)
         return count, results, fuzzy_term
 
     def _search_exact(self, search_details, search, offset, limit, order):

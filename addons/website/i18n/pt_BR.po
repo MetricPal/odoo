@@ -27,7 +27,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-25 17:37+0000\n"
+"POT-Creation-Date: 2026-10-23 17:40+0000\n"
 "PO-Revision-Date: 2026-08-31 18:48+0000\n"
 "Last-Translator: \"Maitê Dietze (madi)\" <madi@odoo.com>\n"
 "Language-Team: Portuguese (Brazil) <https://translate.odoo.com/projects/odoo-"
@@ -4514,13 +4514,8 @@ msgstr ""
 
 #. module: website
 #. odoo-javascript
-#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
-msgid "Arrow Position"
-msgstr "Posição da seta"
-
-#. module: website
-#. odoo-javascript
 #: code:addons/website/static/src/builder/plugins/carousel_option.xml:0
+#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/image_gallery_option.xml:0
 msgid "Arrows"
 msgstr "Setas"
@@ -6129,6 +6124,7 @@ msgstr "Os clientes economizaram US$ 32 milhões com nossos serviços."
 #: model_terms:ir.ui.view,arch_db:website.show_website_info
 #: model_terms:ir.ui.view,arch_db:website.template_header_hamburger
 #: model_terms:ir.ui.view,arch_db:website.template_header_mobile
+#: model_terms:ir.ui.view,arch_db:website.website_info
 msgid "Close"
 msgstr "Fechar"
 
@@ -7306,8 +7302,8 @@ msgstr "Entrada padrão de alterância da caixa de seleção"
 #. module: website
 #. odoo-python
 #: code:addons/website/models/website.py:0
-msgid "Default website changed"
-msgstr "Site padrão alterado"
+msgid "Default website changed to %(default_website_name)s."
+msgstr ""
 
 #. module: website
 #. odoo-javascript
@@ -8093,6 +8089,12 @@ msgstr "Clique duas vezes em um ícone para alterá-lo por um de sua escolha."
 #: code:addons/website/static/src/builder/plugins/options/chart_option.xml:0
 msgid "Doughnut"
 msgstr "Rosquinha"
+
+#. module: website
+#. odoo-javascript
+#: code:addons/website/static/src/builder/plugins/options/popup_option_plugin.js:0
+msgid "Drag blocks here"
+msgstr ""
 
 #. module: website
 #: model_terms:ir.ui.view,arch_db:website.s_mega_menu_dropzone
@@ -14135,6 +14137,13 @@ msgid "Note: To hide this page, uncheck it from the Style tab in edit mode."
 msgstr ""
 
 #. module: website
+#: model_terms:ir.ui.view,arch_db:website.website_info
+msgid ""
+"Note: To view the website information, enable it from the Style tab in edit "
+"mode."
+msgstr ""
+
+#. module: website
 #: model:ir.model.fields,field_description:website.field_website_controller_page__notes
 #: model:ir.model.fields,field_description:website.field_website_page__notes
 msgid "Notes"
@@ -15638,6 +15647,7 @@ msgstr "Portfólio"
 #: code:addons/website/static/src/builder/plugins/image/grid_image_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/accordion_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/card_image_option.xml:0
+#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/popup_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/table_of_content_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/whatsapp_option.xml:0
@@ -18546,7 +18556,6 @@ msgstr "Estrutura"
 #: code:addons/website/static/src/builder/plugins/carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/accordion_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/blockquote_option.xml:0
-#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/image_gallery_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/language_selector_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/navtabs_style_option.xml:0
@@ -19250,26 +19259,6 @@ msgstr ""
 #: model:ir.model.fields,help:website.field_website_controller_page__name_slugified
 msgid "The name of the page usable in a URL"
 msgstr "O nome da página utilizável em URL"
-
-#. module: website
-#. odoo-python
-#: code:addons/website/models/website.py:0
-msgid "The new default website is %(default_website_name)s."
-msgstr "O novo site padrão é %(default_website_name)s."
-
-#. module: website
-#. odoo-python
-#: code:addons/website/models/website.py:0
-msgid ""
-"The new default website is %(default_website_name)s. The following default "
-"settings were copied from the old default website to the new one: %"
-"(transferred_settings)s. Note that these settings are still present on the "
-"old default website."
-msgstr ""
-"O novo site padrão é %(default_website_name)s. As seguintes configurações "
-"padrão foram copiadas do antigo site padrão para o novo: %"
-"(transferred_settings)s. Observe que essas configurações ainda estão "
-"presentes no antigo site padrão."
 
 #. module: website
 #. odoo-python
@@ -24136,6 +24125,26 @@ msgstr "✽ Pizzas"
 #: model_terms:ir.ui.view,arch_db:website.s_key_benefits
 msgid "✽  What We Offer"
 msgstr "✽  O que oferecemos"
+
+#~ msgid "Default website changed"
+#~ msgstr "Site padrão alterado"
+
+#~ msgid "The new default website is %(default_website_name)s."
+#~ msgstr "O novo site padrão é %(default_website_name)s."
+
+#~ msgid ""
+#~ "The new default website is %(default_website_name)s. The following "
+#~ "default settings were copied from the old default website to the new one: "
+#~ "%(transferred_settings)s. Note that these settings are still present on "
+#~ "the old default website."
+#~ msgstr ""
+#~ "O novo site padrão é %(default_website_name)s. As seguintes configurações "
+#~ "padrão foram copiadas do antigo site padrão para o novo: %"
+#~ "(transferred_settings)s. Observe que essas configurações ainda estão "
+#~ "presentes no antigo site padrão."
+
+#~ msgid "Arrow Position"
+#~ msgstr "Posição da seta"
 
 #~ msgid "Fit text"
 #~ msgstr "Texto adequado"

@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server saas~18.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-25 17:37+0000\n"
+"POT-Creation-Date: 2026-10-23 17:40+0000\n"
 "PO-Revision-Date: 2026-09-25 11:26+0000\n"
 "Last-Translator: \"Tony Ng (ngto)\" <ngto@odoo.com>\n"
 "Language-Team: Chinese (Traditional Han script) <https://translate.odoo.com/"
@@ -4320,13 +4320,8 @@ msgstr ""
 
 #. module: website
 #. odoo-javascript
-#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
-msgid "Arrow Position"
-msgstr "箭嘴位置"
-
-#. module: website
-#. odoo-javascript
 #: code:addons/website/static/src/builder/plugins/carousel_option.xml:0
+#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/image_gallery_option.xml:0
 msgid "Arrows"
 msgstr "箭嘴"
@@ -5911,6 +5906,7 @@ msgstr "享用我們服務的客戶，已節省 $3,200 萬。"
 #: model_terms:ir.ui.view,arch_db:website.show_website_info
 #: model_terms:ir.ui.view,arch_db:website.template_header_hamburger
 #: model_terms:ir.ui.view,arch_db:website.template_header_mobile
+#: model_terms:ir.ui.view,arch_db:website.website_info
 msgid "Close"
 msgstr "關閉"
 
@@ -7070,7 +7066,7 @@ msgstr "預設開關勾選方格輸入"
 #. module: website
 #. odoo-python
 #: code:addons/website/models/website.py:0
-msgid "Default website changed"
+msgid "Default website changed to %(default_website_name)s."
 msgstr ""
 
 #. module: website
@@ -7840,6 +7836,12 @@ msgstr "雙擊圖示來更換成你挑選的圖示。"
 #: code:addons/website/static/src/builder/plugins/options/chart_option.xml:0
 msgid "Doughnut"
 msgstr "環形"
+
+#. module: website
+#. odoo-javascript
+#: code:addons/website/static/src/builder/plugins/options/popup_option_plugin.js:0
+msgid "Drag blocks here"
+msgstr ""
 
 #. module: website
 #: model_terms:ir.ui.view,arch_db:website.s_mega_menu_dropzone
@@ -13766,6 +13768,13 @@ msgid "Note: To hide this page, uncheck it from the Style tab in edit mode."
 msgstr ""
 
 #. module: website
+#: model_terms:ir.ui.view,arch_db:website.website_info
+msgid ""
+"Note: To view the website information, enable it from the Style tab in edit "
+"mode."
+msgstr ""
+
+#. module: website
 #: model:ir.model.fields,field_description:website.field_website_controller_page__notes
 #: model:ir.model.fields,field_description:website.field_website_page__notes
 msgid "Notes"
@@ -15231,6 +15240,7 @@ msgstr "作品集"
 #: code:addons/website/static/src/builder/plugins/image/grid_image_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/accordion_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/card_image_option.xml:0
+#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/popup_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/table_of_content_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/whatsapp_option.xml:0
@@ -18096,7 +18106,6 @@ msgstr "頁面結構"
 #: code:addons/website/static/src/builder/plugins/carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/accordion_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/blockquote_option.xml:0
-#: code:addons/website/static/src/builder/plugins/options/dynamic_snippet_carousel_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/image_gallery_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/language_selector_option.xml:0
 #: code:addons/website/static/src/builder/plugins/options/navtabs_style_option.xml:0
@@ -18783,22 +18792,6 @@ msgstr "該名稱用於生成網址，並會在瀏覽器標題列顯示"
 #: model:ir.model.fields,help:website.field_website_controller_page__name_slugified
 msgid "The name of the page usable in a URL"
 msgstr "網址內可用的頁面名稱"
-
-#. module: website
-#. odoo-python
-#: code:addons/website/models/website.py:0
-msgid "The new default website is %(default_website_name)s."
-msgstr ""
-
-#. module: website
-#. odoo-python
-#: code:addons/website/models/website.py:0
-msgid ""
-"The new default website is %(default_website_name)s. The following default "
-"settings were copied from the old default website to the new one: %"
-"(transferred_settings)s. Note that these settings are still present on the "
-"old default website."
-msgstr ""
 
 #. module: website
 #. odoo-python
@@ -23498,6 +23491,9 @@ msgstr "✽ 披薩/薄餅"
 #: model_terms:ir.ui.view,arch_db:website.s_key_benefits
 msgid "✽  What We Offer"
 msgstr "✽ 我們提供的服務"
+
+#~ msgid "Arrow Position"
+#~ msgstr "箭嘴位置"
 
 #~ msgid "Fit text"
 #~ msgstr "緊貼文字"

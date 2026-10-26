@@ -14,8 +14,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.5alpha1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-02 17:39+0000\n"
-"PO-Revision-Date: 2026-09-21 10:23+0000\n"
+"POT-Creation-Date: 2026-10-23 17:40+0000\n"
+"PO-Revision-Date: 2026-10-20 12:34+0000\n"
 "Last-Translator: Bren Driesen <brdri@odoo.com>\n"
 "Language-Team: Dutch <https://translate.odoo.com/projects/odoo-20/"
 "hr_attendance/nl/>\n"
@@ -36,6 +36,12 @@ msgid ""
 "Keeps account of the attendances of the employees on the basis of the\n"
 "actions(Check in/Check out) performed by them.\n"
 msgstr ""
+"\n"
+"Met deze module kun je de aanwezigheid van werknemers beheren\n"
+"=======================================================\n"
+"\n"
+"Registreert de aanwezigheid van werknemers op basis van hun acties\n"
+"(Aanmelden/Afmelden).\n"
 
 #. module: hr_attendance
 #. odoo-python
@@ -139,11 +145,6 @@ msgid ""
 "<i class=\"oi oi-fw text-400\" data-icon=\"schedule\" aria-hidden=\"true\" "
 "title=\"Worked Hours\"/>"
 msgstr ""
-
-#. module: hr_attendance
-#: model_terms:ir.ui.view,arch_db:hr_attendance.res_config_settings_view_form
-msgid "<i class=\"oi oi-fw\" data-icon=\"arrow_forward\"/>Installation Manual"
-msgstr "<i class=\"oi oi-fw\" data-icon=\"arrow_forward\"/>Handleiding"
 
 #. module: hr_attendance
 #: model_terms:ir.ui.view,arch_db:hr_attendance.res_config_settings_view_form
@@ -1003,7 +1004,10 @@ msgid "Employee name is required."
 msgstr "De naam van de werknemer is vereist."
 
 #. module: hr_attendance
+#. odoo-python
+#: code:addons/hr_attendance/models/hr_attendance.py:0
 #: model:ir.actions.act_window,name:hr_attendance.hr_employee_attendance_action_kanban
+#: model:ir.actions.server,name:hr_attendance.action_attendance_employee_view_access
 #: model:ir.ui.menu,name:hr_attendance.menu_hr_attendance_employee
 msgid "Employees"
 msgstr "Werknemers"
@@ -1257,6 +1261,8 @@ msgstr ""
 #: model:ir.model.fields,help:hr_attendance.field_hr_time_rule__condition_work_entry_type_ids
 msgid "If set, only the selected types will be considered by this rule."
 msgstr ""
+"Als dit is ingesteld, worden alleen de geselecteerde types door deze regel "
+"in aanmerking genomen."
 
 #. module: hr_attendance
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance__in_location
@@ -1284,6 +1290,11 @@ msgstr "Invoermodus (Out)"
 #: code:addons/hr_attendance/static/src/public_kiosk/public_kiosk_app.xml:0
 msgid "Install"
 msgstr "Installeren"
+
+#. module: hr_attendance
+#: model_terms:ir.ui.view,arch_db:hr_attendance.res_config_settings_view_form
+msgid "Installation Manual"
+msgstr ""
 
 #. module: hr_attendance
 #. odoo-python
@@ -1331,8 +1342,8 @@ msgstr "Kioskmodus"
 
 #. module: hr_attendance
 #: model_terms:ir.ui.view,arch_db:hr_attendance.res_config_settings_view_form
-msgid "Kiosk Mode Adress"
-msgstr "Adres kioskmodus"
+msgid "Kiosk Mode Address"
+msgstr ""
 
 #. module: hr_attendance
 #: model_terms:ir.ui.view,arch_db:hr_attendance.res_config_settings_view_form
@@ -2409,6 +2420,13 @@ msgstr "websocket berichtverwerking"
 #: code:addons/hr_attendance/static/src/public_kiosk/public_kiosk_app.xml:0
 msgid "with optional PIN code"
 msgstr "met optionele pincode"
+
+#~ msgid ""
+#~ "<i class=\"oi oi-fw\" data-icon=\"arrow_forward\"/>Installation Manual"
+#~ msgstr "<i class=\"oi oi-fw\" data-icon=\"arrow_forward\"/>Handleiding"
+
+#~ msgid "Kiosk Mode Adress"
+#~ msgstr "Adres kioskmodus"
 
 #~ msgid "Week"
 #~ msgstr "Week"

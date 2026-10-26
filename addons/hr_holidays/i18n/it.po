@@ -14,10 +14,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-02 17:39+0000\n"
-"PO-Revision-Date: 2026-08-31 16:46+0000\n"
+"POT-Creation-Date: 2026-10-16 17:41+0000\n"
+"PO-Revision-Date: 2026-10-23 16:22+0000\n"
 "Last-Translator: \"Marianna Ciofani (cima)\" <cima@odoo.com>\n"
-"Language-Team: Italian <https://translate.odoo.com/projects/odoo-s19-4/"
+"Language-Team: Italian <https://translate.odoo.com/projects/odoo-20/"
 "hr_holidays/it/>\n"
 "Language: it\n"
 "MIME-Version: 1.0\n"
@@ -79,6 +79,34 @@ msgid ""
 "also possible in order to automatically create a meeting when a time off "
 "request is accepted by setting up a type of meeting in time off Type.\n"
 msgstr ""
+"\n"
+"Gestisci le richieste e le assegnazioni di ferie\n"
+"========================================\n"
+"\n"
+"Questa applicazione controlla il calendario delle ferie della tua azienda. "
+"Consente ai dipendenti di richiedere ferie. I manager possono quindi "
+"esaminare le richieste di ferie e approvarle o rifiutarle. In questo modo è "
+"possibile controllare la pianificazione complessiva delle ferie per "
+"l'azienda o dipartimento.\n"
+"\n"
+"È possibile configurare diversi tipi di ferie (malattia, giorni retribuiti, "
+"ecc.) e assegnare rapidamente le ferie a un dipendente o a un ufficio "
+"utilizzando l'assegnazione delle ferie. Un dipendente può anche richiedere "
+"più giorni di ferie creando una nuova assegnazione delle ferie. Ciò "
+"aumenterà il totale dei giorni disponibili per quel tipo di ferie (se la "
+"richiesta viene accettata).\n"
+"\n"
+"È possibile tenere traccia delle ferie in diversi modi seguendo i seguenti "
+"resoconti:\n"
+"\n"
+"* Riepilogo ferie\n"
+"* Ferie per dipartimento\n"
+"* Analisi ferie\n"
+"\n"
+"È anche possibile una sincronizzazione con un'agenda interna (Riunioni del "
+"modulo CRM) al fine di creare automaticamente una riunione quando una "
+"richiesta di ferie viene accettata, impostando un tipo di riunione nel Tipo "
+"di ferie.\n"
 
 #. module: hr_holidays
 #. odoo-python
@@ -568,6 +596,13 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:hr_holidays.hr_work_entry_type_view_form
 msgid "<span class=\"o_stat_text\">Time Off</span>"
 msgstr "<span class=\"o_stat_text\">Congedo</span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_form_dashboard
+msgid ""
+"<span class=\"text-danger\" invisible=\"not work_entry_type_support_document "
+"or supported_attachment_ids\">Required</span>"
+msgstr ""
 
 #. module: hr_holidays
 #: model_terms:ir.ui.view,arch_db:hr_holidays.hr_work_entry_type_view_form
@@ -1083,7 +1118,7 @@ msgstr "Assegna ferie"
 #. module: hr_holidays
 #: model:ir.module.module,summary:base.module_hr_holidays
 msgid "Allocate time off and follow leave requests"
-msgstr ""
+msgstr "Assegnare ferie e seguire le richieste"
 
 #. module: hr_holidays
 #: model:ir.model.fields,field_description:hr_holidays.field_hr_time_rule__allocation_type_id
@@ -1510,17 +1545,8 @@ msgstr "Può convalidare"
 
 #. module: hr_holidays
 #: model:res.groups,comment:hr_holidays.group_hr_holidays_manager
-msgid ""
-"Can manage and configure all holidays and leave requests.\n"
-"\n"
-"A user without any rights on Time Off will be able to see the application, "
-"create his own holidays and manage the requests of the users he's manager of."
+msgid "Can manage and configure all holidays and leave requests."
 msgstr ""
-"Può gestire e configurare tutti i giorni festivi e le richieste di ferie.\n"
-"\n"
-"Un utente senza alcun diritto sul modulo Ferie sarà in grado di vedere "
-"l'applicazione, creare le proprie vacanze e gestire le richieste degli "
-"utenti che gestisce."
 
 #. module: hr_holidays
 #. odoo-python
@@ -2885,7 +2911,7 @@ msgstr "Permesso alla data"
 #. module: hr_holidays
 #: model:ir.model,name:hr_holidays.model_hr_leave_display_name_mixin
 msgid "Leave Display Name Mixin"
-msgstr ""
+msgstr "Mixin nome visualizzato ferie"
 
 #. module: hr_holidays
 #: model:ir.model.fields,help:hr_holidays.field_hr_time_rule__leave_compensation_rate
@@ -2986,7 +3012,7 @@ msgstr "Marzo"
 #: model:ir.model.fields,help:hr_holidays.field_hr_leave__activity_type_icon
 #: model:ir.model.fields,help:hr_holidays.field_hr_leave_allocation__activity_type_icon
 msgid "Material Symbols icon e.g. checklist"
-msgstr ""
+msgstr "Icona Material Symbols, ad es. elenco di controllo"
 
 #. module: hr_holidays
 #: model:ir.model.fields,field_description:hr_holidays.field_hr_leave__max_leaves
@@ -5817,6 +5843,12 @@ msgid "dates"
 msgstr "date"
 
 #. module: hr_holidays
+#. odoo-python
+#: code:addons/hr_holidays/models/hr_leave.py:0
+msgid "day"
+msgstr ""
+
+#. module: hr_holidays
 #. odoo-javascript
 #: code:addons/hr_holidays/static/src/components/accrual_level/accrual_levels.js:0
 msgid "day(s)"
@@ -6079,6 +6111,20 @@ msgstr "anno(i)"
 #: code:addons/hr_holidays/models/hr_time_rule.py:0
 msgid "your HR manager"
 msgstr ""
+
+#~ msgid ""
+#~ "Can manage and configure all holidays and leave requests.\n"
+#~ "\n"
+#~ "A user without any rights on Time Off will be able to see the "
+#~ "application, create his own holidays and manage the requests of the users "
+#~ "he's manager of."
+#~ msgstr ""
+#~ "Può gestire e configurare tutti i giorni festivi e le richieste di "
+#~ "ferie.\n"
+#~ "\n"
+#~ "Un utente senza alcun diritto sul modulo Ferie sarà in grado di vedere "
+#~ "l'applicazione, creare le proprie vacanze e gestire le richieste degli "
+#~ "utenti che gestisce."
 
 #~ msgid "Back on"
 #~ msgstr "Di ritorno il"

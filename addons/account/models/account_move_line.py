@@ -206,11 +206,11 @@ class AccountMoveLine(models.Model):
         help="The payment that created this entry")
     statement_line_id = fields.Many2one(
         comodel_name='account.bank.statement.line',
-        string="Originator Statement Line",
+        string="Originator Bank Transaction",
         related='move_id.statement_line_id', store=True,
         bypass_search_access=True,
         index='btree_not_null',
-        help="The statement line that created this entry")
+        help="The bank transaction that created this entry")
     statement_id = fields.Many2one(
         related='statement_line_id.statement_id', store=True,
         bypass_search_access=True,
@@ -797,7 +797,8 @@ class AccountMoveLine(models.Model):
                 if len(previous_two_accounts) == 1 and len(line.move_id.line_ids) > 2:
                     line.account_id = previous_two_accounts
                 else:
-                    line.account_id = line.move_id.journal_id.default_account_id
+                    base_account = line.move_id.journal_id.default_account_id
+                    line.account_id = line.move_id.fiscal_position_id.map_account(base_account)
 
     @api.model
     def _search_account_id(self, operator, value):
@@ -1359,21 +1360,40 @@ class AccountMoveLine(models.Model):
             else:
                 line.discount_allocation_key = False
 
-    @api.depends('account_id', 'company_id', 'price_unit', 'quantity', 'currency_rate', 'move_id.line_ids.discount', 'move_id.line_ids.analytic_distribution')
+    @api.depends('account_id', 'company_id', 'currency_rate', 'move_id.line_ids.account_id', 'move_id.line_ids.discount', 'move_id.line_ids.analytic_distribution')
     def _compute_discount_allocation_needed(self):
-        line2discounted_amount = {
-            line: [
-                (line.account_id, amount_currency, line.company_currency_id.round(amount_currency / line.currency_rate)),
-                (discount_allocation_account, -amount_currency, -line.company_currency_id.round(amount_currency / line.currency_rate)),
-            ]
-            for line in self.move_id.line_ids
-            if line.display_type == 'product'
-            and (discount_allocation_account := line.move_id._get_discount_allocation_account())
-            and line.account_id != discount_allocation_account
-            and (amount_currency := line.currency_id.round(
-                line.move_id.direction_sign * line.quantity * line.price_unit * line.discount / 100
-            ))
-        }
+        def _get_discount_before_rounding(line):
+            base_line = line.move_id._prepare_product_base_line_for_taxes_computation(line)
+            base_line['discount'] = 0.0
+            self.env['account.tax']._add_tax_details_in_base_line(base_line, line.company_id)
+            price_subtotal = base_line['tax_details']['raw_total_excluded_currency']
+            return line.move_id.direction_sign * price_subtotal * line.discount / 100
+
+        # Round the cumulated discount per account, to avoid summing rounding errors.
+        line2discounted_amount = {}
+        cumulated_discounts = defaultdict(float)
+        for line in self.move_id.line_ids:
+            if not (
+                line.display_type == 'product'
+                and line.discount
+                and (discount_allocation_account := line.move_id._get_discount_allocation_account())
+                and line.account_id != discount_allocation_account
+            ):
+                continue
+            group_key = (line.move_id, line.account_id)
+            previous_amount_currency = line.currency_id.round(cumulated_discounts[group_key])
+            cumulated_discounts[group_key] += _get_discount_before_rounding(line)
+            cumulated_amount_currency = line.currency_id.round(cumulated_discounts[group_key])
+            amount_currency = cumulated_amount_currency - previous_amount_currency
+            amount = (
+                line.company_currency_id.round(cumulated_amount_currency / line.currency_rate)
+                - line.company_currency_id.round(previous_amount_currency / line.currency_rate)
+            )
+            if amount_currency or amount:
+                line2discounted_amount[line] = [
+                    (line.account_id, amount_currency, amount),
+                    (discount_allocation_account, -amount_currency, -amount),
+                ]
 
         distribution_totals = defaultdict(lambda: defaultdict(float))
         for line, discounted_amounts in line2discounted_amount.items():
@@ -1513,7 +1533,7 @@ class AccountMoveLine(models.Model):
                 ]
                 for base_line in aggregated_base_lines:
                     invoice_line = base_line['_invoice_line']
-                    result_per_invoice_line[invoice_line] = {
+                    result_per_invoice_line[invoice_line._origin or invoice_line] = {
                         grouping_key_line: {
                             'name': _("Early Payment Discount (%s)", discount_percentage_name),
                             'amount_currency': 0.0,
@@ -1541,7 +1561,7 @@ class AccountMoveLine(models.Model):
                 )
                 for target_factor, amount_to_distribute in zip(target_factors, amounts_to_distribute):
                     invoice_line = target_factor['base_line']['_invoice_line']
-                    epd_needed = result_per_invoice_line[invoice_line]
+                    epd_needed = result_per_invoice_line[invoice_line._origin or invoice_line]
                     epd_needed[grouping_key_line]['amount_currency'] -= amount_to_distribute
                     epd_needed[grouping_key_counterpart]['amount_currency'] += amount_to_distribute
 
@@ -1552,12 +1572,12 @@ class AccountMoveLine(models.Model):
                 )
                 for target_factor, amount_to_distribute in zip(target_factors, amounts_to_distribute):
                     invoice_line = target_factor['base_line']['_invoice_line']
-                    epd_needed = result_per_invoice_line[invoice_line]
+                    epd_needed = result_per_invoice_line[invoice_line._origin or invoice_line]
                     epd_needed[grouping_key_line]['balance'] -= amount_to_distribute
                     epd_needed[grouping_key_counterpart]['balance'] += amount_to_distribute
 
         for invoice_line in candidate_invoice_lines:
-            epd_needed = result_per_invoice_line[invoice_line]
+            epd_needed = result_per_invoice_line[invoice_line._origin or invoice_line]
             invoice_line.epd_needed = list(epd_needed.items())
 
     @api.depends('move_id.move_type', 'balance', 'tax_repartition_line_id', 'tax_ids')
@@ -2058,8 +2078,11 @@ class AccountMoveLine(models.Model):
             defaults['account_id'] = quick_encode_suggestion['account_id']
             defaults['price_unit'] = quick_encode_suggestion['price_unit']
             defaults['tax_ids'] = [Command.set(quick_encode_suggestion['tax_ids'])]
-        elif (journal := self.env['account.journal'].browse(self.env.context.get('journal_id'))) and journal.default_account_id:
-            defaults['account_id'] = journal.default_account_id
+        elif (
+            (journal := self.env['account.journal'].browse(self.env.context.get('journal_id')))
+            and journal.type not in ('sale', 'purchase')
+            and journal.default_account_id):
+            defaults['account_id'] = journal.default_account_id.id
         return defaults
 
     def _sanitize_vals(self, vals):
@@ -3377,6 +3400,13 @@ class AccountMoveLine(models.Model):
                 exchange_account_per_move.get(line.move_id)
                 or self._get_exchange_account(company, amount_residual_to_fix).id
             )
+
+            fiscal_position = line.move_id.fiscal_position_id
+            if fiscal_position:
+                original_account = self.env['account.account'].browse(exchange_line_account_id)
+                mapped_account = fiscal_position.map_account(original_account)
+                if mapped_account:
+                    exchange_line_account_id = mapped_account.id
 
             sequence = len(move_vals['line_ids'])
             line_vals = [

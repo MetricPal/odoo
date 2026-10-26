@@ -10,10 +10,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-25 17:39+0000\n"
-"PO-Revision-Date: 2026-09-10 13:11+0000\n"
+"POT-Creation-Date: 2026-10-23 17:42+0000\n"
+"PO-Revision-Date: 2026-10-20 07:25+0000\n"
 "Last-Translator: \"Larissa Manderfeld (lman)\" <lman@odoo.com>\n"
-"Language-Team: German <https://translate.odoo.com/projects/odoo-master/"
+"Language-Team: German <https://translate.odoo.com/projects/odoo-20/"
 "spreadsheet/de/>\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
@@ -1548,10 +1548,8 @@ msgstr "Automatisch"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Automatic evaluation is disabled. Press F9 to recalculate."
+msgid "Automatic evaluation is disabled. Press"
 msgstr ""
-"Die automatische Auswertung ist deaktiviert. Drücken Sie F9, um die "
-"Berechnung erneut durchzuführen."
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -1716,13 +1714,13 @@ msgstr "Beginn der Periode"
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Best for visualizing time-series trends."
-msgstr ""
+msgstr "Am besten geeignet zur Visualisierung von Zeitreihentrends."
 
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Better when category labels are long."
-msgstr ""
+msgstr "Besser geeignet, wenn die Kategoriebezeichnungen lang sind."
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -7151,6 +7149,12 @@ msgstr "Keine numerischen Werte zum Anzeigen."
 
 #. module: spreadsheet
 #. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "No region is available"
+msgstr ""
+
+#. module: spreadsheet
+#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "No results"
 msgstr "Keine Ergebnisse"
@@ -8270,6 +8274,12 @@ msgstr "Bezug auf die Zelle, die auf Leere geprüft wird."
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Region"
 msgstr "Region"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "Region %(region)s is not available"
+msgstr ""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -10552,6 +10562,12 @@ msgstr "Das Zeichen in text_to_search, bei dem die Suche gestartet wird."
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "The chart definition is invalid for an unknown reason"
 msgstr "Die Diagrammdefinition ist aus einem unbekannten Grund ungültig"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
+msgid "The chart is deactivated"
+msgstr ""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -14244,6 +14260,14 @@ msgstr "Dieser Vorgang ist bei Mehrfachauswahlen nicht zulässig."
 
 #. module: spreadsheet
 #. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid ""
+"This operation would cause tables to overlap. Move or remove the conflicting "
+"table and try again."
+msgstr ""
+
+#. module: spreadsheet
+#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "This pivot has no cell missing on this sheet"
 msgstr "Die Pivot-Tabelle hat keine Zelle, die in diesem Blatt fehlt"
@@ -15886,6 +15910,12 @@ msgstr "genaues Datum"
 
 #. module: spreadsheet
 #. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
+msgid "here"
+msgstr ""
+
+#. module: spreadsheet
+#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "in the past month"
 msgstr "im letzten Monat"
@@ -15987,6 +16017,12 @@ msgstr "vor einem Jahr"
 #: code:addons/spreadsheet/static/src/global_filters/helpers.js:0
 msgid "or"
 msgstr "oder"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
+msgid "or F9 to recalculate."
+msgstr ""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -16147,6 +16183,11 @@ msgstr ""
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "yesterday"
 msgstr "gestern"
+
+#~ msgid "Automatic evaluation is disabled. Press F9 to recalculate."
+#~ msgstr ""
+#~ "Die automatische Auswertung ist deaktiviert. Drücken Sie F9, um die "
+#~ "Berechnung erneut durchzuführen."
 
 #~ msgid "Currency not available for this company."
 #~ msgstr "Währung nicht für dieses Unternehmen verfügbar."

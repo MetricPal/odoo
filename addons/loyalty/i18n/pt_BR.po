@@ -8,11 +8,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-18 17:39+0000\n"
-"PO-Revision-Date: 2026-08-31 15:10+0000\n"
-"Last-Translator: Anonymous <noreply@weblate.org>\n"
+"POT-Creation-Date: 2026-10-09 17:39+0000\n"
+"PO-Revision-Date: 2026-10-23 00:33+0000\n"
+"Last-Translator: \"Maitê Dietze (madi)\" <madi@odoo.com>\n"
 "Language-Team: Portuguese (Brazil) <https://translate.odoo.com/projects/odoo-"
-"s19-4/loyalty/pt_BR/>\n"
+"20/loyalty/pt_BR/>\n"
 "Language: pt_BR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1559,6 +1559,12 @@ msgid "Manage where your program should be available for use."
 msgstr "Gerencie onde seu programa deve estar disponível para uso."
 
 #. module: loyalty
+#. odoo-python
+#: code:addons/loyalty/models/loyalty_card.py:0
+msgid "Manual Adjustment"
+msgstr ""
+
+#. module: loyalty
 #: model:ir.model.fields,field_description:loyalty.field_loyalty_reward__discount_max_amount
 msgid "Max Discount"
 msgstr "Desconto máximo"
@@ -1975,7 +1981,7 @@ msgstr ""
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_program_view_form
 msgid "Settings"
-msgstr ""
+msgstr "Definições"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_program_view_form
@@ -2144,7 +2150,7 @@ msgstr "Disparo"
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_program_view_form
 msgid "Type"
-msgstr ""
+msgstr "Tipo"
 
 #. module: loyalty
 #. odoo-python

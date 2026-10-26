@@ -13,8 +13,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-02 17:39+0000\n"
-"PO-Revision-Date: 2026-09-29 12:11+0000\n"
+"POT-Creation-Date: 2026-10-16 17:41+0000\n"
+"PO-Revision-Date: 2026-10-20 08:48+0000\n"
 "Last-Translator: Bren Driesen <brdri@odoo.com>\n"
 "Language-Team: Dutch <https://translate.odoo.com/projects/odoo-20/"
 "hr_holidays/nl/>\n"
@@ -77,6 +77,32 @@ msgid ""
 "also possible in order to automatically create a meeting when a time off "
 "request is accepted by setting up a type of meeting in time off Type.\n"
 msgstr ""
+"\n"
+"Verlofaanvragen en -toewijzingen beheren\n"
+"========================================\n"
+"\n"
+"Deze applicatie beheert de verlofschema's van je bedrijf. Werknemers kunnen "
+"verlof aanvragen. Vervolgens kunnen managers verlofaanvragen controleren en "
+"ze goedkeuren of afwijzen. Op deze manier behoud je het overzicht over de "
+"algemene verlofplanning van je bedrijf of afdeling.\n"
+"\n"
+"Je kunt verschillende soorten aanvragen configureren (ziekte, betaalde "
+"dagen, ...) en je kunt snel verlof toewijzen aan een werknemer of afdeling "
+"door verloftoewijzingen. Een werknemer kan ook meer verlofdagen aanvragen "
+"door een nieuwe verloftoewijzing te maken. Dat verhoogt dan het aantal "
+"beschikbare dagen voor dat type verlof (als het verzoek is goedgekeurd "
+"natuurlijk).\n"
+"\n"
+"Je kunt verlof op verschillende manieren tracken met deze rapporten:\n"
+"\n"
+"* Verlofsamenvatting\n"
+"* Verlof per afdeling\n"
+"* Verlofanalyse\n"
+"\n"
+"Synchronisatie met een interne agenda (Afspraken in de CRM-module) is ook "
+"mogelijk. Dan wordt automatisch een afspraak aangemaakt wanneer een "
+"verlofaanvraag is goedgekeurd. Daarvoor kun je een afspraaktype instellen "
+"als 'verlof'.\n"
 
 #. module: hr_holidays
 #. odoo-python
@@ -400,6 +426,29 @@ msgid ""
 "                </div>\n"
 "            "
 msgstr ""
+"<div>\n"
+"                    Beste <t t-out=\"object.employee_id.name or "
+"'Employee'\"/>,<br/><br/>\n"
+"                    Je verloftoewijzing is bevestigd.<br/><br/>\n"
+"                    Details:<br/>\n"
+"                    <ul>\n"
+"                        <li>Tijdtype: <t t-"
+"out=\"object.work_entry_type_id.name or ''\"/></li>\n"
+"                        <li>Toewijzing: <t t-out=\"object.duration_display "
+"or ''\"/></li>\n"
+"                        <li>Geldig vanaf: <t t-out=\"object.date_from or "
+"''\"/> <t t-if=\"not object.date_to\">(Geen vervaldatum)</t><t t-else=\"\"> "
+"tot <t t-out=\"object.date_to or ''\"/></t></li>\n"
+"                        <li t-if=\"object.accrual_plan_id\">Opbouwplan: <t t-"
+"out=\"object.accrual_plan_id.name or ''\"/></li>\n"
+"                    </ul>\n"
+"                    <br/>\n"
+"                    Neem bij vragen contact op met de HR-"
+"verantwoordelijke.<br/><br/>\n"
+"                    Met vriendelijke groet,<br/>\n"
+"                    <t t-out=\"object.env.user.name or ''\"/>\n"
+"                </div>\n"
+"            "
 
 #. module: hr_holidays
 #: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_view_form
@@ -566,6 +615,13 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:hr_holidays.hr_work_entry_type_view_form
 msgid "<span class=\"o_stat_text\">Time Off</span>"
 msgstr "<span class=\"o_stat_text\">Verlof</span>"
+
+#. module: hr_holidays
+#: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_view_form_dashboard
+msgid ""
+"<span class=\"text-danger\" invisible=\"not work_entry_type_support_document "
+"or supported_attachment_ids\">Required</span>"
+msgstr ""
 
 #. module: hr_holidays
 #: model_terms:ir.ui.view,arch_db:hr_holidays.hr_work_entry_type_view_form
@@ -1459,19 +1515,19 @@ msgstr "Beide bevestigd en goedgekeurd"
 #: model:ir.model.fields.selection,name:hr_holidays.selection__hr_work_entry_type__allocation_validation_type__hr
 #: model:ir.model.fields.selection,name:hr_holidays.selection__hr_work_entry_type__leave_validation_type__hr
 msgid "By HR Responsible"
-msgstr ""
+msgstr "Door HR-verantwoordelijke"
 
 #. module: hr_holidays
 #: model:ir.model.fields.selection,name:hr_holidays.selection__hr_work_entry_type__allocation_validation_type__both
 #: model:ir.model.fields.selection,name:hr_holidays.selection__hr_work_entry_type__leave_validation_type__both
 msgid "By HR Responsible and Time Off Approver"
-msgstr ""
+msgstr "Door HR-verantwoordelijke en verlofgoedkeurder"
 
 #. module: hr_holidays
 #: model:ir.model.fields.selection,name:hr_holidays.selection__hr_work_entry_type__allocation_validation_type__manager
 #: model:ir.model.fields.selection,name:hr_holidays.selection__hr_work_entry_type__leave_validation_type__manager
 msgid "By Time Off Approver"
-msgstr ""
+msgstr "Door Verlofgoedkeurder"
 
 #. module: hr_holidays
 #: model:ir.model.fields.selection,name:hr_holidays.selection__hr_work_entry_type__count_days_as__calendar
@@ -1500,17 +1556,8 @@ msgstr "Kan goedkeuren"
 
 #. module: hr_holidays
 #: model:res.groups,comment:hr_holidays.group_hr_holidays_manager
-msgid ""
-"Can manage and configure all holidays and leave requests.\n"
-"\n"
-"A user without any rights on Time Off will be able to see the application, "
-"create his own holidays and manage the requests of the users he's manager of."
+msgid "Can manage and configure all holidays and leave requests."
 msgstr ""
-"Kan alle vakanties en verlofaanvragen beheren en configureren.\n"
-"\n"
-"Een gebruiker zonder rechten op Verlof kan de applicatie zien, zijn eigen "
-"verlof aanvragen en de verzoeken beheren van medewerkers waarvoor hij als "
-"manager is ingesteld."
 
 #. module: hr_holidays
 #. odoo-python
@@ -1696,13 +1743,15 @@ msgstr "Bedrijf"
 #: model:ir.actions.act_window,name:hr_holidays.open_view_public_holiday
 #: model:ir.ui.menu,name:hr_holidays.hr_holidays_public_time_off_menu_configuration
 msgid "Company Holidays"
-msgstr ""
+msgstr "Bedrijfsfeestdagen"
 
 #. module: hr_holidays
 #: model_terms:ir.actions.act_window,help:hr_holidays.open_view_public_holiday
 msgid ""
 "Company Holidays are non-working days that don't impact employees' balances"
 msgstr ""
+"Bedrijfsfeestdagen zijn vrije dagen die geen invloed hebben op de "
+"verlofsaldi van werknemers"
 
 #. module: hr_holidays
 #: model:ir.ui.menu,name:hr_holidays.menu_hr_holidays_configuration
@@ -3302,7 +3351,7 @@ msgstr ""
 #. module: hr_holidays
 #: model_terms:ir.actions.act_window,help:hr_holidays.open_view_public_holiday
 msgid "No Company Holidays yet!"
-msgstr ""
+msgstr "Nog geen bedrijfsfeestdagen!"
 
 #. module: hr_holidays
 #: model_terms:ir.ui.view,arch_db:hr_holidays.hr_leave_allocation_generate_multi_wizard_view_form
@@ -4017,6 +4066,7 @@ msgstr ""
 #: model:mail.template,description:hr_holidays.mail_template_allocation_confirmed
 msgid "Sent to employee when their time off allocation is confirmed"
 msgstr ""
+"Wordt naar de werknemer gestuurd wanneer zijn verloftoewijzing is bevestigd"
 
 #. module: hr_holidays
 #: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_accrual_level__second_month__9
@@ -4598,7 +4648,7 @@ msgstr "Verloftoewijzing"
 #. module: hr_holidays
 #: model:mail.template,name:hr_holidays.mail_template_allocation_confirmed
 msgid "Time Off Allocation Confirmed"
-msgstr ""
+msgstr "Verloftoewijzing bevestigd"
 
 #. module: hr_holidays
 #: model:mail.template,subject:hr_holidays.mail_template_allocation_confirmed
@@ -4606,6 +4656,8 @@ msgid ""
 "Time Off Allocation Confirmed: {{ object.work_entry_type_id.name }} "
 "({{ object.duration_display }})"
 msgstr ""
+"Verloftoewijzing bevestigd: {{ object.work_entry_type_id.name }} ({{ "
+"object.duration_display }})"
 
 #. module: hr_holidays
 #: model:ir.actions.act_window,name:hr_holidays.hr_leave_report_action
@@ -5028,7 +5080,7 @@ msgstr "Tz mismatch"
 #: model:ir.model.fields,field_description:hr_holidays.field_hr_leave_allocation_generate_multi_wizard__unit_of_measure
 #: model:ir.model.fields,field_description:hr_holidays.field_hr_work_entry_type__unit_of_measure
 msgid "Unit"
-msgstr ""
+msgstr "Eenheid"
 
 #. module: hr_holidays
 #: model:ir.model.fields.selection,name:hr_holidays.selection__hr_leave_accrual_level__carryover_options__unlimited
@@ -5787,6 +5839,12 @@ msgid "dates"
 msgstr "datums"
 
 #. module: hr_holidays
+#. odoo-python
+#: code:addons/hr_holidays/models/hr_leave.py:0
+msgid "day"
+msgstr ""
+
+#. module: hr_holidays
 #. odoo-javascript
 #: code:addons/hr_holidays/static/src/components/accrual_level/accrual_levels.js:0
 msgid "day(s)"
@@ -6047,6 +6105,19 @@ msgstr "jaar"
 #: code:addons/hr_holidays/models/hr_time_rule.py:0
 msgid "your HR manager"
 msgstr ""
+
+#~ msgid ""
+#~ "Can manage and configure all holidays and leave requests.\n"
+#~ "\n"
+#~ "A user without any rights on Time Off will be able to see the "
+#~ "application, create his own holidays and manage the requests of the users "
+#~ "he's manager of."
+#~ msgstr ""
+#~ "Kan alle vakanties en verlofaanvragen beheren en configureren.\n"
+#~ "\n"
+#~ "Een gebruiker zonder rechten op Verlof kan de applicatie zien, zijn eigen "
+#~ "verlof aanvragen en de verzoeken beheren van medewerkers waarvoor hij als "
+#~ "manager is ingesteld."
 
 #~ msgid "Back on"
 #~ msgstr "Terug op"

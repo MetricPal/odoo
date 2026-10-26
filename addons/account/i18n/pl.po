@@ -57,11 +57,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-02 17:39+0000\n"
-"PO-Revision-Date: 2026-08-31 15:55+0000\n"
+"POT-Creation-Date: 2026-10-23 17:40+0000\n"
+"PO-Revision-Date: 2026-10-19 08:28+0000\n"
 "Last-Translator: \"Marta (wacm)\" <wacm@odoo.com>\n"
-"Language-Team: Polish <https://translate.odoo.com/projects/odoo-s19-4/"
-"account/pl/>\n"
+"Language-Team: Polish <https://translate.odoo.com/projects/odoo-20/account/"
+"pl/>\n"
 "Language: pl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -130,6 +130,17 @@ msgid ""
 "This module also offers you an easy method of registering payments, without "
 "having to encode complete abstracts of account.\n"
 msgstr ""
+"\n"
+"Fakturowanie i płatności\n"
+"====================\n"
+"Konkretny i łatwy w użyciu system fakturowania w Odoo pozwala śledzić Twoje "
+"rachunki, nawet jeśli nie jesteś księgowym. Zapewnia łatwy sposób śledzenia "
+"dostawców i klientów.\n"
+"\n"
+"Możesz skorzystać z tej uproszczonej rachunkowości, jeśli będziesz pracować "
+"z kontem (zewnętrznym), aby zachować swoje księgi, ale nadal chcesz śledzić "
+"płatności. Ten moduł oferuje również łatwą metodę rejestracji płatności, bez "
+"konieczności kodowania kompletnych streszczeń konta.\n"
 
 #. module: account
 #. odoo-python
@@ -154,6 +165,11 @@ msgid " valid until %s"
 msgstr " ważne do %s"
 
 #. module: account
+#: model:ir.model.fields,field_description:account.field_account_payment__reconciled_statement_lines_count
+msgid "# Reconciled Bank Transactions"
+msgstr ""
+
+#. module: account
 #: model:ir.model.fields,field_description:account.field_account_payment__reconciled_bills_count
 msgid "# Reconciled Bills"
 msgstr "# Uzgodnionych rachunków"
@@ -162,11 +178,6 @@ msgstr "# Uzgodnionych rachunków"
 #: model:ir.model.fields,field_description:account.field_account_payment__reconciled_invoices_count
 msgid "# Reconciled Invoices"
 msgstr "# Uzgodnionych faktur"
-
-#. module: account
-#: model:ir.model.fields,field_description:account.field_account_payment__reconciled_statement_lines_count
-msgid "# Reconciled Statement Lines"
-msgstr "# Uzgodnionych pozycji wyciągu"
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_res_partner__supplier_invoice_count
@@ -265,14 +276,10 @@ msgstr "%(label)s w %(currency_amount)s (wersja robocza)"
 #. odoo-python
 #: code:addons/account/models/account_bank_statement_line.py:0
 msgid ""
-"%(move)s reached an invalid state regarding its related statement line.\n"
+"%(move)s reached an invalid state regarding its related bank transaction.\n"
 "To be consistent, the journal entry must always have exactly one suspense "
 "line."
 msgstr ""
-"%(move)s osiągnął nieprawidłowy stan w odniesieniu do powiązanej pozycji "
-"wyciągu.\n"
-"Aby zachować spójność, wpis w dzienniku musi zawsze mieć dokładnie jeden "
-"wiersz zawieszenia."
 
 #. module: account
 #. odoo-python
@@ -541,11 +548,9 @@ msgstr "90 dni, 10-tego"
 #. odoo-python
 #: code:addons/account/models/account_payment_term.py:0
 msgid ""
-"<b>%(count)s#</b> Installment of <b>%(amount)s</b> due on <b style='color: "
+"<b>%(count)s</b> - Installment of <b>%(amount)s</b> due on <b style='color: "
 "#704A66;'>%(date)s</b>"
 msgstr ""
-"<b>%(count)s# </b>Rata w wysokości <b>%(amount)s</b> należna w dniu <b "
-"style='color: #704A66;'>%(date)s</b>"
 
 #. module: account
 #: model_terms:ir.ui.view,arch_db:account.report_invoice_document
@@ -3166,43 +3171,43 @@ msgstr "Akredytowana suma"
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_buildings
-msgid "Accumulated Depreciation - Buildings"
-msgstr ""
+msgid "Accumulated Amortization - Buildings"
+msgstr "Skumulowana amortyzacja – budynki"
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_furniture
-msgid "Accumulated Depreciation - Furniture & Fixtures"
-msgstr ""
+msgid "Accumulated Amortization - Furniture & Fixtures"
+msgstr "Skumulowana amortyzacja – Meble i wyposażenie"
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_improvements
-msgid "Accumulated Depreciation - Improvements"
-msgstr ""
+msgid "Accumulated Amortization - Improvements"
+msgstr "Skumulowana amortyzacja - Ulepszenia"
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_machines
-msgid "Accumulated Depreciation - Machines & Tools"
-msgstr ""
+msgid "Accumulated Amortization - Machines & Tools"
+msgstr "Skumulowana amortyzacja - Maszyny i narzędzia"
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_other_property
-msgid "Accumulated Depreciation - Other Property"
-msgstr ""
+msgid "Accumulated Amortization - Other Property"
+msgstr "Skumulowana amortyzacja - inna własność"
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_technology
-msgid "Accumulated Depreciation - Technology"
-msgstr ""
+msgid "Accumulated Amortization - Technology"
+msgstr "Skumulowana amortyzacja - technologia"
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_vehicles
-msgid "Accumulated Depreciation - Vehicles"
-msgstr ""
+msgid "Accumulated Amortization - Vehicles"
+msgstr "Skumulowana amortyzacja - pojazdy"
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_acc_depreciation
-msgid "Accumulated Depreciation Misc"
-msgstr ""
+msgid "Accumulated Depreciation"
+msgstr "Skumulowana amortyzacja"
 
 #. module: account
 #: model:account.account,name:account.21_retained_earnings
@@ -3544,6 +3549,46 @@ msgid "Adjusting Entry {link} {percent}%% of {amount} recognized on {new_date}"
 msgstr "Wpis korygujący {link} {percent}%% {amount} uznanego w dniu {new_date}"
 
 #. module: account
+#: model:account.account.tag,name:account.account_tag_adj_depreciation_and_amortization
+msgid "Adjustment - Depreciation and amortization"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_fin_instr_sale
+msgid "Adjustment - Financial Instruments"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_intangible_asset
+msgid "Adjustment - Intangible Assets"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_net_fin_result
+msgid "Adjustment - Net Financial Result"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_PPE_sale
+msgid "Adjustment - PPE Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_provisions
+msgid "Adjustment - Provisions"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_ROU_sale
+msgid "Adjustment - Right of Use Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_unrealized_forex
+msgid "Adjustment - Unrealized Forex"
+msgstr ""
+
+#. module: account
 #: model:account.account,name:account.22_account_account_us_administration_fees
 msgid "Administration Fees"
 msgstr "Opłaty administracyjne"
@@ -3710,8 +3755,8 @@ msgstr ""
 
 #. module: account
 #: model:ir.model.fields,help:account.field_account_secure_entries_wizard__unreconciled_bank_statement_line_ids
-msgid "All unreconciled bank statement lines before the selected date."
-msgstr "Wszystkie nieuzgodnione wiersze wyciągów bankowych przed wybraną datą."
+msgid "All unreconciled bank transactions before the selected date."
+msgstr ""
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_account_report__allow_foreign_vat
@@ -4295,8 +4340,8 @@ msgstr ""
 #. odoo-python
 #: code:addons/account/models/account_bank_statement.py:0
 msgid ""
-"At least one transaction in the statement is prior the last posted statement "
-"line (%s)"
+"At least one transaction in the statement is prior the last posted "
+"transaction (%s)"
 msgstr ""
 
 #. module: account
@@ -4601,8 +4646,20 @@ msgstr "Powrót do rachunku"
 #. module: account
 #. odoo-javascript
 #: code:addons/account/static/src/components/product_catalog/kanban_controller.js:0
+msgid "Back to Credit Note"
+msgstr ""
+
+#. module: account
+#. odoo-javascript
+#: code:addons/account/static/src/components/product_catalog/kanban_controller.js:0
 msgid "Back to Invoice"
 msgstr "Powrót do faktury"
+
+#. module: account
+#. odoo-javascript
+#: code:addons/account/static/src/components/product_catalog/kanban_controller.js:0
+msgid "Back to Refund"
+msgstr ""
 
 #. module: account
 #: model_terms:ir.ui.view,arch_db:account.report_invoice_document
@@ -4808,11 +4865,6 @@ msgid "Bank Statement Digitization"
 msgstr "Cyfryzacja wyciągu bankowego"
 
 #. module: account
-#: model:ir.model,name:account.model_account_bank_statement_line
-msgid "Bank Statement Line"
-msgstr "Pozycja wyciągu bankowego"
-
-#. module: account
 #: model:ir.actions.act_window,name:account.action_bank_statement_tree
 msgid "Bank Statements"
 msgstr "Wyciągi bankowe"
@@ -4838,6 +4890,9 @@ msgstr ""
 #. module: account
 #. odoo-python
 #: code:addons/account/models/account_move.py:0
+#: model:ir.model,name:account.model_account_bank_statement_line
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__statement_line_id
+#: model:ir.model.fields,field_description:account.field_account_move__statement_line_id
 msgid "Bank Transaction"
 msgstr "Transakcja bankowa"
 
@@ -4909,6 +4964,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:account.res_config_settings_view_form
 msgid "Bank transactions and payments:"
 msgstr "Przelewy bankowe i płatności:"
+
+#. module: account
+#: model:ir.model.fields,help:account.field_account_payment__reconciled_statement_line_ids
+msgid "Bank transactions matched to this payment"
+msgstr ""
 
 #. module: account
 #. odoo-python
@@ -5914,12 +5974,12 @@ msgstr ""
 "Europie w systemie intrastat"
 
 #. module: account
+#: model:ir.model.fields,field_description:account.field_account_account_tag__color
 #: model:ir.model.fields,field_description:account.field_account_setup_bank_manual_config__color
 msgid "Color"
 msgstr "Kolor"
 
 #. module: account
-#: model:ir.model.fields,field_description:account.field_account_account_tag__color
 #: model:ir.model.fields,field_description:account.field_account_journal__color
 msgid "Color Index"
 msgstr "Indeks kolorów"
@@ -6958,39 +7018,48 @@ msgstr "Skumulowane saldo konta."
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_buildings
-msgid "Cumulative depreciation recorded for building assets."
-msgstr ""
+msgid "Cumulative amortization recorded for building assets."
+msgstr "Zaksięgowana skumulowana amortyzacja aktywów budowlanych."
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_technology
-msgid "Cumulative depreciation recorded for capitalized technology assets."
+msgid "Cumulative amortization recorded for capitalized technology assets."
 msgstr ""
+"Zaksięgowana skumulowana amortyzacja aktywów technologicznych ujętych w "
+"aktywach trwałych."
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_furniture
-msgid "Cumulative depreciation recorded for furniture and fixture assets."
+msgid "Cumulative amortization recorded for furniture and fixture assets."
 msgstr ""
+"Skumulowana amortyzacja zaksięgowana dla aktywów w postaci mebli i "
+"wyposażenia."
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_improvements
 msgid ""
-"Cumulative depreciation recorded for leasehold or property improvements."
+"Cumulative amortization recorded for leasehold or property improvements."
 msgstr ""
+"Skumulowana amortyzacja zaksięgowana z tytułu ulepszeń lokalu lub "
+"nieruchomości."
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_machines
-msgid "Cumulative depreciation recorded for machinery and tool assets."
-msgstr ""
+msgid "Cumulative amortization recorded for machinery and tool assets."
+msgstr "Skumulowana amortyzacja zaksięgowana dla maszyn i narzędzi."
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_other_property
-msgid "Cumulative depreciation recorded for other depreciable property assets."
+msgid "Cumulative amortization recorded for other depreciable property assets."
 msgstr ""
+"Skumulowana amortyzacja zaksięgowana dla pozostałych aktywów podlegających "
+"amortyzacji."
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_vehicles
-msgid "Cumulative depreciation recorded for vehicle assets."
+msgid "Cumulative amortization recorded for vehicle assets."
 msgstr ""
+"Skumulowana amortyzacja zaksięgowana dla środków trwałych w postaci pojazdów."
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_retained_earnings
@@ -8943,16 +9012,6 @@ msgstr "Błąd podczas importu załącznika %(filename)s:"
 
 #. module: account
 #. odoo-python
-#: code:addons/account/controllers/download_docs.py:0
-msgid ""
-"Error while creating XML:\n"
-"- %s"
-msgstr ""
-"Błąd podczas tworzenia XML:\n"
-"- %s"
-
-#. module: account
-#. odoo-python
 #: code:addons/account/models/chart_template.py:0
 msgid ""
 "Error while loading the localization: missing tax tag %(tag_name)s for "
@@ -9323,6 +9382,36 @@ msgstr "Prefiksy rachunków finansowych"
 #: model:ir.model.fields,field_description:account.field_account_analytic_line__journal_id
 msgid "Financial Journal"
 msgstr "Dziennik finansowy"
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_borrowings_lt
+msgid "Financing - Borrowings Long Term"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_borrowings_st
+msgid "Financing - Borrowings Short Term"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_dividends
+msgid "Financing - Dividends"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_lease
+msgid "Financing - Lease"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_recov_adv
+msgid "Financing - Recoverable Advances"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_share_issuance
+msgid "Financing - Share Issuance"
+msgstr ""
 
 #. module: account
 #: model:account.account.tag,name:account.account_tag_financing
@@ -11216,6 +11305,51 @@ msgid "Investing & Extraordinary Activities"
 msgstr "Działania inwestycyjne i nadzwyczajne"
 
 #. module: account
+#: model:account.account.tag,name:account.account_tag_inv_cash_advances
+msgid "Investment - Cash Advances"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_fin_instr_purchase
+msgid "Investment - Financial Instruments Purchase"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_fin_instr_sale
+msgid "Investment - Financial Instruments Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_int_ass_purchase
+msgid "Investment - Intangible Assets Purchase"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_int_ass_sale
+msgid "Investment - Intangible Assets Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_interest_received
+msgid "Investment - Interest Received"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_ppe_purchase
+msgid "Investment - PPE Purchase"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_ppe_sale
+msgid "Investment - PPE Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_rou_sale
+msgid "Investment - Right of Use Sale"
+msgstr ""
+
+#. module: account
 #. odoo-javascript
 #. odoo-python
 #: code:addons/account/models/account_move.py:0
@@ -11533,7 +11667,7 @@ msgstr "Faktury"
 #. module: account
 #: model:ir.module.module,summary:base.module_account
 msgid "Invoices & Payments"
-msgstr ""
+msgstr "Faktury i płatności"
 
 #. module: account
 #: model_terms:ir.ui.view,arch_db:account.portal_my_home_menu_invoice
@@ -13905,11 +14039,9 @@ msgstr "Domena Odoo"
 #: model_terms:ir.actions.act_window,help:account.action_bank_statement_tree
 #: model_terms:ir.actions.act_window,help:account.action_credit_statement_tree
 msgid ""
-"Odoo allows you to reconcile a statement line directly with\n"
+"Odoo allows you to reconcile a transaction directly with\n"
 "                the related sale or purchase invoices."
 msgstr ""
-"Odoo umożliwia uzgodnienie linii zestawienia bezpośrednio z\n"
-"powiązanymi fakturami sprzedaży lub zakupu."
 
 #. module: account
 #: model_terms:ir.actions.act_window,help:account.res_partner_action_customer
@@ -14202,6 +14334,16 @@ msgid "Opening balance"
 msgstr "Bilans otwarcia"
 
 #. module: account
+#: model:account.account.tag,name:account.account_tag_op_income_tax_paid_received
+msgid "Operating - Income Tax Paid Received"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_op_interest_paid
+msgid "Operating - Interest Paid"
+msgstr ""
+
+#. module: account
 #: model:account.account.tag,name:account.account_tag_operating
 msgid "Operating Activities"
 msgstr "Działalność operacyjna"
@@ -14268,6 +14410,12 @@ msgid "Original Lock Date"
 msgstr "Oryginalna data blokady"
 
 #. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_line__statement_line_id
+#: model_terms:ir.ui.view,arch_db:account.view_move_line_form
+msgid "Originator Bank Transaction"
+msgstr ""
+
+#. module: account
 #: model:ir.model.fields,field_description:account.field_account_move_line__group_tax_id
 msgid "Originator Group of Taxes"
 msgstr "Zlecający Grupa Podatkowa"
@@ -14276,12 +14424,6 @@ msgstr "Zlecający Grupa Podatkowa"
 #: model:ir.model.fields,field_description:account.field_account_move_line__payment_id
 msgid "Originator Payment"
 msgstr "Twórca płatności"
-
-#. module: account
-#: model:ir.model.fields,field_description:account.field_account_move_line__statement_line_id
-#: model_terms:ir.ui.view,arch_db:account.view_move_line_form
-msgid "Originator Statement Line"
-msgstr "Wiersz oświadczenia zleceniodawcy"
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_account_move_line__tax_line_id
@@ -15135,8 +15277,8 @@ msgstr "Procent każdego wiersza, na którym ma być wykonana akcja."
 
 #. module: account
 #: model:ir.model.fields.selection,name:account.selection__account_reconcile_model_line__amount_type__percentage_st_line
-msgid "Percentage of statement line"
-msgstr "Procent linii zestawienia"
+msgid "Percentage of transaction"
+msgstr ""
 
 #. module: account
 #. odoo-python
@@ -16044,6 +16186,11 @@ msgid "Reconciled"
 msgstr "Uzgodnione"
 
 #. module: account
+#: model:ir.model.fields,field_description:account.field_account_payment__reconciled_statement_line_ids
+msgid "Reconciled Bank Transactions"
+msgstr ""
+
+#. module: account
 #: model:ir.model.fields,field_description:account.field_account_payment__reconciled_bill_ids
 msgid "Reconciled Bills"
 msgstr "Uzgodnione rachunki"
@@ -16073,11 +16220,6 @@ msgstr "Uzgodnione pozycje z wyłączeniem różnicy kursu"
 #: model:ir.model.fields,field_description:account.field_account_move__reconciled_payment_ids
 msgid "Reconciled Payments"
 msgstr "Uzgodnione płatności"
-
-#. module: account
-#: model:ir.model.fields,field_description:account.field_account_payment__reconciled_statement_line_ids
-msgid "Reconciled Statement Lines"
-msgstr "Pozycje zestawienia uzgodnionego"
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_account_move_line__reconcile_model_id
@@ -17705,8 +17847,8 @@ msgstr "Pokaż datę dostawy podlegającej opodatkowaniu"
 #. module: account
 #. odoo-python
 #: code:addons/account/models/company.py:0
-msgid "Show Unreconciled Bank Statement Line"
-msgstr "Pokaż pozycję nieuzgodnione wyciągi bankowe"
+msgid "Show Unreconciled Bank Transactions"
+msgstr ""
 
 #. module: account
 #: model_terms:ir.ui.view,arch_db:account.view_account_tax_search
@@ -17916,12 +18058,6 @@ msgid "Statement %(date)s"
 msgstr "Wyciąg %(date)s"
 
 #. module: account
-#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__statement_line_id
-#: model:ir.model.fields,field_description:account.field_account_move__statement_line_id
-msgid "Statement Line"
-msgstr "Pozycja wyciągu"
-
-#. module: account
 #: model:ir.model.fields,field_description:account.field_account_bank_statement_line__statement_name
 #: model_terms:ir.ui.view,arch_db:account.report_statement
 msgid "Statement Name"
@@ -17933,17 +18069,6 @@ msgid "Statement Reports"
 msgstr "Sprawozdania z oświadczeń"
 
 #. module: account
-#. odoo-python
-#: code:addons/account/models/account_reconcile_model.py:0
-msgid "Statement line percentage can't be 0"
-msgstr "Procent linii zestawienia nie może wynosić 0"
-
-#. module: account
-#: model:ir.model.fields,field_description:account.field_account_bank_statement__line_ids
-msgid "Statement lines"
-msgstr "Pozycje wyciągu"
-
-#. module: account
 #: model:ir.actions.act_window,name:account.action_view_bank_statement_tree
 #: model:ir.model.fields,field_description:account.field_account_bank_statement_line__statement_line_ids
 #: model:ir.model.fields,field_description:account.field_account_move__statement_line_ids
@@ -17951,11 +18076,6 @@ msgstr "Pozycje wyciągu"
 #: model_terms:ir.ui.view,arch_db:account.view_bank_statement_tree
 msgid "Statements"
 msgstr "Wyciągi"
-
-#. module: account
-#: model:ir.model.fields,help:account.field_account_payment__reconciled_statement_line_ids
-msgid "Statements lines matched to this payment"
-msgstr "Wiersze zestawień dopasowane do tej płatności"
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_account_fiscal_position__states_count
@@ -19197,6 +19317,11 @@ msgid "The bank statement used for bank reconciliation"
 msgstr "Wyciąg bankowy zastosowany do uzgodnień bankowych"
 
 #. module: account
+#: model:ir.model.fields,help:account.field_account_move_line__statement_line_id
+msgid "The bank transaction that created this entry"
+msgstr ""
+
+#. module: account
 #. odoo-python
 #: code:addons/account/models/account_move.py:0
 msgid ""
@@ -19586,15 +19711,11 @@ msgstr ""
 #. odoo-python
 #: code:addons/account/models/account_bank_statement_line.py:0
 msgid ""
-"The journal entry %s reached an invalid state regarding its related "
-"statement line.\n"
+"The journal entry %s reached an invalid state regarding its related bank "
+"transaction.\n"
 "To be consistent, the journal entry must always have exactly one journal "
 "item involving the bank/cash account."
 msgstr ""
-"Wpis w dzienniku %s osiągnął nieprawidłowy stan w odniesieniu do powiązanej "
-"z nim linii zestawienia.\n"
-"Aby zachować spójność, wpis w dzienniku musi mieć zawsze dokładnie jedną "
-"pozycję dziennika dotyczącą rachunku bankowego/kasowego."
 
 #. module: account
 #: model:ir.model.fields,help:account.field_res_company__account_opening_move_id
@@ -19757,19 +19878,13 @@ msgstr ""
 #. module: account
 #: model:ir.model.fields,help:account.field_account_reconcile_model__match_label
 msgid ""
-"The reconciliation model will only be applied when either the statement line "
+"The reconciliation model will only be applied when either the transaction "
 "label, the transaction details or the note matches the following:\n"
-"        * Contains: The statement line must contains this string (case "
+"        * Contains: The transaction must contain this string (case "
 "insensitive).\n"
 "        * Not Contains: Negation of \"Contains\".\n"
 "        * Match Regex: Define your own regular expression."
 msgstr ""
-"Model uzgadniania będzie stosowany wyłącznie wtedy, kiedy etykieta wiersza "
-"wyciągu, szczegóły transakcji lub nota będą zgodne z następującymi:\n"
-"        * Zawiera: Etykieta propozycji musi zawierać ten ciąg znaków "
-"(wielkość liter nie ma znaczenia).\n"
-"        * Nie zawiera: Negacja \" Zawiera\".\n"
-"        * Pasuje do regex: Zdefiniuj własne wyrażenie regularne."
 
 #. module: account
 #: model:ir.model.fields,help:account.field_account_reconcile_model__match_amount
@@ -20032,11 +20147,6 @@ msgid "The smallest value used to round the total amount (e.g., 0.05 or 100)."
 msgstr ""
 
 #. module: account
-#: model:ir.model.fields,help:account.field_account_move_line__statement_line_id
-msgid "The statement line that created this entry"
-msgstr "Linia oświadczeń, która stworzyła ten wpis"
-
-#. module: account
 #: model:ir.model.fields,help:account.field_account_fiscal_position__foreign_vat
 msgid ""
 "The tax ID of your company in the region mapped by this fiscal position."
@@ -20112,23 +20222,18 @@ msgstr ""
 #. odoo-python
 #: code:addons/account/wizard/account_secure_entries_wizard.py:0
 msgid ""
-"There are still unreconciled bank statement lines before the selected date. "
-"The entries from journal prefixes containing them will not be secured: %"
+"There are still unreconciled bank transactions before the selected date. The "
+"entries from journal prefixes containing them will not be secured: %"
 "(prefix_info)s"
 msgstr ""
-"Nadal istnieją nieuzgodnione wiersze wyciągu bankowego przed wybraną datą. "
-"Zawierające je wpisy z prefiksów dziennika nie zostaną zabezpieczone: %"
-"(prefix_info)s"
 
 #. module: account
 #. odoo-python
 #: code:addons/account/models/company.py:0
 msgid ""
-"There are still unreconciled bank statement lines in the period you want to "
-"lock.You should either reconcile or delete them."
+"There are still unreconciled bank transactions in the period you want to "
+"lock. You should either reconcile or delete them."
 msgstr ""
-"W okresie, który chcesz zablokować istnieją jeszcze nieuzgodnione linie "
-"wyciągów bankowych. Należy je uzgodnić lub usunąć."
 
 #. module: account
 #: model_terms:ir.ui.view,arch_db:account.view_account_accrued_orders_wizard
@@ -20576,8 +20681,8 @@ msgstr ""
 #. module: account
 #: model_terms:ir.actions.act_window,help:account.action_account_matching_rules
 msgid ""
-"Those can be used to automatically match journal items with your statement "
-"lines."
+"Those can be used to automatically match journal items with your "
+"transactions."
 msgstr ""
 
 #. module: account
@@ -20930,6 +21035,13 @@ msgid "Transaction Type"
 msgstr "Typ transakcji"
 
 #. module: account
+#. odoo-python
+#: code:addons/account/models/account_reconcile_model.py:0
+msgid "Transaction percentage can't be 0"
+msgstr ""
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement__line_ids
 #: model:ir.ui.menu,name:account.account_transactions_menu
 #: model_terms:ir.ui.view,arch_db:account.account_journal_dashboard_kanban_view
 msgid "Transactions"
@@ -21553,11 +21665,8 @@ msgstr "Zatwierdź konto bankowe"
 #. module: account
 #: model:ir.model.fields,help:account.field_account_reconcile_model__trigger
 msgid ""
-"Validate the statement line automatically (reconciliation based on your "
-"rule)."
+"Validate the transaction automatically (reconciliation based on your rule)."
 msgstr ""
-"Zatwierdzanie linii zestawienia automatycznie (uzgadnianie na podstawie "
-"Twojej reguły)."
 
 #. module: account
 #. odoo-javascript
@@ -21979,6 +22088,36 @@ msgid "Workers Compensation Insurance"
 msgstr "Ubezpieczenie od wypadków przy pracy"
 
 #. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_deferred_revenue
+msgid "Working Capital - Deferred Revenue"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_inventory
+msgid "Working Capital - Inventory"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_other_payable
+msgid "Working Capital - Other Payable"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_other_receivable
+msgid "Working Capital - Other Receivable"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_trade_payable
+msgid "Working Capital - Trade Payable"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_trade_receivable
+msgid "Working Capital - Trade Receivable"
+msgstr ""
+
+#. module: account
 #. odoo-javascript
 #: code:addons/account/static/src/js/tours/account.js:0
 msgid "Write a customer name to <b>create one</b> or <b>see suggestions</b>."
@@ -22176,6 +22315,14 @@ msgstr ""
 
 #. module: account
 #. odoo-python
+#: code:addons/account/models/account_bank_statement_line.py:0
+msgid ""
+"You can't create a new bank transaction without a suspense account set on "
+"the %s journal."
+msgstr ""
+
+#. module: account
+#. odoo-python
 #: code:addons/account/models/account_payment.py:0
 msgid ""
 "You can't create a new payment without an outstanding payments/receipts "
@@ -22185,16 +22332,6 @@ msgstr ""
 "Nie możesz utworzyć nowej płatności bez skonfigurowanego konta płatności/"
 "wpływów na poziomie firmy/sposobu płatności %(payment_method)s w dzienniku%"
 "(journal)s."
-
-#. module: account
-#. odoo-python
-#: code:addons/account/models/account_bank_statement_line.py:0
-msgid ""
-"You can't create a new statement line without a suspense account set on the "
-"%s journal."
-msgstr ""
-"Nie można utworzyć nowej linii zestawienia bez ustawionego konta suspensji "
-"na dzienniku %s."
 
 #. module: account
 #. odoo-python
@@ -22281,6 +22418,14 @@ msgid ""
 msgstr ""
 "Nie możesz rejestrować płatności zarówno dla przychodzących jak i "
 "wychodzących wpisów w tym samym czasie."
+
+#. module: account
+#. odoo-python
+#: code:addons/account/models/account_move.py:0
+msgid ""
+"You can't reset to draft those journal entries. You need to request a "
+"cancellation instead."
+msgstr ""
 
 #. module: account
 #. odoo-python
@@ -23257,6 +23402,11 @@ msgstr ""
 "świadczenia usług."
 
 #. module: account
+#: model:account.account.tag,name:account.account_tag_non_applicable
+msgid "not applicable"
+msgstr ""
+
+#. module: account
 #: model:ir.model.fields.selection,name:account.selection__account_tax_repartition_line__repartition_type__tax
 msgid "of tax"
 msgstr "podatku"
@@ -23502,62 +23652,130 @@ msgid ""
 "{{ object.name or 'n/a' }})"
 msgstr ""
 
-#~ msgid "Accumulated Amortization - Buildings"
-#~ msgstr "Skumulowana amortyzacja – budynki"
-
-#~ msgid "Accumulated Amortization - Furniture & Fixtures"
-#~ msgstr "Skumulowana amortyzacja – Meble i wyposażenie"
-
-#~ msgid "Accumulated Amortization - Improvements"
-#~ msgstr "Skumulowana amortyzacja - Ulepszenia"
-
-#~ msgid "Accumulated Amortization - Machines & Tools"
-#~ msgstr "Skumulowana amortyzacja - Maszyny i narzędzia"
-
-#~ msgid "Accumulated Amortization - Other Property"
-#~ msgstr "Skumulowana amortyzacja - inna własność"
-
-#~ msgid "Accumulated Amortization - Technology"
-#~ msgstr "Skumulowana amortyzacja - technologia"
-
-#~ msgid "Accumulated Amortization - Vehicles"
-#~ msgstr "Skumulowana amortyzacja - pojazdy"
-
-#~ msgid "Accumulated Depreciation"
-#~ msgstr "Skumulowana amortyzacja"
-
-#~ msgid "Cumulative amortization recorded for building assets."
-#~ msgstr "Zaksięgowana skumulowana amortyzacja aktywów budowlanych."
-
-#~ msgid "Cumulative amortization recorded for capitalized technology assets."
+#~ msgid ""
+#~ "<b>%(count)s#</b> Installment of <b>%(amount)s</b> due on <b "
+#~ "style='color: #704A66;'>%(date)s</b>"
 #~ msgstr ""
-#~ "Zaksięgowana skumulowana amortyzacja aktywów technologicznych ujętych w "
-#~ "aktywach trwałych."
+#~ "<b>%(count)s# </b>Rata w wysokości <b>%(amount)s</b> należna w dniu <b "
+#~ "style='color: #704A66;'>%(date)s</b>"
 
-#~ msgid "Cumulative amortization recorded for furniture and fixture assets."
-#~ msgstr ""
-#~ "Skumulowana amortyzacja zaksięgowana dla aktywów w postaci mebli i "
-#~ "wyposażenia."
+#~ msgid "# Reconciled Statement Lines"
+#~ msgstr "# Uzgodnionych pozycji wyciągu"
 
 #~ msgid ""
-#~ "Cumulative amortization recorded for leasehold or property improvements."
+#~ "%(move)s reached an invalid state regarding its related statement line.\n"
+#~ "To be consistent, the journal entry must always have exactly one suspense "
+#~ "line."
 #~ msgstr ""
-#~ "Skumulowana amortyzacja zaksięgowana z tytułu ulepszeń lokalu lub "
-#~ "nieruchomości."
+#~ "%(move)s osiągnął nieprawidłowy stan w odniesieniu do powiązanej pozycji "
+#~ "wyciągu.\n"
+#~ "Aby zachować spójność, wpis w dzienniku musi zawsze mieć dokładnie jeden "
+#~ "wiersz zawieszenia."
 
-#~ msgid "Cumulative amortization recorded for machinery and tool assets."
-#~ msgstr "Skumulowana amortyzacja zaksięgowana dla maszyn i narzędzi."
+#~ msgid "All unreconciled bank statement lines before the selected date."
+#~ msgstr ""
+#~ "Wszystkie nieuzgodnione wiersze wyciągów bankowych przed wybraną datą."
+
+#~ msgid "Bank Statement Line"
+#~ msgstr "Pozycja wyciągu bankowego"
 
 #~ msgid ""
-#~ "Cumulative amortization recorded for other depreciable property assets."
+#~ "Error while creating XML:\n"
+#~ "- %s"
 #~ msgstr ""
-#~ "Skumulowana amortyzacja zaksięgowana dla pozostałych aktywów "
-#~ "podlegających amortyzacji."
+#~ "Błąd podczas tworzenia XML:\n"
+#~ "- %s"
 
-#~ msgid "Cumulative amortization recorded for vehicle assets."
+#~ msgid ""
+#~ "Odoo allows you to reconcile a statement line directly with\n"
+#~ "                the related sale or purchase invoices."
 #~ msgstr ""
-#~ "Skumulowana amortyzacja zaksięgowana dla środków trwałych w postaci "
-#~ "pojazdów."
+#~ "Odoo umożliwia uzgodnienie linii zestawienia bezpośrednio z\n"
+#~ "powiązanymi fakturami sprzedaży lub zakupu."
+
+#~ msgid "Originator Statement Line"
+#~ msgstr "Wiersz oświadczenia zleceniodawcy"
+
+#~ msgid "Percentage of statement line"
+#~ msgstr "Procent linii zestawienia"
+
+#~ msgid "Reconciled Statement Lines"
+#~ msgstr "Pozycje zestawienia uzgodnionego"
+
+#~ msgid "Show Unreconciled Bank Statement Line"
+#~ msgstr "Pokaż pozycję nieuzgodnione wyciągi bankowe"
+
+#~ msgid "Statement Line"
+#~ msgstr "Pozycja wyciągu"
+
+#~ msgid "Statement line percentage can't be 0"
+#~ msgstr "Procent linii zestawienia nie może wynosić 0"
+
+#~ msgid "Statement lines"
+#~ msgstr "Pozycje wyciągu"
+
+#~ msgid "Statements lines matched to this payment"
+#~ msgstr "Wiersze zestawień dopasowane do tej płatności"
+
+#~ msgid ""
+#~ "The journal entry %s reached an invalid state regarding its related "
+#~ "statement line.\n"
+#~ "To be consistent, the journal entry must always have exactly one journal "
+#~ "item involving the bank/cash account."
+#~ msgstr ""
+#~ "Wpis w dzienniku %s osiągnął nieprawidłowy stan w odniesieniu do "
+#~ "powiązanej z nim linii zestawienia.\n"
+#~ "Aby zachować spójność, wpis w dzienniku musi mieć zawsze dokładnie jedną "
+#~ "pozycję dziennika dotyczącą rachunku bankowego/kasowego."
+
+#~ msgid ""
+#~ "The reconciliation model will only be applied when either the statement "
+#~ "line label, the transaction details or the note matches the following:\n"
+#~ "        * Contains: The statement line must contains this string (case "
+#~ "insensitive).\n"
+#~ "        * Not Contains: Negation of \"Contains\".\n"
+#~ "        * Match Regex: Define your own regular expression."
+#~ msgstr ""
+#~ "Model uzgadniania będzie stosowany wyłącznie wtedy, kiedy etykieta "
+#~ "wiersza wyciągu, szczegóły transakcji lub nota będą zgodne z "
+#~ "następującymi:\n"
+#~ "        * Zawiera: Etykieta propozycji musi zawierać ten ciąg znaków "
+#~ "(wielkość liter nie ma znaczenia).\n"
+#~ "        * Nie zawiera: Negacja \" Zawiera\".\n"
+#~ "        * Pasuje do regex: Zdefiniuj własne wyrażenie regularne."
+
+#~ msgid "The statement line that created this entry"
+#~ msgstr "Linia oświadczeń, która stworzyła ten wpis"
+
+#~ msgid ""
+#~ "There are still unreconciled bank statement lines before the selected "
+#~ "date. The entries from journal prefixes containing them will not be "
+#~ "secured: %(prefix_info)s"
+#~ msgstr ""
+#~ "Nadal istnieją nieuzgodnione wiersze wyciągu bankowego przed wybraną "
+#~ "datą. Zawierające je wpisy z prefiksów dziennika nie zostaną "
+#~ "zabezpieczone: %(prefix_info)s"
+
+#~ msgid ""
+#~ "There are still unreconciled bank statement lines in the period you want "
+#~ "to lock.You should either reconcile or delete them."
+#~ msgstr ""
+#~ "W okresie, który chcesz zablokować istnieją jeszcze nieuzgodnione linie "
+#~ "wyciągów bankowych. Należy je uzgodnić lub usunąć."
+
+#~ msgid ""
+#~ "Validate the statement line automatically (reconciliation based on your "
+#~ "rule)."
+#~ msgstr ""
+#~ "Zatwierdzanie linii zestawienia automatycznie (uzgadnianie na podstawie "
+#~ "Twojej reguły)."
+
+#~ msgid ""
+#~ "You can't create a new statement line without a suspense account set on "
+#~ "the %s journal."
+#~ msgstr ""
+#~ "Nie można utworzyć nowej linii zestawienia bez ustawionego konta "
+#~ "suspensji na dzienniku %s."
 
 #~ msgid ""
 #~ "Amount of %(amount).2f %(currency)s is already paid. Make sure you don't "

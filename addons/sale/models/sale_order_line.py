@@ -419,6 +419,7 @@ class SaleOrderLine(models.Model):
     collapse_composition = fields.Boolean(
         string="Collapse Composition", copy=True, default=False
     )  # Whether this section's lines will be hidden in reports and in the portal.
+    line_number_offset = fields.Integer(compute="_compute_line_number_offset")
 
     mandatory_product = fields.Boolean(
         string="Is Product Mandatory", compute="_compute_mandatory_product"
@@ -654,24 +655,31 @@ class SaleOrderLine(models.Model):
                 line.label = line.name
                 continue
 
-            product_with_lang = line.product_id.with_context(lang=line.order_id._get_lang())
+            product_display_name = line.with_context(
+                lang=line.order_id._get_lang()
+            )._get_product_display_name()
             if not line.name:
-                line.label = product_with_lang.display_name
-            elif line.name.splitlines()[0] == product_with_lang.display_name:
+                line.label = product_display_name
+            elif line.name.splitlines()[0] == product_display_name:
                 # If description already holds the product name, use it as label
                 line.label = line.name
             else:
-                line.label = product_with_lang.display_name + "\n" + line.name
+                line.label = product_display_name + "\n" + line.name
 
     def _inverse_label(self):
         for line in self:
             if line.product_id and line.label:
-                display_name = line.product_id.with_context(
+                product_display_name = line.with_context(
                     lang=line.order_id._get_lang()
-                ).display_name
-                line.name = line.label.removeprefix(display_name).removeprefix("\n")
+                )._get_product_display_name()
+                line.name = line.label.removeprefix(product_display_name).removeprefix("\n")
             else:
                 line.name = line.label
+
+    def _get_product_display_name(self):
+        """Get the product display name for this sale order line."""
+        self.ensure_one()
+        return self.product_id.display_name
 
     @api.depends("display_type", "product_id")
     def _compute_product_uom_qty(self):
@@ -1294,11 +1302,20 @@ class SaleOrderLine(models.Model):
     def _prepare_qty_invoiced(self):
         invoiced_qties = defaultdict(float)
         for line in self:
-            for invoice_line in line._get_invoice_lines():
+            invoice_lines = line._get_invoice_lines()
+            for invoice_line in invoice_lines:
                 if (
                     invoice_line.move_id.state != "cancel"
                     or invoice_line.move_id.payment_state == "invoicing_legacy"
                 ) and line._affects_qty_invoiced(invoice_line):
+                    if line.is_downpayment:
+                        if not line.currency_id.is_zero(sum(invoice_lines.filtered(lambda l: l.move_id.state != 'cancel' or l.move_id.payment_state == 'invoicing_legacy').mapped('balance'))):
+                            invoiced_qties[line] = 1
+                            line.qty_invoiced = 1
+                        else:
+                            invoiced_qties[line] = 0
+                            line.qty_invoiced = 0
+                        continue
                     invoice_qty = invoice_line.product_uom_id._compute_quantity(
                         invoice_line.quantity, line.product_uom_id, round=False
                     )
@@ -1703,6 +1720,22 @@ class SaleOrderLine(models.Model):
                     last_sub = line
                 elif line in sale_order_lines:
                     line.parent_id = last_sub or last_section
+
+    def _compute_line_number_offset(self):
+        sale_order_lines = set(self)
+        for order, lines in self.grouped("order_id").items():
+            lines.line_number_offset = 0
+            if not order.show_sol_numbers:
+                continue
+            line_count = 0
+            for line in order.order_line.sorted("sequence"):
+                if line in sale_order_lines:
+                    line.line_number_offset = line_count
+                if line.display_type == "line_section" or not (
+                    line.parent_id.collapse_composition
+                    or line.parent_id.parent_id.collapse_composition
+                ):
+                    line_count += 1
 
     def _compute_mandatory_product(self):
         self.mandatory_product = (

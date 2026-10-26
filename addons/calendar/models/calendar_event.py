@@ -171,6 +171,7 @@ class CalendarEvent(models.Model):
         compute='_compute_calendar_id', store=True, readonly=False, ondelete='cascade',
         domain=lambda self: self._get_calendar_id_domain())
     calendar_color = fields.Integer(related='calendar_id.color')
+    calendar_is_displayed = fields.Boolean(string="Display Calendar", compute='_compute_calendar_is_displayed')
     description = fields.Html('Description',
         help="""When synchronization with an external calendar is active, this description is synchronized \
         with the one of the associated meeting in that external calendar. Any update will be propagated there \
@@ -351,6 +352,13 @@ class CalendarEvent(models.Model):
             ("access_role", "in", ["writer", "owner"]),
         ])
 
+    @api.depends_context('uid')
+    @api.depends('user_id')
+    def _compute_calendar_is_displayed(self):
+        # If the user only has one calendar, there is no need to show the calendar field in the form on their events
+        for event in self:
+            event.calendar_is_displayed = event.user_id != self.env.user or len(self.env.user.writable_calendar_ids) > 1
+
     @api.depends("attendee_ids")
     def _compute_should_show_status(self):
         for event in self:
@@ -428,7 +436,7 @@ class CalendarEvent(models.Model):
         for event in self:
             event.effective_privacy = (event.privacy
                                        or event.sudo().calendar_id.calendar_default_privacy
-                                       or event.user_id._find_or_create_primary_calendar().calendar_default_privacy if event.user_id else 'public')
+                                       or (event.user_id._find_or_create_primary_calendar().calendar_default_privacy if event.user_id else 'public'))
 
     def _search_effective_privacy(self, operator, value):
         if operator not in ('in', 'not in'):
@@ -1649,22 +1657,30 @@ class CalendarEvent(models.Model):
         cron = self.env.ref('calendar.ir_cron_scheduler_alarm').sudo()
         alarm_types = self._get_trigger_alarm_types()
         events_to_notify = self.env['calendar.event']
-        triggers_by_events = {}
         for event in self:
-            existing_trigger = event.recurrence_id.sudo().trigger_id
             for alarm in (alarm for alarm in event.alarm_ids if alarm.alarm_type in alarm_types):
                 at = event.start - timedelta(minutes=alarm.duration_minutes)
-                create_trigger = not existing_trigger or existing_trigger and existing_trigger.call_at != at
-                if create_trigger and (not cron.lastcall or at > cron.lastcall):
+                if not cron.lastcall or at > cron.lastcall:
                     # Don't trigger for past alarms, they would be skipped by design
-                    trigger = cron._trigger(at=at)
-                    triggers_by_events[event.id] = trigger.id
+                    self._get_alarm_triggers(cron).add(at)
             if any(alarm.alarm_type == 'notification' for alarm in event.alarm_ids):
                 # filter events before notifying attendees through calendar_alarm_manager
                 events_to_notify |= event.filtered(lambda ev: ev.alarm_ids and ev.stop >= fields.Datetime.now())
         if events_to_notify:
             self.env['calendar.alarm_manager']._notify_next_alarm(events_to_notify.partner_ids.ids)
-        return triggers_by_events
+        # TODO master: remove, kept for API compatibility as the triggers are only created at commit
+        return {}
+
+    def _get_alarm_triggers(self, cron):
+        """ Return the set of alarm trigger dates, created once at commit as the
+        same alarms can be set up several times in the same transaction """
+        if 'calendar.alarm_triggers' not in self.env.cr.precommit.data:
+            self.env.cr.precommit.data['calendar.alarm_triggers'] = set()
+
+            @self.env.cr.precommit.add
+            def create_triggers():
+                cron._trigger(at=sorted(self.env.cr.precommit.data.pop('calendar.alarm_triggers')))
+        return self.env.cr.precommit.data['calendar.alarm_triggers']
 
     def get_next_alarm_date(self, events_by_alarm):
         self.ensure_one()

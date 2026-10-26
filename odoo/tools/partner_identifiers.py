@@ -885,10 +885,17 @@ ADDITIONAL_IDENTIFIERS_METADATA = {
     },
     'SK_EN': {
         'sequence': 10,
-        'scheme': '0245',
         'label': _lt('Company ID'),
         'help': _lt('Slovak company identification number (IČO).'),
         'category': 'EN',
+        'countries': ['SK'],
+    },
+    'SK_TIN': {
+        'sequence': 20,
+        'scheme': '0245',
+        'label': _lt('DIČ'),
+        'help': _lt('Slovak tax identification number (DIČ).'),
+        'category': 'TIN',
         'countries': ['SK'],
     },
     'TH_BRANCH_CODE': {
@@ -994,8 +1001,17 @@ def get_deduced_identifiers(key, value):
         deduced['HU_VAT'] = get_prefixed_identifier('HU', value)[:10]  # "HU" + 8 digits
     if key == 'SG_GST':
         deduced['SG_UEN'] = value
+    if key == 'SK_VAT':
+        deduced['SK_TIN'] = get_non_prefixed_identifier('SK', value)
     if key == 'RO_VAT':
         deduced['RO_EN'] = get_non_prefixed_identifier('RO', value)
+    if key == 'FI_VAT':
+        deduced['FI_EN'] = get_non_prefixed_identifier('FI', value)  # FI + Y-tunnus (8 digits)
+    if key == 'NO_VAT':
+        deduced['NO_EN'] = get_non_prefixed_identifier('NO', value)[:9]  # NO + organisation number (9 digits) + optional 'MVA'
+    if key == 'SE_VAT':
+        deduced['SE_EN'] = get_non_prefixed_identifier('SE', value)[:10]  # SE + organisation number (10 digits) + '01'
+
     return deduced
 
 

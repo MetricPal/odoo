@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from odoo import api, fields, models, _, Command
 from odoo.exceptions import UserError, ValidationError
 from odoo.fields import Datetime
+from odoo.tools.func import deprecated
 from odoo.tools.misc import formatLang
 
 
@@ -73,7 +74,7 @@ class AccountBankStatement(models.Model):
     line_ids = fields.One2many(
         comodel_name='account.bank.statement.line',
         inverse_name='statement_id',
-        string='Statement lines',
+        string="Transactions",
     )
 
     # A statement assumed to be complete when the sum of encoded lines is equal to the difference between start and
@@ -288,7 +289,7 @@ class AccountBankStatement(models.Model):
         )
         # When the journal is hashed, the date must be more recent than the last transaction posted
         if last_stmt_line and self.line_ids.filtered(lambda line: line.date < last_stmt_line.date):
-            raise UserError(self.env._("At least one transaction in the statement is prior the last posted statement line (%s)", last_stmt_line.date))
+            raise UserError(self.env._("At least one transaction in the statement is prior the last posted transaction (%s)", last_stmt_line.date))
 
         # For lines without reco model when hashed, we want to reconcile them
         for statement_line in self.line_ids.filtered(lambda line: not line.is_reconciled):
@@ -357,6 +358,7 @@ class AccountBankStatement(models.Model):
         res = self.env.cr.fetchall()
         return [r[0] for r in res]
 
+    @deprecated("Deprecated: should use action_open_review_statements in enterprise instead")
     def action_open_statements_to_review(self):
         self.ensure_one()
 

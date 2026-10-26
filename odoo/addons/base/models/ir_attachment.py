@@ -193,12 +193,14 @@ class IrAttachment(models.Model):
                     with open(tmp_path, 'wb') as tmp_file:
                         shutil.copyfileobj(bin_value, tmp_file)
                         tmp_file.flush()
-                        if hasattr(os, 'fchmod'):
-                            os.fchmod(tmp_file.fileno(), 0o444)  # r--r--r--
-                        else:
-                            os.chmod(tmp_path, 0o444)  # r--r--r--
+                        with contextlib.suppress(PermissionError):
+                            if hasattr(os, 'fchmod'):
+                                os.fchmod(tmp_file.fileno(), 0o444)  # r--r--r--
+                            else:
+                                os.chmod(tmp_path, 0o444)  # r--r--r--
                 else:
-                    os.chmod(tmp_path, 0o444)  # r--r--r--
+                    with contextlib.suppress(PermissionError):
+                        os.chmod(tmp_path, 0o444)  # r--r--r--
 
                 # "commit" the file by moving it to its right place
                 try:
@@ -991,11 +993,14 @@ class IrAttachment(models.Model):
                 raise UserError(_("Attachment is not encoded in base64."))
             checksum = self._compute_checksum(vals['raw'] or b'')
             # Create only if record does not already exist for checksum and mimetype
-            result += self.sudo().search([
+            # only reuse the attachments the current user can write, as callers may
+            # link new attachments to them (e.g. the resized variants of an image).
+            existing = self.sudo().search([
                 ['id', '!=', False],  # No implicit condition on res_field.
                 ['checksum', '=', checksum],
                 ['mimetype', '=', vals['mimetype']],
-            ], limit=1) or self.create(vals)
+            ], limit=100, order='res_field nulls first, id').with_env(self.env)._filtered_access('write')[:1]
+            result += existing or self.create(vals)
         return result
 
     def _generate_access_token(self):

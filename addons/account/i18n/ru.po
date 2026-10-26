@@ -10,8 +10,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 17.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-02 17:39+0000\n"
-"PO-Revision-Date: 2026-09-30 14:33+0000\n"
+"POT-Creation-Date: 2026-10-23 17:40+0000\n"
+"PO-Revision-Date: 2026-10-05 13:27+0000\n"
 "Last-Translator: \"Anastasiia Koroleva (koan)\" <koan@odoo.com>\n"
 "Language-Team: Russian <https://translate.odoo.com/projects/odoo-20/account/"
 "ru/>\n"
@@ -108,6 +108,11 @@ msgid " valid until %s"
 msgstr " действительно до %s"
 
 #. module: account
+#: model:ir.model.fields,field_description:account.field_account_payment__reconciled_statement_lines_count
+msgid "# Reconciled Bank Transactions"
+msgstr ""
+
+#. module: account
 #: model:ir.model.fields,field_description:account.field_account_payment__reconciled_bills_count
 msgid "# Reconciled Bills"
 msgstr "# Сверенные счета поставщиков"
@@ -116,11 +121,6 @@ msgstr "# Сверенные счета поставщиков"
 #: model:ir.model.fields,field_description:account.field_account_payment__reconciled_invoices_count
 msgid "# Reconciled Invoices"
 msgstr "# Сверенные счета клиентов"
-
-#. module: account
-#: model:ir.model.fields,field_description:account.field_account_payment__reconciled_statement_lines_count
-msgid "# Reconciled Statement Lines"
-msgstr "# Сверенные строки выписки"
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_res_partner__supplier_invoice_count
@@ -219,14 +219,10 @@ msgstr "%(label)s на сумму %(currency_amount)s (Черновик)"
 #. odoo-python
 #: code:addons/account/models/account_bank_statement_line.py:0
 msgid ""
-"%(move)s reached an invalid state regarding its related statement line.\n"
+"%(move)s reached an invalid state regarding its related bank transaction.\n"
 "To be consistent, the journal entry must always have exactly one suspense "
 "line."
 msgstr ""
-"%(move)s достигло недопустимого состояния в отношении связанной строки "
-"выписки.\n"
-"Для согласованности в журнальной записи всегда должна быть ровно одна строка "
-"приостановки."
 
 #. module: account
 #. odoo-python
@@ -489,11 +485,9 @@ msgstr "90 дней, на 10-й"
 #. odoo-python
 #: code:addons/account/models/account_payment_term.py:0
 msgid ""
-"<b>%(count)s#</b> Installment of <b>%(amount)s</b> due on <b style='color: "
+"<b>%(count)s</b> - Installment of <b>%(amount)s</b> due on <b style='color: "
 "#704A66;'>%(date)s</b>"
 msgstr ""
-"<b>%(count)s#</b> Взнос по рассрочке в размере <b>%(amount)s</b>, подлежащий "
-"оплате <b style='color: #704A66;'>%(date)s</b>"
 
 #. module: account
 #: model_terms:ir.ui.view,arch_db:account.report_invoice_document
@@ -3076,43 +3070,43 @@ msgstr "Начисленная сумма"
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_buildings
-msgid "Accumulated Depreciation - Buildings"
+msgid "Accumulated Amortization - Buildings"
 msgstr ""
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_furniture
-msgid "Accumulated Depreciation - Furniture & Fixtures"
+msgid "Accumulated Amortization - Furniture & Fixtures"
 msgstr ""
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_improvements
-msgid "Accumulated Depreciation - Improvements"
+msgid "Accumulated Amortization - Improvements"
 msgstr ""
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_machines
-msgid "Accumulated Depreciation - Machines & Tools"
+msgid "Accumulated Amortization - Machines & Tools"
 msgstr ""
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_other_property
-msgid "Accumulated Depreciation - Other Property"
+msgid "Accumulated Amortization - Other Property"
 msgstr ""
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_technology
-msgid "Accumulated Depreciation - Technology"
+msgid "Accumulated Amortization - Technology"
 msgstr ""
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_depreciation_vehicles
-msgid "Accumulated Depreciation - Vehicles"
+msgid "Accumulated Amortization - Vehicles"
 msgstr ""
 
 #. module: account
 #: model:account.account,name:account.22_account_account_us_acc_depreciation
-msgid "Accumulated Depreciation Misc"
-msgstr ""
+msgid "Accumulated Depreciation"
+msgstr "Accumulated Depreciation"
 
 #. module: account
 #: model:account.account,name:account.21_retained_earnings
@@ -3459,6 +3453,46 @@ msgstr ""
 "{new_date}"
 
 #. module: account
+#: model:account.account.tag,name:account.account_tag_adj_depreciation_and_amortization
+msgid "Adjustment - Depreciation and amortization"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_fin_instr_sale
+msgid "Adjustment - Financial Instruments"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_intangible_asset
+msgid "Adjustment - Intangible Assets"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_net_fin_result
+msgid "Adjustment - Net Financial Result"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_PPE_sale
+msgid "Adjustment - PPE Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_provisions
+msgid "Adjustment - Provisions"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_ROU_sale
+msgid "Adjustment - Right of Use Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_adj_unrealized_forex
+msgid "Adjustment - Unrealized Forex"
+msgstr ""
+
+#. module: account
 #: model:account.account,name:account.22_account_account_us_administration_fees
 msgid "Administration Fees"
 msgstr "Administration Fees"
@@ -3621,8 +3655,8 @@ msgstr ""
 
 #. module: account
 #: model:ir.model.fields,help:account.field_account_secure_entries_wizard__unreconciled_bank_statement_line_ids
-msgid "All unreconciled bank statement lines before the selected date."
-msgstr "Все невыверенные строки банковской выписки до выбранной даты."
+msgid "All unreconciled bank transactions before the selected date."
+msgstr ""
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_account_report__allow_foreign_vat
@@ -4209,8 +4243,8 @@ msgstr ""
 #. odoo-python
 #: code:addons/account/models/account_bank_statement.py:0
 msgid ""
-"At least one transaction in the statement is prior the last posted statement "
-"line (%s)"
+"At least one transaction in the statement is prior the last posted "
+"transaction (%s)"
 msgstr ""
 
 #. module: account
@@ -4516,8 +4550,20 @@ msgstr "Назад к счёту"
 #. module: account
 #. odoo-javascript
 #: code:addons/account/static/src/components/product_catalog/kanban_controller.js:0
+msgid "Back to Credit Note"
+msgstr ""
+
+#. module: account
+#. odoo-javascript
+#: code:addons/account/static/src/components/product_catalog/kanban_controller.js:0
 msgid "Back to Invoice"
 msgstr "Назад к счет-фактуре"
+
+#. module: account
+#. odoo-javascript
+#: code:addons/account/static/src/components/product_catalog/kanban_controller.js:0
+msgid "Back to Refund"
+msgstr ""
 
 #. module: account
 #: model_terms:ir.ui.view,arch_db:account.report_invoice_document
@@ -4721,11 +4767,6 @@ msgid "Bank Statement Digitization"
 msgstr "Оцифровка банковских выписок"
 
 #. module: account
-#: model:ir.model,name:account.model_account_bank_statement_line
-msgid "Bank Statement Line"
-msgstr "Строка банковской выписки"
-
-#. module: account
 #: model:ir.actions.act_window,name:account.action_bank_statement_tree
 msgid "Bank Statements"
 msgstr "Банковские выписки"
@@ -4751,6 +4792,9 @@ msgstr ""
 #. module: account
 #. odoo-python
 #: code:addons/account/models/account_move.py:0
+#: model:ir.model,name:account.model_account_bank_statement_line
+#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__statement_line_id
+#: model:ir.model.fields,field_description:account.field_account_move__statement_line_id
 msgid "Bank Transaction"
 msgstr "Транзакция банка"
 
@@ -4820,6 +4864,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:account.res_config_settings_view_form
 msgid "Bank transactions and payments:"
 msgstr "Банковские операции и платежи:"
+
+#. module: account
+#: model:ir.model.fields,help:account.field_account_payment__reconciled_statement_line_ids
+msgid "Bank transactions matched to this payment"
+msgstr ""
 
 #. module: account
 #. odoo-python
@@ -5824,12 +5873,12 @@ msgstr ""
 "с помощью Intrastat"
 
 #. module: account
+#: model:ir.model.fields,field_description:account.field_account_account_tag__color
 #: model:ir.model.fields,field_description:account.field_account_setup_bank_manual_config__color
 msgid "Color"
 msgstr "Цвет"
 
 #. module: account
-#: model:ir.model.fields,field_description:account.field_account_account_tag__color
 #: model:ir.model.fields,field_description:account.field_account_journal__color
 msgid "Color Index"
 msgstr "Индекс цвета"
@@ -6870,38 +6919,38 @@ msgstr ""
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_buildings
-msgid "Cumulative depreciation recorded for building assets."
+msgid "Cumulative amortization recorded for building assets."
 msgstr ""
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_technology
-msgid "Cumulative depreciation recorded for capitalized technology assets."
+msgid "Cumulative amortization recorded for capitalized technology assets."
 msgstr ""
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_furniture
-msgid "Cumulative depreciation recorded for furniture and fixture assets."
+msgid "Cumulative amortization recorded for furniture and fixture assets."
 msgstr ""
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_improvements
 msgid ""
-"Cumulative depreciation recorded for leasehold or property improvements."
+"Cumulative amortization recorded for leasehold or property improvements."
 msgstr ""
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_machines
-msgid "Cumulative depreciation recorded for machinery and tool assets."
+msgid "Cumulative amortization recorded for machinery and tool assets."
 msgstr ""
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_other_property
-msgid "Cumulative depreciation recorded for other depreciable property assets."
+msgid "Cumulative amortization recorded for other depreciable property assets."
 msgstr ""
 
 #. module: account
 #: model:account.account,description:account.22_account_account_us_depreciation_vehicles
-msgid "Cumulative depreciation recorded for vehicle assets."
+msgid "Cumulative amortization recorded for vehicle assets."
 msgstr ""
 
 #. module: account
@@ -8856,16 +8905,6 @@ msgstr "Ошибка при импорте вложения %(filename)s:"
 
 #. module: account
 #. odoo-python
-#: code:addons/account/controllers/download_docs.py:0
-msgid ""
-"Error while creating XML:\n"
-"- %s"
-msgstr ""
-"Ошибка при создании XML:\n"
-"%s"
-
-#. module: account
-#. odoo-python
 #: code:addons/account/models/chart_template.py:0
 msgid ""
 "Error while loading the localization: missing tax tag %(tag_name)s for "
@@ -9232,6 +9271,36 @@ msgstr "Префиксы финансовых счетов"
 #: model:ir.model.fields,field_description:account.field_account_analytic_line__journal_id
 msgid "Financial Journal"
 msgstr "Финансовый журнал"
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_borrowings_lt
+msgid "Financing - Borrowings Long Term"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_borrowings_st
+msgid "Financing - Borrowings Short Term"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_dividends
+msgid "Financing - Dividends"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_lease
+msgid "Financing - Lease"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_recov_adv
+msgid "Financing - Recoverable Advances"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_fin_share_issuance
+msgid "Financing - Share Issuance"
+msgstr ""
 
 #. module: account
 #: model:account.account.tag,name:account.account_tag_financing
@@ -11119,6 +11188,51 @@ msgstr ""
 #: model:account.account.tag,name:account.account_tag_investing
 msgid "Investing & Extraordinary Activities"
 msgstr "Инвестиционная и чрезвычайная деятельность"
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_cash_advances
+msgid "Investment - Cash Advances"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_fin_instr_purchase
+msgid "Investment - Financial Instruments Purchase"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_fin_instr_sale
+msgid "Investment - Financial Instruments Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_int_ass_purchase
+msgid "Investment - Intangible Assets Purchase"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_int_ass_sale
+msgid "Investment - Intangible Assets Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_interest_received
+msgid "Investment - Interest Received"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_ppe_purchase
+msgid "Investment - PPE Purchase"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_ppe_sale
+msgid "Investment - PPE Sale"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_inv_rou_sale
+msgid "Investment - Right of Use Sale"
+msgstr ""
 
 #. module: account
 #. odoo-javascript
@@ -13807,11 +13921,9 @@ msgstr "Домен Odoo"
 #: model_terms:ir.actions.act_window,help:account.action_bank_statement_tree
 #: model_terms:ir.actions.act_window,help:account.action_credit_statement_tree
 msgid ""
-"Odoo allows you to reconcile a statement line directly with\n"
+"Odoo allows you to reconcile a transaction directly with\n"
 "                the related sale or purchase invoices."
 msgstr ""
-"Odoo позволяет сверять строку выписки непосредственно с\n"
-"                соответствующими счетами на продажу или покупку."
 
 #. module: account
 #: model_terms:ir.actions.act_window,help:account.res_partner_action_customer
@@ -14102,6 +14214,16 @@ msgid "Opening balance"
 msgstr "Начальный баланс"
 
 #. module: account
+#: model:account.account.tag,name:account.account_tag_op_income_tax_paid_received
+msgid "Operating - Income Tax Paid Received"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_op_interest_paid
+msgid "Operating - Interest Paid"
+msgstr ""
+
+#. module: account
 #: model:account.account.tag,name:account.account_tag_operating
 msgid "Operating Activities"
 msgstr "Операционная деятельность"
@@ -14167,6 +14289,12 @@ msgid "Original Lock Date"
 msgstr "Исходная дата блокировки"
 
 #. module: account
+#: model:ir.model.fields,field_description:account.field_account_move_line__statement_line_id
+#: model_terms:ir.ui.view,arch_db:account.view_move_line_form
+msgid "Originator Bank Transaction"
+msgstr ""
+
+#. module: account
 #: model:ir.model.fields,field_description:account.field_account_move_line__group_tax_id
 msgid "Originator Group of Taxes"
 msgstr "Группа налогов инициатора"
@@ -14175,12 +14303,6 @@ msgstr "Группа налогов инициатора"
 #: model:ir.model.fields,field_description:account.field_account_move_line__payment_id
 msgid "Originator Payment"
 msgstr "Платёж инициатора"
-
-#. module: account
-#: model:ir.model.fields,field_description:account.field_account_move_line__statement_line_id
-#: model_terms:ir.ui.view,arch_db:account.view_move_line_form
-msgid "Originator Statement Line"
-msgstr "Строка выписки инициатора"
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_account_move_line__tax_line_id
@@ -15027,8 +15149,8 @@ msgstr "Процент каждой строки для выполнения д�
 
 #. module: account
 #: model:ir.model.fields.selection,name:account.selection__account_reconcile_model_line__amount_type__percentage_st_line
-msgid "Percentage of statement line"
-msgstr "Процент строки выписки"
+msgid "Percentage of transaction"
+msgstr ""
 
 #. module: account
 #. odoo-python
@@ -15917,6 +16039,11 @@ msgid "Reconciled"
 msgstr "Сверено"
 
 #. module: account
+#: model:ir.model.fields,field_description:account.field_account_payment__reconciled_statement_line_ids
+msgid "Reconciled Bank Transactions"
+msgstr ""
+
+#. module: account
 #: model:ir.model.fields,field_description:account.field_account_payment__reconciled_bill_ids
 msgid "Reconciled Bills"
 msgstr "Сверенные счета"
@@ -15946,11 +16073,6 @@ msgstr "Сверенные строки без учета курсовых ра�
 #: model:ir.model.fields,field_description:account.field_account_move__reconciled_payment_ids
 msgid "Reconciled Payments"
 msgstr "Сверенные платежи"
-
-#. module: account
-#: model:ir.model.fields,field_description:account.field_account_payment__reconciled_statement_line_ids
-msgid "Reconciled Statement Lines"
-msgstr "Сверенные строки выписки"
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_account_move_line__reconcile_model_id
@@ -17572,8 +17694,8 @@ msgstr "Показывать дату налогооблагаемой пост�
 #. module: account
 #. odoo-python
 #: code:addons/account/models/company.py:0
-msgid "Show Unreconciled Bank Statement Line"
-msgstr "Показать несверенные строки банковской выписки"
+msgid "Show Unreconciled Bank Transactions"
+msgstr ""
 
 #. module: account
 #: model_terms:ir.ui.view,arch_db:account.view_account_tax_search
@@ -17785,12 +17907,6 @@ msgid "Statement %(date)s"
 msgstr "Выписка %(date)s"
 
 #. module: account
-#: model:ir.model.fields,field_description:account.field_account_bank_statement_line__statement_line_id
-#: model:ir.model.fields,field_description:account.field_account_move__statement_line_id
-msgid "Statement Line"
-msgstr "Строка выписки"
-
-#. module: account
 #: model:ir.model.fields,field_description:account.field_account_bank_statement_line__statement_name
 #: model_terms:ir.ui.view,arch_db:account.report_statement
 msgid "Statement Name"
@@ -17802,17 +17918,6 @@ msgid "Statement Reports"
 msgstr "Отчеты по выпискам"
 
 #. module: account
-#. odoo-python
-#: code:addons/account/models/account_reconcile_model.py:0
-msgid "Statement line percentage can't be 0"
-msgstr "Процент записи в выписке не может быть равен 0"
-
-#. module: account
-#: model:ir.model.fields,field_description:account.field_account_bank_statement__line_ids
-msgid "Statement lines"
-msgstr "Записи в выписке"
-
-#. module: account
 #: model:ir.actions.act_window,name:account.action_view_bank_statement_tree
 #: model:ir.model.fields,field_description:account.field_account_bank_statement_line__statement_line_ids
 #: model:ir.model.fields,field_description:account.field_account_move__statement_line_ids
@@ -17820,11 +17925,6 @@ msgstr "Записи в выписке"
 #: model_terms:ir.ui.view,arch_db:account.view_bank_statement_tree
 msgid "Statements"
 msgstr "Выписки"
-
-#. module: account
-#: model:ir.model.fields,help:account.field_account_payment__reconciled_statement_line_ids
-msgid "Statements lines matched to this payment"
-msgstr "Записи в выписках, соответствующие этому платежу"
 
 #. module: account
 #: model:ir.model.fields,field_description:account.field_account_fiscal_position__states_count
@@ -19071,6 +19171,11 @@ msgid "The bank statement used for bank reconciliation"
 msgstr "Банковская выписка для сверки"
 
 #. module: account
+#: model:ir.model.fields,help:account.field_account_move_line__statement_line_id
+msgid "The bank transaction that created this entry"
+msgstr ""
+
+#. module: account
 #. odoo-python
 #: code:addons/account/models/account_move.py:0
 msgid ""
@@ -19456,15 +19561,11 @@ msgstr ""
 #. odoo-python
 #: code:addons/account/models/account_bank_statement_line.py:0
 msgid ""
-"The journal entry %s reached an invalid state regarding its related "
-"statement line.\n"
+"The journal entry %s reached an invalid state regarding its related bank "
+"transaction.\n"
 "To be consistent, the journal entry must always have exactly one journal "
 "item involving the bank/cash account."
 msgstr ""
-"Запись в журнале %s достигла недопустимого состояния относительно связанной "
-"строки выписки.\n"
-"Для согласованности запись в журнале всегда должна содержать ровно один "
-"элемент, связанный с банковским/кассовым счетом."
 
 #. module: account
 #: model:ir.model.fields,help:account.field_res_company__account_opening_move_id
@@ -19627,20 +19728,13 @@ msgstr ""
 #. module: account
 #: model:ir.model.fields,help:account.field_account_reconcile_model__match_label
 msgid ""
-"The reconciliation model will only be applied when either the statement line "
+"The reconciliation model will only be applied when either the transaction "
 "label, the transaction details or the note matches the following:\n"
-"        * Contains: The statement line must contains this string (case "
+"        * Contains: The transaction must contain this string (case "
 "insensitive).\n"
 "        * Not Contains: Negation of \"Contains\".\n"
 "        * Match Regex: Define your own regular expression."
 msgstr ""
-"Модель сверки будет применена только в том случае, если наименование строки "
-"выписки, детали транзакции или примечание соответствуют следующим условиям:\n"
-"        * Содержит: строка выписки должна содержать эту подстроку (без учета "
-"регистра).\n"
-"        * Не содержит: отрицание условия «Содержит».\n"
-"        * Соответствует регулярному выражению: задайте собственное "
-"регулярное выражение."
 
 #. module: account
 #: model:ir.model.fields,help:account.field_account_reconcile_model__match_amount
@@ -19902,11 +19996,6 @@ msgid "The smallest value used to round the total amount (e.g., 0.05 or 100)."
 msgstr ""
 
 #. module: account
-#: model:ir.model.fields,help:account.field_account_move_line__statement_line_id
-msgid "The statement line that created this entry"
-msgstr "Строка выписки, создавшая эту запись"
-
-#. module: account
 #: model:ir.model.fields,help:account.field_account_fiscal_position__foreign_vat
 msgid ""
 "The tax ID of your company in the region mapped by this fiscal position."
@@ -19982,22 +20071,18 @@ msgstr ""
 #. odoo-python
 #: code:addons/account/wizard/account_secure_entries_wizard.py:0
 msgid ""
-"There are still unreconciled bank statement lines before the selected date. "
-"The entries from journal prefixes containing them will not be secured: %"
+"There are still unreconciled bank transactions before the selected date. The "
+"entries from journal prefixes containing them will not be secured: %"
 "(prefix_info)s"
 msgstr ""
-"До выбранной даты есть несверенные строки банковской выписки. Записи из "
-"префиксов журналов, содержащих их, не будут защищены: %(prefix_info)s"
 
 #. module: account
 #. odoo-python
 #: code:addons/account/models/company.py:0
 msgid ""
-"There are still unreconciled bank statement lines in the period you want to "
-"lock.You should either reconcile or delete them."
+"There are still unreconciled bank transactions in the period you want to "
+"lock. You should either reconcile or delete them."
 msgstr ""
-"В периоде, который вы хотите заблокировать, есть несверенные строки "
-"банковской выписки. Их нужно либо сверить, либо удалить."
 
 #. module: account
 #: model_terms:ir.ui.view,arch_db:account.view_account_accrued_orders_wizard
@@ -20440,8 +20525,8 @@ msgstr ""
 #. module: account
 #: model_terms:ir.actions.act_window,help:account.action_account_matching_rules
 msgid ""
-"Those can be used to automatically match journal items with your statement "
-"lines."
+"Those can be used to automatically match journal items with your "
+"transactions."
 msgstr ""
 
 #. module: account
@@ -20793,6 +20878,13 @@ msgid "Transaction Type"
 msgstr "Тип транзакции"
 
 #. module: account
+#. odoo-python
+#: code:addons/account/models/account_reconcile_model.py:0
+msgid "Transaction percentage can't be 0"
+msgstr ""
+
+#. module: account
+#: model:ir.model.fields,field_description:account.field_account_bank_statement__line_ids
 #: model:ir.ui.menu,name:account.account_transactions_menu
 #: model_terms:ir.ui.view,arch_db:account.account_journal_dashboard_kanban_view
 msgid "Transactions"
@@ -21411,10 +21503,8 @@ msgstr "Подтвердить банковский счет"
 #. module: account
 #: model:ir.model.fields,help:account.field_account_reconcile_model__trigger
 msgid ""
-"Validate the statement line automatically (reconciliation based on your "
-"rule)."
+"Validate the transaction automatically (reconciliation based on your rule)."
 msgstr ""
-"Автоматически подтверждать строку выписки (сверка на основе вашего правила)."
 
 #. module: account
 #. odoo-javascript
@@ -21840,6 +21930,36 @@ msgid "Workers Compensation Insurance"
 msgstr "Workers Compensation Insurance"
 
 #. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_deferred_revenue
+msgid "Working Capital - Deferred Revenue"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_inventory
+msgid "Working Capital - Inventory"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_other_payable
+msgid "Working Capital - Other Payable"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_other_receivable
+msgid "Working Capital - Other Receivable"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_trade_payable
+msgid "Working Capital - Trade Payable"
+msgstr ""
+
+#. module: account
+#: model:account.account.tag,name:account.account_tag_wcap_trade_receivable
+msgid "Working Capital - Trade Receivable"
+msgstr ""
+
+#. module: account
 #. odoo-javascript
 #: code:addons/account/static/src/js/tours/account.js:0
 msgid "Write a customer name to <b>create one</b> or <b>see suggestions</b>."
@@ -22041,6 +22161,14 @@ msgstr ""
 
 #. module: account
 #. odoo-python
+#: code:addons/account/models/account_bank_statement_line.py:0
+msgid ""
+"You can't create a new bank transaction without a suspense account set on "
+"the %s journal."
+msgstr ""
+
+#. module: account
+#. odoo-python
 #: code:addons/account/models/account_payment.py:0
 msgid ""
 "You can't create a new payment without an outstanding payments/receipts "
@@ -22050,16 +22178,6 @@ msgstr ""
 "Вы не можете создать новый платеж без установленного счета неоплаченных "
 "платежей/поступлений ни в компании, ни в методе оплаты %(payment_method)s в "
 "журнале %(journal)s."
-
-#. module: account
-#. odoo-python
-#: code:addons/account/models/account_bank_statement_line.py:0
-msgid ""
-"You can't create a new statement line without a suspense account set on the "
-"%s journal."
-msgstr ""
-"Вы не можете создать новую строку выписки без установленного промежуточного "
-"счета в журнале %s."
 
 #. module: account
 #. odoo-python
@@ -22149,6 +22267,14 @@ msgid ""
 msgstr ""
 "Нельзя зарегистрировать платежи для входящих и исходящих операций "
 "одновременно."
+
+#. module: account
+#. odoo-python
+#: code:addons/account/models/account_move.py:0
+msgid ""
+"You can't reset to draft those journal entries. You need to request a "
+"cancellation instead."
+msgstr ""
 
 #. module: account
 #. odoo-python
@@ -23121,6 +23247,11 @@ msgstr ""
 "или предоставления услуг."
 
 #. module: account
+#: model:account.account.tag,name:account.account_tag_non_applicable
+msgid "not applicable"
+msgstr ""
+
+#. module: account
 #: model:ir.model.fields.selection,name:account.selection__account_tax_repartition_line__repartition_type__tax
 msgid "of tax"
 msgstr "налога"
@@ -23368,8 +23499,129 @@ msgid ""
 "{{ object.name or 'n/a' }})"
 msgstr ""
 
-#~ msgid "Accumulated Depreciation"
-#~ msgstr "Accumulated Depreciation"
+#~ msgid ""
+#~ "<b>%(count)s#</b> Installment of <b>%(amount)s</b> due on <b "
+#~ "style='color: #704A66;'>%(date)s</b>"
+#~ msgstr ""
+#~ "<b>%(count)s#</b> Взнос по рассрочке в размере <b>%(amount)s</b>, "
+#~ "подлежащий оплате <b style='color: #704A66;'>%(date)s</b>"
+
+#~ msgid "# Reconciled Statement Lines"
+#~ msgstr "# Сверенные строки выписки"
+
+#~ msgid ""
+#~ "%(move)s reached an invalid state regarding its related statement line.\n"
+#~ "To be consistent, the journal entry must always have exactly one suspense "
+#~ "line."
+#~ msgstr ""
+#~ "%(move)s достигло недопустимого состояния в отношении связанной строки "
+#~ "выписки.\n"
+#~ "Для согласованности в журнальной записи всегда должна быть ровно одна "
+#~ "строка приостановки."
+
+#~ msgid "All unreconciled bank statement lines before the selected date."
+#~ msgstr "Все невыверенные строки банковской выписки до выбранной даты."
+
+#~ msgid "Bank Statement Line"
+#~ msgstr "Строка банковской выписки"
+
+#~ msgid ""
+#~ "Error while creating XML:\n"
+#~ "- %s"
+#~ msgstr ""
+#~ "Ошибка при создании XML:\n"
+#~ "%s"
+
+#~ msgid ""
+#~ "Odoo allows you to reconcile a statement line directly with\n"
+#~ "                the related sale or purchase invoices."
+#~ msgstr ""
+#~ "Odoo позволяет сверять строку выписки непосредственно с\n"
+#~ "                соответствующими счетами на продажу или покупку."
+
+#~ msgid "Originator Statement Line"
+#~ msgstr "Строка выписки инициатора"
+
+#~ msgid "Percentage of statement line"
+#~ msgstr "Процент строки выписки"
+
+#~ msgid "Reconciled Statement Lines"
+#~ msgstr "Сверенные строки выписки"
+
+#~ msgid "Show Unreconciled Bank Statement Line"
+#~ msgstr "Показать несверенные строки банковской выписки"
+
+#~ msgid "Statement Line"
+#~ msgstr "Строка выписки"
+
+#~ msgid "Statement line percentage can't be 0"
+#~ msgstr "Процент записи в выписке не может быть равен 0"
+
+#~ msgid "Statement lines"
+#~ msgstr "Записи в выписке"
+
+#~ msgid "Statements lines matched to this payment"
+#~ msgstr "Записи в выписках, соответствующие этому платежу"
+
+#~ msgid ""
+#~ "The journal entry %s reached an invalid state regarding its related "
+#~ "statement line.\n"
+#~ "To be consistent, the journal entry must always have exactly one journal "
+#~ "item involving the bank/cash account."
+#~ msgstr ""
+#~ "Запись в журнале %s достигла недопустимого состояния относительно "
+#~ "связанной строки выписки.\n"
+#~ "Для согласованности запись в журнале всегда должна содержать ровно один "
+#~ "элемент, связанный с банковским/кассовым счетом."
+
+#~ msgid ""
+#~ "The reconciliation model will only be applied when either the statement "
+#~ "line label, the transaction details or the note matches the following:\n"
+#~ "        * Contains: The statement line must contains this string (case "
+#~ "insensitive).\n"
+#~ "        * Not Contains: Negation of \"Contains\".\n"
+#~ "        * Match Regex: Define your own regular expression."
+#~ msgstr ""
+#~ "Модель сверки будет применена только в том случае, если наименование "
+#~ "строки выписки, детали транзакции или примечание соответствуют следующим "
+#~ "условиям:\n"
+#~ "        * Содержит: строка выписки должна содержать эту подстроку (без "
+#~ "учета регистра).\n"
+#~ "        * Не содержит: отрицание условия «Содержит».\n"
+#~ "        * Соответствует регулярному выражению: задайте собственное "
+#~ "регулярное выражение."
+
+#~ msgid "The statement line that created this entry"
+#~ msgstr "Строка выписки, создавшая эту запись"
+
+#~ msgid ""
+#~ "There are still unreconciled bank statement lines before the selected "
+#~ "date. The entries from journal prefixes containing them will not be "
+#~ "secured: %(prefix_info)s"
+#~ msgstr ""
+#~ "До выбранной даты есть несверенные строки банковской выписки. Записи из "
+#~ "префиксов журналов, содержащих их, не будут защищены: %(prefix_info)s"
+
+#~ msgid ""
+#~ "There are still unreconciled bank statement lines in the period you want "
+#~ "to lock.You should either reconcile or delete them."
+#~ msgstr ""
+#~ "В периоде, который вы хотите заблокировать, есть несверенные строки "
+#~ "банковской выписки. Их нужно либо сверить, либо удалить."
+
+#~ msgid ""
+#~ "Validate the statement line automatically (reconciliation based on your "
+#~ "rule)."
+#~ msgstr ""
+#~ "Автоматически подтверждать строку выписки (сверка на основе вашего "
+#~ "правила)."
+
+#~ msgid ""
+#~ "You can't create a new statement line without a suspense account set on "
+#~ "the %s journal."
+#~ msgstr ""
+#~ "Вы не можете создать новую строку выписки без установленного "
+#~ "промежуточного счета в журнале %s."
 
 #~ msgid ""
 #~ "<div style=\"margin: 0px; padding: 0px;\">\n"
