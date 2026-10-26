@@ -31,22 +31,14 @@ class Panel(models.AbstractModel):
                            'recurring': True})
         return events
 
-    def _flow_todos(self, brands):
-        todos = []
-        user = self.env.user
-        for flow in self.env['mi.flow'].search([('brand_id', 'in', brands.ids), ('state', '=', 'pending')]):
-            request = flow.sudo().approval_request_id
-            if request.state == 'submitted' and request.requester_id != user and request.approver_ids.filtered(
-                    lambda line: line.user_id == user and line.status == 'submitted'):
-                todos.append({'title': _('Approve the workflow'), 'subtitle': '%s · %s' % (flow.name, flow.brand_id.name),
-                              'model': 'approval.center.request', 'res_id': request.id, 'icon': 'flash_on'})
-        for flow in self.env['mi.flow'].search([('brand_id', 'in', brands.ids), ('state', '=', 'paused'),
-                                                ('user_id', '=', user.id)]):
-            if flow.changed:
-                todos.append({'title': _('Ask approval again for the changed workflow'),
-                              'subtitle': '%s · %s' % (flow.name, flow.brand_id.name), 'model': 'mi.flow',
-                              'res_id': flow.id, 'icon': 'flash_on'})
-        return todos
+    def _activity_models(self):
+        return super()._activity_models() + ['mi.flow']
+
+    def _approval_target_models(self):
+        return super()._approval_target_models() + ['mi.flow']
+
+    def _activity_icon(self, model):
+        return 'flash_on' if model == 'mi.flow' else super()._activity_icon(model)
 
     def _flow_alerts(self, brands):
         return [{'level': 'danger', 'text': _('Workflow “%(name)s”: %(n)s error(s) today', name=f.name, n=f.failed_today),

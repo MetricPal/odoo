@@ -7,6 +7,21 @@ items marked), every running campaign with a coloured progress bar per channel, 
 *For you* (your approvals, writing and fixes) and alerts (failed channels, overspend, goals behind). A brand
 selector (grouped by company or client) filters everything.
 
+**Customise the panel.** *Customise* shows each block with move up/down, half/full width and remove, and
+*Add a block* offers the panel's other blocks (team workload and open requests come with Work management) and
+any box from a Report Studio report you can read (numbers, charts as bars, tables, lists). *Save as my view*
+keeps it for you; a marketing manager can *Save for a role* (marketer, advisor, manager). The view selector
+switches between your view and the role views; without a view of your own you get your role's (manager if you
+manage marketing, advisor if you work on client brands, marketer otherwise).
+
+**Portfolio.** Marketing › Portfolio compares every brand for this month, quarter or year: budget,
+spend (entered on each campaign's *Spend* tab), planned budgets, leads, revenue, revenue per spend,
+campaigns, goals and a health badge with its reasons; grouped by company or client with totals. A
+timeline shows all campaigns on one axis (clashes outlined, next runs of repeating campaigns hatched).
+**Target quarter** on each campaign (e.g. "2026 Q4") is filled in from the start date and can be changed;
+campaigns filter by last / this / next quarter and group by quarter, with budget, leads and revenue totals in
+the list and pivot.
+
 **Reuse.** *Duplicate & edit* copies a campaign with its channels and texts (new drafts, new review). *Save as
 template* keeps it under Campaigns › Templates; *Use this template* starts a new one. *Repeat* every week or
 month: a new copy is created three days before each run and sent for the one-click review (the AI assistant
@@ -49,8 +64,12 @@ company of a group gets its own copy on first use).
 - **Results** lists each channel's numbers from its app (audience, sent, delivered, opened, clicked,
   replies, not delivered; likes and comments for Social; registrations and attendance for Events) plus
   campaign totals and business results (leads, won deals, revenue).
-- **Next step** is shown on every campaign (who it waits for, or that it runs by itself). **My to-dos**
-  is personal: campaigns where *you* must approve, write or fix something, with what to do.
+- **Next step** is shown on every campaign (who it waits for, or that it runs by itself). When the owner must
+  act, the step is an Odoo **activity** for the owner (Activities menu in the top bar, the campaign's chatter,
+  "Your action needed" on the control panel); it is marked done by itself when the step is done. Approvals come
+  as Approval Center activities; on the control panel they open the campaign, so one review covers it all.
+- **Menus**: Marketing opens on the control panel (with a Portfolio button); campaign results are the pivot
+  view of Campaigns; Goals are under Campaigns.
 - An hourly job reads statuses and results back from the apps and closes finished campaigns.
 
 Reviewers see each draft's text on the campaign even without rights in that app; opening the draft

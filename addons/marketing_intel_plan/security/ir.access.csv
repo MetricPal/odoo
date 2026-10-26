@@ -2,3 +2,5 @@ id,name,model_id:id,group_id:id,operation
 access_plan_user,Campaign plans,model_mi_plan,marketing_intel.group_mi_user,crud
 access_plan_item_user,Campaign plan channels,model_mi_plan_item,marketing_intel.group_mi_user,crud
 access_plan_kpi_user,Campaign plan targets,model_mi_plan_kpi,marketing_intel.group_mi_user,crud
+access_plan_spend_user,Campaign spend,model_mi_plan_spend,marketing_intel.group_mi_user,crud
+access_panel_layout_user,Marketing panel views,model_mi_panel_layout,marketing_intel.group_mi_user,r

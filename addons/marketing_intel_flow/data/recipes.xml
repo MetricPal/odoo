@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<odoo>
+<odoo noupdate="1">
   <record id="recipe_comment_whatsapp" model="mi.flow.recipe">
     <field name="sequence">10</field>
     <field name="icon">forum</field>
@@ -7,7 +7,18 @@
     <field name="description">People comment a word (e.g. "INFO") on your post; contacts who opted in to WhatsApp get the link right away. The usual way to reach people who engage with a post.</field>
     <field name="trigger">social_comment</field>
     <field name="keyword">INFO</field>
-    <field name="steps" eval="[['message', 'Hi {first_name}, thanks for your comment! Here is the link: ', ''], ['todo', '', 'Follow up on the comment']]"/>
+  </record>
+  <record id="recipe_comment_whatsapp_step1" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_comment_whatsapp"/>
+    <field name="sequence">10</field>
+    <field name="action">message</field>
+    <field name="message">Hi {first_name}, thanks for your comment! Here is the link: </field>
+  </record>
+  <record id="recipe_comment_whatsapp_step2" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_comment_whatsapp"/>
+    <field name="sequence">20</field>
+    <field name="action">todo</field>
+    <field name="note">Follow up on the comment</field>
   </record>
   <record id="recipe_dm_lead" model="mi.flow.recipe">
     <field name="sequence">20</field>
@@ -15,7 +26,18 @@
     <field name="name">Private message → new lead and a to-do</field>
     <field name="description">Every private message on your social pages becomes a lead in CRM and a to-do for the owner, so nobody waits for an answer.</field>
     <field name="trigger">social_message</field>
-    <field name="steps" eval="[['lead', '', 'From a social private message'], ['todo', '', 'Answer the private message']]"/>
+  </record>
+  <record id="recipe_dm_lead_step1" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_dm_lead"/>
+    <field name="sequence">10</field>
+    <field name="action">lead</field>
+    <field name="note">From a social private message</field>
+  </record>
+  <record id="recipe_dm_lead_step2" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_dm_lead"/>
+    <field name="sequence">20</field>
+    <field name="action">todo</field>
+    <field name="note">Answer the private message</field>
   </record>
   <record id="recipe_event_whatsapp" model="mi.flow.recipe">
     <field name="sequence">30</field>
@@ -23,7 +45,12 @@
     <field name="name">Registered for the event → WhatsApp thank-you</field>
     <field name="description">Thank people on WhatsApp as soon as they register for the campaign's event (contacts with an opt-in only).</field>
     <field name="trigger">event_registration</field>
-    <field name="steps" eval="[['message', 'Thanks for registering, {first_name}! See you there.', '']]"/>
+  </record>
+  <record id="recipe_event_whatsapp_step1" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_event_whatsapp"/>
+    <field name="sequence">10</field>
+    <field name="action">message</field>
+    <field name="message">Thanks for registering, {first_name}! See you there.</field>
   </record>
   <record id="recipe_click_lead" model="mi.flow.recipe">
     <field name="sequence">40</field>
@@ -31,6 +58,51 @@
     <field name="name">Clicked the email → lead for sales</field>
     <field name="description">Whoever clicks a link in the campaign's email becomes a lead with a to-do, while the interest is fresh.</field>
     <field name="trigger">email_click</field>
-    <field name="steps" eval="[['lead', '', 'Clicked the campaign email'], ['todo', '', 'Call the person who clicked']]"/>
+  </record>
+  <record id="recipe_click_lead_step1" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_click_lead"/>
+    <field name="sequence">10</field>
+    <field name="action">lead</field>
+    <field name="note">Clicked the campaign email</field>
+  </record>
+  <record id="recipe_click_lead_step2" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_click_lead"/>
+    <field name="sequence">20</field>
+    <field name="action">todo</field>
+    <field name="note">Call the person who clicked</field>
+  </record>
+  <record id="recipe_form_split" model="mi.flow.recipe">
+    <field name="sequence">50</field>
+    <field name="icon">list_alt</field>
+    <field name="name">Form submitted → AI split → email or SMS</field>
+    <field name="description">When someone fills in the website contact form, the AI sorts them: high intent get an email inviting them to a demo, low intent get a short SMS. Each person once; unsubscribed and opted-out people are skipped.</field>
+    <field name="trigger">form_submit</field>
+    <field name="form_kind">lead</field>
+    <field name="path_a_name">High intent</field>
+    <field name="path_b_name">Low intent</field>
+  </record>
+  <record id="recipe_form_split_step1" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_form_split"/>
+    <field name="sequence">10</field>
+    <field name="action">split</field>
+    <field name="split_by">ai</field>
+    <field name="split_question">ready to buy: asks for a price, a demo, a meeting or a call back</field>
+  </record>
+  <record id="recipe_form_split_step2" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_form_split"/>
+    <field name="sequence">20</field>
+    <field name="action">email</field>
+    <field name="path">a</field>
+    <field name="subject">Let's set up your demo, {first_name}</field>
+    <field name="message">Hi {first_name},
+
+Thanks for getting in touch. Reply with a time that suits you and we will show you a demo.</field>
+  </record>
+  <record id="recipe_form_split_step3" model="mi.flow.recipe.step">
+    <field name="recipe_id" ref="recipe_form_split"/>
+    <field name="sequence">30</field>
+    <field name="action">sms</field>
+    <field name="path">b</field>
+    <field name="message">Hi {first_name}, thanks for your message! We will get back to you soon.</field>
   </record>
 </odoo>

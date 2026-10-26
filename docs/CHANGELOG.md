@@ -12,6 +12,132 @@ Format:
 
 
 
+## 2026-10-25 — Marketing: branching workflows and one menu layout
+
+- Change: workflows get a "Someone submits a form" trigger (website contact form leads or newsletter sign-ups),
+  "Send an email" and "Send an SMS" steps (unsubscribes, consent ledger and daily limit respected) and a
+  "Split the audience" step (AI decides, words, or lead score) with Path A / Path B steps; an AI split pauses the
+  run until the AI answers, then continues on the chosen path (unusable answer → Path B). Steps are edited in a
+  popup with a one-line list. New approval type "Marketing workflow" for workflows without WhatsApp/Telegram
+  messages (they previously used the campaign approval type, whose model did not match, so they could not be
+  approved). New recipe "Form submitted → AI split → email or SMS". Menus: Control panel · Campaigns (All,
+  Templates, Goals, Requests, Tasks, Proofs) · Workflows · Insights · Contacts · Configuration (Brands, Consent
+  topics, Competitors, Sources, Research history, Assistant history); Work and Assistant top menus removed;
+  Templates/Workflows buttons removed from the control panel.
+- Reason: owner request (screenshot: form → AI audience split → email / SMS) and fewer menus.
+- Affected: `marketing_intel_flow` (now depends on `marketing_intel_ai`, `mass_mailing_sms`), `marketing_intel`,
+  `marketing_intel_plan`, `marketing_intel_work`, `marketing_intel_consent`, `marketing_intel_assistant`.
+- Migration: upgrade those modules; set approvers on "Marketing workflow".
+
+## 2026-10-25 — Marketing: Odoo activities, fewer menus, New workflow starts from a recipe
+
+- Change: the owner's next step on a campaign (and "ask approval again" / "refused" on workflows, requests to
+  answer) is an Odoo activity, done automatically when the step is done; "Your action needed" lists my activities
+  on marketing records (approvals open the campaign) plus campaign tasks due this week. Removed the My to-dos
+  page and menu, the Portfolio menu (button on the control panel instead) and the Reporting menu (Campaign results
+  = Campaigns pivot; Goals moved under Campaigns). Workflows: New opens the recipes, with "Start from scratch".
+- Reason: owner feedback: use Odoo Activities, fewer menus and one way to each thing.
+- Affected: `marketing_intel` (menu), `marketing_intel_plan` (activities, panel, menus; 20.0.1.3.0 migration
+  creates activities for running campaigns), `marketing_intel_flow`, `marketing_intel_work`,
+  `marketing_intel_portal`, `marketing_intel_ai`.
+- Migration: upgrade those modules.
+
+## 2026-10-25 — Marketing: manage workflow recipes
+
+- Change: recipes get step lines (`mi.flow.recipe.step`, replacing the JSON `steps`), a list and form for
+  marketing managers (edit, reorder, archive), "Save as recipe" on workflows (managers; saving again updates),
+  "Workflows made from it", and "Use this recipe" asks which brand when there are several (or uses the brand in
+  view). Shipped recipes are now `noupdate`, so managers' edits survive upgrades.
+- Reason: owner request: recipes could not be managed and could land on the wrong brand.
+- Affected: `marketing_intel_flow`.
+- Migration: upgrade `marketing_intel_flow`; shipped recipes get their step lines.
+
+## 2026-10-25 — Marketing: Target quarter replaces Programmes
+
+- Change: campaigns get a Target quarter (e.g. 2026 Q4) filled in from the start date and changeable, with
+  Last / This / Next quarter filters and a Target quarter group-by. Programmes (model `mi.program`, menu,
+  portfolio cards, `mi.plan.program_id`) are removed.
+- Reason: owner decision: a quarter field in filters and group-by is simpler than a separate programme record.
+- Affected: `marketing_intel_plan`.
+- Migration: upgrade `marketing_intel_plan`; existing campaigns get the quarter of their start date. Programme
+  records are dropped from the app (the old table stays in the database until cleaned up).
+
+## 2026-10-25 — Marketing: one template per campaign family; template list
+
+- Change: a campaign started from a template, and copies of a campaign, update the family's template instead of
+  creating another; a new template cannot reuse the name of another template of the same brand. Templates get
+  their own list (template, brand, channels, repeats, budget, saved from, used, owner, last updated) instead of
+  the campaign columns (start, channels sent, next step, status).
+- Reason: owner found two identical templates from one campaign and its started copy.
+- Affected: `marketing_intel_plan`.
+- Migration: upgrade `marketing_intel_plan`; archive any duplicate templates created before.
+
+## 2026-10-25 — Marketing: search views on every marketing list
+
+- Change: standard Odoo search views (filters, group-bys, date filters) for goals, competitors, sources,
+  research runs, programmes, workflows, workflow runs, recipes, consent history, topics, data requests and
+  assistant history; they previously fell back to the empty default search panel.
+- Reason: owner feedback: reuse Odoo's own search bar on every list.
+- Affected: `marketing_intel`, `marketing_intel_plan`, `marketing_intel_flow`, `marketing_intel_consent`,
+  `marketing_intel_assistant` (views only).
+- Migration: upgrade those modules.
+
+## 2026-10-25 — Marketing P6: assistant chat
+
+- Change: new module `marketing_intel_assistant`: instructions in plain words become a proposed action
+  (create/change/duplicate/review/cancel campaigns, reports, pause/resume/approve workflows) that the user
+  confirms; it runs with the user's rights and campaigns/workflows keep their reviews. The control panel gets
+  an "Ask the assistant" button.
+- Reason: roadmap P6.
+- Affected: new `marketing_intel_assistant`; `marketing_intel_plan` (panel button).
+- Migration: install `marketing_intel_assistant` (auto-installs); an active AI agent is optional (simple
+  instructions work without it).
+
+## 2026-10-25 — Marketing P5: customisable control panel
+
+- Change: the control panel is made of blocks that each person arranges (order, width, add/remove) and saves as
+  their view; marketing managers save views per role; Report Studio boxes can be added. Work management adds
+  "Team workload" and "Open requests" blocks.
+- Reason: roadmap P5.
+- Affected: `marketing_intel_plan` (new `mi.panel.layout`, `res.users.mi_panel_view`, panel UI),
+  `marketing_intel_work` (panel blocks).
+- Migration: upgrade `marketing_intel_plan` and `marketing_intel_work`; reload the browser.
+
+## 2026-10-25 — Marketing P4: client portal
+
+- Change: new module `marketing_intel_portal`: client contacts per brand see campaigns, results, proofs and
+  requests in the portal, sign off campaigns before the internal review and decide on proofs.
+  `marketing_intel_plan`: the "Your action needed" search accepts the `in` form of the domain.
+- Reason: roadmap P4 (agencies working with client brands).
+- Affected: new `marketing_intel_portal`; `marketing_intel_plan` (needs_me search).
+- Migration: install `marketing_intel_portal` (auto-installs); add client contacts on client brands.
+
+## 2026-10-25 — Marketing P3: work management
+
+- Change: new module `marketing_intel_work`: campaign tasks (Project), requests, proofs with versions and
+  compare, team workload, panel to-dos; campaigns are not sent for review while a proof is open.
+- Reason: roadmap P3 (Wrike-style work management for marketing teams and agencies).
+- Affected: new `marketing_intel_work`; marketing users now imply Project user.
+- Migration: install `marketing_intel_work` (auto-installs with Project).
+
+## 2026-10-25 — Marketing P2: consent ledger and preference page
+
+- Change: new module `marketing_intel_consent` (ledger, two-way sync with Messaging consents and blacklists,
+  preference page, approved data requests); workflows check the ledger.
+- Reason: roadmap P2 (Ketch-style permissioning before more automation).
+- Affected: new `marketing_intel_consent`; `marketing_intel_flow` (ledger check).
+- Migration: install `marketing_intel_consent` (auto-installs); set approvers on "Marketing data request".
+
+## 2026-10-25 — Marketing P1: portfolio, programmes, spend
+
+- Change: spend entered by hand on campaigns; programmes; client monthly fee and contract on brands;
+  Portfolio page (period selector, brand health with reasons, totals by company/client, cross-brand
+  timeline with clashes and next runs, programme cards).
+- Reason: roadmap P1 (Wrike-style portfolio management).
+- Affected: `marketing_intel` (client terms), `marketing_intel_plan` (`mi.plan.spend`, `mi.program`,
+  portfolio data and page).
+- Migration: upgrade `marketing_intel,marketing_intel_plan`.
+
 ## 2026-10-25 — Marketing roadmap and P0 fixes
 
 - Change: roadmap saved (`docs/exec-plans/active/2026-10-25-marketing-roadmap.md`: P0 fixes, P1 portfolio,

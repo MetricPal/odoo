@@ -1,6 +1,6 @@
 {
     'name': 'Marketing: workflows',
-    'version': '20.0.1.0.0',
+    'version': '20.0.1.1.0',
     'category': 'Marketing',
     'summary': 'When this happens, do that: approved once, then automatic (comments, DMs, events, clicks, leads)',
     'description': 'Simple marketing workflows built from cards: a trigger (a comment or private message on social '
@@ -8,11 +8,12 @@
                    'message to opted-in contacts, add to a list, create a lead, a to-do). A manager approves the '
                    'workflow and its message once; then it runs on its own within limits, every run logged.',
     'author': 'metric.io',
-    'depends': ['marketing_intel_plan', 'messaging_marketing', 'omni_social'],
+    'depends': ['marketing_intel_plan', 'marketing_intel_ai', 'messaging_marketing', 'mass_mailing_sms', 'omni_social'],
     'data': [
         'security/ir.access.csv',
         'security/security.xml',
         'data/recipes.xml',
+        'data/approval.xml',
         'data/cron.xml',
         'views/flow_views.xml',
     ],

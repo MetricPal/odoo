@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Campaign: tasks and proofs -->
+  <record id="plan_form_work" model="ir.ui.view">
+    <field name="name">mi.plan.form.work</field><field name="model">mi.plan</field>
+    <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//div[@name='button_box']" position="inside">
+        <button name="action_open_tasks" type="object" class="oe_stat_button" icon="checklist"
+                help="The campaign's tasks in Project: owners, due dates, progress. Templates keep their task list.">
+          <div class="o_stat_info">
+            <span class="o_stat_value" invisible="not task_count"><field name="task_label" nolabel="1"/></span>
+            <span class="o_stat_value" invisible="task_count">Plan</span>
+            <span class="o_stat_text">Tasks</span>
+          </div>
+        </button>
+        <button name="action_open_tasks" type="object" class="oe_stat_button text-danger" icon="warning"
+                invisible="not task_late_count">
+          <field name="task_late_count" widget="statinfo" string="Late tasks"/>
+        </button>
+        <button name="action_open_proofs" type="object" class="oe_stat_button" icon="edit" invisible="is_template"
+                help="Versions of creatives and texts: compare, approve or request changes.">
+          <div class="o_stat_info">
+            <span class="o_stat_value"><field name="proof_count" nolabel="1"/></span>
+            <span class="o_stat_text" invisible="proof_open_count">Proofs</span>
+            <span class="o_stat_text text-warning" invisible="not proof_open_count"><field name="proof_open_count" nolabel="1"/> open</span>
+          </div>
+        </button>
+        <field name="task_count" invisible="1"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="task_form_campaign" model="ir.ui.view">
+    <field name="name">project.task.form.marketing</field><field name="model">project.task</field>
+    <field name="inherit_id" ref="project.view_task_form2"/>
+    <field name="arch" type="xml">
+      <xpath expr="//div[@id='date_deadline_and_recurring_task']" position="after">
+        <field name="mi_plan_id" invisible="not mi_plan_id"/>
+        <field name="mi_days_before" invisible="not mi_plan_id"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="action_campaign_tasks" model="ir.actions.act_window">
+    <field name="name">Campaign tasks</field><field name="res_model">project.task</field>
+    <field name="view_mode">list,kanban,calendar,form</field>
+    <field name="domain">[('mi_plan_id', '!=', False), ('mi_plan_id.is_template', '=', False)]</field>
+    <field name="context">{'search_default_my_tasks': 1, 'search_default_open_tasks': 1}</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No campaign tasks yet</p>
+      <p>Open a campaign and click <b>Tasks</b> to plan who does what by when.</p></field>
+  </record>
+
+  <!-- Requests -->
+  <record id="request_form" model="ir.ui.view">
+    <field name="name">mi.request.form</field><field name="model">mi.request</field>
+    <field name="arch" type="xml"><form>
+      <header>
+        <button name="action_accept" type="object" string="Accept" class="btn-primary" invisible="state != 'new'"/>
+        <button name="action_start_campaign" type="object" string="Start the campaign" class="btn-primary"
+                invisible="state != 'accepted'" help="Creates a campaign with this request as its brief."/>
+        <button name="action_start_campaign" type="object" string="Start the campaign" invisible="state != 'new'"/>
+        <button name="action_decline" type="object" string="Decline" invisible="state not in ('new', 'accepted')"/>
+        <button name="action_reopen" type="object" string="Reopen" invisible="state != 'declined'"/>
+        <field name="state" widget="statusbar" statusbar_visible="new,accepted,converted"/>
+      </header>
+      <sheet>
+        <div class="alert alert-info" role="status"><field name="next_step" nolabel="1"/></div>
+        <div class="oe_button_box" name="button_box">
+          <button name="action_start_campaign" type="object" class="oe_stat_button" icon="campaign" invisible="not plan_id">
+            <div class="o_stat_info"><span class="o_stat_text">Open the</span><span class="o_stat_text">campaign</span></div>
+          </button>
+        </div>
+        <div class="oe_title"><label for="name"/><h1><field name="name" placeholder="e.g. Promote the March open day"
+                                                           readonly="state == 'converted'"/></h1></div>
+        <group>
+          <group>
+            <field name="brand_id" readonly="state == 'converted'"/>
+            <field name="requested_by"/>
+            <field name="user_id" widget="many2one_avatar_user"/>
+            <field name="wanted_by"/>
+          </group>
+          <group>
+            <field name="channel_ids" widget="many2many_tags"/>
+            <field name="budget"/>
+            <field name="template_id" invisible="state == 'converted'" options="{'no_create': True}"/>
+            <field name="plan_id" invisible="not plan_id"/>
+            <field name="decline_reason" invisible="state == 'converted'"
+                   placeholder="Required to decline; the requester sees it"/>
+          </group>
+        </group>
+        <group><field name="goal" placeholder="What should change, e.g. 40 bookings for the open day"/>
+          <field name="audience" placeholder="e.g. Parents of 4-6 year olds within 10 km"/></group>
+        <field name="description" placeholder="Anything else: links, offers, files (attach them below)…"/>
+      </sheet>
+      <chatter/>
+    </form></field>
+  </record>
+  <record id="request_kanban" model="ir.ui.view">
+    <field name="name">mi.request.kanban</field><field name="model">mi.request</field>
+    <field name="arch" type="xml"><kanban default_group_by="state" group_create="0" records_draggable="0">
+      <templates><t t-name="card">
+        <field name="name" class="fw-bold"/>
+        <div class="text-muted small"><field name="brand_id"/> · <field name="requested_by"/></div>
+        <div class="small" invisible="not wanted_by"><i class="oi me-1" data-icon="calendar_today"/>needed by <field name="wanted_by"/></div>
+        <footer><field name="user_id" widget="many2one_avatar_user"/></footer>
+      </t></templates>
+    </kanban></field>
+  </record>
+  <record id="request_list" model="ir.ui.view">
+    <field name="name">mi.request.list</field><field name="model">mi.request</field>
+    <field name="arch" type="xml"><list>
+      <field name="name"/><field name="brand_id"/><field name="requested_by"/><field name="wanted_by"/>
+      <field name="user_id" widget="many2one_avatar_user"/>
+      <field name="state" widget="badge" decoration-info="state == 'new'" decoration-success="state == 'converted'"
+             decoration-muted="state == 'declined'"/>
+    </list></field>
+  </record>
+  <record id="request_search" model="ir.ui.view">
+    <field name="name">mi.request.search</field><field name="model">mi.request</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="brand_id"/><field name="requested_by"/>
+      <filter name="open" string="Open" domain="[('state', 'in', ('new', 'accepted'))]"/>
+      <filter name="mine" string="Mine" domain="['|', ('user_id', '=', uid), ('create_uid', '=', uid)]"/>
+    </search></field>
+  </record>
+  <record id="action_requests" model="ir.actions.act_window">
+    <field name="name">Requests</field><field name="res_model">mi.request</field><field name="view_mode">kanban,list,form</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Collect marketing requests in one place</p>
+      <p>A request says what is needed, why, for whom and by when. Accept it and click <b>Start the campaign</b>:
+        it becomes the campaign brief (from a template if you choose one).</p></field>
+  </record>
+
+  <!-- Proofs -->
+  <record id="proof_form" model="ir.ui.view">
+    <field name="name">mi.proof.form</field><field name="model">mi.proof</field>
+    <field name="arch" type="xml"><form>
+      <header>
+        <button name="action_send" type="object" string="Send for review" class="btn-primary"
+                invisible="state not in ('draft', 'changes')"/>
+        <button name="action_approve" type="object" string="Approve" class="btn-success" invisible="not can_decide"/>
+        <button name="action_request_changes" type="object" string="Request changes" invisible="not can_decide"
+                help="Write what to change in Feedback first."/>
+        <button name="action_new_version" type="object" string="New version"
+                invisible="state not in ('changes', 'approved', 'draft')"
+                help="Keeps this version for comparison and opens a new one to edit."/>
+        <field name="can_decide" invisible="1"/>
+        <field name="state" widget="statusbar" statusbar_visible="draft,review,approved"/>
+      </header>
+      <sheet>
+        <div class="alert alert-warning" role="status" invisible="state != 'changes'">
+          <b>Changes requested:</b> <field name="feedback" nolabel="1" readonly="1"/>
+          <div class="small">Edit the text and send again, or make a new version to keep this one for comparison.</div>
+        </div>
+        <div class="alert alert-info" role="status" invisible="state != 'old'">An older version, kept for comparison.</div>
+        <div class="oe_title"><label for="name"/>
+          <h1 class="d-flex gap-2"><field name="name" placeholder="e.g. Launch email" readonly="state in ('review', 'approved', 'old')"/>
+            <span class="badge text-bg-secondary align-self-center"><field name="version_label" nolabel="1"/></span></h1></div>
+        <group>
+          <group>
+            <field name="plan_id" readonly="previous_id or state != 'draft'"/>
+            <field name="item_id" options="{'no_create': True}" readonly="state in ('approved', 'old')"/>
+            <field name="previous_id" invisible="not previous_id"/>
+          </group>
+          <group>
+            <field name="author_id" widget="many2one_avatar_user"/>
+            <field name="reviewer_id" widget="many2one_avatar_user" readonly="state in ('approved', 'old')"/>
+            <field name="decided_by" invisible="not decided_by"/>
+          </group>
+        </group>
+        <notebook>
+          <page string="Content" name="content">
+            <group>
+              <field name="subject" readonly="state in ('review', 'approved', 'old')"/>
+              <field name="body" readonly="state in ('review', 'approved', 'old')" placeholder="The text to proof…"/>
+              <field name="image" widget="image" readonly="state in ('review', 'approved', 'old')" options="{'size': [0, 320]}"/>
+              <field name="feedback" invisible="not can_decide" placeholder="What to change (needed to request changes)"/>
+            </group>
+          </page>
+          <page string="Compare" name="compare" invisible="not previous_id">
+            <div class="mb-2 text-muted small" invisible="not previous_feedback">Feedback on the previous version:
+              <field name="previous_feedback" nolabel="1"/></div>
+            <h5>What changed</h5>
+            <field name="compare_html" nolabel="1"/>
+            <div class="row mt-3">
+              <div class="col-md-6"><h5>Previous version</h5>
+                <div class="fw-bold"><field name="previous_subject" nolabel="1"/></div>
+                <field name="previous_body" nolabel="1"/>
+                <field name="previous_image" widget="image" nolabel="1" invisible="not previous_image" options="{'size': [0, 240]}"/></div>
+              <div class="col-md-6"><h5>This version</h5>
+                <div class="fw-bold"><field name="subject" nolabel="1" readonly="1"/></div>
+                <field name="body" nolabel="1" readonly="1"/>
+                <field name="image" widget="image" nolabel="1" readonly="1" invisible="not image" options="{'size': [0, 240]}"/></div>
+            </div>
+          </page>
+        </notebook>
+      </sheet>
+      <chatter/>
+    </form></field>
+  </record>
+  <record id="proof_kanban" model="ir.ui.view">
+    <field name="name">mi.proof.kanban</field><field name="model">mi.proof</field>
+    <field name="arch" type="xml"><kanban default_group_by="state" group_create="0" records_draggable="0">
+      <field name="image"/>
+      <templates><t t-name="card">
+        <div class="d-flex justify-content-between"><field name="name" class="fw-bold"/>
+          <span class="badge text-bg-secondary"><field name="version_label"/></span></div>
+        <div class="text-muted small"><field name="plan_id"/></div>
+        <field name="image" widget="image" invisible="not image" options="{'size': [0, 90]}"/>
+        <footer><field name="author_id" widget="many2one_avatar_user"/>
+          <span class="ms-auto small">reviewer <field name="reviewer_id"/></span></footer>
+      </t></templates>
+    </kanban></field>
+  </record>
+  <record id="proof_list" model="ir.ui.view">
+    <field name="name">mi.proof.list</field><field name="model">mi.proof</field>
+    <field name="arch" type="xml"><list>
+      <field name="name"/><field name="version_label"/><field name="plan_id"/><field name="item_id" optional="show"/>
+      <field name="author_id" widget="many2one_avatar_user"/><field name="reviewer_id" widget="many2one_avatar_user"/>
+      <field name="state" widget="badge" decoration-info="state == 'review'" decoration-warning="state == 'changes'"
+             decoration-success="state == 'approved'" decoration-muted="state == 'old'"/>
+    </list></field>
+  </record>
+  <record id="proof_search" model="ir.ui.view">
+    <field name="name">mi.proof.search</field><field name="model">mi.proof</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="plan_id"/>
+      <filter name="current" string="Latest versions" domain="[('state', '!=', 'old')]"/>
+      <filter name="to_review" string="For me to review" domain="[('state', '=', 'review'), ('reviewer_id', '=', uid)]"/>
+      <filter name="mine" string="Made by me" domain="[('author_id', '=', uid)]"/>
+    </search></field>
+  </record>
+  <record id="action_proofs" model="ir.actions.act_window">
+    <field name="name">Proofs</field><field name="res_model">mi.proof</field><field name="view_mode">kanban,list,form</field>
+    <field name="context">{'search_default_current': 1}</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Get creatives and texts approved before the campaign review</p>
+      <p>Add a proof on a campaign (Proofs button), send it to a reviewer, compare versions side by side. The approved
+        text fills the channel's draft.</p></field>
+  </record>
+
+  <!-- Workload -->
+  <record id="workload_list" model="ir.ui.view">
+    <field name="name">mi.workload.list</field><field name="model">mi.workload</field>
+    <field name="arch" type="xml"><list create="0" decoration-danger="late" default_group_by="user_id">
+      <field name="user_id" widget="many2one_avatar_user"/><field name="kind" widget="badge"/>
+      <field name="name"/><field name="plan_id"/><field name="brand_id" optional="show"/>
+      <field name="deadline"/><field name="hours" sum="Planned hours" widget="float_time"/>
+      <field name="late" optional="hide"/>
+      <button name="action_open" type="object" string="Open" class="btn-link"/>
+    </list></field>
+  </record>
+  <record id="workload_pivot" model="ir.ui.view">
+    <field name="name">mi.workload.pivot</field><field name="model">mi.workload</field>
+    <field name="arch" type="xml"><pivot string="Workload">
+      <field name="user_id" type="row"/><field name="kind" type="col"/><field name="hours" type="measure" widget="float_time"/>
+    </pivot></field>
+  </record>
+  <record id="workload_graph" model="ir.ui.view">
+    <field name="name">mi.workload.graph</field><field name="model">mi.workload</field>
+    <field name="arch" type="xml"><graph string="Workload" type="bar" stacked="1">
+      <field name="user_id"/><field name="kind"/>
+    </graph></field>
+  </record>
+  <record id="workload_search" model="ir.ui.view">
+    <field name="name">mi.workload.search</field><field name="model">mi.workload</field>
+    <field name="arch" type="xml"><search>
+      <field name="user_id"/><field name="plan_id"/><field name="brand_id"/>
+      <filter name="late" string="Late" domain="[('late', '=', True)]"/>
+      <filter name="next_2_weeks" string="Due in 2 weeks"
+              domain="[('deadline', '&lt;=', (context_today() + relativedelta(days=14)).strftime('%Y-%m-%d'))]"/>
+      <group><filter name="by_user" string="Person" context="{'group_by': 'user_id'}"/>
+        <filter name="by_brand" string="Brand" context="{'group_by': 'brand_id'}"/></group>
+    </search></field>
+  </record>
+  <record id="action_workload" model="ir.actions.act_window">
+    <field name="name">Team workload</field><field name="res_model">mi.workload</field>
+    <field name="view_mode">graph,list,pivot</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Nobody has open marketing work</p>
+      <p>Open campaign tasks, campaigns people run and proofs waiting for their review show here, per person.</p></field>
+  </record>
+
+  <menuitem id="menu_requests" name="Requests" parent="marketing_intel_plan.menu_campaigns_root" action="action_requests" sequence="40"/>
+  <menuitem id="menu_campaign_tasks" name="Tasks" parent="marketing_intel_plan.menu_campaigns_root" action="action_campaign_tasks" sequence="50"/>
+  <menuitem id="menu_proofs" name="Proofs" parent="marketing_intel_plan.menu_campaigns_root" action="action_proofs" sequence="60"/>
+</odoo>

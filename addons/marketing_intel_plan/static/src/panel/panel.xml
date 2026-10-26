@@ -6,13 +6,7 @@
             <t t-else="">
                 <t t-set="data" t-value="this.state.data"/>
                 <header class="o_mi_panel_head">
-                    <div t-if="this.mode === 'todos'">
-                        <h1>My to-dos</h1>
-                        <p class="text-muted mb-0">What needs <b>your</b> action now: approvals assigned to you, campaigns
-                            you are writing, and fixes on your campaigns and workflows. Everything else runs on its own or
-                            waits for someone else (see Next step on each campaign).</p>
-                    </div>
-                    <div t-else="">
+                    <div>
                         <h1>Marketing control panel</h1>
                         <p class="text-muted mb-0">
                             <t t-esc="data.counts.active"/> active campaigns · <t t-esc="data.flows.length"/> workflows ·
@@ -29,25 +23,61 @@
                                 </optgroup>
                             </t>
                         </select>
+                        <select class="form-select o_mi_view_select" t-on-change="(ev) => this.chooseView(ev)" aria-label="View">
+                            <option value="mine" t-att-selected="data.layout.view === 'mine'" t-att-disabled="!data.layout.has_mine">My view</option>
+                            <option t-foreach="data.layout.roles" t-as="r" t-key="r.key" t-att-value="r.key"
+                                    t-att-selected="data.layout.view === r.key" t-esc="r.label + ' view'"/>
+                        </select>
+                        <button t-if="!this.state.editing" class="btn btn-secondary" t-on-click="() => this.startEdit()">
+                            <i class="oi me-1" data-icon="edit"/>Customise</button>
+                        <button t-if="data.assistant" class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_assistant.action_assistant_new')">
+                            <i class="oi me-1" data-icon="forum"/>Ask the assistant</button>
                         <button class="btn btn-primary" t-on-click="() => this.newCampaign()">
                             <i class="oi me-1" data-icon="add"/>New campaign</button>
-                        <button class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_plan.action_templates')">
-                            <i class="oi me-1" data-icon="bookmark"/>Templates</button>
-                        <button class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_flow.action_flows')">
-                            <i class="oi me-1" data-icon="flash_on"/>Workflows</button>
+                        <button class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_plan.action_portfolio')">
+                            <i class="oi me-1" data-icon="show_chart"/>Portfolio</button>
                     </div>
                 </header>
 
-                <section t-if="this.mode === 'todos'" class="o_mi_card o_mi_todo_page">
-                    <p t-if="!data.todos.length" class="o_mi_empty">Nothing needs your action right now.</p>
-                    <button t-foreach="data.todos" t-as="todo" t-key="todo_index" type="button" class="o_mi_todo"
-                            t-on-click="() => this.open(todo.model, todo.res_id)">
-                        <i class="oi" t-att-data-icon="todo.icon"/>
-                        <span><strong t-esc="todo.title"/><small t-esc="todo.subtitle"/></span>
-                        <i class="oi ms-auto" data-icon="arrow_forward"/>
-                    </button>
-                </section>
-                <t t-if="this.mode !== 'todos'">
+                <t>
+                <div t-if="this.state.editing" class="o_mi_edit_bar">
+                    <span class="fw-bold">Customise the panel</span>
+                    <span class="text-muted small">Move, resize or remove blocks; add panel blocks or boxes from your reports.</span>
+                    <div class="o_mi_edit_actions">
+                        <select class="form-select form-select-sm" t-on-change="(ev) => this.addBlock(ev)" aria-label="Add a block">
+                            <option value="">+ Add a block…</option>
+                            <optgroup t-if="this.missingBlocks.length" label="Panel">
+                                <option t-foreach="this.missingBlocks" t-as="c" t-key="c.key" t-att-value="c.key" t-esc="c.label"/>
+                            </optgroup>
+                            <optgroup t-if="data.layout.boxes.length" label="Report Studio boxes">
+                                <option t-foreach="data.layout.boxes" t-as="b" t-key="b.id" t-att-value="'report:' + b.id"
+                                        t-esc="b.report + ' › ' + b.title"/>
+                            </optgroup>
+                        </select>
+                        <button class="btn btn-primary btn-sm" t-on-click="() => this.save('mine')">Save as my view</button>
+                        <t t-if="data.layout.can_save_role">
+                            <select class="form-select form-select-sm" t-on-change="(ev) => this.saveRole(ev)" aria-label="Save for a role">
+                                <option value="">Save for a role…</option>
+                                <option t-foreach="data.layout.roles" t-as="r" t-key="r.key" t-att-value="r.key" t-esc="r.label"/>
+                            </select>
+                        </t>
+                        <button class="btn btn-light btn-sm" t-on-click="() => this.cancelEdit()">Cancel</button>
+                    </div>
+                </div>
+                <div class="o_mi_blocks">
+                    <div t-foreach="this.blocks" t-as="block" t-key="block.key + (block.report_block_id || '')"
+                         class="o_mi_block" t-att-class="block.width === 'full' ? 'o_mi_full' : 'o_mi_half'">
+                        <div t-if="this.state.editing" class="o_mi_block_tools">
+                            <span class="fw-bold small" t-esc="this.blockLabel(block)"/>
+                            <span class="ms-auto btn-group btn-group-sm">
+                                <button class="btn btn-light" title="Move up" t-on-click="() => this.move(block_index, -1)">↑</button>
+                                <button class="btn btn-light" title="Move down" t-on-click="() => this.move(block_index, 1)">↓</button>
+                                <button class="btn btn-light" t-on-click="() => this.toggleWidth(block_index)"
+                                        t-esc="block.width === 'full' ? 'Half width' : 'Full width'"/>
+                                <button class="btn btn-light text-danger" title="Remove" t-on-click="() => this.remove(block_index)">✕</button>
+                            </span>
+                        </div>
+                        <t t-if="block.key === 'kpis'">
                 <section class="o_mi_kpis">
                     <button t-foreach="data.kpis" t-as="kpi" t-key="kpi.key" type="button" class="o_mi_kpi"
                             t-att-class="'o_mi_kpi_' + kpi.key" t-on-click="() => this.openKpi(kpi)">
@@ -74,7 +104,8 @@
                     </button>
                 </section>
 
-                <div class="o_mi_grid">
+                        </t>
+                        <t t-if="block.key === 'timeline'">
                     <section class="o_mi_card o_mi_timeline">
                         <div class="o_mi_card_head">
                             <h2><i class="oi me-1" data-icon="view_timeline"/>Timeline</h2>
@@ -107,20 +138,25 @@
                         </div>
                     </section>
 
-                    <aside class="o_mi_side">
+                        </t>
+                        <t t-if="block.key === 'todos'">
                         <section class="o_mi_card">
                             <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="checklist"/>Your action needed</h2>
                                 <span class="badge rounded-pill text-bg-primary" t-esc="data.todos.length"/></div>
                             <p t-if="!data.todos.length" class="o_mi_empty">Nothing needs your action. Campaigns and workflows run on their own.</p>
+                            <p class="small text-muted mb-1" t-if="data.todos.length">Your marketing activities (also in the Activities menu at the top) and campaign tasks due this week.</p>
                             <button t-foreach="data.todos" t-as="todo" t-key="todo_index" type="button" class="o_mi_todo"
                                     t-on-click="() => this.open(todo.model, todo.res_id)">
                                 <i class="oi" t-att-data-icon="todo.icon"/>
-                                <span><strong t-esc="todo.title"/><small t-esc="todo.subtitle"/></span>
+                                <span><strong t-esc="todo.title"/><small t-att-class="todo.late ? 'text-danger' : ''" t-esc="todo.subtitle"/></span>
                                 <i class="oi ms-auto" data-icon="arrow_forward"/>
                             </button>
                         </section>
-                        <section class="o_mi_card" t-if="data.alerts.length">
+                        </t>
+                        <t t-if="block.key === 'alerts'">
+                        <section class="o_mi_card">
                             <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="notifications"/>Alerts</h2></div>
+                            <p t-if="!data.alerts.length" class="o_mi_empty">No alerts.</p>
                             <button t-foreach="data.alerts" t-as="alert" t-key="alert_index" type="button"
                                     class="o_mi_alert" t-att-class="'o_mi_alert_' + alert.level"
                                     t-on-click="() => this.open(alert.model, alert.res_id)">
@@ -128,9 +164,8 @@
                                 <span t-esc="alert.text"/>
                             </button>
                         </section>
-                    </aside>
-                </div>
-
+                        </t>
+                        <t t-if="block.key === 'campaigns'">
                 <section class="o_mi_card">
                     <div class="o_mi_card_head">
                         <h2><i class="oi me-1" data-icon="campaign"/>Campaigns in progress</h2>
@@ -174,9 +209,12 @@
                     </div>
                 </section>
 
-                <section class="o_mi_card" t-if="data.flows.length">
+                        </t>
+                        <t t-if="block.key === 'flows'">
+                <section class="o_mi_card">
                     <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="flash_on"/>Workflows</h2>
                         <button class="btn btn-link btn-sm" t-on-click="() => this.go('marketing_intel_flow.action_flows')">All workflows</button></div>
+                    <p t-if="!data.flows.length" class="o_mi_empty">No workflows yet.</p>
                     <div class="o_mi_flows">
                         <button t-foreach="data.flows" t-as="flow" t-key="flow.id" type="button" class="o_mi_flow"
                                 t-on-click="() => this.open('mi.flow', flow.id)">
@@ -194,6 +232,47 @@
                         </button>
                     </div>
                 </section>
+                        </t>
+                        <t t-if="block.key === 'report'">
+                            <section class="o_mi_card o_mi_box">
+                                <t t-set="box" t-value="block.box"/>
+                                <p t-if="!box" class="o_mi_empty">This box shows after you save.</p>
+                                <t t-else="">
+                                    <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="show_chart"/><t t-esc="box.title"/></h2>
+                                        <button class="btn btn-link btn-sm" t-on-click="() => this.open('report.studio.report', box.report_id)" t-esc="box.report"/></div>
+                                    <p t-if="box.error" class="text-danger small" t-esc="box.error"/>
+                                    <div t-if="box.display" class="o_mi_box_value" t-esc="box.display"/>
+                                    <div t-if="box.chart" class="o_mi_box_chart">
+                                        <div t-foreach="box.chart" t-as="bar" t-key="bar_index" class="o_mi_box_bar">
+                                            <span class="o_mi_box_label" t-esc="bar.label"/>
+                                            <span class="o_mi_box_track"><span t-att-style="'width:' + bar.pct + '%'"/></span>
+                                            <span class="o_mi_box_num" t-esc="bar.value.toLocaleString()"/>
+                                        </div>
+                                    </div>
+                                    <table t-if="box.rows.length" class="table table-sm mb-0">
+                                        <thead><tr><th t-foreach="box.columns" t-as="col" t-key="col_index" t-esc="col"/></tr></thead>
+                                        <tbody><tr t-foreach="box.rows" t-as="row" t-key="row_index"><td t-foreach="row" t-as="cell" t-key="cell_index" t-esc="cell"/></tr></tbody>
+                                    </table>
+                                    <ul t-if="box.items.length" class="mb-0"><li t-foreach="box.items" t-as="it" t-key="it_index" t-esc="it"/></ul>
+                                    <p t-if="box.text and !box.display and !box.chart" class="mb-0" t-esc="box.text"/>
+                                </t>
+                            </section>
+                        </t>
+                        <t t-if="data.extra[block.key]">
+                            <t t-set="extra" t-value="data.extra[block.key]"/>
+                            <section class="o_mi_card">
+                                <div class="o_mi_card_head"><h2><i class="oi me-1" t-att-data-icon="extra.icon"/><t t-esc="extra.title"/></h2>
+                                    <button t-if="extra.action" class="btn btn-link btn-sm" t-on-click="() => this.go(extra.action)" t-esc="extra.action_label"/></div>
+                                <p t-if="!extra.rows.length" class="o_mi_empty" t-esc="extra.empty"/>
+                                <button t-foreach="extra.rows" t-as="row" t-key="row_index" type="button" class="o_mi_todo"
+                                        t-on-click="() => this.open(row.model, row.res_id)">
+                                    <span><strong t-esc="row.title"/><small t-esc="row.subtitle"/></span>
+                                    <span class="ms-auto o_mi_extra_value" t-att-class="row.danger ? 'text-danger' : ''" t-esc="row.value"/>
+                                </button>
+                            </section>
+                        </t>
+                    </div>
+                </div>
                 </t>
             </t>
         </div>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="portal_entry_marketing" model="portal.entry">
+    <field name="name">Marketing</field>
+    <field name="description">Your campaigns, results, proofs to review and requests</field>
+    <field name="url">/my/marketing</field>
+    <field name="image" type="bytes" file="marketing_intel_portal/static/description/icon.svg"/>
+    <field name="placeholder_count">mi_brand_count</field>
+    <field name="category">service_category</field>
+    <field name="sequence" eval="80"/>
+  </record>
+</odoo>

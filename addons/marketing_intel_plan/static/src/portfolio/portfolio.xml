@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="marketing_intel_plan.Portfolio">
+        <div class="o_mi_panel o_mi_portfolio h-100 overflow-auto">
+            <div t-if="!this.state.data" class="p-5 text-center text-muted">Loading…</div>
+            <t t-else="">
+                <t t-set="data" t-value="this.state.data"/>
+                <header class="o_mi_panel_head">
+                    <div>
+                        <h1>Portfolio</h1>
+                        <p class="text-muted mb-0">Every brand side by side · <t t-esc="data.label"/></p>
+                    </div>
+                    <div class="o_mi_panel_tools">
+                        <div class="btn-group" role="group" aria-label="Period">
+                            <button t-foreach="[['month', 'This month'], ['quarter', 'This quarter'], ['year', 'This year']]"
+                                    t-as="p" t-key="p[0]" class="btn"
+                                    t-att-class="this.state.period === p[0] ? 'btn-primary' : 'btn-light'"
+                                    t-on-click="() => this.setPeriod(p[0])" t-esc="p[1]"/>
+                        </div>
+                    </div>
+                </header>
+
+                <section class="o_mi_kpis">
+                    <div class="o_mi_kpi"><span class="o_mi_kpi_label">Budget</span>
+                        <div class="o_mi_kpi_value" t-esc="this.money(data.totals.budget)"/>
+                        <small class="text-muted">planned <t t-esc="this.money(data.totals.planned)"/></small></div>
+                    <div class="o_mi_kpi"><span class="o_mi_kpi_label">Spent</span>
+                        <div class="o_mi_kpi_value" t-esc="this.money(data.totals.spent)"/>
+                        <small class="text-muted">entered on campaigns</small></div>
+                    <div class="o_mi_kpi"><span class="o_mi_kpi_label">Leads</span>
+                        <div class="o_mi_kpi_value" t-esc="data.totals.leads"/>
+                        <small class="text-muted">in this period</small></div>
+                    <div class="o_mi_kpi"><span class="o_mi_kpi_label">Won revenue</span>
+                        <div class="o_mi_kpi_value" t-esc="this.money(data.totals.revenue)"/>
+                        <small class="text-muted"><t t-esc="data.totals.roi"/>× the spend</small></div>
+                    <div class="o_mi_kpi"><span class="o_mi_kpi_label">Health</span>
+                        <div class="o_mi_health_counts">
+                            <span class="o_mi_h o_mi_h_on_track"><t t-esc="data.health_counts.on_track"/> on track</span>
+                            <span class="o_mi_h o_mi_h_at_risk"><t t-esc="data.health_counts.at_risk"/> at risk</span>
+                            <span class="o_mi_h o_mi_h_off_track"><t t-esc="data.health_counts.off_track"/> off track</span>
+                        </div></div>
+                </section>
+
+                <section class="o_mi_card">
+                    <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="list_alt"/>Brands</h2></div>
+                    <div class="table-responsive">
+                    <table class="table o_mi_ptable mb-0">
+                        <thead><tr>
+                            <th>Brand</th><th>Health</th><th class="text-end">Budget</th><th>Spent</th>
+                            <th class="text-end">Planned</th><th class="text-end">Leads</th><th class="text-end">Revenue</th>
+                            <th class="text-end">Revenue / spend</th><th class="text-end">Campaigns</th><th>Goals</th>
+                        </tr></thead>
+                        <tbody t-foreach="data.groups" t-as="group" t-key="group.name">
+                            <tr class="o_mi_group_row"><td colspan="10"><t t-esc="group.name or 'Brands'"/>
+                                <small class="text-muted ms-2">budget <t t-esc="this.money(group.totals.budget)"/> ·
+                                    spent <t t-esc="this.money(group.totals.spent)"/> · revenue
+                                    <t t-esc="this.money(group.totals.revenue)"/></small></td></tr>
+                            <tr t-foreach="group.rows" t-as="row" t-key="row.id" class="o_mi_prow"
+                                t-on-click="() => this.open('mi.brand', row.id)">
+                                <td><strong t-esc="row.name"/>
+                                    <small t-if="row.client" class="d-block text-muted">Client · fee
+                                        <t t-esc="this.money(row.fee)"/><t t-if="row.contract_end"> · until <t t-esc="row.contract_end"/></t></small></td>
+                                <td><span class="o_mi_h" t-att-class="'o_mi_h_' + row.health" t-att-title="row.reasons.join('; ')">
+                                        <i class="oi" t-att-data-icon="this.health[row.health].icon"/> <t t-esc="this.health[row.health].label"/></span>
+                                    <small class="d-block text-muted o_mi_reason" t-esc="row.reasons.join('; ')"/></td>
+                                <td class="text-end" t-esc="row.budget ? this.money(row.budget) : '—'"/>
+                                <td style="min-width:140px"><div class="d-flex align-items-center gap-2">
+                                    <div class="o_mi_meter"><span t-att-style="this.meter(row)"
+                                        t-att-class="row.spent_pct &gt; 100 ? 'bg-danger' : (row.spent_pct &gt; 90 ? 'bg-warning' : '')"/></div>
+                                    <small t-esc="this.money(row.spent)"/></div></td>
+                                <td class="text-end" t-esc="this.money(row.planned)"/>
+                                <td class="text-end" t-esc="row.leads"/>
+                                <td class="text-end" t-esc="this.money(row.revenue)"/>
+                                <td class="text-end" t-esc="row.spent ? row.roi + '×' : '—'"/>
+                                <td class="text-end"><t t-esc="row.running"/> running / <t t-esc="row.campaigns"/></td>
+                                <td><t t-if="row.goals"><t t-esc="row.goals - row.goals_behind"/>/<t t-esc="row.goals"/> on track</t>
+                                    <t t-else="">—</t></td>
+                            </tr>
+                        </tbody>
+                        <tfoot><tr class="fw-bold">
+                            <td>Total</td><td/><td class="text-end" t-esc="this.money(data.totals.budget)"/>
+                            <td t-esc="this.money(data.totals.spent)"/><td class="text-end" t-esc="this.money(data.totals.planned)"/>
+                            <td class="text-end" t-esc="data.totals.leads"/><td class="text-end" t-esc="this.money(data.totals.revenue)"/>
+                            <td class="text-end" t-esc="data.totals.spent ? data.totals.roi + '×' : '—'"/>
+                            <td class="text-end"><t t-esc="data.totals.running"/> / <t t-esc="data.totals.campaigns"/></td><td/>
+                        </tr></tfoot>
+                    </table>
+                    </div>
+                </section>
+
+                <section class="o_mi_card">
+                    <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="view_timeline"/>Timeline</h2>
+                        <div class="o_mi_legend">
+                            <span class="o_mi_dot o_mi_tl_live"/>Live <span class="o_mi_dot o_mi_tl_scheduled"/>Scheduled
+                            <span class="o_mi_dot o_mi_tl_review"/>Review <span class="o_mi_dot o_mi_tl_draft"/>Preparing
+                            <span class="o_mi_dot o_mi_tl_next"/>Next run <span class="o_mi_dot o_mi_tl_clash"/>Clash
+                        </div></div>
+                    <div class="o_mi_tl">
+                        <div class="o_mi_tl_head"><div class="o_mi_tl_label"/>
+                            <div class="o_mi_tl_axis">
+                                <span t-foreach="data.timeline.weeks" t-as="week" t-key="week_index" class="o_mi_tl_week"
+                                      t-att-style="'left:' + week.left + '%'" t-esc="week.label"/>
+                            </div></div>
+                        <div t-foreach="data.timeline.lanes" t-as="lane" t-key="lane.id" class="o_mi_tl_lane">
+                            <div class="o_mi_tl_label"><strong t-esc="lane.name"/><small class="text-muted" t-esc="lane.group"/></div>
+                            <div class="o_mi_tl_track" t-att-style="this.laneStyle(lane)">
+                                <span class="o_mi_tl_today" t-att-style="'left:' + data.timeline.today + '%'"/>
+                                <button t-foreach="lane.bars" t-as="bar" t-key="bar_index" type="button"
+                                        class="o_mi_tl_bar" t-att-class="'o_mi_tl_' + (bar.status === 'next' ? 'next' :
+                                            bar.status === 'live' ? 'live' : bar.status === 'scheduled' ? 'scheduled' :
+                                            bar.status === 'review' ? 'review' : bar.status === 'done' ? 'done' : 'draft')
+                                            + (bar.clash ? ' o_mi_tl_clash' : '')"
+                                        t-att-style="this.barStyle(bar)" t-att-title="bar.title"
+                                        t-on-click="() => this.open('mi.plan', bar.id)">
+                                    <i t-if="bar.repeat" class="oi" data-icon="repeat"/> <t t-esc="bar.name"/>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </t>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,operation
+access_request_user,Marketing requests,model_mi_request,marketing_intel.group_mi_user,crud
+access_proof_user,Marketing proofs,model_mi_proof,marketing_intel.group_mi_user,crud
+access_workload_user,Marketing workload,model_mi_workload,marketing_intel.group_mi_user,r

@@ -1,6 +1,6 @@
 {
     'name': 'Marketing: campaigns',
-    'version': '20.0.1.2.0',
+    'version': '20.0.1.3.0',
     'category': 'Marketing',
     'summary': 'Campaigns in Social, Messaging, Email, SMS and Events: brief, content, one review, live results',
     'description': 'Create campaigns by hand or from a suggestion. Drafts are prepared in each app (with your permissions, each under its own approval); results are read back and count towards your goals.',
@@ -14,7 +14,8 @@
         'data/approval.xml',
     ],
     'assets': {'web.assets_backend': ['marketing_intel_plan/static/src/scss/plan.scss',
-                                      'marketing_intel_plan/static/src/panel/*']},
+                                      'marketing_intel_plan/static/src/panel/*',
+                                      'marketing_intel_plan/static/src/portfolio/*']},
     'auto_install': True,
     'icon': '/marketing_intel_plan/static/description/icon.svg',
     'license': 'LGPL-3',

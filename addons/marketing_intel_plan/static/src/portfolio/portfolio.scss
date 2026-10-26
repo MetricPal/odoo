@@ -1,0 +1,32 @@
+.o_mi_portfolio {
+    .o_mi_h { display: inline-flex; align-items: center; gap: .2rem; font-size: .78rem; font-weight: 600;
+        padding: .15rem .55rem; border-radius: 1rem; white-space: nowrap; }
+    .o_mi_h_on_track { background: #e3f4f1; color: #1e7268; }
+    .o_mi_h_at_risk { background: #fdf0dc; color: #8a5a12; }
+    .o_mi_h_off_track { background: #fdecec; color: #9b2c2c; }
+    .o_mi_health_counts { display: flex; flex-direction: column; gap: .3rem; margin-top: .3rem; }
+    .o_mi_ptable {
+        th { font-size: .8rem; color: #6b7080; font-weight: 600; white-space: nowrap; }
+        td { vertical-align: middle; }
+        .o_mi_group_row td { background: #f7f5f7; font-weight: 600; }
+        .o_mi_prow { cursor: pointer; &:hover td { background: #fbfafb; } }
+        .o_mi_reason { max-width: 260px; white-space: normal; }
+    }
+    .o_mi_tl { overflow-x: auto; }
+    .o_mi_tl_head, .o_mi_tl_lane { display: flex; min-width: 900px; }
+    .o_mi_tl_label { flex: 0 0 170px; padding: .35rem .5rem; display: flex; flex-direction: column; }
+    .o_mi_tl_axis { position: relative; flex: 1; height: 1.6rem; border-bottom: 1px solid #e3e5ea; }
+    .o_mi_tl_week { position: absolute; font-size: .72rem; color: #8a8f99; transform: translateX(2px); }
+    .o_mi_tl_lane { border-bottom: 1px solid #f0f1f4; }
+    .o_mi_tl_track { position: relative; flex: 1;
+        background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(6.25% - 1px), #f3f4f7 calc(6.25% - 1px), #f3f4f7 6.25%); }
+    .o_mi_tl_today { position: absolute; top: 0; bottom: 0; width: 2px; background: #d64545; opacity: .6; }
+    .o_mi_tl_bar { position: absolute; height: 24px; border: 0; border-radius: 6px; font-size: .75rem; color: #fff;
+        padding: 0 .45rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: left;
+        &:hover { filter: brightness(.95); } }
+    .o_mi_tl_live { background: #2a9d8f; } .o_mi_tl_scheduled { background: #3d7dd8; }
+    .o_mi_tl_review { background: #e9a23b; } .o_mi_tl_draft { background: #9aa0ab; } .o_mi_tl_done { background: #c9ccd3; color: #555; }
+    .o_mi_tl_next { background: repeating-linear-gradient(45deg, #b9a3b5, #b9a3b5 6px, #a88ea3 6px, #a88ea3 12px); }
+    span.o_mi_tl_clash, .o_mi_dot.o_mi_tl_clash { background: #d64545; }
+    .o_mi_tl_bar.o_mi_tl_clash { box-shadow: inset 0 0 0 2px #d64545; }
+}

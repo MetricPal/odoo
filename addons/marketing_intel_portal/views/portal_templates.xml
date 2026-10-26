@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <template id="portal_crumbs" name="Marketing portal breadcrumbs">
+    <nav class="mt-3 mb-2 small" aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/my">Home</a></li>
+        <li class="breadcrumb-item"><a href="/my/marketing">Marketing</a></li>
+        <li t-if="brand" class="breadcrumb-item"><a t-attf-href="/my/marketing/brand/#{brand.id}" t-out="brand.name"/></li>
+        <li t-if="crumb" class="breadcrumb-item active" t-out="crumb"/>
+      </ol>
+    </nav>
+    <div t-if="message" class="alert alert-success" role="status" t-out="message"/>
+    <div t-if="error" class="alert alert-danger" role="alert" t-out="error"/>
+  </template>
+
+  <template id="portal_totals" name="Marketing portal result tiles">
+    <div t-if="totals" class="d-flex flex-wrap gap-2 my-2">
+      <div t-foreach="totals" t-as="t" class="border rounded px-3 py-2 bg-white">
+        <div class="fs-4 fw-bold" t-out="t[1]"/><div class="small text-muted" t-out="t[0]"/>
+      </div>
+    </div>
+  </template>
+
+  <template id="portal_brands" name="Marketing brands">
+    <t t-call="portal.portal_layout">
+      <t t-call="marketing_intel_portal.portal_crumbs"><t t-set="brand" t-value="False"/></t>
+      <h3 class="mt-2">Your brands</h3>
+      <p t-if="not brands" class="text-muted">You have no brand to follow yet.</p>
+      <div class="list-group">
+        <a t-foreach="brands" t-as="b" class="list-group-item list-group-item-action" t-attf-href="/my/marketing/brand/#{b.id}">
+          <span class="fw-bold" t-out="b.name"/>
+        </a>
+      </div>
+    </t>
+  </template>
+
+  <template id="portal_brand" name="Marketing brand">
+    <t t-call="portal.portal_layout">
+      <t t-call="marketing_intel_portal.portal_crumbs"/>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+        <h3 class="mb-0" t-out="brand.name"/>
+        <a class="btn btn-primary" t-attf-href="/my/marketing/brand/#{brand.id}/request">New request</a>
+      </div>
+      <div t-if="to_sign or proofs_waiting" class="alert alert-warning mt-3">
+        <div class="fw-bold mb-1">Waiting for you</div>
+        <div t-foreach="to_sign" t-as="p">Sign off the campaign <a t-attf-href="/my/marketing/campaign/#{p.id}" t-out="p.name"/></div>
+        <div t-foreach="proofs_waiting" t-as="f">Review the proof <a t-attf-href="/my/marketing/proof/#{f.id}"><t t-out="f.name"/> <t t-out="f.version_label"/></a></div>
+      </div>
+      <h5 class="mt-4">Results (last 90 days)</h5>
+      <t t-call="marketing_intel_portal.portal_totals"/>
+      <p t-if="not totals" class="text-muted small">No results yet.</p>
+      <h5 class="mt-4">Campaigns</h5>
+      <p t-if="not rows" class="text-muted">No campaigns yet.</p>
+      <div class="table-responsive" t-if="rows">
+        <table class="table table-sm align-middle bg-white">
+          <thead><tr><th>Campaign</th><th>Dates</th><th>Status</th><th style="width: 160px">Channels out</th><th>Results</th></tr></thead>
+          <tbody>
+            <tr t-foreach="rows" t-as="r">
+              <td><a t-attf-href="/my/marketing/campaign/#{r['plan'].id}" t-out="r['plan'].name"/>
+                <span t-if="r['plan'].client_state == 'waiting'" class="badge text-bg-warning ms-1">Sign-off needed</span></td>
+              <td class="small text-nowrap"><t t-out="r['plan'].date_start" t-options="{'widget': 'date'}"/> → <t t-out="r['plan'].date_end" t-options="{'widget': 'date'}"/></td>
+              <td><span class="badge text-bg-light border" t-out="r['status']"/></td>
+              <td><div class="progress" style="height: 8px"><div class="progress-bar" t-attf-style="width: #{r['progress']}%"/></div>
+                <div class="small text-muted"><t t-out="r['plan'].channels_out"/> of <t t-out="r['plan'].channel_count"/></div></td>
+              <td class="small"><t t-foreach="r['totals']" t-as="t"><span class="me-2"><b t-out="t[1]"/> <t t-out="t[0].lower()"/></span></t></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <h5 class="mt-4">Proofs</h5>
+      <p t-if="not proofs" class="text-muted small">Nothing to review.</p>
+      <ul class="list-unstyled" t-if="proofs">
+        <li t-foreach="proofs" t-as="f" class="mb-1">
+          <a t-attf-href="/my/marketing/proof/#{f.id}"><t t-out="f.name"/> <t t-out="f.version_label"/></a>
+          <span class="text-muted small">· <t t-out="f.plan_id.name"/> ·</span>
+          <span t-attf-class="badge #{'text-bg-warning' if f.state == 'review' else ('text-bg-success' if f.state == 'approved' else 'text-bg-secondary')}"
+                t-out="dict(f._fields['state']._description_selection(f.env))[f.state]"/>
+        </li>
+      </ul>
+      <h5 class="mt-4">Your requests</h5>
+      <p t-if="not client_requests" class="text-muted small">None yet: use “New request” to ask for something.</p>
+      <ul class="list-unstyled" t-if="client_requests">
+        <li t-foreach="client_requests" t-as="q" class="mb-1"><t t-out="q.name"/>
+          <span class="badge text-bg-light border" t-out="dict(q._fields['state']._description_selection(q.env))[q.state]"/>
+          <span t-if="q.state == 'declined' and q.decline_reason" class="small text-muted">: <t t-out="q.decline_reason"/></span>
+          <a t-if="q.plan_id" class="small ms-1" t-attf-href="/my/marketing/campaign/#{q.plan_id.id}">open the campaign</a>
+        </li>
+      </ul>
+    </t>
+  </template>
+
+  <template id="portal_campaign" name="Marketing campaign">
+    <t t-call="portal.portal_layout">
+      <t t-call="marketing_intel_portal.portal_crumbs"><t t-set="crumb" t-value="plan.name"/></t>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+        <h3 class="mb-0" t-out="plan.name"/>
+        <span class="badge text-bg-primary fs-6" t-out="row['status']"/>
+      </div>
+      <div class="text-muted small mb-2"><t t-out="plan.date_start" t-options="{'widget': 'date'}"/> → <t t-out="plan.date_end" t-options="{'widget': 'date'}"/> · <t t-out="plan.channels_out"/> of <t t-out="plan.channel_count"/> channels out</div>
+      <div class="progress mb-3" style="height: 8px"><div class="progress-bar" t-attf-style="width: #{row['progress']}%"/></div>
+
+      <div t-if="plan.client_state == 'waiting'" class="card border-warning mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Your sign-off</h5>
+          <p class="mb-2">Please check the message and each channel below, then approve or say what should change.</p>
+          <form method="post" t-attf-action="/my/marketing/campaign/#{plan.id}/decision">
+            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+            <textarea name="feedback" class="form-control mb-2" rows="3" placeholder="Comments (required to ask for changes)"/>
+            <button type="submit" name="decision" value="approve" class="btn btn-success">Approve the campaign</button>
+            <button type="submit" name="decision" value="changes" class="btn btn-outline-secondary ms-2">Ask for changes</button>
+          </form>
+        </div>
+      </div>
+      <div t-elif="plan.client_state == 'approved'" class="alert alert-success">Signed off by <t t-out="plan.client_decided_by.name"/>.</div>
+      <div t-elif="plan.client_state == 'changes'" class="alert alert-warning">Changes asked: <t t-out="plan.client_feedback"/></div>
+
+      <h5>Results</h5>
+      <t t-call="marketing_intel_portal.portal_totals"><t t-set="totals" t-value="row['totals']"/></t>
+      <p t-if="not row['totals']" class="text-muted small">No results yet.</p>
+
+      <div t-if="plan.message" class="mt-3"><h5>Message</h5><p style="white-space: pre-wrap" t-out="plan.message"/></div>
+      <div t-if="plan.audience"><h6>Audience</h6><p style="white-space: pre-wrap" t-out="plan.audience"/></div>
+
+      <h5 class="mt-3">Channels</h5>
+      <div class="row g-3">
+        <div t-foreach="items" t-as="i" class="col-md-6">
+          <div class="card h-100"><div class="card-body">
+            <div class="d-flex justify-content-between"><h6 class="mb-1" t-out="i['channel']"/>
+              <span class="badge text-bg-light border" t-out="i['stage']"/></div>
+            <div t-if="i['subject']" class="fw-bold small" t-out="i['subject']"/>
+            <p t-if="i['text']" class="small mb-2" style="white-space: pre-wrap" t-out="i['text'][:600]"/>
+            <div class="small text-muted"><t t-foreach="i['results']" t-as="t"><span class="me-2"><b t-out="t[1]"/> <t t-out="t[0].lower()"/></span></t></div>
+          </div></div>
+        </div>
+      </div>
+      <div t-if="proofs" class="mt-4"><h5>Proofs</h5>
+        <ul><li t-foreach="proofs" t-as="f"><a t-attf-href="/my/marketing/proof/#{f.id}"><t t-out="f.name"/> <t t-out="f.version_label"/></a>
+          (<t t-out="dict(f._fields['state']._description_selection(f.env))[f.state]"/>)</li></ul></div>
+    </t>
+  </template>
+
+  <template id="portal_proof" name="Marketing proof">
+    <t t-call="portal.portal_layout">
+      <t t-call="marketing_intel_portal.portal_crumbs"><t t-set="crumb" t-value="proof.name"/></t>
+      <h3 class="mt-2"><t t-out="proof.name"/> <span class="badge text-bg-secondary" t-out="proof.version_label"/></h3>
+      <div class="text-muted small mb-3">For <a t-attf-href="/my/marketing/campaign/#{proof.plan_id.id}" t-out="proof.plan_id.name"/> ·
+        <t t-out="dict(proof._fields['state']._description_selection(proof.env))[proof.state]"/></div>
+      <div class="row g-3">
+        <div t-attf-class="#{'col-md-6' if proof.previous_id else 'col-12'}">
+          <div class="card"><div class="card-body">
+            <h6 class="text-muted">This version</h6>
+            <div t-if="proof.subject" class="fw-bold" t-out="proof.subject"/>
+            <p style="white-space: pre-wrap" t-out="proof.body"/>
+            <img t-if="proof.image" class="img-fluid rounded" t-att-src="image_data_uri(proof.image)" alt="Creative"/>
+          </div></div>
+        </div>
+        <div t-if="proof.previous_id" class="col-md-6">
+          <div class="card bg-light"><div class="card-body">
+            <h6 class="text-muted">Previous version <t t-out="proof.previous_id.version_label"/></h6>
+            <div t-if="proof.previous_id.subject" class="fw-bold" t-out="proof.previous_id.subject"/>
+            <p style="white-space: pre-wrap" t-out="proof.previous_id.body"/>
+            <img t-if="proof.previous_id.image" class="img-fluid rounded" t-att-src="image_data_uri(proof.previous_id.image)" alt="Previous creative"/>
+          </div></div>
+        </div>
+      </div>
+      <div t-if="proof.previous_id" class="mt-3"><h6>What changed</h6><t t-out="proof.compare_html"/></div>
+      <div t-if="proof.state == 'review'" class="card border-warning mt-3"><div class="card-body">
+        <form method="post" t-attf-action="/my/marketing/proof/#{proof.id}/decision">
+          <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+          <textarea name="feedback" class="form-control mb-2" rows="3" placeholder="What should change (required to ask for changes)"/>
+          <button type="submit" name="decision" value="approve" class="btn btn-success">Approve</button>
+          <button type="submit" name="decision" value="changes" class="btn btn-outline-secondary ms-2">Ask for changes</button>
+        </form>
+      </div></div>
+      <div t-elif="proof.state == 'changes'" class="alert alert-warning mt-3">Changes asked: <t t-out="proof.feedback"/></div>
+      <div t-elif="proof.state == 'approved'" class="alert alert-success mt-3">Approved.</div>
+    </t>
+  </template>
+
+  <template id="portal_request" name="Marketing request">
+    <t t-call="portal.portal_layout">
+      <t t-call="marketing_intel_portal.portal_crumbs"><t t-set="crumb">New request</t></t>
+      <h3 class="mt-2">New request</h3>
+      <form method="post" t-attf-action="/my/marketing/brand/#{brand.id}/request" class="mt-3" style="max-width: 720px">
+        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+        <div class="mb-3"><label class="form-label fw-bold" for="name">What do you need?</label>
+          <input id="name" name="name" class="form-control" required="1" t-att-value="values.get('name')" placeholder="e.g. Promote our open day"/></div>
+        <div class="mb-3"><label class="form-label" for="goal">Why (the goal)</label>
+          <input id="goal" name="goal" class="form-control" t-att-value="values.get('goal')" placeholder="e.g. 40 bookings"/></div>
+        <div class="mb-3"><label class="form-label" for="audience">Who it is for</label>
+          <input id="audience" name="audience" class="form-control" t-att-value="values.get('audience')"/></div>
+        <div class="mb-3"><label class="form-label" for="wanted_by">Needed by</label>
+          <input id="wanted_by" name="wanted_by" type="date" class="form-control" style="max-width: 220px" t-att-value="values.get('wanted_by')"/></div>
+        <div class="mb-3"><label class="form-label" for="details">Details</label>
+          <textarea id="details" name="details" class="form-control" rows="5" t-out="values.get('details')"/></div>
+        <button type="submit" class="btn btn-primary">Send the request</button>
+      </form>
+    </t>
+  </template>
+</odoo>

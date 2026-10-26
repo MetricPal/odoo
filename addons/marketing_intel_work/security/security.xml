@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Campaign tasks live in Project: marketing users work on them there. -->
+  <record id="marketing_intel.group_mi_user" model="res.groups">
+    <field name="implied_ids" eval="[(4, ref('project.group_project_user'))]"/>
+  </record>
+  <record id="scope_request" model="ir.access">
+    <field name="name">Marketing requests: company</field>
+    <field name="model_id" ref="model_mi_request"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_proof" model="ir.access">
+    <field name="name">Marketing proofs: company</field>
+    <field name="model_id" ref="model_mi_proof"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="scope_workload" model="ir.access">
+    <field name="name">Marketing workload: company</field>
+    <field name="model_id" ref="model_mi_workload"/>
+    <field name="operation">r</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
+</odoo>

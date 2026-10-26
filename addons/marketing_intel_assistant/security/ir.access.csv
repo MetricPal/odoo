@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,operation
+access_assistant_user,Marketing assistant requests,model_mi_assistant_request,marketing_intel.group_mi_user,cru

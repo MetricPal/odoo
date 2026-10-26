@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="subject_list" model="ir.ui.view">
+    <field name="name">mi.consent.subject.list</field><field name="model">mi.consent.subject</field>
+    <field name="arch" type="xml"><list>
+      <field name="name"/><field name="email"/><field name="phone"/>
+      <field name="email_status" widget="badge" decoration-success="email_status == 'opted_in'" decoration-danger="email_status == 'opted_out'"/>
+      <field name="sms_status" widget="badge" decoration-success="sms_status == 'opted_in'" decoration-danger="sms_status == 'opted_out'"/>
+      <field name="whatsapp_status" widget="badge" decoration-success="whatsapp_status == 'opted_in'" decoration-danger="whatsapp_status == 'opted_out'"/>
+      <field name="telegram_status" widget="badge" optional="hide" decoration-success="telegram_status == 'opted_in'" decoration-danger="telegram_status == 'opted_out'"/>
+      <field name="social_status" widget="badge" optional="hide" decoration-success="social_status == 'opted_in'" decoration-danger="social_status == 'opted_out'"/>
+      <field name="last_change"/>
+    </list></field>
+  </record>
+  <record id="subject_form" model="ir.ui.view">
+    <field name="name">mi.consent.subject.form</field><field name="model">mi.consent.subject</field>
+    <field name="arch" type="xml"><form>
+      <header>
+        <button name="action_record" type="object" string="Record opt-in or opt-out" class="btn-primary" invisible="erased"/>
+        <button name="action_open_preferences" type="object" string="Open their preference page" invisible="erased"
+                groups="marketing_intel.group_mi_manager"/>
+        <button name="action_request_data" type="object" string="Data request" invisible="erased"/>
+      </header>
+      <sheet>
+        <div class="alert alert-secondary" role="status" invisible="not erased">Erased: kept only as proof of consent
+          and so the person is not contacted again.</div>
+        <div class="oe_title"><h1><field name="name"/></h1></div>
+        <group>
+          <group><field name="partner_id"/><field name="email"/><field name="phone"/>
+            <field name="company_id" groups="base.group_multi_company"/></group>
+          <group><field name="email_status" widget="badge"/><field name="sms_status" widget="badge"/>
+            <field name="whatsapp_status" widget="badge"/><field name="telegram_status" widget="badge"/>
+            <field name="social_status" widget="badge"/><field name="topic_ids" widget="many2many_tags"/></group>
+        </group>
+        <field name="record_ids" readonly="1">
+          <list><field name="recorded_at"/><field name="channel"/><field name="topic_id"/>
+            <field name="action" widget="badge" decoration-success="action == 'opt_in'" decoration-danger="action == 'opt_out'"/>
+            <field name="source"/><field name="evidence"/><field name="recorded_by"/></list>
+        </field>
+      </sheet>
+      <chatter/>
+    </form></field>
+  </record>
+  <record id="subject_search" model="ir.ui.view">
+    <field name="name">mi.consent.subject.search</field><field name="model">mi.consent.subject</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="email"/><field name="phone"/><field name="partner_id"/>
+      <filter name="email_out" string="Email opted out" domain="[('email_status', '=', 'opted_out')]"/>
+      <filter name="wa_in" string="WhatsApp opted in" domain="[('whatsapp_status', '=', 'opted_in')]"/>
+    </search></field>
+  </record>
+  <record id="action_subjects" model="ir.actions.act_window">
+    <field name="name">People and consent</field><field name="res_model">mi.consent.subject</field><field name="view_mode">list,form</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">One consent record per person</p>
+      <p>Every opt-in and opt-out, from forms, unsubscribe links, Messaging, keyword replies and the preference page,
+        with its source and evidence. Opt-outs stop messages in Email, SMS, WhatsApp and Telegram.</p></field>
+  </record>
+  <record id="record_list" model="ir.ui.view">
+    <field name="name">mi.consent.record.list</field><field name="model">mi.consent.record</field>
+    <field name="arch" type="xml"><list create="0" edit="0" delete="0">
+      <field name="recorded_at"/><field name="subject_id"/><field name="channel"/><field name="topic_id"/>
+      <field name="action" widget="badge" decoration-success="action == 'opt_in'" decoration-danger="action == 'opt_out'"/>
+      <field name="source"/><field name="evidence"/><field name="recorded_by"/>
+    </list></field>
+  </record>
+  <record id="action_records" model="ir.actions.act_window">
+    <field name="name">Consent history</field><field name="res_model">mi.consent.record</field><field name="view_mode">list</field>
+  </record>
+  <record id="wizard_form" model="ir.ui.view">
+    <field name="name">mi.consent.wizard.form</field><field name="model">mi.consent.wizard</field>
+    <field name="arch" type="xml"><form>
+      <group><field name="subject_id" readonly="1"/><field name="channel"/><field name="action" widget="radio"/>
+        <field name="source"/><field name="evidence" placeholder="e.g. Asked by phone on 3 March to stop SMS"/></group>
+      <footer><button name="action_save" type="object" string="Save" class="btn-primary"/>
+        <button special="cancel" string="Cancel"/></footer>
+    </form></field>
+  </record>
+  <record id="topic_list" model="ir.ui.view">
+    <field name="name">mi.consent.topic.list</field><field name="model">mi.consent.topic</field>
+    <field name="arch" type="xml"><list editable="bottom"><field name="sequence" widget="handle"/><field name="name"/>
+      <field name="description"/><field name="company_id" groups="base.group_multi_company"/></list></field>
+  </record>
+  <record id="action_topics" model="ir.actions.act_window">
+    <field name="name">Topics</field><field name="res_model">mi.consent.topic</field><field name="view_mode">list</field>
+  </record>
+  <record id="request_form" model="ir.ui.view">
+    <field name="name">mi.data.request.form</field><field name="model">mi.data.request</field>
+    <field name="arch" type="xml"><form>
+      <header>
+        <button name="action_submit" type="object" string="Send for approval" class="btn-primary"
+                invisible="state not in ('new', 'refused')"/>
+        <field name="state" widget="statusbar" statusbar_visible="new,pending,done"/>
+      </header>
+      <sheet>
+        <group><group><field name="subject_id" readonly="state != 'new'"/><field name="kind" widget="radio" readonly="state != 'new'"/></group>
+          <group><field name="approval_request_id"/><field name="attachment_id"/><field name="done_at"/></group></group>
+        <field name="note" placeholder="How the person asked and how you checked it is really them" readonly="state != 'new'"/>
+        <div class="text-muted small mt-2">A copy gives the person a file with their consent history, Messaging and
+          email contacts and workflow runs. An erasure anonymizes them everywhere marketing keeps them; their addresses
+          stay blocked so they are not contacted again. Both run only after approval.</div>
+      </sheet>
+      <chatter/>
+    </form></field>
+  </record>
+  <record id="request_list" model="ir.ui.view">
+    <field name="name">mi.data.request.list</field><field name="model">mi.data.request</field>
+    <field name="arch" type="xml"><list><field name="create_date" string="Asked on"/><field name="subject_id"/>
+      <field name="kind"/><field name="state" widget="badge" decoration-success="state == 'done'"
+             decoration-warning="state == 'pending'"/><field name="done_at"/></list></field>
+  </record>
+  <record id="action_requests" model="ir.actions.act_window">
+    <field name="name">Data requests</field><field name="res_model">mi.data.request</field><field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_consent_root" name="Contacts" parent="marketing_intel.menu_root" sequence="40"/>
+  <menuitem id="menu_subjects" name="People and consent" parent="menu_consent_root" action="action_subjects" sequence="10"/>
+  <menuitem id="menu_records" name="Consent history" parent="menu_consent_root" action="action_records" sequence="20"/>
+  <menuitem id="menu_requests" name="Data requests" parent="menu_consent_root" action="action_requests" sequence="30"/>
+  <menuitem id="menu_topics" name="Consent topics" parent="marketing_intel.menu_setup" action="action_topics" sequence="15"
+            groups="marketing_intel.group_mi_manager"/>
+  <record id="record_search" model="ir.ui.view">
+    <field name="name">mi.consent.record.search</field><field name="model">mi.consent.record</field>
+    <field name="arch" type="xml"><search>
+      <field name="subject_id"/><field name="topic_id"/><field name="evidence"/>
+      <filter name="opt_in" string="Opted in" domain="[('action', '=', 'opt_in')]"/>
+      <filter name="opt_out" string="Opted out" domain="[('action', '=', 'opt_out')]"/>
+      <separator/>
+      <filter name="recorded" string="Date" date="recorded_at"/>
+      <group><filter name="by_person" string="Person" context="{'group_by': 'subject_id'}"/>
+        <filter name="by_channel" string="Channel" context="{'group_by': 'channel'}"/>
+        <filter name="by_source" string="How" context="{'group_by': 'source'}"/>
+        <filter name="by_day" string="Day" context="{'group_by': 'recorded_at:day'}"/></group>
+    </search></field>
+  </record>
+  <record id="topic_search" model="ir.ui.view">
+    <field name="name">mi.consent.topic.search</field><field name="model">mi.consent.topic</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/>
+      <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+    </search></field>
+  </record>
+  <record id="data_request_search" model="ir.ui.view">
+    <field name="name">mi.data.request.search</field><field name="model">mi.data.request</field>
+    <field name="arch" type="xml"><search>
+      <field name="subject_id"/>
+      <filter name="open" string="Open" domain="[('state', 'in', ('new', 'pending'))]"/>
+      <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+      <group><filter name="by_kind" string="Request" context="{'group_by': 'kind'}"/>
+        <filter name="by_state" string="Status" context="{'group_by': 'state'}"/></group>
+    </search></field>
+  </record>
+</odoo>

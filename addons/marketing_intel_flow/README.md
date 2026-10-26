@@ -34,3 +34,20 @@ is "comment a keyword to get a message", which the first recipe does.
 
 Recipes: Comment a keyword → WhatsApp link · Private message → lead and to-do · Event registration →
 WhatsApp thank-you · Email click → lead for sales.
+
+
+**Recipes** (Workflows › Recipes) are ready-made workflows to start from: four are shipped, and a marketing
+manager adds more with **Save as recipe** on a working workflow (saving again updates that recipe; social pages,
+sending channel, lists, campaign and limits are not kept). Managers edit recipes in a normal list and form
+(trigger, keyword, step lines), reorder and archive them; everyone else uses them. **Use this recipe** creates a
+draft workflow for the brand in view, or asks which brand when there are several; it still needs its approval.
+
+**Paths (split).** Add a **Split the audience** step and give the next steps a path (Path A / Path B; name them,
+e.g. High intent / Low intent). The split is decided by the AI agent (it reads what the person wrote and records
+its reason on the run; an unusable answer goes to Path B), by words in what they wrote, or by the lead score.
+The AI only sorts people; it never writes or sends. **Someone submits a form** watches website contact forms
+(leads with the Website medium, optionally for one campaign) or newsletter sign-ups. **Send an email** and **Send
+an SMS** skip unsubscribed and opted-out people and count towards the daily limit. Workflows without WhatsApp or
+Telegram messages are approved with the approval type **Marketing workflow**. Recipe: *Form submitted → AI split
+→ email or SMS*.
+

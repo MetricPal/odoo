@@ -235,3 +235,24 @@ exactly what Omnichannel's dispatch expects; each queued message references the 
 the recipient's current opt-in (`mm.contact._send_refusal`) before every message. Any edit pauses the workflow
 and voids the evidence of messages not yet sent. Messages go only to opted-in known contacts, with a per-person
 daily limit across workflows, every run logged.
+
+## Marketing data requests (2026-10-25)
+
+`marketing_intel_consent`: a copy or erasure of a person's marketing data is an Approval Center request of
+type *Marketing data request* (`mi.data.request`, `action_execute`); the action refuses to run without an
+approved request. Consent records are append-only; opt-outs propagate to the email/phone blacklists and
+Messaging consents.
+
+## Marketing assistant (2026-10-25)
+
+`marketing_intel_assistant` never approves anything. A request shows its proposal and runs only when the person
+who asked clicks *Do it*, with that person's rights. Sending a campaign for review uses the normal campaign
+review; resuming a workflow requires its approval to still match. The AI agent only returns a JSON action that
+is validated before it is proposed.
+
+## Marketing workflows without messages (2026-10-25)
+
+Workflows that only send email/SMS, split, create leads, add to lists or create to-dos are approved with the
+approval type *Marketing workflow* (`mi.flow`, no action: the approval starts the workflow through its hook).
+The approved digest covers the trigger, form, steps, texts, paths and split rule; any change pauses the workflow.
+An AI split only chooses a path for one person and is logged on the run; the AI never writes or sends.

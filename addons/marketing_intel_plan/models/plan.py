@@ -140,10 +140,24 @@ class Plan(models.Model):
                                 help='The first campaign of a repeating series.')
     next_run_date = fields.Date(compute='_compute_next_run', string='Next run starts')
 
+    template_use_count = fields.Integer(compute='_compute_template_use_count', string='Used', help='Campaigns started from this template, and their copies.')
+
     def _compute_saved_template(self):
         for plan in self:
-            plan.saved_template_id = self.search([('is_template', '=', True), ('template_source_id', '=', plan.id)],
-                                                 limit=1) if plan.id and not plan.is_template else False
+            plan.saved_template_id = plan._own_template() if plan.id and not plan.is_template else False
+
+    def _compute_template_use_count(self):
+        counts = dict(self._read_group([('template_id', 'in', self.ids)], ['template_id'], ['__count']))
+        for plan in self:
+            plan.template_use_count = counts.get(plan, 0)
+
+    def _own_template(self):
+        """The template of this campaign's family: the one saved from it, or the one it was started (or copied) from."""
+        self.ensure_one()
+        template = self.search([('is_template', '=', True), ('template_source_id', '=', self.id)], limit=1)
+        if not template and self.template_id.is_template:
+            template = self.template_id
+        return template
 
     @api.depends('repeat', 'repeat_until', 'date_start', 'state')
     def _compute_next_run(self):
@@ -317,6 +331,8 @@ class Plan(models.Model):
         return _('Running until %s', format_date(self.env, self.date_end)), False
 
     def _search_needs_me(self, operator, value):
+        if operator in ('in', 'not in') and len(value) == 1 and isinstance(next(iter(value)), bool):
+            operator, value = ('=' if operator == 'in' else '!='), next(iter(value))
         if operator not in ('=', '!=') or not isinstance(value, bool):
             raise UserError(_('Unsupported search.'))
         plans = self.search([('state', 'in', ACTIVE), ('is_template', '=', False)]).filtered('needs_me')
@@ -503,8 +519,6 @@ class Plan(models.Model):
         for plan in self.filtered(lambda p: p.state == 'review'):
             plan.sudo().state = 'content'
             plan.message_post(body=note)
-            plan.activity_schedule('mail.mail_activity_data_todo', user_id=plan.user_id.id,
-                                   summary=_('Campaign refused: update it'), note=note)
 
     def action_release(self):
         """After the campaign approval: schedule Email and SMS for the start day, publish events.
@@ -569,24 +583,32 @@ class Plan(models.Model):
     def action_duplicate(self):
         """Duplicate & edit: same channels and texts, today's dates, ready to change."""
         self.ensure_one()
-        copy = self.create(self._copy_values(name=_('%s (copy)', self.name), worker='me'))
+        family = self._own_template()
+        copy = self.create(self._copy_values(name=_('%s (copy)', self.name), worker='me', template_id=family.id))
         copy.message_post(body=_('Copied from “%s”.', self.name))
         return copy._open_form()
 
     def action_save_template(self):
-        """One template per campaign: saving again updates it with the campaign's current channels and texts."""
+        """One template per campaign family: a campaign, its copies and the campaigns started from its template all
+        update the same template. A new template may not take the name of another template of the brand."""
         self.ensure_one()
         if self.is_template:
             raise UserError(_('This is already a template.'))
         values = self._copy_values(is_template=True, worker='me', repeat='none', template_source_id=self.id)
-        template = self.search([('is_template', '=', True), ('template_source_id', '=', self.id)], limit=1)
+        template = self._own_template()
         if template:
             values['item_ids'] = [(5, 0, 0)] + values['item_ids']
-            for name in ('date_start', 'date_end', 'user_id'):
+            for name in ('date_start', 'date_end', 'user_id', 'template_source_id', 'name', 'brand_id'):
                 values.pop(name, None)
             template.write(values)
             template.message_post(body=_('Template updated from “%s”.', self.name))
         else:
+            same = self.search([('is_template', '=', True), ('brand_id', '=', self.brand_id.id),
+                                ('name', '=ilike', self.name)], limit=1)
+            if same:
+                raise UserError(_('%(brand)s already has a template called “%(name)s”. Use that template (Campaigns › '
+                                  'Templates), or rename this campaign before saving it as a new template.',
+                                  brand=self.brand_id.name, name=self.name))
             template = self.create(values)
             template.message_post(body=_('Template saved from “%s”.', self.name))
         return template._open_form()

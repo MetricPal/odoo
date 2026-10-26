@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,operation
+access_subject_user,Consent people,model_mi_consent_subject,marketing_intel.group_mi_user,cru
+access_record_user,Consent history,model_mi_consent_record,marketing_intel.group_mi_user,r
+access_topic_user,Topics,model_mi_consent_topic,marketing_intel.group_mi_user,r
+access_topic_manager,Topics manage,model_mi_consent_topic,marketing_intel.group_mi_manager,crud
+access_wizard_user,Record consent,model_mi_consent_wizard,marketing_intel.group_mi_user,crud
+access_data_request_user,Data requests,model_mi_data_request,marketing_intel.group_mi_user,cru

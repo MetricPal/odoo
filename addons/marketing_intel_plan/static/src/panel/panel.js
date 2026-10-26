@@ -52,8 +52,8 @@ export class MarketingPanel extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = proxy({ data: null, brandId: false, tab: "upcoming", loading: true });
-        this.mode = this.props.action?.params?.mode || "panel";
+        this.state = proxy({ data: null, brandId: false, tab: "upcoming", loading: true, editing: false, draft: [] });
+        this.notification = useService("notification");
         onWillStart(() => this.load());
     }
 
@@ -65,6 +65,91 @@ export class MarketingPanel extends Component {
 
     async onBrand(ev) {
         this.state.brandId = parseInt(ev.target.value) || false;
+        await this.load();
+    }
+
+    // -- customising -------------------------------------------------------------------------------------------
+    get blocks() {
+        return this.state.editing ? this.state.draft : this.state.data.layout.blocks;
+    }
+
+    get missingBlocks() {
+        const used = new Set(this.state.draft.map((b) => b.key));
+        return this.state.data.layout.catalogue.filter((c) => !used.has(c.key));
+    }
+
+    blockLabel(block) {
+        if (block.key === "report") {
+            const box = this.state.data.layout.boxes.find((b) => b.id === block.report_block_id);
+            return box ? `${box.report} › ${box.title}` : _t("Report box");
+        }
+        return this.state.data.layout.catalogue.find((c) => c.key === block.key)?.label || block.key;
+    }
+
+    startEdit() {
+        this.state.draft = this.state.data.layout.blocks.map((b) => ({ ...b }));
+        this.state.editing = true;
+    }
+
+    cancelEdit() {
+        this.state.editing = false;
+    }
+
+    move(index, step) {
+        const target = index + step;
+        if (target < 0 || target >= this.state.draft.length) {
+            return;
+        }
+        const blocks = [...this.state.draft];
+        [blocks[index], blocks[target]] = [blocks[target], blocks[index]];
+        this.state.draft = blocks;
+    }
+
+    toggleWidth(index) {
+        const blocks = [...this.state.draft];
+        blocks[index] = { ...blocks[index], width: blocks[index].width === "full" ? "half" : "full" };
+        this.state.draft = blocks;
+    }
+
+    remove(index) {
+        this.state.draft = this.state.draft.filter((_b, i) => i !== index);
+    }
+
+    addBlock(ev) {
+        const value = ev.target.value;
+        ev.target.value = "";
+        if (!value) {
+            return;
+        }
+        if (value.startsWith("report:")) {
+            const id = parseInt(value.split(":")[1]);
+            if (!this.state.draft.some((b) => b.key === "report" && b.report_block_id === id)) {
+                this.state.draft = [...this.state.draft, { key: "report", report_block_id: id, width: "half" }];
+            }
+        } else {
+            this.state.draft = [...this.state.draft, { key: value, width: ["kpis", "campaigns", "flows"].includes(value) ? "full" : "half" }];
+        }
+    }
+
+    async save(scope, role = false) {
+        const blocks = this.state.draft.map(({ key, width, report_block_id }) => ({ key, width, report_block_id }));
+        await this.orm.call("mi.panel.layout", "save_layout", [blocks], { scope, role });
+        this.state.editing = false;
+        this.notification.add(scope === "role" ? _t("Saved for the role.") : _t("Saved as your view."), { type: "success" });
+        await this.load();
+    }
+
+    async saveRole(ev) {
+        const role = ev.target.value;
+        ev.target.value = "";
+        if (role) {
+            await this.save("role", role);
+        }
+    }
+
+    async chooseView(ev) {
+        await this.orm.call("mi.panel.layout", "choose_view", [ev.target.value]);
+        this.state.editing = false;
         await this.load();
     }
 

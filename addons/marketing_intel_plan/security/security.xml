@@ -18,4 +18,10 @@
     <field name="operation">crud</field>
     <field name="domain">[('company_id', 'in', company_ids)]</field>
   </record>
+  <record id="scope_plan_spend" model="ir.access">
+    <field name="name">Marketing: company campaign spend</field>
+    <field name="model_id" ref="model_mi_plan_spend"/>
+    <field name="operation">crud</field>
+    <field name="domain">[('company_id', 'in', company_ids)]</field>
+  </record>
 </odoo>

@@ -91,13 +91,16 @@ class Plan(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         plans = super().create(vals_list)
-        plans.filtered(lambda p: p.worker == 'ai')._ai_autostart()
+        started = plans.filtered(lambda p: p.worker == 'ai')
+        started._ai_autostart()
+        started._sync_owner_activity()
         return plans
 
     def write(self, vals):
         result = super().write(vals)
         if vals.get('worker') == 'ai':
             self.filtered(lambda p: p.state in ('brief', 'content') and not p._ai_busy())._ai_autostart()
+            self._sync_owner_activity()
         return result
 
     def _ai_autostart(self):

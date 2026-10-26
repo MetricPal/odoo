@@ -90,6 +90,9 @@
                   <field name="company_id" groups="base.group_multi_company" string="Company"/>
                   <field name="partner_id" invisible="owner_type != 'client'" required="owner_type == 'client'"
                          placeholder="The client this brand belongs to"/>
+                  <field name="retainer_fee" invisible="owner_type != 'client'"/>
+                  <label for="contract_start" string="Contract" invisible="owner_type != 'client'"/>
+                  <div class="o_row" invisible="owner_type != 'client'"><field name="contract_start"/> → <field name="contract_end"/></div>
                   <field name="member_ids" widget="many2many_avatar_user" placeholder="Everyone in marketing"/>
                 </group>
               </group>
@@ -444,14 +447,48 @@
 
   <menuitem id="menu_root" name="Marketing" sequence="37" action="action_marketing_home"
             web_icon="marketing_intel,static/description/icon.svg" groups="group_mi_user"/>
-  <menuitem id="menu_brands" name="Brands" parent="menu_root" action="action_brands" sequence="1"/>
   <menuitem id="menu_insights" name="Insights" parent="menu_root" sequence="20"/>
   <menuitem id="menu_findings" name="Market changes" parent="menu_insights" action="action_findings" sequence="10"/>
   <menuitem id="menu_recommendations" name="Suggested campaigns" parent="menu_insights" action="action_recommendations" sequence="20"/>
   <menuitem id="menu_risks" name="Risks" parent="menu_insights" action="action_risks" sequence="30"/>
-  <menuitem id="menu_reporting" name="Reporting" parent="menu_root" sequence="80"/>
   <menuitem id="menu_setup" name="Configuration" parent="menu_root" sequence="90"/>
+  <menuitem id="menu_brands" name="Brands" parent="menu_setup" action="action_brands" sequence="5"/>
   <menuitem id="menu_competitors" name="Competitors" parent="menu_setup" action="action_competitors" sequence="20"/>
   <menuitem id="menu_sources" name="Sources" parent="menu_setup" action="action_sources" sequence="30"/>
   <menuitem id="menu_runs" name="Research history" parent="menu_setup" action="action_runs" sequence="40"/>
+  <record id="goal_search" model="ir.ui.view">
+    <field name="name">mi.goal.search</field><field name="model">mi.goal</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="brand_id"/>
+      <filter name="current" string="Current" domain="[('date_end', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+      <group><filter name="by_brand" string="Brand" context="{'group_by': 'brand_id'}"/></group>
+    </search></field>
+  </record>
+  <record id="competitor_search" model="ir.ui.view">
+    <field name="name">mi.competitor.search</field><field name="model">mi.competitor</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="website"/><field name="brand_id"/>
+      <group><filter name="by_brand" string="Brand" context="{'group_by': 'brand_id'}"/></group>
+    </search></field>
+  </record>
+  <record id="source_search" model="ir.ui.view">
+    <field name="name">mi.source.search</field><field name="model">mi.source</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="url"/><field name="brand_id"/><field name="competitor_id"/>
+      <filter name="errors" string="With errors" domain="[('last_error', '!=', False)]"/>
+      <filter name="never" string="Never collected" domain="[('last_collected_at', '=', False)]"/>
+      <group><filter name="by_brand" string="Brand" context="{'group_by': 'brand_id'}"/>
+        <filter name="by_competitor" string="Competitor" context="{'group_by': 'competitor_id'}"/>
+        <filter name="by_kind" string="Kind" context="{'group_by': 'kind'}"/></group>
+    </search></field>
+  </record>
+  <record id="run_search" model="ir.ui.view">
+    <field name="name">mi.run.search</field><field name="model">mi.run</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="brand_id"/>
+      <filter name="started" string="Started" date="started_at"/>
+      <group><filter name="by_brand" string="Brand" context="{'group_by': 'brand_id'}"/>
+        <filter name="by_day" string="Day" context="{'group_by': 'started_at:day'}"/></group>
+    </search></field>
+  </record>
 </odoo>

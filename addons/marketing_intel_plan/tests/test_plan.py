@@ -32,6 +32,20 @@ class TestCampaignPlan(TransactionCase):
             'expected_result': '10 demos booked.', 'kpis': '40 sign-ups\n10 demos', 'budget': 500,
             'duration_days': 21, 'channel_ids': [Command.set(cls.channels.ids)]})
 
+    def test_next_step_is_an_activity_for_the_owner(self):
+        plan = self.env['mi.plan'].with_user(self.user).create({
+            'brand_id': self.brand.id, 'name': 'Activity check',
+            'channel_ids': [Command.set(self.channels.filtered(lambda c: c.code == 'content').ids)]})
+        activity = plan.mi_activity_id
+        self.assertTrue(activity)
+        self.assertEqual((activity.user_id, activity.res_model, activity.res_id), (self.user, 'mi.plan', plan.id))
+        self.assertEqual(activity.summary, plan.next_step)
+        data = self.env['mi.panel'].with_user(self.user).get_panel(brand_id=self.brand.id)
+        self.assertIn(plan.next_step, [t['title'] for t in data['todos'] if t['res_id'] == plan.id])
+        plan.action_cancel()
+        self.assertFalse(plan.mi_activity_id.exists(), 'done by itself when nothing is left to do')
+        self.assertFalse(self.env['mail.activity'].search([('res_model', '=', 'mi.plan'), ('res_id', '=', plan.id)]))
+
     def test_option_must_be_chosen_first(self):
         with self.assertRaises(UserError):
             self.option.with_user(self.user).action_create_plan()
@@ -368,6 +382,23 @@ class TestCampaignPlan(TransactionCase):
         started = self.env['mi.plan'].browse(template.action_use_template()['res_id'])
         self.assertEqual(started.template_id, template)
         self.assertFalse(started.is_template)
+        # The family shares one template: the started campaign and copies update it, never add a second one.
+        started.invalidate_recordset(['saved_template_id'])
+        self.assertEqual(started.saved_template_id, template)
+        self.assertEqual(self.env['mi.plan'].browse(started.action_save_template()['res_id']), template)
+        copy = self.env['mi.plan'].browse(started.action_duplicate()['res_id'])
+        self.assertEqual(self.env['mi.plan'].browse(copy.action_save_template()['res_id']), template)
+        self.assertEqual(template.template_source_id, plan, 'the template keeps where it was first saved from')
+        self.assertEqual(template.name, plan.name)
+        self.assertEqual(self.env['mi.plan'].search_count([('is_template', '=', True), ('name', '=', plan.name),
+                                                           ('brand_id', '=', plan.brand_id.id)]), 1)
+        template.invalidate_recordset(['template_use_count'])
+        self.assertEqual(template.template_use_count, 2, 'the started campaign and its copy')
+        # An unrelated campaign with the same name cannot add a second template of that name.
+        namesake = self.env['mi.plan'].with_user(plan.user_id).create({
+            'name': plan.name, 'brand_id': plan.brand_id.id, 'channel_ids': [Command.set(plan.channel_ids.ids)]})
+        with self.assertRaises(UserError):
+            namesake.action_save_template()
         # Weekly repeat: the next run is created a few days before it starts and sent for review, once.
         today = fields.Date.today()
         plan.sudo().write({'repeat': 'weekly', 'date_start': today - timedelta(days=5),
@@ -402,13 +433,57 @@ class TestCampaignPlan(TransactionCase):
         self.assertTrue({'review', 'repeat'} <= kinds, kinds)
         self.assertTrue(any(e['recurring'] for e in data['timeline']['upcoming'] if e['kind'] == 'repeat'))
         mine = self.env['mi.panel'].with_user(approver).get_panel()
-        self.assertIn(plan.id, [t['res_id'] for t in mine['todos']], 'the approver sees it under For you')
+        todo = next(t for t in mine['todos'] if t['res_id'] == plan.id)
+        self.assertEqual((todo['model'], todo['title']), ('mi.plan', 'Approve or refuse the campaign'),
+                         'the approval activity opens the campaign: one review')
+        self.assertEqual(len([t for t in mine['todos'] if t['res_id'] == plan.id]), 1, 'one line per campaign')
+        # the owner's next step is an Odoo activity, done by itself when the step is done
+        self.assertFalse(plan.mi_activity_id, 'the owner only waits during the review')
 
     def test_menus_open_the_control_panel_and_todos(self):
         self.assertEqual(self.env.ref('marketing_intel.menu_root').action,
                          self.env.ref('marketing_intel_plan.action_control_panel'))
-        todos = self.env.ref('marketing_intel_plan.action_my_todos')
-        self.assertEqual(todos.tag, 'marketing_intel_plan.control_panel')
-        self.assertEqual(self.env.ref('marketing_intel_plan.menu_needs_me').action, todos)
+        self.assertFalse(self.env.ref('marketing_intel.menu_reporting', raise_if_not_found=False))
+        self.assertEqual(self.env.ref('marketing_intel_plan.menu_goals').parent_id,
+                         self.env.ref('marketing_intel_plan.menu_campaigns_root'))
         menus = self.env['ir.ui.menu'].with_user(self.user).load_menus(False)
         self.assertTrue(menus)
+
+    def test_spend_quarter_and_portfolio(self):
+        today = fields.Date.today()
+        self.brand.sudo().write({'monthly_budget': 1000, 'owner_type': 'client',
+                                 'partner_id': self.env['res.partner'].create({'name': 'Client Co'}).id,
+                                 'retainer_fee': 500})
+        Plan = self.env['mi.plan'].with_user(self.user)
+        first = Plan.create({'brand_id': self.brand.id, 'name': 'Open day', 'budget': 600,
+                             'date_start': today, 'date_end': today + timedelta(days=10),
+                             'channel_ids': [Command.set(self.channels.filtered(lambda c: c.code == 'email').ids)]})
+        second = Plan.create({'brand_id': self.brand.id, 'name': 'Follow-up', 'budget': 700,
+                              'date_start': today + timedelta(days=3), 'date_end': today + timedelta(days=12),
+                              'channel_ids': [Command.set(self.channels.filtered(lambda c: c.code == 'email').ids)]})
+        first.spend_ids = [Command.create({'name': 'Ads', 'amount': 650}), Command.create({'name': 'Print', 'amount': 500})]
+        self.assertEqual((first.spent, first.budget_left), (1150, -550))
+        # Target quarter: from the start date, changeable, filterable as this / next quarter.
+        today = fields.Date.context_today(first)
+        this_q = '%s-Q%s' % (today.year, (today.month - 1) // 3 + 1)
+        first.sudo().date_start = today
+        self.assertEqual(first.target_quarter, this_q)
+        nxt = today.year * 4 + (today.month - 1) // 3 + 1
+        second.sudo().write({'target_quarter': '%s-Q%s' % (nxt // 4, nxt % 4 + 1)})
+        Plan = self.env['mi.plan']
+        self.assertIn(first, Plan.search([('quarter_when', '=', 'this')]))
+        self.assertNotIn(second, Plan.search([('quarter_when', '=', 'this')]))
+        self.assertIn(second, Plan.search([('quarter_when', '=', 'next')]))
+        data = self.env['mi.panel'].with_user(self.user).get_portfolio('month')
+        row = next(r for g in data['groups'] for r in g['rows'] if r['id'] == self.brand.id)
+        self.assertEqual((row['budget'], row['planned'], row['spent']), (1000, 1300, 1150))
+        self.assertEqual(row['health'], 'off_track')
+        self.assertTrue(row['client'])
+        self.assertEqual(row['fee'], 500)
+        lane = next(l for l in data['timeline']['lanes'] if l['id'] == self.brand.id)
+        bars = {b['id']: b for b in lane['bars']}
+        self.assertTrue(bars[first.id]['clash'] and bars[second.id]['clash'], 'overlapping email campaigns clash')
+        self.assertNotEqual(bars[first.id]['row'], bars[second.id]['row'], 'overlapping bars get their own row')
+        quarter = self.env['mi.panel'].with_user(self.user).get_portfolio('quarter')
+        self.assertEqual(next(r for g in quarter['groups'] for r in g['rows'] if r['id'] == self.brand.id)['budget'],
+                         3000)

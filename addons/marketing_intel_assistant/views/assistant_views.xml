@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="assistant_form" model="ir.ui.view">
+    <field name="name">mi.assistant.request.form</field><field name="model">mi.assistant.request</field>
+    <field name="arch" type="xml"><form>
+      <header>
+        <button name="action_do" type="object" string="Do it" class="btn-primary" invisible="state != 'proposed'"/>
+        <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('proposed', 'thinking')"/>
+        <button name="action_ask_again" type="object" string="Ask again" invisible="state in ('new', 'proposed', 'thinking')"/>
+        <field name="state" widget="statusbar" statusbar_visible="proposed,done" invisible="state == 'new'"/>
+      </header>
+      <sheet>
+        <div class="alert alert-info" role="status" invisible="state != 'new'">
+          Tell me what to do with your campaigns or workflows. Examples:
+          <ul class="mb-0">
+            <li>create campaign "Black Friday" for metric.io with email and social from 20 Nov to 30 Nov, budget 500, let the AI write it</li>
+            <li>how is the open day campaign doing?</li>
+            <li>duplicate Clinic open day starting 1 Dec</li>
+            <li>send Clinic open day for review · pause workflow Comment INFO</li>
+          </ul>
+          I always show what I will do first; nothing changes until you click <b>Do it</b>, and campaigns and workflows
+          still go through their usual review.
+        </div>
+        <field name="instruction" nolabel="1" readonly="state != 'new'" class="fs-5"
+               placeholder="e.g. create campaign Black Friday for metric.io with email and social from 20 Nov to 30 Nov"/>
+        <div class="alert alert-warning" role="status" invisible="state != 'thinking'">
+          Your AI agent is reading it. This takes a moment; reload to see the proposal.
+        </div>
+        <div invisible="state != 'proposed'" class="mt-3">
+          <h5>I will</h5>
+          <field name="proposal" nolabel="1"/>
+          <div class="text-muted small">Nothing has changed yet. Click <b>Do it</b> to go ahead.</div>
+        </div>
+        <div invisible="state not in ('done', 'failed')" class="mt-3">
+          <h5 invisible="state != 'done'">Done</h5>
+          <h5 invisible="state != 'failed'" class="text-danger">Not done</h5>
+          <field name="result" nolabel="1"/>
+        </div>
+        <group invisible="state == 'new'" class="mt-3">
+          <group>
+            <field name="action" invisible="not action"/>
+            <field name="understood_by" invisible="not understood_by"/>
+          </group>
+          <group>
+            <field name="run_id" invisible="not run_id"/>
+            <field name="res_model" invisible="1"/>
+            <field name="res_id" invisible="1"/>
+          </group>
+        </group>
+      </sheet>
+    </form></field>
+  </record>
+  <record id="assistant_list" model="ir.ui.view">
+    <field name="name">mi.assistant.request.list</field><field name="model">mi.assistant.request</field>
+    <field name="arch" type="xml"><list>
+      <field name="create_date" string="When"/><field name="instruction"/><field name="action"/>
+      <field name="state" widget="badge" decoration-success="state == 'done'" decoration-warning="state == 'proposed'"
+             decoration-danger="state == 'failed'" decoration-info="state == 'thinking'"/>
+    </list></field>
+  </record>
+  <record id="action_assistant" model="ir.actions.act_window">
+    <field name="name">Assistant</field><field name="res_model">mi.assistant.request</field>
+    <field name="view_mode">list,form</field>
+    <field name="path">marketing-assistant</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Tell the assistant what to do</p>
+      <p>Create, change, copy, send for review or report on campaigns; pause or resume workflows. You confirm every
+        action, and the usual reviews still apply.</p></field>
+  </record>
+  <record id="action_assistant_new" model="ir.actions.act_window">
+    <field name="name">Ask the assistant</field><field name="res_model">mi.assistant.request</field>
+    <field name="view_mode">form</field><field name="target">current</field>
+  </record>
+  <menuitem id="menu_assistant" name="Assistant history" parent="marketing_intel.menu_setup" action="action_assistant" sequence="60"/>
+  <record id="assistant_search" model="ir.ui.view">
+    <field name="name">mi.assistant.request.search</field><field name="model">mi.assistant.request</field>
+    <field name="arch" type="xml"><search>
+      <field name="instruction"/>
+      <filter name="waiting" string="Waiting for you" domain="[('state', '=', 'proposed')]"/>
+      <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+      <filter name="failed" string="Not done" domain="[('state', '=', 'failed')]"/>
+      <separator/>
+      <filter name="created" string="Date" date="create_date"/>
+      <group><filter name="by_action" string="Action" context="{'group_by': 'action'}"/>
+        <filter name="by_state" string="Status" context="{'group_by': 'state'}"/></group>
+    </search></field>
+  </record>
+</odoo>

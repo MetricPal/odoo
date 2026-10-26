@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+  <!-- Workflows without WhatsApp/Telegram messages (email, SMS, splits, leads, lists, to-dos) are approved once
+       here; workflows that send messages use the sending channel's own approval type. -->
+  <record id="policy_flow" model="approval.center.policy">
+    <field name="name">Marketing workflow</field>
+    <field name="description">A marketing workflow, its texts, its split rule and its limits are approved once; then it runs on its own until it is changed.</field>
+    <field name="model_id" ref="model_mi_flow"/>
+    <field name="approval_minimum">1</field>
+  </record>
+</odoo>

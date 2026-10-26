@@ -264,6 +264,10 @@ class BrandTeam(models.Model):
                                        'market for someone else, as an advisor or agency.')
     partner_id = fields.Many2one('res.partner', string='Client contact',
                                  help='For advisors and agencies: the client this brand belongs to (internal for now).')
+    retainer_fee = fields.Monetary(currency_field='currency_id', string='Monthly fee',
+                                   help='For client brands: what the client pays you each month.')
+    contract_start = fields.Date(string='Contract from')
+    contract_end = fields.Date(string='Contract until')
     portfolio = fields.Char(compute='_compute_portfolio', store=True, string='Company or client',
                             help='How brand cards are grouped: the company for our brands, the client otherwise.')
     email_from = fields.Char(string='Email sender', help='e.g. "Brand <hello@brand.com>"; used for email drafts.')

@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+  <record id="policy_data_request" model="approval.center.policy">
+    <field name="name">Marketing data request</field>
+    <field name="description">A copy or erasure of a person's marketing data. Executed only after approval; the consent history is kept, anonymized, as proof.</field>
+    <field name="model_id" ref="model_mi_data_request"/>
+    <field name="action_name">action_execute</field>
+    <field name="approval_minimum">1</field>
+  </record>
+</odoo>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <template id="preferences_layout">
+    <html lang="en"><head>
+      <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <title>Your preferences</title>
+      <style>
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f6f7f9; color: #222; margin: 0; }
+        .box { max-width: 560px; margin: 40px auto; background: #fff; border-radius: 14px; padding: 28px 32px;
+               box-shadow: 0 6px 24px rgba(30,40,60,.08); }
+        h1 { font-size: 1.4rem; margin: 0 0 6px; } p.muted { color: #6b7080; margin-top: 0; }
+        fieldset { border: 0; padding: 0; margin: 18px 0; } legend { font-weight: 600; margin-bottom: 8px; }
+        label { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f1f4; }
+        input[type=checkbox] { width: 18px; height: 18px; }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+        button { border: 0; border-radius: 8px; padding: 10px 16px; font-size: 1rem; cursor: pointer; }
+        .primary { background: #714b67; color: #fff; } .secondary { background: #eef0f4; color: #333; }
+        .ok { background: #e3f4f1; color: #1e7268; padding: 10px 12px; border-radius: 8px; margin: 12px 0; }
+      </style>
+    </head><body><div class="box"><t t-out="0"/></div></body></html>
+  </template>
+  <template id="preferences_page">
+    <t t-call="marketing_intel_consent.preferences_layout">
+      <h1>Your preferences</h1>
+      <p class="muted">Choose how <t t-out="company.name"/> may contact you. You can change this at any time.</p>
+      <div t-if="saved" class="ok">Saved. Thank you.</div>
+      <form method="post">
+        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+        <fieldset><legend>Channels</legend>
+          <label t-foreach="channels" t-as="channel">
+            <input type="checkbox" t-att-name="'channel_%s' % channel[0]"
+                   t-att-checked="subject['%s_status' % channel[0]] == 'opted_in' or None"/>
+            <span t-out="channel[1]"/>
+          </label>
+        </fieldset>
+        <fieldset t-if="topics"><legend>Topics</legend>
+          <label t-foreach="topics" t-as="topic">
+            <input type="checkbox" t-att-name="'topic_%s' % topic.id" t-att-checked="topic in subject.topic_ids or None"/>
+            <span><t t-out="topic.name"/><br t-if="topic.description"/><small class="muted" t-out="topic.description"/></span>
+          </label>
+        </fieldset>
+        <div class="actions">
+          <button class="primary" type="submit">Save my choices</button>
+          <button class="secondary" type="submit" name="unsubscribe_all" value="1">Unsubscribe from everything</button>
+        </div>
+      </form>
+    </t>
+  </template>
+  <template id="preferences_missing">
+    <t t-call="marketing_intel_consent.preferences_layout">
+      <h1>Link not valid</h1>
+      <p class="muted">This preference link is no longer valid. Please contact us directly.</p>
+    </t>
+  </template>
+</odoo>

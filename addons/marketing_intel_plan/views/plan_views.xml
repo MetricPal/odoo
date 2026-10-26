@@ -76,6 +76,10 @@
           <group><label for="date_start" string="Dates" invisible="is_template"/>
             <div class="o_row" invisible="is_template"><field name="date_start"/> → <field name="date_end"/></div>
             <field name="budget"/><field name="currency_id" invisible="1"/>
+            <field name="spent" invisible="is_template or not spent"/>
+            <field name="budget_left" invisible="is_template or not spent"
+                   decoration-danger="budget_left &lt; 0"/>
+            <field name="target_quarter" invisible="is_template"/>
             <field name="recommendation_id" readonly="1" invisible="not recommendation_id"/>
             <field name="review_request_id" invisible="not review_request_id"/>
             <field name="repeat"/>
@@ -171,6 +175,16 @@
               (posts, published, likes, comments), Events (seats, registrations, attended). Leads, won deals and revenue
               come from CRM and Sales records tagged with the campaign. Updated every hour and on Refresh.</div>
           </page>
+          <page string="Spend" name="spend" invisible="is_template">
+            <field name="spend_ids">
+              <list editable="bottom">
+                <field name="date"/><field name="name"/><field name="partner_id"/>
+                <field name="amount" sum="Total"/><field name="currency_id" column_invisible="1"/>
+              </list>
+            </field>
+            <div class="text-muted small">Enter what you paid for this campaign (ads, printing, venue, fees). It is
+              compared with the budget here, on the brand and in the portfolio.</div>
+          </page>
           <page string="Message &amp; audience" name="message">
             <group><field name="message"/><field name="audience"/><field name="kpis"/></group>
           </page>
@@ -186,6 +200,7 @@
       <field name="brand_id"/><field name="goal_id" optional="hide"/>
       <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}" optional="show"/>
       <field name="date_start"/><field name="date_end" optional="hide"/>
+      <field name="target_quarter" optional="show"/>
       <field name="budget" sum="Total" optional="show"/><field name="currency_id" column_invisible="1"/>
       <field name="result_leads" sum="Total" optional="hide"/><field name="result_revenue" sum="Total" optional="hide"/>
       <field name="user_id" widget="many2one_avatar_user"/>
@@ -244,8 +259,14 @@
       <filter name="active_plans" string="Active" domain="[('state', 'in', ('brief', 'content', 'review', 'scheduled', 'live'))]"/>
       <filter name="mine" string="My campaigns" domain="[('user_id', '=', uid)]"/>
       <filter name="by_ai" string="Run by the AI assistant" domain="[('worker', '=', 'ai')]"/>
+      <separator/>
+      <filter name="last_quarter" string="Last quarter" domain="[('quarter_when', '=', 'last')]"/>
+      <filter name="this_quarter" string="This quarter" domain="[('quarter_when', '=', 'this')]"/>
+      <filter name="next_quarter" string="Next quarter" domain="[('quarter_when', '=', 'next')]"/>
+      <field name="target_quarter"/>
       <group><filter name="group_brand" string="Brand" context="{'group_by': 'brand_id'}"/>
-        <filter name="group_state" string="Status" context="{'group_by': 'state'}"/></group>
+        <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+        <filter name="group_quarter" string="Target quarter" context="{'group_by': 'target_quarter'}"/></group>
     </search></field>
   </record>
   <record id="action_plans" model="ir.actions.act_window">
@@ -279,15 +300,23 @@
     <field name="action" ref="action_control_panel"/>
   </record>
   <menuitem id="menu_control_panel" name="Control panel" parent="marketing_intel.menu_root" action="action_control_panel" sequence="1"/>
-  <record id="action_my_todos" model="ir.actions.client">
-    <field name="name">My to-dos</field><field name="tag">marketing_intel_plan.control_panel</field>
-    <field name="params" eval="{'mode': 'todos'}"/>
-    <field name="path">marketing-todos</field>
+  <record id="plan_template_list" model="ir.ui.view">
+    <field name="name">mi.plan.template.list</field><field name="model">mi.plan</field><field name="priority">30</field>
+    <field name="arch" type="xml"><list>
+      <field name="name" string="Template"/><field name="brand_id"/>
+      <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+      <field name="repeat" string="Repeats" widget="badge" invisible="repeat == 'none'" optional="show"/>
+      <field name="budget" optional="show"/><field name="currency_id" column_invisible="1"/>
+      <field name="template_source_id" optional="show"/>
+      <field name="template_use_count" optional="show"/>
+      <field name="user_id" widget="many2one_avatar_user" optional="show"/>
+      <field name="write_date" string="Last updated" optional="show"/>
+    </list></field>
   </record>
-  <menuitem id="menu_needs_me" name="My to-dos" parent="marketing_intel.menu_root" action="action_my_todos" sequence="5"/>
   <record id="action_templates" model="ir.actions.act_window">
     <field name="name">Campaign templates</field><field name="res_model">mi.plan</field>
     <field name="view_mode">list,form</field><field name="domain">[('is_template', '=', True)]</field>
+    <field name="view_id" ref="plan_template_list"/>
     <field name="context">{'default_is_template': True}</field>
     <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No template yet</p>
       <p>Open any campaign and click <b>Save as template</b>; then <b>Use this template</b> starts a new campaign
@@ -296,8 +325,11 @@
   <menuitem id="menu_campaigns_root" name="Campaigns" parent="marketing_intel.menu_root" sequence="10"/>
   <menuitem id="menu_plans" name="All campaigns" parent="menu_campaigns_root" action="action_plans" sequence="10"/>
   <menuitem id="menu_templates" name="Templates" parent="menu_campaigns_root" action="action_templates" sequence="20"/>
-  <menuitem id="menu_campaign_results" name="Campaign results" parent="marketing_intel.menu_reporting" action="action_campaign_results" sequence="10"/>
-  <menuitem id="menu_goals" name="Goals" parent="marketing_intel.menu_reporting" action="action_goals" sequence="20"/>
+  <record id="action_portfolio" model="ir.actions.client">
+    <field name="name">Portfolio</field><field name="tag">marketing_intel_plan.portfolio</field>
+    <field name="path">marketing-portfolio</field>
+  </record>
+  <menuitem id="menu_goals" name="Goals" parent="menu_campaigns_root" action="action_goals" sequence="30"/>
 
   <record id="recommendation_form_plan" model="ir.ui.view">
     <field name="name">mi.recommendation.form.plan</field><field name="model">mi.recommendation</field>

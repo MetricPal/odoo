@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+  <record id="topic_news" model="mi.consent.topic"><field name="name">News and updates</field><field name="sequence">10</field></record>
+  <record id="topic_offers" model="mi.consent.topic"><field name="name">Offers and promotions</field><field name="sequence">20</field></record>
+  <record id="topic_events" model="mi.consent.topic"><field name="name">Events and webinars</field><field name="sequence">30</field></record>
+</odoo>

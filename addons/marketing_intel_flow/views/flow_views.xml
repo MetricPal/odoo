@@ -10,6 +10,8 @@
         <button name="action_pause" type="object" string="Pause" invisible="state != 'active'"/>
         <button name="action_resume" type="object" string="Resume" class="btn-primary"
                 invisible="state != 'paused' or changed"/>
+        <button name="action_save_recipe" type="object" string="Save as recipe" groups="marketing_intel.group_mi_manager"
+                help="Keep this workflow as a recipe others can start from (saving again updates it). Social pages, sending channel, lists and limits are not kept."/>
         <field name="changed" invisible="1"/>
         <field name="state" widget="statusbar" statusbar_visible="draft,pending,active,paused"/>
       </header>
@@ -36,7 +38,8 @@
           <div class="text-muted"><field name="summary" nolabel="1"/></div>
         </div>
         <group><group><field name="brand_id" readonly="state in ('active', 'pending')"/>
-          <field name="user_id" widget="many2one_avatar_user"/></group><group/></group>
+          <field name="user_id" widget="many2one_avatar_user"/></group>
+          <group><field name="recipe_id" invisible="not recipe_id"/></group></group>
         <div class="row g-3 mt-1">
           <div class="col-lg-5">
             <div class="card border-primary h-100">
@@ -49,10 +52,14 @@
                   <field name="connection_ids" widget="many2many_tags"
                          invisible="trigger not in ('social_comment', 'social_message')"
                          placeholder="The brand's social pages"/>
+                  <field name="form_kind" invisible="trigger != 'form_submit'" required="trigger == 'form_submit'"/>
+                  <field name="mailing_list_id" invisible="trigger != 'form_submit' or form_kind != 'newsletter'"
+                         placeholder="Any list"/>
                   <field name="plan_id" required="trigger in ('event_registration', 'email_click', 'lead')"
-                         placeholder="Any post of these pages"/>
+                         invisible="trigger == 'form_submit' and form_kind == 'newsletter'"
+                         placeholder="Any post of these pages / any campaign"/>
                 </group>
-                <div class="text-muted small">Social platforms do not tell who <i>liked</i> a post, only how many:
+                <div class="text-muted small" invisible="trigger not in ('social_comment', 'social_message')">Social platforms do not tell who <i>liked</i> a post, only how many:
                   ask people to comment a keyword instead.</div>
               </div>
             </div>
@@ -62,21 +69,44 @@
               <div class="card-header bg-success-subtle fw-bold"><i class="oi me-1" data-icon="arrow_forward"/> Then</div>
               <div class="card-body">
                 <field name="step_ids" nolabel="1">
-                  <list editable="bottom">
+                  <list>
                     <field name="sequence" widget="handle"/>
-                    <field name="action" width="230px"/>
-                    <field name="message" placeholder="Hi {first_name}, ..." invisible="action != 'message'" class="o_mi_wrap"/>
-                    <field name="list_id" invisible="action != 'add_list'" width="140px"/>
-                    <field name="note" string="Note" invisible="action not in ('lead', 'todo')" width="160px"/>
+                    <field name="action" width="150px"/>
+                    <field name="path" width="80px" invisible="action == 'split'"/>
+                    <field name="details"/>
                   </list>
+                    <form>
+                      <group>
+                        <group><field name="action"/><field name="path" invisible="action == 'split'"/></group>
+                        <group><field name="sequence"/></group>
+                      </group>
+                      <group invisible="action != 'split'">
+                        <field name="split_by" widget="radio"/>
+                        <field name="split_question" invisible="split_by != 'ai'" placeholder="e.g. ready to buy, asks for a price or a demo"/>
+                        <field name="split_words" invisible="split_by != 'words'" placeholder="price, demo, call"/>
+                        <field name="split_score" invisible="split_by != 'score'"/>
+                      </group>
+                      <group invisible="action not in ('message', 'email', 'sms')">
+                        <field name="subject" invisible="action != 'email'" placeholder="e.g. Let's set up your demo, {first_name}"/>
+                        <field name="message" placeholder="Hi {first_name}, ..."/>
+                      </group>
+                      <group invisible="action != 'add_list'"><field name="list_id"/></group>
+                      <group invisible="action not in ('lead', 'todo')"><field name="note"/></group>
+                    </form>
                 </field>
+                <field name="has_split" invisible="1"/>
+                <group invisible="not has_split" string="Paths after the split">
+                  <field name="path_a_name"/>
+                  <field name="path_b_name"/>
+                </group>
                 <group>
                   <field name="channel_id" placeholder="The brand's Messaging channel"/>
                   <field name="once_per_person"/>
                   <field name="daily_cap"/>
                 </group>
-                <div class="text-muted small">Messages go only to known contacts with a current opt-in on that
-                  channel; everyone else is skipped with the reason in the run log.</div>
+                <div class="text-muted small">WhatsApp/Telegram messages go only to known contacts with a current
+                  opt-in; emails and SMS skip anyone who unsubscribed or opted out. Everyone skipped gets the reason in
+                  the run log. An AI split only sorts people into a path; it never writes or sends anything.</div>
               </div>
             </div>
           </div>
@@ -86,8 +116,9 @@
             <field name="run_ids" readonly="1">
               <list limit="20">
                 <field name="create_date" string="When"/><field name="person"/><field name="trigger_text"/>
+                <field name="path" optional="show"/>
                 <field name="state" widget="badge" decoration-success="state == 'done'" decoration-muted="state == 'skipped'"
-                       decoration-danger="state == 'failed'"/>
+                       decoration-danger="state == 'failed'" decoration-info="state == 'waiting'"/>
                 <field name="log"/>
               </list>
             </field>
@@ -103,7 +134,8 @@
   </record>
   <record id="flow_kanban" model="ir.ui.view">
     <field name="name">mi.flow.kanban</field><field name="model">mi.flow</field>
-    <field name="arch" type="xml"><kanban default_group_by="state" group_create="0" records_draggable="0" quick_create="0">
+    <field name="arch" type="xml"><kanban default_group_by="state" group_create="0" records_draggable="0" quick_create="0" create="0">
+      <header><button name="action_new_from_recipe" type="object" string="New" class="btn-primary" display="always"/></header>
       <templates><t t-name="card">
         <field name="name" class="fw-bold fs-5"/>
         <div class="text-muted small"><field name="brand_id"/></div>
@@ -118,7 +150,8 @@
   </record>
   <record id="flow_list" model="ir.ui.view">
     <field name="name">mi.flow.list</field><field name="model">mi.flow</field>
-    <field name="arch" type="xml"><list>
+    <field name="arch" type="xml"><list create="0">
+      <header><button name="action_new_from_recipe" type="object" string="New" class="btn-primary" display="always"/></header>
       <field name="name"/><field name="brand_id"/><field name="summary"/>
       <field name="runs_today"/><field name="sent_today"/><field name="failed_today"/>
       <field name="state" widget="badge" decoration-success="state == 'active'" decoration-warning="state == 'pending'"
@@ -128,13 +161,14 @@
   <record id="action_flows" model="ir.actions.act_window">
     <field name="name">Workflows</field><field name="res_model">mi.flow</field><field name="view_mode">kanban,list,form</field>
     <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Automate the repetitive part</p>
-      <p>Start from a <b>recipe</b> (Workflows › Recipes) or create one: <i>when</i> something happens (a comment, a
+      <p>Click <b>New</b> and pick a <b>recipe</b> (or start from scratch): <i>when</i> something happens (a comment, a
         private message, an event registration, an email click, a lead) <i>then</i> send a WhatsApp/Telegram message,
         add to a list, create a lead or a to-do. Approved once, then automatic.</p></field>
   </record>
   <record id="recipe_kanban" model="ir.ui.view">
     <field name="name">mi.flow.recipe.kanban</field><field name="model">mi.flow.recipe</field>
-    <field name="arch" type="xml"><kanban create="0" class="o_mi_recipes">
+    <field name="arch" type="xml"><kanban class="o_mi_recipes" quick_create="0">
+      <header><button name="action_blank" type="object" string="Start from scratch" display="always"/></header>
       <field name="icon"/>
       <templates><t t-name="card">
         <div class="d-flex gap-3">
@@ -148,8 +182,90 @@
       </t></templates>
     </kanban></field>
   </record>
+  <record id="recipe_list" model="ir.ui.view">
+    <field name="name">mi.flow.recipe.list</field><field name="model">mi.flow.recipe</field>
+    <field name="arch" type="xml"><list>
+      <field name="sequence" widget="handle"/>
+      <field name="name"/><field name="summary"/><field name="trigger" optional="hide"/>
+      <field name="source_flow_id" optional="show"/><field name="use_count" optional="show"/>
+      <button name="action_use" type="object" string="Use this recipe" class="btn-link"/>
+    </list></field>
+  </record>
+  <record id="recipe_form" model="ir.ui.view">
+    <field name="name">mi.flow.recipe.form</field><field name="model">mi.flow.recipe</field>
+    <field name="arch" type="xml"><form>
+      <header>
+        <button name="action_use" type="object" string="Use this recipe" class="btn-primary"
+                help="Creates a draft workflow from this recipe; set its pages and channel, then ask for approval."/>
+      </header>
+      <sheet>
+        <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+        <field name="active" invisible="1"/>
+        <div class="oe_title"><label for="name"/><h1><field name="name" placeholder="e.g. Comment INFO → WhatsApp link"/></h1>
+          <div class="text-muted"><field name="summary" nolabel="1"/></div></div>
+        <group>
+          <group><field name="trigger"/><field name="keyword" placeholder="e.g. INFO (leave empty for any)"
+                   invisible="trigger not in ('social_comment', 'social_message')"/>
+            <field name="form_kind" invisible="trigger != 'form_submit'"/>
+            <field name="path_a_name"/><field name="path_b_name"/></group>
+          <group><field name="icon"/><field name="source_flow_id" invisible="not source_flow_id"/>
+            <field name="use_count"/></group>
+        </group>
+        <field name="description" placeholder="What it is for (shown on the recipe card)"/>
+        <separator string="Then"/>
+        <field name="step_ids" nolabel="1">
+          <list>
+            <field name="sequence" widget="handle"/>
+            <field name="action" width="150px"/>
+            <field name="path" width="80px" invisible="action == 'split'"/>
+            <field name="details"/>
+          </list>
+            <form>
+              <group>
+                <group><field name="action"/><field name="path" invisible="action == 'split'"/></group>
+                <group><field name="sequence"/></group>
+              </group>
+              <group invisible="action != 'split'">
+                <field name="split_by" widget="radio"/>
+                <field name="split_question" invisible="split_by != 'ai'" placeholder="e.g. ready to buy, asks for a price or a demo"/>
+                <field name="split_words" invisible="split_by != 'words'" placeholder="price, demo, call"/>
+                <field name="split_score" invisible="split_by != 'score'"/>
+              </group>
+              <group invisible="action not in ('message', 'email', 'sms')">
+                <field name="subject" invisible="action != 'email'" placeholder="e.g. Let's set up your demo, {first_name}"/>
+                <field name="message" placeholder="Hi {first_name}, ..."/>
+              </group>
+              <group invisible="action not in ('lead', 'todo')"><field name="note"/></group>
+            </form>
+        </field>
+        <div class="text-muted small">Social pages, the sending channel, lists, campaign and limits are set on each
+          workflow made from the recipe, for its brand.</div>
+      </sheet>
+    </form></field>
+  </record>
+  <record id="recipe_use_form" model="ir.ui.view">
+    <field name="name">mi.flow.recipe.use.form</field><field name="model">mi.flow.recipe.use</field>
+    <field name="arch" type="xml"><form>
+      <group><field name="recipe_id"/><field name="brand_id" options="{'no_create': True}"/></group>
+      <footer>
+        <button name="action_create" type="object" string="Create the workflow" class="btn-primary"/>
+        <button special="cancel" string="Cancel"/>
+      </footer>
+    </form></field>
+  </record>
+  <record id="recipe_kanban_pick" model="ir.ui.view">
+    <field name="name">mi.flow.recipe.kanban.pick</field><field name="model">mi.flow.recipe</field>
+    <field name="inherit_id" ref="recipe_kanban"/><field name="mode">primary</field>
+    <field name="arch" type="xml"><kanban position="attributes"><attribute name="create">0</attribute></kanban></field>
+  </record>
+  <record id="action_recipe_pick" model="ir.actions.act_window">
+    <field name="name">New workflow: choose a recipe</field><field name="res_model">mi.flow.recipe</field>
+    <field name="view_mode">kanban</field><field name="view_id" ref="recipe_kanban_pick"/>
+  </record>
   <record id="action_recipes" model="ir.actions.act_window">
-    <field name="name">Workflow recipes</field><field name="res_model">mi.flow.recipe</field><field name="view_mode">kanban</field>
+    <field name="name">Workflow recipes</field><field name="res_model">mi.flow.recipe</field><field name="view_mode">kanban,list,form</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No recipe yet</p>
+      <p>A marketing manager opens a working workflow and clicks <b>Save as recipe</b>, or creates one here.</p></field>
   </record>
   <record id="run_list" model="ir.ui.view">
     <field name="name">mi.flow.run.list</field><field name="model">mi.flow.run</field>
@@ -177,4 +293,40 @@
   <menuitem id="menu_flows" name="Workflows" parent="menu_flows_root" action="action_flows" sequence="10"/>
   <menuitem id="menu_recipes" name="Recipes" parent="menu_flows_root" action="action_recipes" sequence="20"/>
   <menuitem id="menu_runs" name="History" parent="menu_flows_root" action="action_runs" sequence="30"/>
+  <record id="flow_search" model="ir.ui.view">
+    <field name="name">mi.flow.search</field><field name="model">mi.flow</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="brand_id"/><field name="keyword"/><field name="plan_id"/>
+      <filter name="mine" string="My workflows" domain="[('user_id', '=', uid)]"/>
+      <separator/>
+      <filter name="active" string="Running" domain="[('state', '=', 'active')]"/>
+      <filter name="pending" string="Waiting for approval" domain="[('state', '=', 'pending')]"/>
+      <filter name="paused" string="Paused" domain="[('state', '=', 'paused')]"/>
+      <group><filter name="by_brand" string="Brand" context="{'group_by': 'brand_id'}"/>
+        <filter name="by_state" string="Status" context="{'group_by': 'state'}"/>
+        <filter name="by_trigger" string="When" context="{'group_by': 'trigger'}"/></group>
+    </search></field>
+  </record>
+  <record id="run_search" model="ir.ui.view">
+    <field name="name">mi.flow.run.search</field><field name="model">mi.flow.run</field>
+    <field name="arch" type="xml"><search>
+      <field name="person"/><field name="flow_id"/><field name="brand_id"/><field name="partner_id"/>
+      <filter name="failed" string="Errors" domain="[('state', '=', 'failed')]"/>
+      <filter name="skipped" string="Skipped" domain="[('state', '=', 'skipped')]"/>
+      <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+      <separator/>
+      <filter name="created" string="Date" date="create_date"/>
+      <group><filter name="by_flow" string="Workflow" context="{'group_by': 'flow_id'}"/>
+        <filter name="by_state" string="Status" context="{'group_by': 'state'}"/>
+        <filter name="by_day" string="Day" context="{'group_by': 'create_date:day'}"/></group>
+    </search></field>
+  </record>
+  <record id="recipe_search" model="ir.ui.view">
+    <field name="name">mi.flow.recipe.search</field><field name="model">mi.flow.recipe</field>
+    <field name="arch" type="xml"><search>
+      <field name="name"/><field name="description"/>
+      <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+      <group><filter name="by_trigger" string="When" context="{'group_by': 'trigger'}"/></group>
+    </search></field>
+  </record>
 </odoo>

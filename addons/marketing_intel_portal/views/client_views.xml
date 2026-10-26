@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="brand_form_portal" model="ir.ui.view">
+    <field name="name">mi.brand.form.portal</field><field name="model">mi.brand</field>
+    <field name="inherit_id" ref="marketing_intel.brand_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//page[@name='settings']//separator[1]" position="before">
+        <separator string="Client portal"/>
+        <div class="text-muted mb-2">Client contacts see this brand at /my/marketing: campaigns, progress, results,
+          proofs and their requests (no budgets or internal notes). Give each one portal access from the contact
+          (Action › Grant portal access).</div>
+        <group>
+          <group>
+            <field name="portal_partner_ids" widget="many2many_tags" placeholder="Client contacts"/>
+          </group>
+          <group>
+            <field name="client_signoff"/>
+            <field name="client_proofs"/>
+          </group>
+        </group>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="plan_form_portal" model="ir.ui.view">
+    <field name="name">mi.plan.form.portal</field><field name="model">mi.plan</field>
+    <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//button[@name='action_submit_review']" position="before">
+        <field name="client_signoff" invisible="1"/>
+        <button name="action_ask_client" type="object" string="Ask the client" class="btn-primary"
+                invisible="is_template or not client_signoff or client_state in ('waiting', 'approved') or state not in ('brief', 'content')"
+                help="The client contacts sign off the campaign in their portal; then send it for review."/>
+      </xpath>
+      <xpath expr="//div[@name='button_box']" position="before">
+        <div class="alert alert-success mb-3" role="status" invisible="not client_signoff or client_state != 'approved' or is_template">
+          Signed off by the client (<field name="client_decided_by" nolabel="1" readonly="1"/>).
+          <field name="client_feedback" nolabel="1" invisible="not client_feedback"/>
+        </div>
+        <div class="alert alert-warning mb-3" role="status" invisible="not client_signoff or client_state != 'changes' or is_template">
+          <b>The client asked for changes:</b> <field name="client_feedback" nolabel="1"/>
+        </div>
+        <field name="client_state" invisible="1"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="proof_form_portal" model="ir.ui.view">
+    <field name="name">mi.proof.form.portal</field><field name="model">mi.proof</field>
+    <field name="inherit_id" ref="marketing_intel_work.proof_form"/>
+    <field name="arch" type="xml">
+      <field name="reviewer_id" position="after">
+        <field name="client_review" readonly="state in ('review', 'approved', 'old')"/>
+        <field name="client_decided_by" invisible="not client_decided_by"/>
+      </field>
+    </field>
+  </record>
+
+  <record id="request_form_portal" model="ir.ui.view">
+    <field name="name">mi.request.form.portal</field><field name="model">mi.request</field>
+    <field name="inherit_id" ref="marketing_intel_work.request_form"/>
+    <field name="arch" type="xml">
+      <field name="requested_by" position="after"><field name="from_portal" invisible="not from_portal"/></field>
+    </field>
+  </record>
+</odoo>
