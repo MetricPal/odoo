@@ -1,0 +1,7 @@
+.o_mi_campaign_strip {
+    .o_mi_strip_stage:hover { background-color: $o-gray-100; }
+    .o_mi_strip_tile { min-width: 130px; border-radius: $border-radius; }
+    .o_mi_tile_warning { background-color: #fdebd3; }
+    .o_mi_tile_primary { background-color: #e9e4f2; }
+    .o_mi_tile_info { background-color: #d8f0f4; }
+}

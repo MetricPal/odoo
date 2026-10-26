@@ -100,3 +100,11 @@ lessons, so its options build on what worked.
 Counts are aggregated with elevated rights (a plan owner sees totals even
 without CRM or Sales access); no individual records are shown.
 
+**Campaign list and form in Odoo's layout.** The campaign list has a summary strip above it, like Expenses and
+Sales: campaigns per stage with arrows (Brief & content › Waiting approval › Scheduled › Running › Done; counts
+ignore stage filters) and tiles for To do by you, Budget this quarter and Your activities; clicking one filters
+the list. Columns: Campaign, Brand, Stage, Owner, Budget (total), Target quarter, Ends, Activities. The form keeps
+its buttons and status bar in the header; smart buttons show Budget (and spend), Timeline, Channels and Approvals
+(approved / total); tabs are Overview, Market research, Design, Approvals, Campaign, Execution, Report. The gear
+menu has Print › Campaign report (PDF), Duplicate & edit and Save as template.
+

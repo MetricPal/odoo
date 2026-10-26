@@ -2,7 +2,7 @@
 <odoo>
   <record id="plan_form" model="ir.ui.view">
     <field name="name">mi.plan.form</field><field name="model">mi.plan</field>
-    <field name="arch" type="xml"><form>
+    <field name="arch" type="xml"><form duplicate="0">
       <header>
         <button name="action_prepare" type="object" string="Prepare drafts" class="btn-primary"
                 invisible="is_template or state not in ('brief', 'content') or worker != 'me'"
@@ -38,24 +38,31 @@
         </div>
         <div class="alert alert-warning" role="status" invisible="not clash_note"><field name="clash_note" nolabel="1"/></div>
         <div class="oe_button_box" name="button_box">
-          <button name="action_duplicate" type="object" class="oe_stat_button" icon="content_copy" invisible="is_template"
-                  help="A new campaign with the same channels and texts, ready to change.">
-            <div class="o_stat_info"><span class="o_stat_text">Duplicate</span><span class="o_stat_text">&amp; edit</span></div>
+          <button name="action_open_channels" type="object" class="oe_stat_button" icon="payments" invisible="is_template"
+                  help="Budget, and what was spent so far (Spend in Execution).">
+            <div class="o_stat_info"><span class="o_stat_value"><field name="budget" widget="monetary" nolabel="1"/></span>
+              <span class="o_stat_text"><field name="budget_label" nolabel="1"/></span></div>
           </button>
-          <button name="action_save_template" type="object" class="oe_stat_button" icon="bookmark"
-                  invisible="is_template or saved_template_id"
-                  help="Keep this campaign as a template to start new ones in one click.">
-            <div class="o_stat_info"><span class="o_stat_text">Save as</span><span class="o_stat_text">template</span></div>
+          <button name="action_open_channels" type="object" class="oe_stat_button" icon="calendar_today" invisible="is_template">
+            <div class="o_stat_info"><span class="o_stat_value"><field name="duration_days" nolabel="1"/> days</span>
+              <span class="o_stat_text"><field name="timeline_label" nolabel="1"/></span></div>
           </button>
-          <button name="action_save_template" type="object" class="oe_stat_button" icon="bookmark"
-                  invisible="is_template or not saved_template_id"
-                  help="This campaign already has a template: update it with the current channels and texts.">
-            <div class="o_stat_info"><span class="o_stat_text">Update</span><span class="o_stat_text">template</span></div>
+          <button name="action_open_channels" type="object" class="oe_stat_button" icon="campaign">
+            <div class="o_stat_info"><span class="o_stat_value"><field name="channel_count" nolabel="1"/> channels</span>
+              <span class="o_stat_text text-truncate" style="max-width: 160px;"><field name="channel_label" nolabel="1"/></span></div>
+          </button>
+          <button name="action_open_approvals" type="object" class="oe_stat_button" icon="checklist"
+                  invisible="is_template or not approval_count">
+            <div class="o_stat_info"><span class="o_stat_value"><field name="approval_done" nolabel="1"/> / <field name="approval_count" nolabel="1"/></span>
+              <span class="o_stat_text">Approvals</span></div>
           </button>
           <field name="saved_template_id" invisible="1"/>
         </div>
         <span class="badge text-bg-primary mb-2" invisible="not is_template">Template</span>
-        <div class="oe_title"><label for="name" string="Campaign"/><h1><field name="name" placeholder="e.g. Clinic owners webinar"/></h1></div>
+        <div class="oe_title"><label for="name" string="Campaign"/><h1><field name="name" placeholder="e.g. Clinic owners webinar"/></h1>
+          <field name="status" widget="badge" invisible="is_template" decoration-warning="status == 'review'"
+                 decoration-info="status in ('brief', 'content', 'scheduled')" decoration-success="status in ('live', 'done')"
+                 decoration-muted="status == 'cancelled'"/></div>
         <div class="d-flex flex-wrap align-items-center gap-4 mb-3" invisible="is_template or state == 'brief'">
           <div class="d-flex align-items-center gap-2">
             <span class="text-muted">Channels sent</span>
@@ -66,31 +73,34 @@
         </div>
         <group>
           <group>
+            <field name="user_id" widget="many2one_avatar_user"/>
             <field name="brand_id" readonly="state not in ('brief', 'content')"/>
-            <field name="goal_id" options="{'no_create': True}"/>
+            <field name="template_id" invisible="not template_id"/>
             <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}"
                    placeholder="e.g. Social, Email, SMS" readonly="state not in ('brief', 'content')"/>
             <field name="worker" widget="radio" options="{'horizontal': true}" readonly="state not in ('brief', 'content')"/>
-            <field name="user_id" widget="many2one_avatar_user"/>
           </group>
           <group><label for="date_start" string="Dates" invisible="is_template"/>
             <div class="o_row" invisible="is_template"><field name="date_start"/> → <field name="date_end"/></div>
+            <field name="target_quarter" invisible="is_template"/>
             <field name="budget"/><field name="currency_id" invisible="1"/>
             <field name="spent" invisible="is_template or not spent"/>
             <field name="budget_left" invisible="is_template or not spent"
                    decoration-danger="budget_left &lt; 0"/>
-            <field name="target_quarter" invisible="is_template"/>
-            <field name="recommendation_id" readonly="1" invisible="not recommendation_id"/>
-            <field name="review_request_id" invisible="not review_request_id"/>
             <field name="repeat"/>
             <field name="repeat_until" invisible="repeat == 'none'"/>
             <field name="next_run_date" invisible="not next_run_date"/>
             <field name="series_id" invisible="not series_id"/>
-            <field name="template_id" invisible="not template_id"/>
             <field name="template_source_id" invisible="not template_source_id"/>
-            <field name="utm_campaign_id" invisible="not utm_campaign_id"/></group>
+            <field name="utm_campaign_id" invisible="not utm_campaign_id" groups="base.group_no_one"/></group>
         </group>
         <notebook>
+          <page string="Overview" name="message">
+            <group>
+              <group string="Message &amp; audience"><field name="message"/><field name="audience"/></group>
+              <group string="Goal &amp; KPIs"><field name="goal_id" options="{'no_create': True}"/><field name="kpis"/></group>
+            </group>
+          </page>
           <page string="Saved texts" name="template_texts" invisible="not is_template">
             <field name="item_ids">
               <list editable="bottom" create="0">
@@ -101,7 +111,46 @@
             </field>
             <div class="text-muted small">Each new campaign from this template starts with these texts in its drafts.</div>
           </page>
-          <page string="Channels" name="channels" invisible="is_template">
+          <page string="Market research" name="research" invisible="is_template">
+            <div class="text-muted" invisible="recommendation_id">This campaign was not started from a suggested campaign.
+              Suggestions with their research live in Insights › Suggested campaigns.</div>
+            <group invisible="not recommendation_id">
+              <field name="recommendation_id" readonly="1"/>
+              <field name="research_problem"/>
+              <field name="research_expected"/>
+              <field name="research_risks"/>
+            </group>
+            <field name="research_findings" invisible="not recommendation_id" readonly="1">
+              <list><field name="display_name" string="Evidence"/></list>
+            </field>
+          </page>
+          <page string="Design" name="design" invisible="is_template">
+            <field name="item_ids">
+              <list editable="bottom" create="0" delete="0">
+                <field name="channel" readonly="1" width="140px"/>
+                <field name="content_subject" string="Subject / title"/>
+                <field name="content_text" string="Text" class="o_mi_wrap"/>
+                <field name="res_id" column_invisible="1"/>
+                <button name="action_open" type="object" string="Open the draft" icon="arrow_forward" invisible="not res_id"/>
+              </list>
+            </field>
+            <div class="text-muted small">The text each channel starts from. Once a draft exists, edit it in its app
+              (Open the draft); creatives and their versions are under Proofs.</div>
+          </page>
+          <page string="Approvals" name="review" invisible="is_template or state == 'brief'">
+            <group><field name="review_request_id" readonly="1"/></group>
+            <field name="item_ids" readonly="1">
+              <list create="0" delete="0">
+                <field name="channel"/><field name="preview" string="What goes out"/>
+                <field name="stage" widget="badge" decoration-success="stage in ('out', 'todo_done')"
+                       decoration-info="stage in ('scheduled', 'approved')" decoration-warning="stage in ('needs_review', 'writing')"
+                       decoration-danger="stage == 'failed'"/>
+                <field name="res_id" column_invisible="1"/>
+                <button name="action_open" type="object" string="Open" icon="arrow_forward" invisible="not res_id"/>
+              </list>
+            </field>
+          </page>
+          <page string="Campaign" name="channels" invisible="is_template">
             <field name="item_ids">
               <list editable="bottom" create="0">
                 <field name="channel" readonly="1" width="120px"/><field name="app" width="150px" optional="show"/>
@@ -121,19 +170,18 @@
               campaign: Email, SMS and Events go out only after it; Messaging and Social keep their own approval,
               decided from this screen. Every change is written in the history.</div>
           </page>
-          <page string="Review" name="review" invisible="is_template or state == 'brief'">
-            <field name="item_ids" readonly="1">
-              <list create="0" delete="0">
-                <field name="channel"/><field name="preview" string="What goes out"/>
-                <field name="stage" widget="badge" decoration-success="stage in ('out', 'todo_done')"
-                       decoration-info="stage in ('scheduled', 'approved')" decoration-warning="stage in ('needs_review', 'writing')"
-                       decoration-danger="stage == 'failed'"/>
-                <field name="res_id" column_invisible="1"/>
-                <button name="action_open" type="object" string="Open" icon="arrow_forward" invisible="not res_id"/>
+          <page string="Execution" name="spend" invisible="is_template">
+            <separator string="Spend"/>
+            <field name="spend_ids">
+              <list editable="bottom">
+                <field name="date"/><field name="name"/><field name="partner_id"/>
+                <field name="amount" sum="Total"/><field name="currency_id" column_invisible="1"/>
               </list>
             </field>
+            <div class="text-muted small">Enter what you paid for this campaign (ads, printing, venue, fees). It is
+              compared with the budget here, on the brand and in the portfolio.</div>
           </page>
-          <page string="Results" name="results" invisible="is_template">
+          <page string="Report" name="results" invisible="is_template">
             <field name="item_ids" readonly="1">
               <list create="0" delete="0">
                 <field name="channel"/>
@@ -175,19 +223,6 @@
               (posts, published, likes, comments), Events (seats, registrations, attended). Leads, won deals and revenue
               come from CRM and Sales records tagged with the campaign. Updated every hour and on Refresh.</div>
           </page>
-          <page string="Spend" name="spend" invisible="is_template">
-            <field name="spend_ids">
-              <list editable="bottom">
-                <field name="date"/><field name="name"/><field name="partner_id"/>
-                <field name="amount" sum="Total"/><field name="currency_id" column_invisible="1"/>
-              </list>
-            </field>
-            <div class="text-muted small">Enter what you paid for this campaign (ads, printing, venue, fees). It is
-              compared with the budget here, on the brand and in the portfolio.</div>
-          </page>
-          <page string="Message &amp; audience" name="message">
-            <group><field name="message"/><field name="audience"/><field name="kpis"/></group>
-          </page>
         </notebook>
       </sheet>
       <chatter/>
@@ -195,21 +230,25 @@
   </record>
   <record id="plan_list" model="ir.ui.view">
     <field name="name">mi.plan.list</field><field name="model">mi.plan</field>
-    <field name="arch" type="xml"><list>
-      <field name="name"/><field name="repeat" optional="show" string="Repeats" widget="badge" invisible="repeat == 'none'"/>
-      <field name="brand_id"/><field name="goal_id" optional="hide"/>
-      <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}" optional="show"/>
-      <field name="date_start"/><field name="date_end" optional="hide"/>
-      <field name="target_quarter" optional="show"/>
-      <field name="budget" sum="Total" optional="show"/><field name="currency_id" column_invisible="1"/>
-      <field name="result_leads" sum="Total" optional="hide"/><field name="result_revenue" sum="Total" optional="hide"/>
+    <field name="arch" type="xml"><list js_class="mi_campaign_list" sample="1">
+      <field name="name"/>
+      <field name="repeat" optional="hide" string="Repeats" widget="badge" invisible="repeat == 'none'"/>
+      <field name="brand_id"/>
+      <field name="status" string="Stage" widget="badge" decoration-warning="status == 'review'"
+             decoration-info="status in ('brief', 'content', 'scheduled')" decoration-success="status in ('live', 'done')"
+             decoration-muted="status == 'cancelled'"/>
       <field name="user_id" widget="many2one_avatar_user"/>
-      <field name="channels_out" widget="progressbar" options="{'max_value': 'channel_count'}" string="Channels sent" optional="show"/>
+      <field name="budget" sum="Total"/><field name="currency_id" column_invisible="1"/>
+      <field name="target_quarter" optional="show"/>
+      <field name="date_start" optional="hide"/>
+      <field name="date_end" string="Ends"/>
+      <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color'}" optional="hide"/>
+      <field name="channels_out" widget="progressbar" options="{'max_value': 'channel_count'}" string="Channels sent" optional="hide"/>
       <field name="channel_count" column_invisible="1"/>
-      <field name="next_step" optional="show" class="o_mi_wrap"/>
-      <field name="my_todo" optional="hide"/>
-      <field name="status" widget="badge" decoration-warning="status == 'review'" decoration-info="status == 'scheduled'"
-             decoration-success="status == 'live'" decoration-muted="status in ('done', 'cancelled')"/>
+      <field name="result_leads" sum="Total" optional="hide"/><field name="result_revenue" sum="Total" optional="hide"/>
+      <field name="next_step" optional="hide" class="o_mi_wrap"/>
+      <field name="goal_id" optional="hide"/>
+      <field name="activity_ids" widget="list_activity" optional="show"/>
     </list></field>
   </record>
   <record id="plan_kanban" model="ir.ui.view">
@@ -258,6 +297,13 @@
       <filter name="needs_me" string="Your action needed" domain="[('needs_me', '=', True)]"/>
       <filter name="active_plans" string="Active" domain="[('state', 'in', ('brief', 'content', 'review', 'scheduled', 'live'))]"/>
       <filter name="mine" string="My campaigns" domain="[('user_id', '=', uid)]"/>
+      <filter name="my_activities" string="My activities" domain="[('activity_user_id', '=', uid)]"/>
+      <separator/>
+      <filter name="stage_brief" string="Brief &amp; content" domain="[('state', 'in', ('brief', 'content'))]"/>
+      <filter name="stage_review" string="Waiting approval" domain="[('state', '=', 'review')]"/>
+      <filter name="stage_scheduled" string="Scheduled" domain="[('state', '=', 'scheduled')]"/>
+      <filter name="stage_live" string="Running" domain="[('state', '=', 'live')]"/>
+      <filter name="stage_done" string="Done" domain="[('state', '=', 'done')]"/>
       <filter name="by_ai" string="Run by the AI assistant" domain="[('worker', '=', 'ai')]"/>
       <separator/>
       <filter name="last_quarter" string="Last quarter" domain="[('quarter_when', '=', 'last')]"/>
@@ -300,6 +346,18 @@
     <field name="action" ref="action_control_panel"/>
   </record>
   <menuitem id="menu_control_panel" name="Control panel" parent="marketing_intel.menu_root" action="action_control_panel" sequence="1"/>
+  <record id="server_action_duplicate" model="ir.actions.server">
+    <field name="name">Duplicate &amp; edit</field>
+    <field name="model_id" ref="model_mi_plan"/><field name="binding_model_id" ref="model_mi_plan"/>
+    <field name="binding_view_types">form</field><field name="state">code</field>
+    <field name="code">action = records.action_duplicate()</field>
+  </record>
+  <record id="server_action_save_template" model="ir.actions.server">
+    <field name="name">Save as template</field>
+    <field name="model_id" ref="model_mi_plan"/><field name="binding_model_id" ref="model_mi_plan"/>
+    <field name="binding_view_types">form</field><field name="state">code</field>
+    <field name="code">action = records.action_save_template()</field>
+  </record>
   <record id="plan_template_list" model="ir.ui.view">
     <field name="name">mi.plan.template.list</field><field name="model">mi.plan</field><field name="priority">30</field>
     <field name="arch" type="xml"><list>

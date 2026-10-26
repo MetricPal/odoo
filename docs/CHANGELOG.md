@@ -12,6 +12,16 @@ Format:
 
 
 
+## 2026-10-26 — Marketing: campaign list and form in Odoo's layout
+
+- Change: campaign list with a summary strip (stages with arrows, tiles; js_class `mi_campaign_list`, data from
+  `mi.plan.get_campaign_dashboard`), Odoo columns incl. Activities; form with smart buttons (budget, timeline,
+  channels, approvals), tabs Overview · Market research · Design · Approvals · Campaign · Execution · Report, gear
+  actions Duplicate & edit / Save as template (server actions) and Print › Campaign report (QWeb PDF).
+- Reason: owner's proposed campaign page, built with Odoo components (like Sales and Expenses).
+- Affected: `marketing_intel_plan` (20.0.1.4.0).
+- Migration: upgrade `marketing_intel_plan`; reload the browser.
+
 ## 2026-10-25 — Marketing: branching workflows and one menu layout
 
 - Change: workflows get a "Someone submits a form" trigger (website contact form leads or newsletter sign-ups),

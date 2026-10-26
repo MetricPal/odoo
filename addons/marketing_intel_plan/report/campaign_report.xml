@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="action_report_campaign" model="ir.actions.report">
+    <field name="name">Campaign report (PDF)</field>
+    <field name="model">mi.plan</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">marketing_intel_plan.report_campaign</field>
+    <field name="print_report_name">'Campaign - %s' % object.name</field>
+    <field name="binding_model_id" ref="model_mi_plan"/>
+    <field name="binding_type">report</field>
+  </record>
+  <template id="report_campaign">
+    <t t-call="web.html_container">
+      <t t-foreach="docs" t-as="plan">
+        <t t-call="web.external_layout">
+          <div class="page">
+            <h2 t-out="plan.name"/>
+            <p class="text-muted">
+              <t t-out="plan.brand_id.name"/> · <t t-out="plan.user_id.name"/> ·
+              <span t-field="plan.date_start"/> → <span t-field="plan.date_end"/> ·
+              <span t-field="plan.status"/>
+            </p>
+            <table class="table table-sm o_main_table">
+              <tbody>
+                <tr><th>Budget</th><td><span t-field="plan.budget"/></td><th>Spent</th><td><span t-field="plan.spent"/></td></tr>
+                <tr><th>Target quarter</th><td><span t-field="plan.target_quarter"/></td><th>Channels</th><td t-out="plan.channel_label"/></tr>
+                <tr><th>Goal</th><td t-out="plan.goal_id.name or '-'"/><th>Approvals</th><td><t t-out="plan.approval_done"/> / <t t-out="plan.approval_count"/></td></tr>
+              </tbody>
+            </table>
+            <h4>Message and audience</h4>
+            <p style="white-space: pre-line" t-out="plan.message or '-'"/>
+            <p style="white-space: pre-line" class="text-muted" t-out="plan.audience or ''"/>
+            <h4>Channels and results</h4>
+            <table class="table table-sm o_main_table">
+              <thead><tr><th>Channel</th><th>Status</th><th class="text-end">Sent</th><th class="text-end">Opened</th>
+                <th class="text-end">Clicks</th><th class="text-end">Registrations</th></tr></thead>
+              <tbody>
+                <tr t-foreach="plan.item_ids" t-as="item">
+                  <td><span t-field="item.channel"/></td><td><span t-field="item.stage"/></td>
+                  <td class="text-end" t-out="item.result_sent"/><td class="text-end" t-out="item.result_opened"/>
+                  <td class="text-end" t-out="item.result_clicks"/><td class="text-end" t-out="item.result_registrations"/>
+                </tr>
+              </tbody>
+            </table>
+            <h4>Business results</h4>
+            <p>Leads: <t t-out="plan.result_leads"/> · Won deals: <t t-out="plan.result_won"/> ·
+              Revenue: <span t-field="plan.result_revenue"/></p>
+            <t t-if="plan.learning_note"><h4>What we learned</h4><p style="white-space: pre-line" t-out="plan.learning_note"/></t>
+          </div>
+        </t>
+      </t>
+    </t>
+  </template>
+</odoo>

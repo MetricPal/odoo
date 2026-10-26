@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="marketing_intel_plan.CampaignDashboard">
+        <div class="o_mi_campaign_strip d-none d-md-flex position-sticky start-0 border-bottom bg-view">
+            <div class="d-flex flex-grow-1 align-items-stretch">
+                <t t-foreach="this.state.data.stages" t-as="stage" t-key="stage.filter">
+                    <button type="button" class="o_mi_strip_stage btn btn-link flex-grow-1 d-flex flex-column p-3 text-center text-decoration-none"
+                            t-on-click="() => this.applyFilter(stage.filter)">
+                        <span class="h2 m-0 text-primary" t-out="stage.count"/>
+                        <b class="text-body" t-out="stage.label"/>
+                    </button>
+                    <div t-if="!stage_last" class="d-flex align-items-center px-1" aria-hidden="true">
+                        <i class="oi oi-3x" data-icon="keyboard_arrow_right"/>
+                    </div>
+                </t>
+            </div>
+            <div class="d-flex gap-2 align-items-center p-2 border-start">
+                <button t-foreach="this.state.data.tiles" t-as="tile" t-key="tile.filter" type="button"
+                        class="o_mi_strip_tile btn d-flex flex-column px-3 py-2 text-center"
+                        t-att-class="'o_mi_tile_' + tile.tone" t-on-click="() => this.applyFilter(tile.filter)">
+                    <span class="fs-4 fw-bold" t-out="tile.value"/>
+                    <span class="small" t-out="tile.label"/>
+                </button>
+            </div>
+        </div>
+    </t>
+    <t t-name="marketing_intel_plan.CampaignListRenderer" t-inherit="web.ListRenderer" t-inherit-mode="primary">
+        <xpath expr="//div[hasclass('o_list_renderer')]" position="before">
+            <CampaignDashboard/>
+        </xpath>
+    </t>
+</templates>
