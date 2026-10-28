@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <record id="route_paid_hod" model="mi.approval.route"><field name="proposal_type">paid</field><field name="sequence">10</field><field name="role">hod</field></record>
+  <record id="route_paid_finance" model="mi.approval.route"><field name="proposal_type">paid</field><field name="sequence">20</field><field name="role">finance</field><field name="skip_without_budget" eval="True"/></record>
+  <record id="route_paid_ceo" model="mi.approval.route"><field name="proposal_type">paid</field><field name="sequence">30</field><field name="role">ceo</field></record>
+  <record id="route_owned_hod" model="mi.approval.route"><field name="proposal_type">owned</field><field name="sequence">10</field><field name="role">hod</field></record>
+  <record id="route_earned_hod" model="mi.approval.route"><field name="proposal_type">earned</field><field name="sequence">10</field><field name="role">hod</field></record>
+  <record id="route_earned_ceo" model="mi.approval.route"><field name="proposal_type">earned</field><field name="sequence">20</field><field name="role">ceo</field></record>
+</odoo>

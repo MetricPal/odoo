@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Approved proposal (frozen version) -->
+  <record id="snapshot_form" model="ir.ui.view">
+    <field name="name">mi.plan.snapshot.form</field><field name="model">mi.plan.snapshot</field>
+    <field name="arch" type="xml"><form create="0" edit="0" delete="0">
+      <sheet>
+        <div class="oe_title"><h2><field name="name"/></h2></div>
+        <group><field name="plan_id" readonly="1"/></group>
+        <field name="body" readonly="1"/>
+      </sheet>
+    </form></field>
+  </record>
+
+  <!-- Refuse or request changes -->
+  <record id="decision_form" model="ir.ui.view">
+    <field name="name">mi.plan.decision.form</field><field name="model">mi.plan.decision</field>
+    <field name="arch" type="xml"><form>
+      <field name="plan_id" invisible="1"/><field name="decision" invisible="1"/>
+      <p invisible="decision != 'changes'">The proposal goes back to its owner with your comment; it is approved again from the first step once resubmitted.</p>
+      <p invisible="decision != 'refuse'">The proposal stops here. Its owner sees your comment.</p>
+      <field name="comment" placeholder="What has to change, or why it is refused" nolabel="1"/>
+      <footer>
+        <button name="action_confirm" type="object" string="Confirm" class="btn-primary"/>
+        <button special="cancel" string="Cancel"/>
+      </footer>
+    </form></field>
+  </record>
+
+  <!-- Configuration: approvers and routes -->
+  <record id="approver_list" model="ir.ui.view">
+    <field name="name">mi.approver.list</field><field name="model">mi.approver</field>
+    <field name="arch" type="xml"><list editable="bottom">
+      <field name="role"/><field name="user_id" widget="many2one_avatar_user"/>
+      <field name="company_id" groups="base.group_multi_company"/>
+    </list></field>
+  </record>
+  <record id="action_approvers" model="ir.actions.act_window">
+    <field name="name">Proposal approvers</field><field name="res_model">mi.approver</field>
+    <field name="view_mode">list</field>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Set who approves proposals</p>
+      <p>HOD is the owner's department manager (Employees); set an HOD here for owners without one. Finance and CEO
+        approve Paid proposals, the CEO also approves Earned ones.</p></field>
+  </record>
+  <record id="route_list" model="ir.ui.view">
+    <field name="name">mi.approval.route.list</field><field name="model">mi.approval.route</field>
+    <field name="arch" type="xml"><list editable="bottom">
+      <field name="proposal_type"/><field name="sequence" widget="handle"/><field name="role"/>
+      <field name="skip_without_budget"/>
+    </list></field>
+  </record>
+  <record id="action_routes" model="ir.actions.act_window">
+    <field name="name">Approval routes</field><field name="res_model">mi.approval.route</field>
+    <field name="view_mode">list</field><field name="context">{'group_by': 'proposal_type'}</field>
+  </record>
+  <menuitem id="menu_approvers" name="Proposal approvers" parent="marketing_intel.menu_setup" action="action_approvers"
+            sequence="50" groups="marketing_intel.group_mi_manager"/>
+  <menuitem id="menu_routes" name="Approval routes" parent="marketing_intel.menu_setup" action="action_routes"
+            sequence="51" groups="marketing_intel.group_mi_manager"/>
+
+  <!-- Spend of one campaign (link under the campaign name) -->
+  <record id="spend_list" model="ir.ui.view">
+    <field name="name">mi.plan.spend.list</field><field name="model">mi.plan.spend</field>
+    <field name="arch" type="xml"><list editable="bottom">
+      <field name="plan_id" column_invisible="context.get('default_plan_id')"/>
+      <field name="name" string="Description"/><field name="partner_id" string="Vendor"/>
+      <field name="date"/><field name="amount" sum="Total"/><field name="currency_id" column_invisible="1"/>
+    </list></field>
+  </record>
+  <record id="spend_pivot" model="ir.ui.view">
+    <field name="name">mi.plan.spend.pivot</field><field name="model">mi.plan.spend</field>
+    <field name="arch" type="xml"><pivot><field name="date" interval="month" type="row"/><field name="amount" type="measure"/></pivot></field>
+  </record>
+  <record id="spend_graph" model="ir.ui.view">
+    <field name="name">mi.plan.spend.graph</field><field name="model">mi.plan.spend</field>
+    <field name="arch" type="xml"><graph type="bar"><field name="date" interval="month"/><field name="amount" type="measure"/></graph></field>
+  </record>
+  <record id="spend_search" model="ir.ui.view">
+    <field name="name">mi.plan.spend.search</field><field name="model">mi.plan.spend</field>
+    <field name="arch" type="xml"><search>
+      <field name="plan_id"/><field name="name"/><field name="partner_id"/>
+      <group><filter name="group_plan" string="Campaign" context="{'group_by': 'plan_id'}"/>
+        <filter name="group_month" string="Month" context="{'group_by': 'date:month'}"/></group>
+    </search></field>
+  </record>
+</odoo>

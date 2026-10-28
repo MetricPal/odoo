@@ -42,7 +42,7 @@ class TestCampaignPage(TransactionCase):
         Plan = self.env['mi.plan'].with_user(self.user)
         data = Plan.get_campaign_dashboard([('brand_id', '=', self.brand.id), ('state', '=', 'done')])
         counts = {s['filter']: s['count'] for s in data['stages']}
-        self.assertEqual((counts['stage_brief'], counts['stage_done']), (1, 1))
+        self.assertEqual((counts['stage_research'], counts['stage_results']), (1, 1))
         tiles = {t['filter']: t for t in data['tiles']}
         self.assertEqual(tiles['my_activities']['value'], '1', 'the owner has the next-step activity')
         self.assertIn('145,000', tiles['this_quarter']['value'])

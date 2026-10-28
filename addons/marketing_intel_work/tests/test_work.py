@@ -12,6 +12,7 @@ class TestWork(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.env = cls.env(context=dict(cls.env.context, default_phase='planning', default_proposal_state='approved'))
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True, no_reset_password=True))
         groups = ['marketing_intel.group_mi_user'] + [g for g in APP_GROUPS if cls.env.ref(g, raise_if_not_found=False)]
         cls.marketer = new_test_user(cls.env, 'miw_marketer', groups=','.join(groups))

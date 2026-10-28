@@ -12,6 +12,15 @@ Format:
 
 
 
+## 2026-10-28 — Marketing: campaign lifecycle and proposal approvals as activities
+
+- Change: campaigns move through Market Research › Planning › Execution › Results › Evaluation (`mi.plan.phase`); status bar, list strip, badges, kanban columns, filters and the portal use these words.
+- Change: Proposal type (Paid, Owned, Earned) decides the approvals (`mi.approval.route`: Paid HOD › Finance › CEO, Owned HOD, Earned HOD › CEO; Finance skipped without budget). Each approval is a To-Do activity; done approves and opens the next (`mail.activity._action_done` hook); Refuse / Request changes ask for a comment (`mi.plan.decision`); Finance cannot request changes; the activity cannot be cancelled.
+- Change: approvers: HOD from the owner's department manager (hr), Finance / CEO / fallback HOD in Configuration › Proposal approvers (`mi.approver`); approvers need Marketing access.
+- Change: the approved proposal is frozen as a numbered version (`mi.plan.snapshot`); Send for review waits for the proposal approval; repeating runs start in Planning; the AI assistant stops after writing while in Market Research.
+- Change: form tabs Overview, Market Research, Execution (design and channels), Results, Evaluation; the Approvals and Spend tabs are gone; Tasks and Spend are links under the campaign name; Cancel campaign is in the gear menu.
+- Migration: existing campaigns get the stage of their state (brief → Market Research, content/review → Planning, scheduled/live → Execution, done → Results).
+
 ## 2026-10-26 — Marketing: links and buttons only for who may fix it
 
 - Change: the link to the approval type is shown only to approvals managers, the link to the brand's Channels & accounts only to marketing managers; everyone else reads whom to ask instead ("Nobody else can approve it: ask Ali, Siti to add another approver or allow self-approval").

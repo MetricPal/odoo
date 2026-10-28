@@ -61,7 +61,8 @@ class Plan(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
-        if {'state', 'user_id', 'worker', 'is_template', 'item_ids', 'channel_ids'} & set(vals):
+        if {'state', 'user_id', 'worker', 'is_template', 'item_ids', 'channel_ids', 'phase', 'proposal_state',
+                'proposal_type', 'evaluation_done'} & set(vals):
             self._sync_owner_activity()
         return result
 

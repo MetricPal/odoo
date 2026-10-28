@@ -4,27 +4,40 @@
     <field name="name">mi.plan.form</field><field name="model">mi.plan</field>
     <field name="arch" type="xml"><form duplicate="0">
       <header>
+        <button name="action_submit_proposal" type="object" string="Submit for approval" class="btn-primary"
+                invisible="is_template or phase != 'research' or proposal_state not in ('draft', 'changes') or state == 'cancelled'"
+                help="Sends the proposal through the approvals of its type, as To-Do activities for each approver."/>
+        <button name="action_approve_proposal" type="object" string="Approve" class="btn-success"
+                invisible="not can_decide"/>
+        <button name="action_decide_proposal" type="object" string="Request changes" context="{'decision': 'changes'}"
+                invisible="not can_request_changes"/>
+        <button name="action_decide_proposal" type="object" string="Refuse" context="{'decision': 'refuse'}"
+                invisible="not can_decide"/>
+        <button name="action_start_evaluation" type="object" string="Start evaluation" class="btn-primary"
+                invisible="is_template or phase != 'results'"/>
+        <button name="action_mark_evaluated" type="object" string="Mark done" class="btn-primary"
+                invisible="is_template or phase != 'evaluation' or evaluation_done"/>
         <button name="action_prepare" type="object" string="Prepare drafts" class="btn-primary"
-                invisible="is_template or state not in ('brief', 'content') or worker != 'me'"
+                invisible="is_template or state not in ('brief', 'content') or worker != 'me' or phase not in ('research', 'planning')"
                 help="Creates a draft in each app (Social, Messaging, Email, SMS, Events) for you to write."/>
         <button name="action_submit_review" type="object" string="Send for review" class="btn-primary"
-                invisible="is_template or state not in ('brief', 'content')"
+                invisible="is_template or state not in ('brief', 'content') or phase != 'planning'"
                 help="One review for the whole campaign. Nothing goes out before it is approved."/>
         <button name="action_approve_review" type="object" string="Approve campaign" class="btn-success"
                 invisible="is_template or not can_review" help="Approves every part of this campaign that waits for you."/>
         <button name="action_refuse_review" type="object" string="Refuse" invisible="is_template or not can_review"/>
         <button name="action_refresh_results" type="object" string="Refresh"
-                invisible="is_template or state in ('brief', 'cancelled')"/>
+                invisible="is_template or state == 'cancelled' or phase not in ('execution', 'results')"/>
         <button name="action_done" type="object" string="Mark done" invisible="is_template or state not in ('scheduled', 'live')"/>
-        <button name="action_cancel" type="object" string="Cancel campaign"
-                invisible="is_template or state in ('done', 'cancelled')"/>
         <button name="action_reset" type="object" string="Start again" invisible="is_template or state != 'cancelled'"/>
         <button name="action_use_template" type="object" string="Use this template" class="btn-primary"
                 invisible="not is_template"/>
         <field name="is_template" invisible="1"/>
         <field name="state" invisible="1"/><field name="can_review" invisible="1"/>
-        <field name="status" widget="statusbar" statusbar_visible="brief,content,review,scheduled,live,done"
-               invisible="is_template"/>
+        <field name="status" invisible="1"/>
+        <field name="can_decide" invisible="1"/><field name="can_request_changes" invisible="1"/>
+        <field name="proposal_state" invisible="1"/><field name="evaluation_done" invisible="1"/>
+        <field name="phase" widget="statusbar" invisible="is_template"/>
       </header>
       <sheet>
         <field name="needs_me" invisible="1"/>
@@ -51,18 +64,23 @@
             <div class="o_stat_info"><span class="o_stat_value"><field name="channel_count" nolabel="1"/> channels</span>
               <span class="o_stat_text text-truncate" style="max-width: 160px;"><field name="channel_label" nolabel="1"/></span></div>
           </button>
-          <button name="action_open_approvals" type="object" class="oe_stat_button" icon="checklist"
-                  invisible="is_template or not approval_count">
-            <div class="o_stat_info"><span class="o_stat_value"><field name="approval_done" nolabel="1"/> / <field name="approval_count" nolabel="1"/></span>
-              <span class="o_stat_text">Approvals</span></div>
-          </button>
           <field name="saved_template_id" invisible="1"/>
         </div>
         <span class="badge text-bg-primary mb-2" invisible="not is_template">Template</span>
         <div class="oe_title"><label for="name" string="Campaign"/><h1><field name="name" placeholder="e.g. Clinic owners webinar"/></h1>
-          <field name="status" widget="badge" invisible="is_template" decoration-warning="status == 'review'"
-                 decoration-info="status in ('brief', 'content', 'scheduled')" decoration-success="status in ('live', 'done')"
-                 decoration-muted="status == 'cancelled'"/></div>
+          <field name="phase_label" widget="badge" invisible="is_template"
+                 decoration-warning="phase == 'research' and proposal_state in ('approval', 'changes')"
+                 decoration-info="phase in ('research', 'planning') and proposal_state not in ('approval', 'changes')"
+                 decoration-success="phase in ('execution', 'results', 'evaluation')" decoration-muted="state == 'cancelled'"/>
+          <div class="d-flex flex-wrap align-items-center gap-2 mt-2 small" name="links" invisible="is_template">
+            <button name="action_open_spend" type="object" class="btn btn-link p-0 small">
+              <field name="spend_link" nolabel="1" class="d-inline"/> →
+            </button>
+          </div>
+          <div class="small text-muted mt-1" invisible="not snapshot_id">
+            Approved proposal: <field name="snapshot_id" nolabel="1" readonly="1" options="{'no_open': True}" class="d-inline"/> ·
+            <button name="action_view_snapshot" type="object" class="btn btn-link p-0 small">View approved version</button>
+          </div></div>
         <div class="d-flex flex-wrap align-items-center gap-4 mb-3" invisible="is_template or state == 'brief'">
           <div class="d-flex align-items-center gap-2">
             <span class="text-muted">Channels sent</span>
@@ -75,6 +93,12 @@
           <group>
             <field name="user_id" widget="many2one_avatar_user"/>
             <field name="brand_id" readonly="state not in ('brief', 'content')"/>
+            <label for="proposal_type" invisible="is_template"/>
+            <div class="d-flex flex-column" invisible="is_template">
+              <field name="proposal_type" widget="radio" options="{'horizontal': true}"
+                     readonly="phase != 'research' or proposal_state not in ('draft', 'changes')"/>
+              <span class="small text-muted" invisible="not approval_route">Approvals: <field name="approval_route" nolabel="1" class="d-inline"/></span>
+            </div>
             <field name="template_id" invisible="not template_id"/>
             <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}"
                    placeholder="e.g. Social, Email, SMS" readonly="state not in ('brief', 'content')"/>
@@ -84,9 +108,6 @@
             <div class="o_row" invisible="is_template"><field name="date_start"/> → <field name="date_end"/></div>
             <field name="target_quarter" invisible="is_template"/>
             <field name="budget"/><field name="currency_id" invisible="1"/>
-            <field name="spent" invisible="is_template or not spent"/>
-            <field name="budget_left" invisible="is_template or not spent"
-                   decoration-danger="budget_left &lt; 0"/>
             <field name="repeat"/>
             <field name="repeat_until" invisible="repeat == 'none'"/>
             <field name="next_run_date" invisible="not next_run_date"/>
@@ -111,7 +132,7 @@
             </field>
             <div class="text-muted small">Each new campaign from this template starts with these texts in its drafts.</div>
           </page>
-          <page string="Market research" name="research" invisible="is_template">
+          <page string="Market Research" name="research" invisible="is_template">
             <div class="text-muted" invisible="recommendation_id">This campaign was not started from a suggested campaign.
               Suggestions with their research live in Insights › Suggested campaigns.</div>
             <group invisible="not recommendation_id">
@@ -124,7 +145,8 @@
               <list><field name="display_name" string="Evidence"/></list>
             </field>
           </page>
-          <page string="Design" name="design" invisible="is_template">
+          <page string="Execution" name="channels" invisible="is_template">
+            <separator string="Design"/>
             <field name="item_ids">
               <list editable="bottom" create="0" delete="0">
                 <field name="channel" readonly="1" width="140px"/>
@@ -136,21 +158,7 @@
             </field>
             <div class="text-muted small">The text each channel starts from. Once a draft exists, edit it in its app
               (Open the draft); creatives and their versions are under Proofs.</div>
-          </page>
-          <page string="Approvals" name="review" invisible="is_template or state == 'brief'">
-            <group><field name="review_request_id" readonly="1"/></group>
-            <field name="item_ids" readonly="1">
-              <list create="0" delete="0">
-                <field name="channel"/><field name="preview" string="What goes out"/>
-                <field name="stage" widget="badge" decoration-success="stage in ('out', 'todo_done')"
-                       decoration-info="stage in ('scheduled', 'approved')" decoration-warning="stage in ('needs_review', 'writing')"
-                       decoration-danger="stage == 'failed'"/>
-                <field name="res_id" column_invisible="1"/>
-                <button name="action_open" type="object" string="Open" icon="arrow_forward" invisible="not res_id"/>
-              </list>
-            </field>
-          </page>
-          <page string="Campaign" name="channels" invisible="is_template">
+            <separator string="Channels"/>
             <field name="item_ids">
               <list editable="bottom" create="0">
                 <field name="channel" readonly="1" width="120px"/><field name="app" width="150px" optional="show"/>
@@ -170,18 +178,7 @@
               campaign: Email, SMS and Events go out only after it; Messaging and Social keep their own approval,
               decided from this screen. Every change is written in the history.</div>
           </page>
-          <page string="Execution" name="spend" invisible="is_template">
-            <separator string="Spend"/>
-            <field name="spend_ids">
-              <list editable="bottom">
-                <field name="date"/><field name="name"/><field name="partner_id"/>
-                <field name="amount" sum="Total"/><field name="currency_id" column_invisible="1"/>
-              </list>
-            </field>
-            <div class="text-muted small">Enter what you paid for this campaign (ads, printing, venue, fees). It is
-              compared with the budget here, on the brand and in the portfolio.</div>
-          </page>
-          <page string="Report" name="results" invisible="is_template">
+          <page string="Results" name="results" invisible="is_template">
             <field name="item_ids" readonly="1">
               <list create="0" delete="0">
                 <field name="channel"/>
@@ -216,12 +213,14 @@
                 <field name="progress" widget="progressbar"/>
               </list>
             </field>
-            <label for="learning_note" class="fw-bold mt-3"/>
-            <field name="learning_note" placeholder="What worked, what did not, what to try next. The next AI analysis reads this."/>
             <div class="text-muted small mt-2">Each channel's numbers come from its app: Email and SMS (audience, sent,
               delivered, opened, clicked, replies, bounced), Messaging (recipients, sent, clicks, not sent), Social
               (posts, published, likes, comments), Events (seats, registrations, attended). Leads, won deals and revenue
               come from CRM and Sales records tagged with the campaign. Updated every hour and on Refresh.</div>
+          </page>
+          <page string="Evaluation" name="evaluation" invisible="is_template or phase not in ('results', 'evaluation')">
+            <label for="learning_note" class="fw-bold"/>
+            <field name="learning_note" placeholder="What worked, what did not, what to try next. The next AI analysis reads this."/>
           </page>
         </notebook>
       </sheet>
@@ -234,9 +233,12 @@
       <field name="name"/>
       <field name="repeat" optional="hide" string="Repeats" widget="badge" invisible="repeat == 'none'"/>
       <field name="brand_id"/>
-      <field name="status" string="Stage" widget="badge" decoration-warning="status == 'review'"
-             decoration-info="status in ('brief', 'content', 'scheduled')" decoration-success="status in ('live', 'done')"
-             decoration-muted="status == 'cancelled'"/>
+      <field name="phase" column_invisible="1"/><field name="proposal_state" column_invisible="1"/><field name="state" column_invisible="1"/>
+      <field name="phase_label" string="Stage" widget="badge"
+             decoration-warning="phase == 'research' and proposal_state in ('approval', 'changes')"
+             decoration-info="phase in ('research', 'planning') and proposal_state not in ('approval', 'changes')"
+             decoration-success="phase in ('execution', 'results', 'evaluation')" decoration-muted="state == 'cancelled'"/>
+      <field name="proposal_type" optional="hide"/>
       <field name="user_id" widget="many2one_avatar_user"/>
       <field name="budget" sum="Total"/><field name="currency_id" column_invisible="1"/>
       <field name="target_quarter" optional="show"/>
@@ -253,7 +255,7 @@
   </record>
   <record id="plan_kanban" model="ir.ui.view">
     <field name="name">mi.plan.kanban</field><field name="model">mi.plan</field>
-    <field name="arch" type="xml"><kanban default_group_by="state" group_create="0" group_delete="0" group_edit="0"
+    <field name="arch" type="xml"><kanban default_group_by="phase" group_create="0" group_delete="0" group_edit="0"
                                           records_draggable="0" quick_create="0">
       <field name="needs_me"/><field name="worker"/>
       <templates><t t-name="card">
@@ -279,13 +281,13 @@
   <record id="plan_calendar" model="ir.ui.view">
     <field name="name">mi.plan.calendar</field><field name="model">mi.plan</field>
     <field name="arch" type="xml"><calendar date_start="date_start" date_stop="date_end" color="color" mode="month" quick_create="0" all_day="date_start">
-      <field name="name"/><field name="brand_id"/><field name="status"/>
+      <field name="name"/><field name="brand_id"/><field name="phase_label"/>
     </calendar></field>
   </record>
   <record id="plan_pivot" model="ir.ui.view">
     <field name="name">mi.plan.pivot</field><field name="model">mi.plan</field>
     <field name="arch" type="xml"><pivot string="Campaign results">
-      <field name="brand_id" type="row"/><field name="state" type="col"/>
+      <field name="brand_id" type="row"/><field name="phase" type="col"/>
       <field name="budget" type="measure"/><field name="result_leads" type="measure"/>
       <field name="result_won" type="measure"/><field name="result_revenue" type="measure"/>
     </pivot></field>
@@ -295,15 +297,19 @@
     <field name="arch" type="xml"><search>
       <field name="name"/><field name="brand_id"/>
       <filter name="needs_me" string="Your action needed" domain="[('needs_me', '=', True)]"/>
-      <filter name="active_plans" string="Active" domain="[('state', 'in', ('brief', 'content', 'review', 'scheduled', 'live'))]"/>
+      <filter name="active_plans" string="Active" domain="[('state', '!=', 'cancelled'), ('evaluation_done', '=', False)]"/>
       <filter name="mine" string="My campaigns" domain="[('user_id', '=', uid)]"/>
       <filter name="my_activities" string="My activities" domain="[('activity_user_id', '=', uid)]"/>
       <separator/>
-      <filter name="stage_brief" string="Brief &amp; content" domain="[('state', 'in', ('brief', 'content'))]"/>
-      <filter name="stage_review" string="Waiting approval" domain="[('state', '=', 'review')]"/>
-      <filter name="stage_scheduled" string="Scheduled" domain="[('state', '=', 'scheduled')]"/>
-      <filter name="stage_live" string="Running" domain="[('state', '=', 'live')]"/>
-      <filter name="stage_done" string="Done" domain="[('state', '=', 'done')]"/>
+      <filter name="stage_research" string="Market Research" domain="[('phase', '=', 'research'), ('state', '!=', 'cancelled')]"/>
+      <filter name="stage_planning" string="Planning" domain="[('phase', '=', 'planning'), ('state', '!=', 'cancelled')]"/>
+      <filter name="stage_execution" string="Execution" domain="[('phase', '=', 'execution'), ('state', '!=', 'cancelled')]"/>
+      <filter name="stage_results" string="Results" domain="[('phase', '=', 'results'), ('state', '!=', 'cancelled')]"/>
+      <filter name="stage_evaluation" string="Evaluation" domain="[('phase', '=', 'evaluation'), ('state', '!=', 'cancelled')]"/>
+      <separator/>
+      <filter name="paid" string="Paid" domain="[('proposal_type', '=', 'paid')]"/>
+      <filter name="owned" string="Owned" domain="[('proposal_type', '=', 'owned')]"/>
+      <filter name="earned" string="Earned" domain="[('proposal_type', '=', 'earned')]"/>
       <filter name="by_ai" string="Run by the AI assistant" domain="[('worker', '=', 'ai')]"/>
       <separator/>
       <filter name="last_quarter" string="Last quarter" domain="[('quarter_when', '=', 'last')]"/>
@@ -311,7 +317,8 @@
       <filter name="next_quarter" string="Next quarter" domain="[('quarter_when', '=', 'next')]"/>
       <field name="target_quarter"/>
       <group><filter name="group_brand" string="Brand" context="{'group_by': 'brand_id'}"/>
-        <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+        <filter name="group_state" string="Stage" context="{'group_by': 'phase'}"/>
+        <filter name="group_type" string="Proposal type" context="{'group_by': 'proposal_type'}"/>
         <filter name="group_quarter" string="Target quarter" context="{'group_by': 'target_quarter'}"/></group>
     </search></field>
   </record>
@@ -351,6 +358,12 @@
     <field name="model_id" ref="model_mi_plan"/><field name="binding_model_id" ref="model_mi_plan"/>
     <field name="binding_view_types">form</field><field name="state">code</field>
     <field name="code">action = records.action_duplicate()</field>
+  </record>
+  <record id="server_action_cancel" model="ir.actions.server">
+    <field name="name">Cancel campaign</field>
+    <field name="model_id" ref="model_mi_plan"/><field name="binding_model_id" ref="model_mi_plan"/>
+    <field name="binding_view_types">form</field><field name="state">code</field>
+    <field name="code">records.action_cancel()</field>
   </record>
   <record id="server_action_save_template" model="ir.actions.server">
     <field name="name">Save as template</field>
@@ -429,8 +442,7 @@
               <field name="channels_out" widget="progressbar" options="{'max_value': 'channel_count'}" string="Channels sent"/>
               <field name="channel_count" column_invisible="1"/>
               <field name="next_step" class="o_mi_wrap"/>
-              <field name="status" widget="badge" decoration-warning="status == 'review'" decoration-info="status == 'scheduled'"
-                     decoration-success="status == 'live'" decoration-muted="status in ('done', 'cancelled')"/>
+              <field name="phase_label" string="Stage" widget="badge"/>
             </list>
           </field>
         </page>

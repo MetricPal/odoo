@@ -8,17 +8,17 @@ from odoo.tools import format_date, formatLang
 
 from odoo.addons.marketing_intel.models.fixers import APPROVALS, BRANDS, can_fix
 
-# Stage groups of the summary strip, left to right: filter name in the search view, label, states.
-STRIP = [('stage_brief', 'Brief & content', ('brief', 'content')), ('stage_review', 'Waiting approval', ('review',)),
-         ('stage_scheduled', 'Scheduled', ('scheduled',)), ('stage_live', 'Running', ('live',)),
-         ('stage_done', 'Done', ('done',))]
+# Stages of the summary strip, left to right: filter name in the search view, label, phase.
+STRIP = [('stage_research', 'Market Research', 'research'), ('stage_planning', 'Planning', 'planning'),
+         ('stage_execution', 'Execution', 'execution'), ('stage_results', 'Results', 'results'),
+         ('stage_evaluation', 'Evaluation', 'evaluation')]
 
 
 def _without_state(domain):
     """The search domain with its conditions on the stage removed, so every stage of the strip keeps its count."""
     cleaned = []
     for leaf in domain or []:
-        if isinstance(leaf, (list, tuple)) and len(leaf) == 3 and leaf[0] in ('state', 'status'):
+        if isinstance(leaf, (list, tuple)) and len(leaf) == 3 and leaf[0] in ('state', 'status', 'phase'):
             cleaned.append((1, '=', 1))
         else:
             cleaned.append(leaf)
@@ -110,9 +110,8 @@ class Plan(models.Model):
     def get_campaign_dashboard(self, domain=None):
         """Counts per stage (ignoring stage filters, like Expenses) and three tiles, for the strip above the list."""
         base = [('is_template', '=', False)] + _without_state(domain or [])
-        counts = dict(self._read_group(base, ['state'], ['__count']))
-        stages = [{'filter': name, 'label': _(label), 'count': sum(counts.get(s, 0) for s in states)}
-                  for name, label, states in STRIP]
+        counts = dict(self._read_group(base + [('state', '!=', 'cancelled')], ['phase'], ['__count']))
+        stages = [{'filter': name, 'label': _(label), 'count': counts.get(phase, 0)} for name, label, phase in STRIP]
         quarter = self.search(base + [('quarter_when', '=', 'this'), ('state', '!=', 'cancelled')])
         currency = quarter[:1].currency_id or self.env.company.currency_id
         return {

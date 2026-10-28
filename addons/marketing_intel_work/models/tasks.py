@@ -36,6 +36,7 @@ class Plan(models.Model):
     task_open_count = fields.Integer(compute='_compute_tasks', string='Open tasks')
     task_late_count = fields.Integer(compute='_compute_tasks', string='Late tasks')
     task_label = fields.Char(compute='_compute_tasks', string='Task progress')
+    task_link = fields.Char(compute='_compute_tasks', string='Tasks ')
 
     def _compute_tasks(self):
         now = fields.Datetime.now()
@@ -48,6 +49,8 @@ class Plan(models.Model):
             plan.task_late_count = len(open_tasks.filtered(lambda t: t.date_deadline and t.date_deadline < now))
             done = plan.task_count - plan.task_open_count
             plan.task_label = _('%(done)s of %(total)s done', done=done, total=plan.task_count) if tasks else False
+            plan.task_link = _('Tasks: %(open)s open of %(total)s', open=plan.task_open_count, total=plan.task_count) \
+                if tasks else _('Tasks: plan them')
 
     def _ensure_project(self):
         self.ensure_one()

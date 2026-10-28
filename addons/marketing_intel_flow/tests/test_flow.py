@@ -16,6 +16,7 @@ class TestMarketingFlow(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.env = cls.env(context=dict(cls.env.context, default_phase='planning', default_proposal_state='approved'))
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True, no_reset_password=True))
         cls.env.company.country_id = cls.env.ref('base.my')
         groups = 'marketing_intel.group_mi_user,messaging_marketing.group_mm_user,omni_social.group_social_user'

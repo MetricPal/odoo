@@ -6,18 +6,6 @@
     <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
     <field name="arch" type="xml">
       <xpath expr="//div[@name='button_box']" position="inside">
-        <button name="action_open_tasks" type="object" class="oe_stat_button" icon="checklist"
-                help="The campaign's tasks in Project: owners, due dates, progress. Templates keep their task list.">
-          <div class="o_stat_info">
-            <span class="o_stat_value" invisible="not task_count"><field name="task_label" nolabel="1"/></span>
-            <span class="o_stat_value" invisible="task_count">Plan</span>
-            <span class="o_stat_text">Tasks</span>
-          </div>
-        </button>
-        <button name="action_open_tasks" type="object" class="oe_stat_button text-danger" icon="warning"
-                invisible="not task_late_count">
-          <field name="task_late_count" widget="statinfo" string="Late tasks"/>
-        </button>
         <button name="action_open_proofs" type="object" class="oe_stat_button" icon="edit" invisible="is_template"
                 help="Versions of creatives and texts: compare, approve or request changes.">
           <div class="o_stat_info">
@@ -26,7 +14,14 @@
             <span class="o_stat_text text-warning" invisible="not proof_open_count"><field name="proof_open_count" nolabel="1"/> open</span>
           </div>
         </button>
-        <field name="task_count" invisible="1"/>
+      </xpath>
+      <xpath expr="//div[@name='links']/button[@name='action_open_spend']" position="before">
+        <button name="action_open_tasks" type="object" class="btn btn-link p-0 small"
+                help="The campaign's tasks in Project: owners, due dates, progress.">
+          <field name="task_link" nolabel="1" class="d-inline"/> →
+        </button>
+        <span class="text-muted" invisible="not task_late_count">(<field name="task_late_count" nolabel="1" class="d-inline"/> late)</span>
+        <span class="text-muted">|</span>
       </xpath>
     </field>
   </record>

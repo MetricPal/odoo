@@ -67,8 +67,7 @@ class MarketingPortal(CustomerPortal):
     def _plan_rows(self, plans):
         rows = []
         for plan in plans:
-            rows.append({'plan': plan, 'status': dict(plan._fields['status']._description_selection(request.env))[
-                plan.status], 'progress': int(100 * plan.channels_out / plan.channel_count) if plan.channel_count else 0,
+            rows.append({'plan': plan, 'status': plan.phase_label, 'progress': int(100 * plan.channels_out / plan.channel_count) if plan.channel_count else 0,
                 'totals': self._totals(plan)})
         return rows
 

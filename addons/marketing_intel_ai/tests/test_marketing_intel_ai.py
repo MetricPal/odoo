@@ -32,6 +32,7 @@ class TestMarketingIntelAi(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.env = cls.env(context=dict(cls.env.context, default_phase='planning', default_proposal_state='approved'))
         env_patch = patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443',
                                               'AI_AGENT_SECRET_TEST': 'synthetic-not-a-live-key'})
         env_patch.start()
@@ -151,6 +152,7 @@ class TestCampaignAutopilot(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.env = cls.env(context=dict(cls.env.context, default_phase='planning', default_proposal_state='approved'))
         env_patch = patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443',
                                               'AI_AGENT_SECRET_TEST': 'synthetic-not-a-live-key'})
         env_patch.start()

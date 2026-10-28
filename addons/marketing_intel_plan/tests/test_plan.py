@@ -13,6 +13,8 @@ class TestCampaignPlan(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # these tests start after the proposal approval (Planning); see test_lifecycle for Market Research
+        cls.env = cls.env(context=dict(cls.env.context, default_phase='planning', default_proposal_state='approved'))
         groups = ['marketing_intel.group_mi_user'] + [g for g in APP_GROUPS if cls.env.ref(g, raise_if_not_found=False)]
         cls.user = new_test_user(cls.env, 'mip_user', groups=','.join(groups))
         cls.plain = new_test_user(cls.env, 'mip_plain', groups='marketing_intel.group_mi_user')

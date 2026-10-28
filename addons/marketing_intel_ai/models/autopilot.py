@@ -217,6 +217,10 @@ class Plan(models.Model):
                 item._ai_fill(content[key])
         self.sudo().ai_error = False
         self.message_post(body=_('The AI assistant wrote %s channel(s).', len(self.item_ids.filtered('res_id'))))
+        if self.phase == 'research':
+            self.message_post(body=_('Next: check the proposal and submit it for approval; the campaign review '
+                                     'follows in Planning.'))
+            return
         try:
             with self.env.cr.savepoint():
                 self.action_submit_review()

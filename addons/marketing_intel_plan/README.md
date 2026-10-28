@@ -1,5 +1,17 @@
 # Marketing: campaigns
 
+**Lifecycle.** A campaign moves through **Market Research › Planning › Execution › Results › Evaluation**, the
+same words in the status bar, the list strip, the badges and the filters. In Market Research the campaign is a
+proposal: choose the **Proposal type** and click *Submit for approval*. Paid goes HOD › Finance › CEO (Finance is
+skipped without a budget), Owned goes to the HOD, Earned goes HOD › CEO (Configuration › Approval routes). Each
+approval is a **To-Do activity** for the approver (summary, due date, assignee): marking it done approves it and
+creates the next one. HOD and CEO can also *Request changes* (the owner gets a To-Do; the proposal is resubmitted
+through the whole route) or *Refuse*; Finance approves or refuses. The HOD is the owner's department manager
+(Employees); Finance, CEO and a fallback HOD are set in Configuration › Proposal approvers. After the last approval
+the proposal is frozen as a numbered version (*View approved version*) and the campaign moves to Planning. The
+campaign review (Send for review) takes it to Execution; it moves to Results when it ends, and to Evaluation with
+*Start evaluation*. Under the campaign name, *Tasks* and *Spend* open the campaign's tasks and spend lines.
+
 **Control panel.** *Marketing* opens on one screen: key numbers with 8-week trends (messages sent, link
 clicks, leads, won revenue, budget this month, goals on track), a timeline of upcoming and recent events
 (sends, posts, events, reviews, campaign starts/ends, next runs of repeating campaigns, workflow runs; repeating
@@ -15,7 +27,7 @@ switches between your view and the role views; without a view of your own you ge
 manage marketing, advisor if you work on client brands, marketer otherwise).
 
 **Portfolio.** Marketing › Portfolio compares every brand for this month, quarter or year: budget,
-spend (entered on each campaign's *Spend* tab), planned budgets, leads, revenue, revenue per spend,
+spend (entered from each campaign's *Spend* link), planned budgets, leads, revenue, revenue per spend,
 campaigns, goals and a health badge with its reasons; grouped by company or client with totals. A
 timeline shows all campaigns on one axis (clashes outlined, next runs of repeating campaigns hatched).
 **Target quarter** on each campaign (e.g. "2026 Q4") is filled in from the start date and can be changed;
