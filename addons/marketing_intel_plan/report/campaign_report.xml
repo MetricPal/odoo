@@ -18,15 +18,17 @@
             <p class="text-muted">
               <t t-out="plan.brand_id.name"/> · <t t-out="plan.user_id.name"/> ·
               <span t-field="plan.date_start"/> → <span t-field="plan.date_end"/> ·
-              <span t-field="plan.status"/>
+              <t t-out="plan.phase_label"/>
             </p>
             <table class="table table-sm o_main_table">
               <tbody>
                 <tr><th>Budget</th><td><span t-field="plan.budget"/></td><th>Spent</th><td><span t-field="plan.spent"/></td></tr>
                 <tr><th>Target quarter</th><td><span t-field="plan.target_quarter"/></td><th>Channels</th><td t-out="plan.channel_label"/></tr>
-                <tr><th>Goal</th><td t-out="plan.goal_id.name or '-'"/><th>Approvals</th><td><t t-out="plan.approval_done"/> / <t t-out="plan.approval_count"/></td></tr>
+                <tr><th>Goal</th><td t-out="plan.goal_id.name or '-'"/><th>Proposal</th><td><span t-field="plan.proposal_type"/> · <t t-out="plan.snapshot_id.name or '-'"/></td></tr>
               </tbody>
             </table>
+            <div t-if="plan.takeaway" class="p-2 mb-3" style="background-color: #1f2d2b; color: #fff;">
+              <b>Takeaway.</b> <span style="white-space: pre-line" t-out="plan.takeaway"/></div>
             <h4>Message and audience</h4>
             <p style="white-space: pre-line" t-out="plan.message or '-'"/>
             <p style="white-space: pre-line" class="text-muted" t-out="plan.audience or ''"/>
@@ -45,6 +47,23 @@
             <h4>Business results</h4>
             <p>Leads: <t t-out="plan.result_leads"/> · Won deals: <t t-out="plan.result_won"/> ·
               Revenue: <span t-field="plan.result_revenue"/></p>
+            <p>Revenue / spend: <t t-out="'%.2f×' % (plan.result_revenue / plan.spent) if plan.spent else '-'"/> ·
+              Cost per lead: <t t-out="'%.0f' % (plan.spent / plan.result_leads) if plan.spent and plan.result_leads else '-'"/></p>
+            <t t-if="plan.objectives_met or plan.what_worked or plan.to_improve or plan.next_steps">
+              <h4>Evaluation</h4>
+              <table class="table table-sm">
+                <tr t-if="plan.objectives_met"><th>Objectives met?</th><td><span t-field="plan.objectives_met"/></td></tr>
+                <tr t-if="plan.effective"><th>Was it effective?</th><td style="white-space: pre-line" t-out="plan.effective"/></tr>
+                <tr t-if="plan.what_worked"><th>What worked</th><td style="white-space: pre-line" t-out="plan.what_worked"/></tr>
+                <tr t-if="plan.to_improve"><th>What to improve</th><td style="white-space: pre-line" t-out="plan.to_improve"/></tr>
+                <tr t-if="plan.next_steps"><th>What to do next</th><td style="white-space: pre-line" t-out="plan.next_steps"/></tr>
+                <tr t-if="plan.lost_reasons"><th>Top loss reasons</th><td t-out="plan.lost_reasons"/></tr>
+                <tr t-if="plan.objections"><th>Objections heard</th><td style="white-space: pre-line" t-out="plan.objections"/></tr>
+                <tr t-if="plan.buyer_language"><th>Words buyers use</th><td style="white-space: pre-line" t-out="plan.buyer_language"/></tr>
+              </table>
+            </t>
+            <t t-if="plan.advice_ids"><h4>Recommendations</h4>
+              <ul><li t-foreach="plan.advice_ids" t-as="advice"><t t-out="advice.name"/><t t-if="advice.target"> (<t t-out="advice.target"/>)</t></li></ul></t>
             <t t-if="plan.learning_note"><h4>What we learned</h4><p style="white-space: pre-line" t-out="plan.learning_note"/></t>
           </div>
         </t>

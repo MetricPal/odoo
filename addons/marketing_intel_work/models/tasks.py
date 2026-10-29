@@ -8,6 +8,8 @@ from datetime import datetime, time, timedelta
 
 from odoo import _, api, fields, models
 
+from odoo.addons.marketing_intel_plan.models.pillars import PILLARS
+
 
 class Project(models.Model):
     _inherit = 'project.project'
@@ -21,6 +23,8 @@ class Task(models.Model):
 
     mi_plan_id = fields.Many2one(related='project_id.mi_plan_id', store=True, string='Marketing campaign',
                                  index='btree_not_null')
+    mi_pillar = fields.Selection(PILLARS, string='Pillar', index=True,
+                                 help='The campaign pillar this task works for (Awareness, Consideration, Conversion).')
     mi_days_before = fields.Integer(string='Due (days before start)', help='Used when the task is copied to a new '
                                     'campaign: the deadline is this many days before the campaign start (negative: '
                                     'after the start).')
@@ -67,9 +71,12 @@ class Plan(models.Model):
         self.ensure_one()
         self.check_access('read')
         project = self._ensure_project()
+        gantt = self.env.ref('marketing_intel_work.task_gantt_campaign')
         return {
             'type': 'ir.actions.act_window', 'name': _('Tasks · %s', self.name), 'res_model': 'project.task',
-            'view_mode': 'list,kanban,form', 'views': [(False, 'list'), (False, 'kanban'), (False, 'form')],
+            'view_mode': 'gantt,kanban,list,calendar,activity,form',
+            'views': [(gantt.id, 'gantt'), (False, 'kanban'), (False, 'list'), (False, 'calendar'), (False, 'activity'),
+                      (False, 'form')],
             'domain': [('project_id', '=', project.id)],
             'context': {'default_project_id': project.id, 'default_user_ids': [(6, 0, [self.env.uid])],
                         'mi_template': self.is_template},
@@ -120,7 +127,8 @@ class Plan(models.Model):
             offset = source._task_offset(task)
             values = {'name': task.name, 'project_id': project.id, 'description': task.description,
                       'allocated_hours': task.allocated_hours, 'stage_id': todo.id,
-                      'mi_days_before': offset or 0, 'user_ids': [(6, 0, task.user_ids.ids)]}
+                      'mi_days_before': offset or 0, 'user_ids': [(6, 0, task.user_ids.ids)],
+                      'mi_pillar': task.mi_pillar}
             if offset is not None and not self.is_template:
                 values['date_deadline'] = datetime.combine(self.date_start - timedelta(days=offset), time(12, 0))
             self.env['project.task'].sudo().create(values)

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="marketing_intel_plan.CampaignOverview">
+        <div class="o_mi_overview mb-4">
+            <div t-if="!this.state.data" class="text-muted">Save the campaign to see its funnel, timeline and budget.</div>
+            <t t-else="">
+                <div class="o_mi_ft border-bottom pb-3 mb-3">
+                    <div class="fw-bold text-uppercase small">Campaign funnel</div>
+                    <div class="fw-bold text-uppercase small">Pillar timeline</div>
+                    <div/>
+                    <div class="o_mi_ticks">
+                        <span t-foreach="this.state.data.ticks" t-as="tick" t-key="tick_index" class="small text-muted"
+                              t-att-style="'left: ' + tick.left + '%'" t-out="tick.label"/>
+                    </div>
+                    <t t-foreach="this.state.data.pillars" t-as="pillar" t-key="pillar.id">
+                        <div class="o_mi_funnel_cell">
+                            <button type="button" class="o_mi_funnel_bar btn text-white fw-bold"
+                                    t-att-style="'width: ' + this.funnelWidth(pillar_index) + '%; background-color: ' + pillar.color"
+                                    t-att-title="pillar.objective" t-on-click="() => this.openPillar(pillar)">
+                                <t t-out="pillar.label"/>
+                                <span t-if="pillar.budget" class="fw-normal small ms-1">· <t t-out="pillar.budget"/></span>
+                            </button>
+                        </div>
+                        <div class="o_mi_track">
+                            <button type="button" class="o_mi_track_bar btn text-white small text-start"
+                                    t-att-style="'left: ' + pillar.left + '%; width: ' + pillar.width + '%; background-color: ' + pillar.color"
+                                    t-on-click="() => this.openPillar(pillar)">
+                                <t t-out="pillar.label"/> · <t t-out="pillar.dates"/>
+                            </button>
+                            <div t-if="this.state.data.today !== null" class="o_mi_today" t-att-style="'left: ' + this.state.data.today + '%'"/>
+                        </div>
+                    </t>
+                    <div class="small text-muted">Click a pillar to change its dates, budget or objective.</div>
+                    <div class="small text-warning-emphasis" t-if="this.state.data.today !== null">┆ today <t t-out="this.state.data.today_label"/></div>
+                </div>
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <span class="fw-bold text-uppercase small">Budget: target and actual</span>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Period">
+                        <t t-foreach="[['month', 'Month'], ['quarter', 'Quarter'], ['year', 'Year']]" t-as="p" t-key="p[0]">
+                            <button type="button" class="btn" t-att-class="this.state.period === p[0] ? 'btn-secondary active' : 'btn-light'"
+                                    t-on-click="() => this.setPeriod(p[0])" t-out="p[1]"/>
+                        </t>
+                    </div>
+                    <span class="flex-grow-1"/>
+                    <span class="small"><span class="o_mi_swatch o_mi_target"/> Target</span>
+                    <span class="small"><span class="o_mi_swatch o_mi_actual"/> Actual (spend)</span>
+                </div>
+                <div t-if="!this.state.data.budget.rows.length" class="text-muted small">No budget or spend yet.</div>
+                <div t-else="" class="o_mi_columns">
+                    <div t-foreach="this.state.data.budget.rows" t-as="row" t-key="row.label" class="o_mi_column">
+                        <div class="o_mi_pair">
+                            <div class="o_mi_bar o_mi_target" t-att-style="'height: ' + row.target_pct + '%'" t-att-title="'Target ' + row.target_label"/>
+                            <div class="o_mi_bar o_mi_actual" t-att-style="'height: ' + row.actual_pct + '%'" t-att-title="'Actual ' + row.actual_label"/>
+                        </div>
+                        <div class="small fw-bold" t-out="row.label"/>
+                        <div class="small text-muted">Target <t t-out="row.target_label"/></div>
+                        <div class="small">Spent <t t-out="row.actual_label"/></div>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

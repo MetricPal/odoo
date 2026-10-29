@@ -9,7 +9,7 @@
                    'request changes; an approved proof fills the channel draft, and a campaign is not sent for review '
                    'while a proof is still open. A workload report shows each person\'s tasks, campaigns and reviews.',
     'author': 'metric.io',
-    'depends': ['marketing_intel_plan', 'project'],
+    'depends': ['marketing_intel_plan', 'project', 'project_gantt_view'],
     'data': [
         'security/security.xml',
         'security/ir.access.csv',

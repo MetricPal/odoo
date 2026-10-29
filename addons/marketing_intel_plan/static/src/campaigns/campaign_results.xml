@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="marketing_intel_plan.CampaignResults">
+        <div class="o_mi_results mb-3">
+            <div t-if="!this.state.data" class="text-muted">Save the campaign to see its results.</div>
+            <t t-else="">
+                <t t-set="d" t-value="this.state.data"/>
+                <div class="o_mi_headline border-bottom pb-3 mb-3">
+                    <div>
+                        <div class="small text-muted">Sales revenue</div>
+                        <div class="o_mi_big text-success-emphasis" t-out="d.headline.revenue"/>
+                        <div class="small" t-if="d.headline.revenue_delta !== null">
+                            <t t-out="(d.headline.revenue_delta >= 0 ? '+' : '') + d.headline.revenue_delta"/>% vs <t t-out="d.headline.compare_name"/>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="small text-muted">Revenue / spend</div>
+                        <div class="o_mi_big" t-out="d.headline.per_spend || '—'"/>
+                        <div class="small text-muted"><t t-out="d.headline.spend"/> spent</div>
+                    </div>
+                    <div>
+                        <div class="small text-muted">Leads generated</div>
+                        <div class="o_mi_big" t-out="d.headline.leads"/>
+                        <div t-if="d.headline.leads_pct !== null" class="o_mi_meter"><div t-att-style="'width: ' + d.headline.leads_bar + '%'"/></div>
+                        <div class="small" t-if="d.headline.leads_pct !== null"><t t-out="d.headline.leads_pct"/>% of <t t-out="d.headline.leads_target"/> target</div>
+                    </div>
+                    <div>
+                        <div class="small text-muted">Won deals</div>
+                        <div class="o_mi_big" t-out="d.headline.won"/>
+                        <div t-if="d.headline.won_pct !== null" class="o_mi_meter o_mi_meter_warm"><div t-att-style="'width: ' + d.headline.won_bar + '%'"/></div>
+                        <div class="small" t-if="d.headline.won_pct !== null"><t t-out="d.headline.won_pct"/>% of <t t-out="d.headline.won_target"/> target</div>
+                    </div>
+                </div>
+
+                <div t-if="d.channels.length" class="mb-4">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="fw-bold text-uppercase small">Where the results came from</span>
+                        <span class="flex-grow-1"/>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Measure">
+                            <t t-foreach="[['revenue', 'Revenue'], ['leads', 'Leads'], ['won', 'Wins']]" t-as="m" t-key="m[0]">
+                                <button type="button" class="btn" t-att-class="this.state.metric === m[0] ? 'btn-secondary active' : 'btn-light'"
+                                        t-on-click="() => this.setMetric(m[0])" t-out="m[1]"/>
+                            </t>
+                        </div>
+                    </div>
+                    <div class="o_mi_contrib">
+                        <div>
+                            <div class="o_mi_contrib_row small text-muted border-bottom pb-1">
+                                <span>Channel (UTM source)</span><span/><span>Cost / lead</span><span>Rev / spend</span>
+                            </div>
+                            <div t-foreach="d.channels" t-as="row" t-key="row.id" class="o_mi_contrib_row">
+                                <span><t t-out="row.label"/><span t-if="row.source" class="small text-muted d-block" t-out="row.source"/></span>
+                                <div class="o_mi_track_soft">
+                                    <div class="o_mi_fill" t-att-style="'width: ' + row[this.state.metric + '_pct'] + '%'" t-out="this.barLabel(row)"/>
+                                </div>
+                                <span t-out="row.cost_per_lead || '—'"/>
+                                <span t-out="row.per_spend || '—'"/>
+                            </div>
+                        </div>
+                        <div t-if="d.best" class="o_mi_spotlight">
+                            <div class="small fw-bold text-uppercase text-success-emphasis">Best return</div>
+                            <div class="o_mi_huge text-success-emphasis" t-out="d.best.per_spend"/>
+                            <div class="fw-bold"><t t-out="d.best.label"/> revenue / spend</div>
+                            <div class="small text-muted"><t t-out="d.best.revenue_label"/> revenue from <t t-out="d.best.leads"/> leads.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="o_mi_two mb-4">
+                    <div t-if="d.quality">
+                        <div class="fw-bold text-uppercase small mb-2">Lead quality &amp; sales</div>
+                        <div class="d-flex gap-4 align-items-center">
+                            <svg width="180" height="180" viewBox="0 0 200 200" role="img" aria-label="Lead quality">
+                                <t t-foreach="d.quality.segments" t-as="seg" t-key="seg.key">
+                                    <path t-if="seg.path" t-att-d="seg.path" t-att-fill="seg.color" stroke="#fff" stroke-width="2"/>
+                                </t>
+                                <text x="100" y="98" text-anchor="middle" font-size="24" font-weight="600" t-out="d.quality.total"/>
+                                <text x="100" y="118" text-anchor="middle" font-size="12" fill="#6c757d">leads</text>
+                            </svg>
+                            <div class="flex-grow-1 d-flex flex-column gap-1">
+                                <div t-foreach="d.quality.segments" t-as="seg" t-key="seg.key" class="d-flex align-items-center gap-2">
+                                    <span class="o_mi_swatch" t-att-style="'background-color: ' + seg.color"/>
+                                    <span class="flex-grow-1" t-out="seg.label"/><b t-out="seg.value"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div t-if="d.pipeline">
+                        <div class="fw-bold text-uppercase small mb-1">Revenue still in play (CRM pipeline)</div>
+                        <div class="mb-2"><span class="o_mi_big" t-out="d.pipeline.total"/> <span class="text-muted small">open, <t t-out="d.pipeline.count"/> opportunities</span></div>
+                        <div t-foreach="d.pipeline.rows" t-as="row" t-key="row_index" class="o_mi_funnel_row">
+                            <div class="o_mi_funnel_step" t-att-style="'width: ' + row.width + '%; background-color: ' + row.color">
+                                <b t-out="row.label"/><span class="ms-1">· <t t-out="row.reached"/></span>
+                            </div>
+                            <span class="small" t-out="row.value"/>
+                        </div>
+                    </div>
+                </div>
+
+                <div t-if="d.compare" class="mb-4">
+                    <div class="fw-bold text-uppercase small mb-2">Compared with <t t-out="d.compare.name"/></div>
+                    <div class="d-flex gap-4 align-items-center flex-wrap">
+                        <svg width="150" height="150" viewBox="0 0 200 200" role="img" aria-label="Leads compared">
+                            <path t-if="d.compare.pie[0]" t-att-d="d.compare.pie[0]" fill="#71639e" stroke="#fff" stroke-width="2"/>
+                            <path t-if="d.compare.pie[1]" t-att-d="d.compare.pie[1]" fill="#cfc7e3" stroke="#fff" stroke-width="2"/>
+                        </svg>
+                        <div class="d-flex flex-column gap-1">
+                            <div class="d-flex gap-2 align-items-center"><span class="o_mi_swatch" style="background-color: #71639e"/>This campaign: <b t-out="d.compare.mine_leads"/> leads</div>
+                            <div class="d-flex gap-2 align-items-center"><span class="o_mi_swatch" style="background-color: #cfc7e3"/><t t-out="d.compare.name"/>: <b t-out="d.compare.theirs_leads"/> leads</div>
+                        </div>
+                        <div class="flex-grow-1 o_mi_pairs">
+                            <div t-foreach="d.compare.bars" t-as="bar" t-key="bar_index">
+                                <div class="small fw-bold" t-out="bar.label"/>
+                                <div class="d-flex align-items-center gap-2"><div class="o_mi_pairbar o_mi_theirs" t-att-style="'width: ' + bar.theirs_pct + '%'"/><span class="small" t-out="bar.theirs"/></div>
+                                <div class="d-flex align-items-center gap-2"><div class="o_mi_pairbar o_mi_mine" t-att-style="'width: ' + bar.mine_pct + '%'"/><span class="small" t-out="bar.mine"/></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div t-foreach="d.missing" t-as="note" t-key="note_index" class="alert alert-warning py-1 px-2 small mb-1" role="status" t-out="note"/>
+            </t>
+        </div>
+    </t>
+</templates>

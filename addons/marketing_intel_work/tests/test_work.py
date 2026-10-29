@@ -34,9 +34,13 @@ class TestWork(TransactionCase):
         action = plan.action_open_tasks()
         project = plan.project_id
         self.assertTrue(project)
+        self.assertEqual(action['views'][0][1], 'gantt', 'campaign tasks open on the Gantt chart, by pillar')
+        self.assertIn('calendar', action['view_mode'])
+        self.assertIn('mi_pillar', self.env['project.task'].get_views([(action['views'][0][0], 'gantt')])['views']['gantt']['arch'])
         self.assertEqual(action['domain'], [('project_id', '=', project.id)])
         Task = self.env['project.task'].with_user(self.marketer)
         Task.create({'name': 'Book the photographer', 'project_id': project.id, 'user_ids': [Command.set(self.marketer.ids)],
+                     'mi_pillar': 'awareness',
                      'date_deadline': datetime.combine(plan.date_start - timedelta(days=5), datetime.min.time())})
         Task.create({'name': 'Print flyers', 'project_id': project.id})
         plan.invalidate_recordset()
@@ -49,6 +53,7 @@ class TestWork(TransactionCase):
         self.assertEqual(sorted(tasks.mapped('name')), ['Book the photographer', 'Print flyers'])
         photographer = tasks.filtered(lambda t: t.name == 'Book the photographer')
         self.assertEqual(photographer.date_deadline.date(), copy.date_start - timedelta(days=5))
+        self.assertEqual(photographer.mi_pillar, 'awareness')
         self.assertFalse(tasks.filtered(lambda t: t.name == 'Print flyers').date_deadline)
 
         template = self.env['mi.plan'].browse(plan.with_user(self.marketer).action_save_template()['res_id'])

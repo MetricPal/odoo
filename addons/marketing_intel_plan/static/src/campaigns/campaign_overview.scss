@@ -1,0 +1,22 @@
+.o_mi_overview {
+    .o_mi_ft {
+        display: grid;
+        grid-template-columns: 2fr 3fr;
+        gap: 8px 24px;
+        align-items: center;
+    }
+    .o_mi_ticks { position: relative; height: 18px; span { position: absolute; top: 0; } }
+    .o_mi_funnel_cell { display: flex; justify-content: center; }
+    .o_mi_funnel_bar, .o_mi_track { height: 40px; }
+    .o_mi_funnel_bar { border-radius: 4px; }
+    .o_mi_track { position: relative; background-color: $gray-200; border-radius: 4px; }
+    .o_mi_track_bar { position: absolute; top: 0; bottom: 0; border-radius: 4px; overflow: hidden; white-space: nowrap; }
+    .o_mi_today { position: absolute; top: -4px; bottom: -4px; border-left: 2px dashed $warning; }
+    .o_mi_columns { display: flex; gap: 16px; align-items: flex-end; border-bottom: 1px solid $border-color; }
+    .o_mi_column { flex: 1 1 0; max-width: 180px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .o_mi_pair { height: 160px; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 6px; }
+    .o_mi_bar { width: 36%; min-height: 1px; border-radius: 3px 3px 0 0; }
+    .o_mi_target { background-color: #cfc7e3; }
+    .o_mi_actual { background-color: $o-brand-primary; }
+    .o_mi_swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+}

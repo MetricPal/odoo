@@ -103,55 +103,59 @@ Web and mobile should share concepts and terminology, not necessarily identical 
 
 ## Home layout
 
-Desktop uses three columns (revised 2026-10-21):
+Home follows the approved "Odoo home" design (revised 2026-10-29). The navbar is
+unchanged (no global search box; Odoo's command palette, Ctrl+K, stays).
 
-- **Left: My Work.** Records the user recently commented on, changed or created,
-  newest first, grouped by Today, Yesterday, This week and Earlier. Built from the
-  user's own chatter history; records they can no longer read are hidden. There
-  is no "Show more": Home renders the rows that fit the visible height, and when
-  the history is longer it renders twice that so the column scrolls one more
-  screen (up to 60 records).
-- **Center:** Needs Your Attention, with the composer underneath. Attention
-  combines live work (approvals waiting for the user's decision, overdue and
-  due-today activities, AI requests needing a manager check for AI managers,
-  failed workflow runs for administrators) with configured Home items.
-- **Right:** readable list panels with a count beside each title. Automations
-  (status dot, name, trigger or failure count, status pill, time) with status
-  filter chips (only statuses present are shown); Workflow runs (the latest ten
-  real runs with their state, for workflow administrators, when Workflows is
-  installed); Recent. Every row is rendered and scrolls inside its panel, without
-  a visible scrollbar. The column height is shared fairly: each section always
-  keeps its title and about one and a half rows, the rest is shared by number of
-  rows (capped at five, so one long list cannot crowd out the others), and no
-  section grows past its rows.
+- **Greeting:** "Good morning / afternoon / evening, <first name>", then the date,
+  the user's job title (or role) and a one-line summary ("5 items need you, 2
+  overdue"; support agents: customers waiting).
+- **Quick actions** (only when the user has no assistant): create buttons for the
+  records the user may create (sales: quotation, opportunity, contact; others:
+  contact, task, expense) and "The AI assistant is not enabled for your role".
+- **Live figures** (refreshed every minute; no title, only a green live dot whose
+  hover or tap hint explains the dot colours, the same meanings as Odoo
+  activities: red overdue or failed, orange due today or waiting, green on track):
+  every role starts with **My activities** (the user's Odoo activities: red when
+  any is overdue, orange when any is due today, green when all are planned; opens
+  the list); tiles chosen by role, each only
+  when its app is installed and readable. Operations: conversations open,
+  approvals pending, workflows running (administrators), AI agents active (AI
+  managers), sales today, team online. Support: my queue, team queue, my requests
+  pending. Sales: my pipeline, quotes sent today, meetings today, my requests
+  pending, orders this month. A tile with a list opens it. Conversations turn
+  orange after 5 minutes of waiting and red after 30; approvals turn red when the
+  review activity is overdue and orange when it is due today.
+- **Needs your attention** (left, wider): approvals waiting for the user (Approve /
+  Reject), the user's own requests (Remind / View), conversations assigned to the
+  user or unassigned (Open, or Assign to me), failed workflow runs for
+  administrators (Retry / View run), AI requests needing a manager check
+  (Review), due and overdue activities (Done / Reschedule to tomorrow), quotes
+  expiring today or tomorrow (Open), social items to answer, and configured Home
+  items. Filter chips per category; most urgent first. Buttons only run the
+  whitelisted methods, as the user, so each model's own checks decide.
+- **Layout:** greeting, quick actions and Right now stay on top; below them three
+  columns reach the bottom of the page, each scrolling on its own with soft fades
+  at its edges: My day and Recently opened (left), Needs your attention with the
+  assistant docked under it (middle, twice as wide), What just happened (right).
+  Spacing: 24px page padding and column gap, 16px between cards (16px everywhere
+  on phones). Under 1200px the page scrolls as a whole: Needs your attention
+  first, then My day and Recently opened side by side, then What just happened,
+  with the assistant kept at the bottom of the screen; phones stack everything.
+- **What just happened:** latest comments and changes on records the user
+  may read, Mine / My team / Everything. **My day:** today's meetings and tasks
+  due. **Recently opened:** the four records the user worked on most recently.
+- **Assistant** (only with a usable agent): docked under the middle column,
+  like claude.ai (the column fades out just above it; on phones the suggestions
+  are one swipeable row), with suggested questions, "+" to attach files, the agent picker and "Uses your
+  access rights". The answer shows on Home above the box, with "Open
+  conversation"; follow-ups continue the same conversation. A question is one
+  inference request, never a record change.
 
-On tablet and desktop the page itself never scrolls: section titles stay fixed
-and only the items underneath them scroll; the composer is a separate grid item
-under the center column, so it never moves. Tablet uses two columns (My Work beside the center; the right
-column below the center, the center taking at most half the height). Phones
-scroll as one page: center, My Work, then the right column, with the composer
-pinned to the bottom of the screen.
-
-Favorites were removed from Home (2026-10-21); the app launcher in the navbar is
-the way to open apps. The placeholder global search shell in the navbar was
-removed too; Odoo's own command palette (Ctrl+K) is unchanged.
-
-The composer follows the chat-input pattern: a text box with the send button
-inside it; below it, a "+" menu (Attach files, Draft an approval request),
-dictation (only where the browser supports speech recognition; it only fills
-the text box), a "AI can make mistakes. Review before you approve." note, the
-agent picker and a sending mode. **Manual** (default) opens the existing
-question dialog for review, with the files attached; **Auto** sends immediately
-through the same Send action. Either way a send authorizes one inference request
-only, never a record change.
-
-The agent picker lists only agents the user can use right now (active, in their
-audience, connection ready, configuration reviewed), with their description. One
-available agent is selected automatically; the last choice is remembered in the
-browser. With none, it says "No active agent"; AI managers also get "Manage
-agents".
+Removed from Home in this revision: the My Work column, the Automations and
+Workflow runs lists, dictation, the Manual / Auto switch, "Draft an approval
+request" and the "AI can make mistakes" note. The design's top bar, apps
+launcher, "Customize home" and "Edit pinned apps" are not built.
 
 Attached files (up to five readable PDF, text, Markdown or CSV files, 5 MB each)
 are uploaded as the user's own attachments, shown as removable chips above the
-text box, and handed to the agent with the question (see AI_AGENT.md). Voice
-conversation is not offered.
+text box, and handed to the agent with the question (see AI_AGENT.md).

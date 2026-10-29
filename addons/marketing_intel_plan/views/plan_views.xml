@@ -13,6 +13,11 @@
                 invisible="not can_request_changes"/>
         <button name="action_decide_proposal" type="object" string="Refuse" context="{'decision': 'refuse'}"
                 invisible="not can_decide"/>
+        <button name="action_split_by_brand" type="object" string="Split by brand"
+                invisible="is_template or proposal_state != 'approved' or not other_brand_ids"
+                help="One campaign per brand, each linked to this approved research."/>
+        <button name="action_print_report" type="object" string="Print report"
+                invisible="is_template or phase not in ('results', 'evaluation')"/>
         <button name="action_start_evaluation" type="object" string="Start evaluation" class="btn-primary"
                 invisible="is_template or phase != 'results'"/>
         <button name="action_mark_evaluated" type="object" string="Mark done" class="btn-primary"
@@ -28,6 +33,9 @@
         <button name="action_refuse_review" type="object" string="Refuse" invisible="is_template or not can_review"/>
         <button name="action_refresh_results" type="object" string="Refresh"
                 invisible="is_template or state == 'cancelled' or phase not in ('execution', 'results')"/>
+        <button name="action_execute_now" type="object" string="Execute now" class="btn-primary"
+                invisible="is_template or state not in ('scheduled', 'live')"
+                confirm="Send every approved and scheduled channel now?"/>
         <button name="action_done" type="object" string="Mark done" invisible="is_template or state not in ('scheduled', 'live')"/>
         <button name="action_reset" type="object" string="Start again" invisible="is_template or state != 'cancelled'"/>
         <button name="action_use_template" type="object" string="Use this template" class="btn-primary"
@@ -93,6 +101,9 @@
           <group>
             <field name="user_id" widget="many2one_avatar_user"/>
             <field name="brand_id" readonly="state not in ('brief', 'content')"/>
+            <field name="other_brand_ids" widget="many2many_tags" invisible="is_template"
+                   readonly="phase != 'research' and not other_brand_ids"/>
+            <field name="split_from_id" invisible="not split_from_id"/>
             <label for="proposal_type" invisible="is_template"/>
             <div class="d-flex flex-column" invisible="is_template">
               <field name="proposal_type" widget="radio" options="{'horizontal': true}"
@@ -101,7 +112,7 @@
             </div>
             <field name="template_id" invisible="not template_id"/>
             <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}"
-                   placeholder="e.g. Social, Email, SMS" readonly="state not in ('brief', 'content')"/>
+                   invisible="not is_template"/>
             <field name="worker" widget="radio" options="{'horizontal': true}" readonly="state not in ('brief', 'content')"/>
           </group>
           <group><label for="date_start" string="Dates" invisible="is_template"/>
@@ -117,6 +128,17 @@
         </group>
         <notebook>
           <page string="Overview" name="message">
+            <widget name="mi_campaign_overview" invisible="is_template"/>
+            <separator string="Channels" invisible="is_template"/>
+            <field name="item_ids" readonly="1" invisible="is_template">
+              <list create="0" delete="0">
+                <field name="channel"/><field name="pillar"/>
+                <field name="stage" widget="badge" decoration-success="stage in ('out', 'todo_done')"
+                       decoration-info="stage in ('scheduled', 'approved')" decoration-warning="stage in ('needs_review', 'writing')"
+                       decoration-danger="stage in ('failed', 'blocked')" decoration-muted="stage in ('not_started', 'unavailable', 'draft')"/>
+                <field name="schedule_at"/>
+              </list>
+            </field>
             <group>
               <group string="Message &amp; audience"><field name="message"/><field name="audience"/></group>
               <group string="Goal &amp; KPIs"><field name="goal_id" options="{'no_create': True}"/><field name="kpis"/></group>
@@ -133,41 +155,81 @@
             <div class="text-muted small">Each new campaign from this template starts with these texts in its drafts.</div>
           </page>
           <page string="Market Research" name="research" invisible="is_template">
-            <div class="text-muted" invisible="recommendation_id">This campaign was not started from a suggested campaign.
-              Suggestions with their research live in Insights › Suggested campaigns.</div>
+            <field name="research_locked" invisible="1"/>
+            <div class="alert alert-info mb-3" role="status" invisible="not research_locked">
+              The proposal is in approval: the research is locked until it is approved or changes are requested.
+            </div>
+            <div class="text-muted mb-2" invisible="not recommendation_id">
+              Started from the suggested campaign <field name="recommendation_id" readonly="1" class="d-inline"/>.
+            </div>
+            <div name="research_agent"/>
             <group invisible="not recommendation_id">
-              <field name="recommendation_id" readonly="1"/>
               <field name="research_problem"/>
               <field name="research_expected"/>
               <field name="research_risks"/>
             </group>
+            <group>
+              <field name="research_summary" placeholder="What the research found, in a few sentences." readonly="research_locked"/>
+            </group>
+            <group>
+              <group string="Upstream">
+                <field name="upstream_ids" nolabel="1" colspan="2" readonly="research_locked">
+                  <list editable="bottom"><field name="sequence" widget="handle"/><field name="partner_id"/>
+                    <field name="role"/><field name="side" column_invisible="1"/></list>
+                </field>
+              </group>
+              <group string="Downstream">
+                <field name="downstream_ids" nolabel="1" colspan="2" readonly="research_locked">
+                  <list editable="bottom"><field name="sequence" widget="handle"/><field name="partner_id"/>
+                    <field name="role"/><field name="side" column_invisible="1"/></list>
+                </field>
+              </group>
+            </group>
+            <group>
+              <group string="Target audience">
+                <field name="audience_company" readonly="research_locked"/>
+                <field name="audience_people" readonly="research_locked"/>
+                <field name="audience_demographics" readonly="research_locked"/>
+                <field name="country_ids" widget="many2many_tags" readonly="research_locked"/>
+                <field name="state_ids" widget="many2many_tags" readonly="research_locked" invisible="not country_ids"/>
+                <field name="places" readonly="research_locked" placeholder="e.g. Penang island, KL Sentral"/>
+              </group>
+              <group string="Action plan &amp; milestones">
+                <field name="action_plan" nolabel="1" colspan="2" readonly="research_locked"
+                       placeholder="The proposed actions and how they will be carried out."/>
+                <field name="milestone_ids" nolabel="1" colspan="2" readonly="research_locked">
+                  <list editable="bottom"><field name="name"/><field name="date"/><field name="done" widget="boolean_toggle"/></list>
+                </field>
+              </group>
+            </group>
+            <separator string="Evidence"/>
+            <field name="evidence_ids" readonly="research_locked">
+              <list editable="bottom">
+                <field name="source_type" widget="badge"/><field name="finding" class="o_mi_wrap"/>
+                <field name="date"/><field name="url" widget="url"/><field name="by_ai" optional="hide"/>
+              </list>
+            </field>
             <field name="research_findings" invisible="not recommendation_id" readonly="1">
-              <list><field name="display_name" string="Evidence"/></list>
+              <list><field name="display_name" string="Evidence from the suggestion"/></list>
             </field>
           </page>
           <page string="Execution" name="channels" invisible="is_template">
             <separator string="Design"/>
-            <field name="item_ids">
-              <list editable="bottom" create="0" delete="0">
-                <field name="channel" readonly="1" width="140px"/>
-                <field name="content_subject" string="Subject / title"/>
-                <field name="content_text" string="Text" class="o_mi_wrap"/>
-                <field name="res_id" column_invisible="1"/>
-                <button name="action_open" type="object" string="Open the draft" icon="arrow_forward" invisible="not res_id"/>
-              </list>
-            </field>
-            <div class="text-muted small">The text each channel starts from. Once a draft exists, edit it in its app
-              (Open the draft); creatives and their versions are under Proofs.</div>
             <separator string="Channels"/>
+            <field name="channel_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}"
+                   placeholder="Add a channel" readonly="state not in ('brief', 'content')"/>
             <field name="item_ids">
               <list editable="bottom" create="0">
-                <field name="channel" readonly="1" width="120px"/><field name="app" width="150px" optional="show"/>
+                <field name="channel" readonly="1"/>
+                <field name="pillar"/>
                 <field name="available" column_invisible="1"/>
                 <field name="stage" widget="badge" width="170px" decoration-success="stage in ('out', 'todo_done')"
                        decoration-info="stage in ('scheduled', 'approved')" decoration-warning="stage in ('needs_review', 'writing')"
                        decoration-danger="stage in ('failed', 'blocked')" decoration-muted="stage in ('not_started', 'unavailable', 'draft')"/>
-                <field name="next_step" class="o_mi_wrap"/>
+                <field name="schedule_at" readonly="stage in ('out', 'todo_done') or channel in ('event_virtual', 'event_physical')"/>
                 <field name="activity_done" widget="boolean_toggle" width="70px" invisible="channel not in ('content', 'ads', 'partnership')"/>
+                <field name="next_step" class="o_mi_wrap" optional="hide"/>
+                <field name="app" optional="hide"/>
                 <field name="draft_status" string="In its app" optional="hide"/>
                 <field name="note" column_invisible="1"/><field name="res_id" column_invisible="1"/>
                 <button name="action_open" type="object" string="Open" icon="arrow_forward" invisible="not res_id"/>
@@ -179,6 +241,14 @@
               decided from this screen. Every change is written in the history.</div>
           </page>
           <page string="Results" name="results" invisible="is_template">
+            <div class="o_mi_takeaway_box d-flex gap-3 align-items-start mb-3">
+              <span class="small fw-bold text-uppercase pt-1" style="color: #9fd3b5; min-width: 90px;">Takeaway</span>
+              <field name="takeaway" nolabel="1" class="flex-grow-1"
+                     placeholder="What the results mean and what to do about them, in one paragraph for management."/>
+            </div>
+            <widget name="mi_campaign_results"/>
+            <group><field name="compare_plan_id" options="{'no_create': True}"/></group>
+            <separator string="Channel activity detail"/>
             <field name="item_ids" readonly="1">
               <list create="0" delete="0">
                 <field name="channel"/>
@@ -219,8 +289,42 @@
               come from CRM and Sales records tagged with the campaign. Updated every hour and on Refresh.</div>
           </page>
           <page string="Evaluation" name="evaluation" invisible="is_template or phase not in ('results', 'evaluation')">
-            <label for="learning_note" class="fw-bold"/>
-            <field name="learning_note" placeholder="What worked, what did not, what to try next. The next AI analysis reads this."/>
+            <group string="Assessment">
+              <field name="objectives_met" widget="radio" options="{'horizontal': true}"/>
+              <field name="effective"/>
+              <field name="what_worked"/>
+              <field name="to_improve"/>
+              <field name="next_steps"/>
+            </group>
+            <group>
+              <group string="Wins &amp; losses">
+                <field name="win_loss_label"/>
+                <field name="lost_reasons"/>
+              </group>
+              <group string="Objections &amp; buyer language">
+                <field name="objections"/>
+                <field name="buyer_language"/>
+              </group>
+            </group>
+            <separator string="Recommendations"/>
+            <field name="advice_ids">
+              <list editable="bottom">
+                <field name="sequence" widget="handle"/><field name="name"/><field name="target"/>
+                <field name="state" widget="badge" decoration-success="state == 'accepted'" decoration-muted="state == 'rejected'"/>
+              </list>
+            </field>
+            <group>
+              <group string="Review schedule">
+                <field name="review_monthly"/><field name="review_quarterly"/><field name="review_halfyear"/>
+                <field name="next_review_date" invisible="not next_review_date"/>
+              </group>
+              <group string="What we learned">
+                <field name="learning_note" nolabel="1" colspan="2"
+                       placeholder="What worked, what did not, what to try next. The next AI analysis reads this."/>
+              </group>
+            </group>
+            <div class="text-muted small">Each review refreshes the numbers from CRM and Sales and gives the owner a To-Do
+              to update objections and win/loss.</div>
           </page>
         </notebook>
       </sheet>

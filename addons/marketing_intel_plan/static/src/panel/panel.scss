@@ -122,3 +122,20 @@
         span { display: block; height: 100%; background: #714b67; border-radius: 5px; } }
     .o_mi_extra_value { font-weight: 600; white-space: nowrap; }
 }
+
+.o_mi_mgmt {
+    .o_mi_mgmt_tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+    .o_mi_mgmt_tile { display: flex; flex-direction: column; border: 1px solid var(--border-color, #e3e5ea); border-radius: .6rem;
+        padding: .6rem .8rem; strong { font-size: 1.25rem; } }
+    .o_mi_mgmt_grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.5rem;
+        h3 { font-size: .8rem; font-weight: 700; text-transform: uppercase; margin-bottom: .5rem; } }
+    .o_mi_mgmt_rs, .o_mi_mgmt_stage { display: grid; grid-template-columns: 9rem 1fr 9rem; gap: .5rem; align-items: center;
+        width: 100%; border: 0; background: transparent; padding: .2rem 0; text-align: left; }
+    .o_mi_mgmt_bars { display: flex; flex-direction: column; gap: 2px; > span { display: block; height: 8px; border-radius: 2px; min-width: 2px; } }
+    .o_mi_bar_spend { background-color: #cfc7e3; }
+    .o_mi_bar_rev { background-color: #71639e; }
+    .o_mi_bar_pipe { background-color: #4f8a78; height: 14px !important; }
+    .o_mi_dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+    .o_mi_click { cursor: pointer; }
+}
+@media (max-width: 991px) { .o_mi_mgmt .o_mi_mgmt_tiles, .o_mi_mgmt .o_mi_mgmt_grid { grid-template-columns: 1fr 1fr; } }

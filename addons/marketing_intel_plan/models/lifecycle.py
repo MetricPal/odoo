@@ -457,3 +457,46 @@ class Decision(models.TransientModel):
         self.ensure_one()
         self.plan_id._decide(self.decision, self.comment)
         return {'type': 'ir.actions.act_window_close'}
+
+
+class PlanBrands(models.Model):
+    """One research proposal may cover several brands; after approval, Split by brand makes one campaign per brand
+    (each linked to the same approved version) when the brands need their own plan, budget or measurement."""
+    _inherit = 'mi.plan'
+
+    other_brand_ids = fields.Many2many('mi.brand', 'mi_plan_other_brand_rel', 'plan_id', 'brand_id',
+                                       string='Also for brands', copy=False,
+                                       help='Other brands this research covers. After approval, Split by brand makes '
+                                            'one campaign for each, or keep one campaign when they share plan and budget.')
+    split_from_id = fields.Many2one('mi.plan', string='Split from', readonly=True, copy=False, index='btree_not_null')
+
+    def action_split_by_brand(self):
+        self.ensure_one()
+        self.check_access('write')
+        if self.proposal_state != 'approved':
+            raise UserError(_('Split the campaign by brand once the proposal is approved.'))
+        brands = self.other_brand_ids - self.brand_id
+        if not brands:
+            raise UserError(_('Add the other brands in "Also for brands" first.'))
+        made = self.env['mi.plan']
+        for brand in brands:
+            values = self._copy_values(brand_id=brand.id, name='%s · %s' % (self.name, brand.name),
+                                       date_start=self.date_start, split_from_id=self.id,
+                                       proposal_type=self.proposal_type)
+            child = self.with_context(default_phase='planning', default_proposal_state='approved').create(values)
+            for snapshot in self.snapshot_ids:
+                self.env['mi.plan.snapshot'].sudo().create({'plan_id': child.id, 'version': snapshot.version,
+                                                             'approved_on': snapshot.approved_on, 'body': snapshot.body})
+            child.message_post(body=_('Split from %s after its approval.', self._get_html_link()))
+            made |= child
+        self.other_brand_ids = False
+        self.message_post(body=_('Split by brand: %s', ', '.join(made.mapped('name'))))
+        return {'type': 'ir.actions.act_window', 'res_model': 'mi.plan', 'name': _('Campaigns split by brand'),
+                'view_mode': 'list,form', 'views': [(False, 'list'), (False, 'form')],
+                'domain': [('id', 'in', (self | made).ids)]}
+
+    def _proposal_rows(self):
+        rows = super()._proposal_rows()
+        if self.other_brand_ids:
+            rows.insert(0, (_('Also for brands'), ', '.join(self.other_brand_ids.mapped('name'))))
+        return rows

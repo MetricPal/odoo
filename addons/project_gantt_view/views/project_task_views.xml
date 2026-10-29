@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="project_task_gantt" model="ir.ui.view">
+    <field name="name">project.task.gantt</field><field name="model">project.task</field>
+    <field name="arch" type="xml">
+      <gantt string="Tasks" date_start="planned_date_start" date_stop="date_deadline" color="color"
+             dependency_field="depend_on_ids" default_group_by="user_ids" default_scale="month">
+        <field name="name"/><field name="stage_id"/>
+      </gantt>
+    </field>
+  </record>
+  <record id="project_task_form_planned_start" model="ir.ui.view">
+    <field name="name">project.task.form.planned.start</field><field name="model">project.task</field>
+    <field name="inherit_id" ref="project.view_task_form2"/>
+    <field name="arch" type="xml">
+      <xpath expr="//label[@for='date_deadline']" position="before">
+        <field name="planned_date_start"/>
+      </xpath>
+    </field>
+  </record>
+  <record id="project.act_project_project_2_project_task_all" model="ir.actions.act_window">
+    <field name="view_mode">kanban,list,form,calendar,gantt,pivot,graph,activity</field>
+  </record>
+  <record id="project.action_view_my_task" model="ir.actions.act_window">
+    <field name="view_mode">kanban,list,form,calendar,gantt,activity,pivot,graph</field>
+  </record>
+  <record id="project.action_view_all_task" model="ir.actions.act_window">
+    <field name="view_mode">list,kanban,form,calendar,gantt,activity,pivot,graph</field>
+  </record>
+</odoo>

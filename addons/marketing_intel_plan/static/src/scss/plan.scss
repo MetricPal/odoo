@@ -6,3 +6,7 @@
 }
 
 .o_mi_inline_html, .o_mi_inline_html .o_readonly, .o_mi_inline_html p { display: inline; margin: 0; }
+
+.o_mi_takeaway_box { background-color: #1f2d2b; color: #fff; border-radius: 4px; padding: 10px 14px;
+    .o_field_widget textarea, .o_field_widget { color: #fff; background-color: transparent; }
+    textarea::placeholder { color: #b9c4c2; } }

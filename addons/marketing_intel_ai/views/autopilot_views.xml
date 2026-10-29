@@ -17,6 +17,38 @@
           ✨ The AI assistant is writing every channel. The campaign goes to review by itself when it is done.
         </div>
       </xpath>
+      <xpath expr="//header/button[@name='action_print_report']" position="before">
+        <field name="report_busy" invisible="1"/>
+        <button name="action_draft_evaluation" type="object" string="✨ Draft with AI"
+                invisible="is_template or phase not in ('results', 'evaluation') or report_busy or evaluation_done"
+                help="The report agent drafts the takeaway, the assessment, objections, buyer language and recommendations from the results."/>
+      </xpath>
+      <xpath expr="//page[@name='evaluation']" position="inside">
+        <div class="alert alert-info mt-2" role="status" invisible="not report_busy">✨ The report agent is drafting the evaluation.</div>
+        <div class="text-danger small" invisible="not report_error"><field name="report_error" nolabel="1"/></div>
+      </xpath>
+      <xpath expr="//div[@name='research_agent']" position="inside">
+        <div class="border rounded p-3 mb-3 d-flex flex-column gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <b>Research agent</b>
+            <field name="research_state" widget="badge" decoration-success="research_state == 'done'"
+                   decoration-info="research_state == 'running'" decoration-danger="research_state == 'failed'"/>
+            <span class="flex-grow-1"/>
+            <button name="action_run_research" type="object" string="Run research" class="btn-primary btn-sm"
+                    invisible="research_state != 'none' or research_locked or phase != 'research'"/>
+            <button name="action_run_research" type="object" string="Run research again" class="btn-secondary btn-sm"
+                    invisible="research_state in ('none', 'running') or research_locked or phase != 'research'"/>
+          </div>
+          <div class="d-flex flex-wrap gap-4 small">
+            <span>Agent: <field name="research_agent_name" nolabel="1" class="d-inline"/> (set up in AI Agents)</span>
+            <span invisible="not research_started">Started: <field name="research_started" nolabel="1" class="d-inline"/></span>
+            <span invisible="not research_finished">Finished: <field name="research_finished" nolabel="1" class="d-inline"/></span>
+            <span invisible="not research_duration">Took: <field name="research_duration" nolabel="1" class="d-inline"/></span>
+          </div>
+          <field name="research_progress" widget="progressbar" invisible="research_state == 'none'"/>
+          <div class="text-danger small" invisible="not research_error"><field name="research_error" nolabel="1"/></div>
+        </div>
+      </xpath>
     </field>
   </record>
 </odoo>

@@ -233,6 +233,80 @@
                     </div>
                 </section>
                         </t>
+                        <t t-if="block.key === 'management' and data.management">
+                            <t t-set="m" t-value="data.management"/>
+                            <section class="o_mi_card o_mi_mgmt">
+                                <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="monitoring"/>Management view · <t t-esc="m.period"/></h2></div>
+                                <div class="o_mi_mgmt_tiles">
+                                    <div t-foreach="m.tiles" t-as="tile" t-key="tile_index" class="o_mi_mgmt_tile">
+                                        <small class="text-muted" t-esc="tile.label"/>
+                                        <strong t-esc="tile.value"/>
+                                        <small class="text-muted" t-esc="tile.sub"/>
+                                    </div>
+                                </div>
+                                <div class="o_mi_mgmt_grid">
+                                    <div>
+                                        <h3>Revenue and spend by campaign</h3>
+                                        <p t-if="!m.revenue_spend.length" class="o_mi_empty">No campaign this quarter.</p>
+                                        <button t-foreach="m.revenue_spend" t-as="row" t-key="row.id" type="button" class="o_mi_mgmt_rs"
+                                                t-on-click="() => this.open('mi.plan', row.id)">
+                                            <span class="text-truncate" t-esc="row.name"/>
+                                            <span class="o_mi_mgmt_bars">
+                                                <span class="o_mi_bar_spend" t-att-style="'width:' + row.spend_pct + '%'" t-att-title="'Spend ' + row.spend"/>
+                                                <span class="o_mi_bar_rev" t-att-style="'width:' + row.revenue_pct + '%'" t-att-title="'Revenue ' + row.revenue"/>
+                                            </span>
+                                            <small><t t-esc="row.revenue"/> / <t t-esc="row.spend"/></small>
+                                        </button>
+                                        <small class="text-muted"><span class="o_mi_dot o_mi_bar_rev"/> revenue <span class="o_mi_dot o_mi_bar_spend ms-2"/> spend</small>
+                                    </div>
+                                    <div>
+                                        <h3>Leads by source (UTM)</h3>
+                                        <p t-if="!m.sources.length" class="o_mi_empty" t-esc="m.crm ? 'No leads from campaigns yet.' : 'CRM is not installed.'"/>
+                                        <div t-else="" class="d-flex gap-3 align-items-center">
+                                            <svg width="150" height="150" viewBox="0 0 200 200" role="img" aria-label="Leads by source">
+                                                <t t-foreach="m.sources" t-as="s" t-key="s_index"><path t-if="s.path" t-att-d="s.path" t-att-fill="s.color" stroke="#fff" stroke-width="2"/></t>
+                                                <text x="100" y="105" text-anchor="middle" font-size="22" font-weight="600" t-esc="m.leads_total"/>
+                                            </svg>
+                                            <div class="flex-grow-1 small">
+                                                <div t-foreach="m.sources" t-as="s" t-key="s_index" class="d-flex gap-2 align-items-center">
+                                                    <span class="o_mi_dot" t-att-style="'background-color:' + s.color"/><span class="flex-grow-1" t-esc="s.label"/><b t-esc="s.value"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3>Pipeline by CRM stage</h3>
+                                        <p t-if="!m.stages.length" class="o_mi_empty">No open opportunities from campaigns.</p>
+                                        <div t-foreach="m.stages" t-as="st" t-key="st_index" class="o_mi_mgmt_stage">
+                                            <span t-esc="st.label"/>
+                                            <span class="o_mi_mgmt_bars"><span class="o_mi_bar_pipe" t-att-style="'width:' + st.pct + '%'"/></span>
+                                            <small t-esc="st.value"/>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3>Waiting for you</h3>
+                                        <p t-if="!m.waiting.length" class="o_mi_empty">No proposal waits for your approval.</p>
+                                        <button t-foreach="m.waiting" t-as="w" t-key="w_index" type="button" class="o_mi_todo"
+                                                t-on-click="() => this.open('mi.plan', w.id)">
+                                            <span><strong t-esc="w.label"/><small><t t-esc="w.name"/> · <t t-esc="w.detail"/></small></span>
+                                            <span class="ms-auto small text-muted" t-esc="w.due"/>
+                                        </button>
+                                    </div>
+                                </div>
+                                <table t-if="m.campaigns.length" class="table table-sm mb-0 mt-2">
+                                    <thead><tr><th>Campaign</th><th>Stage</th><th class="text-end">Spend</th><th class="text-end">Revenue</th>
+                                        <th class="text-end">Return</th><th class="text-end">Leads</th><th class="text-end">Cost per lead</th><th class="text-end">Pipeline</th></tr></thead>
+                                    <tbody>
+                                        <tr t-foreach="m.campaigns" t-as="c" t-key="c.id" class="o_mi_click" t-on-click="() => this.open('mi.plan', c.id)">
+                                            <td t-esc="c.name"/><td><span class="badge text-bg-light border" t-esc="c.stage"/></td>
+                                            <td class="text-end" t-esc="c.spend"/><td class="text-end" t-esc="c.revenue"/>
+                                            <td class="text-end" t-esc="c.return"/><td class="text-end" t-esc="c.leads"/>
+                                            <td class="text-end" t-esc="c.cpl"/><td class="text-end" t-esc="c.pipeline"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </section>
+                        </t>
                         <t t-if="block.key === 'report'">
                             <section class="o_mi_card o_mi_box">
                                 <t t-set="box" t-value="block.box"/>

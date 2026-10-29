@@ -12,12 +12,56 @@ the proposal is frozen as a numbered version (*View approved version*) and the c
 campaign review (Send for review) takes it to Execution; it moves to Results when it ends, and to Evaluation with
 *Start evaluation*. Under the campaign name, *Tasks* and *Spend* open the campaign's tasks and spend lines.
 
+**Pillars and Overview.** Every campaign has three pillars, Awareness › Consideration › Conversion, each with
+its own dates, budget and objective (filled in from the campaign dates and budget; click a pillar to change it).
+The Overview shows the campaign funnel next to the pillar timeline (one row per pillar, today marked), the
+budget per month, quarter or year (target: each pillar's budget spread over its days; actual: the spend entered)
+and the channels with their pillar, status and schedule.
+
+**Execution tab.** Design: the creatives with their versions (Proofs) and each channel's starting text. Channels:
+pillar, status and a **Schedule** date and time per channel, passed to the Email, SMS, Messaging and Social drafts
+(events keep their own dates). *Execute now* sends every approved, scheduled channel right away. Workflows that
+watch the campaign are listed below.
+
+**Results tab.** A takeaway for management, then sales revenue (against the campaign chosen in *Compare with*),
+revenue per spend, leads and won deals against their targets; where the results came from: each channel's leads,
+wins and revenue by its UTM source, with cost per lead and revenue per spend when spend lines name the channel
+(switch Revenue / Leads / Wins, best return highlighted); lead quality as a donut (won, lost, opportunity open,
+lead without opportunity); the open CRM pipeline of the campaign as a funnel by stage; the comparison with the
+earlier campaign (pie of leads and paired bars); and the channel activity detail. Missing data is said, not guessed.
+*Print report* gives the PDF.
+
+**Evaluation tab.** Objectives met, was it effective, what worked, what to improve, what to do next; won · lost
+and the top CRM loss reasons; objections and the words buyers use; recommendations; a review schedule (monthly,
+quarterly, every six months: the numbers are refreshed and the owner gets a To-Do). With the AI module, *Draft
+with AI* asks the report agent to draft the takeaway and the evaluation from the results, loss reasons and lead
+notes; the owner edits it and marks the evaluation done.
+
+**Market Research tab.** Findings; upstream (suppliers, vendors, partners) and downstream (distributors,
+resellers, sales channels, customers) organisations with their role; target audience (company profile, people,
+demographics, countries, states or regions and any other places such as islands, hotels or stations); action plan
+with milestones; evidence with its source (own data, competitor, social listening, customer, trend, market data).
+It is locked while the proposal is in approval and is part of the approved version. With the AI module, *Run
+research* queues the brand's market research agent (set up in AI Agents, chosen on the brand) and shows when it
+started, how it is going and how long it took; its validated answer fills the findings, evidence, and (when empty)
+the action plan and milestones.
+
 **Control panel.** *Marketing* opens on one screen: key numbers with 8-week trends (messages sent, link
 clicks, leads, won revenue, budget this month, goals on track), a timeline of upcoming and recent events
 (sends, posts, events, reviews, campaign starts/ends, next runs of repeating campaigns, workflow runs; repeating
 items marked), every running campaign with a coloured progress bar per channel, workflows with today's runs,
 *For you* (your approvals, writing and fixes) and alerts (failed channels, overspend, goals behind). A brand
 selector (grouped by company or client) filters everything.
+
+**Management view (HOD, CEO).** A control panel block, first in the marketing manager's view: this quarter's
+spend against budget, revenue from campaigns, return on spend, leads, cost per lead and open CRM pipeline;
+revenue and spend per campaign; leads by UTM source (donut); pipeline by CRM stage; the proposal approvals
+waiting for you; and every campaign of the quarter with its stage, spend, revenue, return, leads, cost per lead and
+pipeline. The brand selector filters it.
+
+**Several brands.** A proposal can name *Also for brands*; they are part of the approved version. After approval,
+*Split by brand* makes one campaign per brand (in Planning, same proposal type, each with the approved version);
+keep one campaign when the brands share plan and budget.
 
 **Customise the panel.** *Customise* shows each block with move up/down, half/full width and remove, and
 *Add a block* offers the panel's other blocks (team workload and open requests come with Work management) and

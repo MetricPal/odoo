@@ -318,8 +318,8 @@ class Plan(models.Model):
         if self._ai_busy():
             return _('The AI assistant is writing the channels'), False
         if fix:
-            if any(_('the brand’s Channels & accounts') in (item.note or '') or
-                   _('in the brand’s Channels & accounts') in (item.next_step or '') for item in self.item_ids):
+            phrase, phrase_in = _('the brand’s Channels & accounts'), _('in the brand’s Channels & accounts')
+            if any(phrase in (item.note or '') or phrase_in in (item.next_step or '') for item in self.item_ids):
                 if can_fix(self._step_user(), BRANDS):
                     return _('Fix %s channel(s): set the brand’s accounts in the brand’s Channels & accounts', fix), True
                 return _('Fix %(count)s channel(s): ask %(who)s to set the brand’s accounts', count=fix,

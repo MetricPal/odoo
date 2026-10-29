@@ -1,362 +1,202 @@
 import { defineMailModels } from "@mail/../tests/mail_test_helpers";
 import { beforeEach, expect, test } from "@odoo/hoot";
-import { animationFrame, resize } from "@odoo/hoot-dom";
+import { advanceTime, animationFrame } from "@odoo/hoot-dom";
 import { browser } from "@web/core/browser/browser";
 import { user } from "@web/core/user";
-import {
-    contains,
-    mockService,
-    mountWithCleanup,
-    patchWithCleanup,
-} from "@web/../tests/web_test_helpers";
+import { contains, mockService, mountWithCleanup, patchWithCleanup } from "@web/../tests/web_test_helpers";
 
 import {
-    ATTACHMENT_LIMIT,
-    MY_WORK_MIN_FIT,
     WorkDashboard,
-    filterAutomations,
-    groupWorkByDay,
-    myWorkVisibleCount,
-    splitDashboardItems,
+    categoryTabs,
+    feedForScope,
 } from "@ai_home/dashboard/dashboard";
 
 defineMailModels();
 
-const dashboardItems = [
-    ...Array.from({ length: 5 }, (_, index) => ({
-        id: index + 1,
-        name: `Attention ${index + 1}`,
-        section: "attention",
-        subtitle: "Review requested",
-        occurredLabel: "Now",
-        iconText: "AT",
-        tone: "warning",
-    })),
-    ...Array.from({ length: 6 }, (_, index) => ({
-        id: index + 11,
-        name: `Automation ${index + 1}`,
-        section: "automation",
-        subtitle: "Completed",
-        occurredLabel: "Today",
-        iconText: "AU",
-        tone: "success",
-    })),
-    ...Array.from({ length: 8 }, (_, index) => ({
-        id: index + 21,
-        name: `Recent ${index + 1}`,
-        section: "recent",
-        subtitle: "Updated",
-        occurredLabel: "Today",
-        iconText: "RE",
-        tone: "primary",
-    })),
-];
+const now = () => luxon.DateTime.utc().toFormat("yyyy-MM-dd HH:mm:ss");
 
-function makeMyWork(extra = 0) {
-    return [
-        {
-            key: "work-res.partner-1",
-            name: "Azure Interior",
-            subtitle: "Contact · You commented",
-            occurred: luxon.DateTime.utc().toFormat("yyyy-MM-dd HH:mm:ss"),
-            iconText: "CO",
-            action: { res_model: "res.partner", res_id: 1 },
-        },
-        {
-            key: "work-sale.order-9",
-            name: "S00009",
-            subtitle: "Sales Order · You updated",
-            occurred: luxon.DateTime.utc().minus({ days: 30 }).toFormat("yyyy-MM-dd HH:mm:ss"),
-            iconText: "SA",
-            action: { res_model: "sale.order", res_id: 9 },
-        },
-        ...Array.from({ length: extra }, (_, index) => ({
-            key: `work-crm.lead-${index}`,
-            name: `Lead ${index}`,
-            subtitle: "Lead · You updated",
-            occurred: luxon.DateTime.utc().minus({ days: 40 + index }).toFormat("yyyy-MM-dd HH:mm:ss"),
-            iconText: "LE",
-            action: { res_model: "crm.lead", res_id: index + 100 },
-        })),
-    ];
+function attentionRow(category, id, extra = {}) {
+    return {
+        key: `${category}-${id}`,
+        category,
+        model: "approval.center.request",
+        resId: id,
+        openAction: false,
+        title: `${category} ${id}`,
+        meta: "Approvals · requested by Daniel Tan · waiting 2 days",
+        tag: "",
+        overdue: false,
+        occurred: now(),
+        primary: { label: "Approve", method: "action_approve" },
+        secondary: { label: "Reject", method: "action_refuse" },
+        ...extra,
+    };
 }
-let extraWork = 0;
-let homeAgents = [];
-const workflowRuns = [
-    { key: "run-5", name: "Invoice reminder", subtitle: "INV/2026/0007", status: "failed",
-      statusLabel: "Failed", occurred: "2020-01-01 10:00:00", action: { res_model: "workflow.run", res_id: 5 } },
-    { key: "run-4", name: "New lead first call", subtitle: "Azure Interior", status: "done",
-      statusLabel: "Done", occurred: "2020-01-01 09:00:00", action: { res_model: "workflow.run", res_id: 4 } },
-];
-const liveAutomations = [
-    { key: "workflow-1", name: "Overdue follow-up", subtitle: "Schedule", status: "paused", tone: "neutral",
-      occurred: "2020-01-01 10:00:00", action: { res_model: "workflow.definition", res_id: 1 } },
-    { key: "workflow-2", name: "Invoice reminder", subtitle: "2 failed runs", status: "failed", tone: "danger",
-      occurred: "2020-01-01 10:00:00", action: { res_model: "workflow.definition", res_id: 2 } },
-];
+
+let data;
+let calls;
+
 function homeData() {
     return {
-        items: dashboardItems,
-        attention: [],
-        automations: liveAutomations,
-        runs: workflowRuns,
-        myWork: makeMyWork(extraWork),
-        agents: homeAgents,
+        firstName: "Aisha",
+        roleLabel: "Operations manager",
+        summary: "3 items need you, 1 overdue",
+        live: [
+            { key: "approvals", label: "Approvals pending", value: "7", sub: "2 overdue", tone: "warn",
+              action: { type: "ir.actions.act_window", res_model: "approval.center.request" } },
+            { key: "team", label: "Team online", value: "9 / 12", sub: "2 on leave", tone: "good", action: false },
+        ],
+        attention: [
+            attentionRow("approval", 1, { tag: "Overdue", overdue: true }),
+            attentionRow("conversation", 2, {
+                model: "omni.conversation",
+                primary: { label: "Assign to me", method: "action_assign_me" },
+                secondary: { label: "Open", open: true },
+            }),
+            attentionRow("ai", 3, { model: "ai.agent.run", primary: { label: "Review", open: true }, secondary: false }),
+        ],
+        feed: [
+            { key: "f1", occurred: now(), actor: "You", text: "approved PO/2026/0139", app: "Approvals",
+              scope: "mine", model: "approval.center.request", resId: 9 },
+            { key: "f2", occurred: now(), actor: "Omar Haddad", text: "approved EXP/0931", app: "Approvals",
+              scope: "team", model: "approval.center.request", resId: 8 },
+            { key: "f3", occurred: now(), actor: "Workflow", text: "assigned 18 new leads", app: "Workflow",
+              scope: "all", model: "crm.lead", resId: 7 },
+        ],
+        day: [{ key: "due", time: "Today", text: "3 tasks due", model: false, resId: false }],
+        recent: [{ key: "r1", name: "PO/2026/0142", app: "Approvals", model: "approval.center.request", resId: 1 }],
+        quickActions: [{ key: "res.partner", label: "Contact", model: "res.partner", context: {} }],
+        agents: [],
+        prompts: [],
         canManageAgents: false,
     };
 }
 
-const apps = [
-    { id: 1, name: "Home", xmlid: "ai_home.menu_ai_home_root", actionID: 1 },
-    { id: 2, name: "Sales", xmlid: "sale.menu_sale_root", actionID: 2 },
-];
-
 beforeEach(() => {
-    extraWork = 0;
-    homeAgents = [];
+    data = homeData();
+    calls = [];
     patchWithCleanup(user, { userId: 42 });
-    mockService("menu", {
-        getApps: () => apps,
-        selectMenu: (app) => expect.step(`open ${app.name}`),
-    });
     mockService("notification", { add: () => {} });
-    mockService("action", { doAction: () => {} });
+    mockService("action", { doAction: (action) => calls.push(["doAction", action]) });
     mockService("orm", {
         async call(model, method, args) {
             expect(model).toBe("ai.home.item");
+            calls.push([method, args]);
             if (method === "get_home_data") {
-                return homeData();
+                return data;
             }
-            if (method === "mark_recent_seen") {
-                expect.step(`seen ${args[0]}`);
-                return true;
+            if (method === "ask_ai") {
+                return { runId: 5, conversationId: 11 };
             }
-        },
-    });
-});
-
-test("dashboard helpers preserve section rules", () => {
-    const sections = splitDashboardItems(dashboardItems);
-    expect(sections.attention).toHaveLength(5);
-    expect(sections.automations).toHaveLength(6);
-    expect(sections.recent).toHaveLength(8);
-});
-
-test("My Work shows what fits, then twice that when there is more", () => {
-    expect(myWorkVisibleCount(5, 10)).toBe(5);
-    expect(myWorkVisibleCount(10, 10)).toBe(10);
-    expect(myWorkVisibleCount(11, 10)).toBe(11);
-    expect(myWorkVisibleCount(60, 10)).toBe(20);
-    expect(myWorkVisibleCount(60, 0)).toBe(MY_WORK_MIN_FIT * 2);
-});
-
-test("Home has no favorites and the composer stays outside the scrolling center", async () => {
-    await resize({ width: 1366 });
-    await mountWithCleanup(WorkDashboard);
-    expect(".o_ai_home_favorites").toHaveCount(0);
-    expect(".o_ai_home_mywork_more").toHaveCount(0);
-    expect(".o_ai_home_container > .o_ai_home_composer").toHaveCount(1);
-    expect(".o_ai_home_center .o_ai_home_composer").toHaveCount(0);
-});
-
-test("renders section capacities and expands requested content", async () => {
-    await resize({ width: 1366 });
-    await mountWithCleanup(WorkDashboard);
-
-    expect(".o_ai_home_attention_card").toHaveCount(3);
-    expect(".o_ai_home_show_more").toHaveText("Show more");
-    expect(".o_ai_home_show_more").toHaveAttribute("aria-expanded", "false");
-    expect(".o_ai_home_left .o_ai_home_mywork").toHaveCount(1);
-    expect(".o_ai_home_right .o_ai_home_automations").toHaveCount(1);
-    expect(".o_ai_home_right .o_ai_home_runs").toHaveCount(1);
-    expect(".o_ai_home_right .o_ai_home_recent").toHaveCount(1);
-    // Every row is rendered; the section scrolls instead of a View all button.
-    expect(".o_ai_home_automation_row").toHaveCount(8);
-    expect(".o_ai_home_recent_row").toHaveCount(8);
-    expect(".o_ai_home_automations_view_all, .o_ai_home_recent_view_all").toHaveCount(0);
-    expect(".o_ai_home_automations .o_ai_home_count").toHaveText("8");
-    expect(".o_ai_home_right .o_ai_home_panel.o_ai_home_scroll").toHaveCount(3);
-    expect(".o_ai_home_mywork > .o_ai_home_section_heading + .o_ai_home_mywork_list").toHaveCount(1);
-
-    await contains(".o_ai_home_show_more").click();
-    expect(".o_ai_home_attention_card").toHaveCount(5);
-    expect(".o_ai_home_show_more").toHaveText("Show less");
-});
-
-test("recent rows become seen when opened", async () => {
-    await mountWithCleanup(WorkDashboard);
-    await contains('.o_ai_home_recent_row[aria-label="Open Recent 1"]').click();
-    expect.verifySteps(["seen 21"]);
-    expect('.o_ai_home_recent_row[aria-label="Open Recent 1"]').toHaveCount(0);
-});
-
-test("workflow runs show their state and open the run", async () => {
-    let opened;
-    mockService("action", { doAction: (action) => { opened = action; } });
-    await mountWithCleanup(WorkDashboard);
-    expect(".o_ai_home_run_row").toHaveCount(2);
-    expect(".o_ai_home_run_row:first .o_ai_home_pill").toHaveText("Failed");
-    expect(".o_ai_home_run_row:first .o_ai_home_pill").toHaveClass("o_run_failed");
-    await contains('.o_ai_home_run_row[aria-label="Open Invoice reminder run"]').click();
-    expect(opened.res_model).toBe("workflow.run");
-    expect(opened.res_id).toBe(5);
-});
-
-test("My Work renders twice the rows that fit when the history is longer", async () => {
-    extraWork = 40;
-    patchWithCleanup(WorkDashboard.prototype, {
-        measureMyWork() {
-            this.state.myWorkFit = 6;
-        },
-    });
-    await mountWithCleanup(WorkDashboard);
-    await animationFrame();
-    expect(".o_ai_home_mywork_item").toHaveCount(12);
-});
-
-test("the agent picker lists active agents and remembers the choice", async () => {
-    homeAgents = [
-        { id: 7, name: "Sales Assistant", description: "Pipeline and quotes" },
-        { id: 8, name: "HR Helper", description: "" },
-    ];
-    browser.localStorage.removeItem("ai_home.agent");
-    await mountWithCleanup(WorkDashboard);
-    expect(".o_ai_home_agent_name").toHaveText("Select agent");
-    await contains(".o_ai_home_agent_toggle").click();
-    expect(".o_ai_home_agent_option").toHaveCount(2);
-    expect(".o_ai_home_agent_manage").toHaveCount(0);
-    await contains('.o_ai_home_agent_option:contains("HR Helper")').click();
-    expect(".o_ai_home_agent_name").toHaveText("HR Helper");
-    expect(browser.localStorage.getItem("ai_home.agent")).toBe("8");
-    browser.localStorage.removeItem("ai_home.agent");
-});
-
-test("one agent is selected automatically; none shows a clear state", async () => {
-    homeAgents = [{ id: 7, name: "Sales Assistant", description: "" }];
-    const dashboard = await mountWithCleanup(WorkDashboard);
-    expect(".o_ai_home_agent_name").toHaveText("Sales Assistant");
-    dashboard.state.agents = [];
-    dashboard.state.agentId = "";
-    await animationFrame();
-    expect(".o_ai_home_agent_name").toHaveText("No active agent");
-});
-
-test("files can be attached, removed and travel with the question", async () => {
-    const created = [];
-    const unlinked = [];
-    mockService("orm", {
-        async call(model, method, args) {
-            if (model === "ai.home.item") {
-                return method === "get_home_data" ? homeData() : true;
+            if (method === "get_ai_answer") {
+                return { state: "completed", answer: "You have 3 approvals waiting.", error: "", conversationId: 11 };
             }
-            return { type: "ir.actions.act_window", res_model: "ai.agent.conversation", res_id: 3 };
-        },
-        async create(model, records) {
-            created.push([model, records[0]]);
-            return [model === "ir.attachment" ? 40 + created.length : 11];
-        },
-        async unlink(model, ids) {
-            unlinked.push([model, ids]);
             return true;
         },
+        create: async () => [99],
+        unlink: async () => true,
     });
-    homeAgents = [{ id: 7, name: "Sales Assistant", description: "" }];
-    const dashboard = await mountWithCleanup(WorkDashboard);
-    await dashboard.addFiles([
-        new File(["# Brief"], "brief.md", { type: "text/markdown" }),
-        new File(["x"], "photo.png", { type: "image/png" }),
-        new File(["a,b"], "numbers.csv", { type: "text/csv" }),
+});
+
+test("helpers: filter chips and feed scopes", () => {
+    const tabs = categoryTabs(homeData().attention);
+    expect(tabs.map((tab) => `${tab.key} ${tab.count}`)).toEqual([
+        "all 3",
+        "approval 1",
+        "conversation 1",
+        "ai 1",
     ]);
-    await animationFrame();
-    expect(".o_ai_home_attachment").toHaveCount(2);
-    expect(created.map(([model, values]) => [model, values.name])).toEqual([
-        ["ir.attachment", "brief.md"],
-        ["ir.attachment", "numbers.csv"],
-    ]);
-    await contains('.o_ai_home_attachment_remove[aria-label="Remove numbers.csv"]').click();
-    expect(unlinked).toEqual([["ir.attachment", [42]]]);
-    expect(".o_ai_home_attachment").toHaveCount(1);
-    dashboard.state.mode = "auto";
-    dashboard.state.prompt = "Summarize the brief";
-    await dashboard.sendPrompt();
-    const ask = created.find(([model]) => model === "ai.agent.ask")[1];
-    expect(ask.attachment_ids).toEqual([[6, 0, [41]]]);
-    expect(dashboard.state.attachments).toHaveLength(0);
-    expect(ATTACHMENT_LIMIT).toBe(5);
+    const feed = homeData().feed;
+    expect(feedForScope(feed, "mine").map((entry) => entry.key)).toEqual(["f1"]);
+    expect(feedForScope(feed, "team").map((entry) => entry.key)).toEqual(["f1", "f2"]);
+    expect(feedForScope(feed, "all")).toHaveLength(3);
 });
 
-test("Ask me prepares a draft and opens review without sending", async () => {
-    let request;
-    mockService("action", { doAction: (action) => { request = action; } });
-    const dashboard = await mountWithCleanup(WorkDashboard);
-    await contains(".o_ai_home_add").click();
-    expect(".o_ai_home_attach").toHaveCount(1);
-    await contains(".o_ai_home_prepare").click();
-    expect("#ai_home_prompt").toHaveValue("Prepare an approval request for ");
-    dashboard.state.agents = [{ id: 7, name: "Sales Assistant" }];
-    dashboard.state.agentId = "7";
-    dashboard.state.attachments = [{ id: 41, name: "brief.md" }];
-    dashboard.reviewRequest();
-    expect(request.res_model).toBe("ai.agent.ask");
-    expect(request.target).toBe("new");
-    expect(request.context.default_agent_id).toBe(7);
-    expect(request.context.default_prompt).toBe("Prepare an approval request for");
-    expect(request.context.default_attachment_ids).toEqual([41]);
-});
-
-test("My Work groups history by day and opens the record", async () => {
-    const groups = groupWorkByDay(makeMyWork());
-    expect(groups.map((group) => group.key)).toEqual(["today", "earlier"]);
-    let opened;
-    mockService("action", { doAction: (action) => { opened = action; } });
+test("renders the design's sections", async () => {
     await mountWithCleanup(WorkDashboard);
-    expect(".o_ai_home_mywork_day").toHaveCount(2);
-    expect(".o_ai_home_mywork_item").toHaveCount(2);
-    await contains('.o_ai_home_mywork_item[aria-label="Open Azure Interior"]').click();
-    expect(opened.res_model).toBe("res.partner");
-    expect(opened.res_id).toBe(1);
+    expect(".o_ai_home_greeting h1").toHaveText(/, Aisha$/);
+    expect(".o_ai_home_greeting span").toHaveText(/Operations manager · 3 items need you, 1 overdue$/);
+    expect(".o_ai_home_tile").toHaveCount(2);
+    expect(".o_ai_home_tile.o_tone_warn .o_ai_home_tile_value").toHaveText("7");
+    expect(".o_ai_home_attention_row").toHaveCount(3);
+    expect(".o_ai_home_attention_row:first .o_ai_home_tag").toHaveText("Overdue");
+    expect(".o_ai_home_attention_row:first .o_ai_home_badge").toHaveText("AP");
+    expect(".o_ai_home_feed_row").toHaveCount(3);
+    expect(".o_ai_home_day_row .o_ai_home_day_time").toHaveText("Today");
+    expect(".o_ai_home_recent_row").toHaveCount(1);
+    // No assistant for this user: quick actions instead of the assistant box.
+    expect(".o_ai_home_quick_btn").toHaveText("+ Contact");
+    expect(".o_ai_home_ask").toHaveCount(0);
 });
 
-test("Automations can be filtered by status", async () => {
-    expect(filterAutomations(liveAutomations, "failed")).toHaveLength(1);
-    expect(filterAutomations(liveAutomations, "all")).toHaveLength(2);
+test("chips filter the list and scopes filter the feed", async () => {
     await mountWithCleanup(WorkDashboard);
-    expect(".o_ai_home_status_chip").toHaveCount(4); // all, active, paused, needs attention
-    await contains('.o_ai_home_status_chip:contains("Needs attention")').click();
-    expect(".o_ai_home_automation_row").toHaveCount(1);
-    expect(".o_ai_home_automation_row").toHaveAttribute("aria-label", "Open Invoice reminder");
-    expect(".o_ai_home_automation_row .o_ai_home_pill").toHaveText("Needs attention");
-    await contains('.o_ai_home_status_chip:contains("Paused")').click();
-    expect(".o_ai_home_automation_row").toHaveCount(1);
+    await contains('.o_ai_home_chip:contains("Conversations")').click();
+    expect(".o_ai_home_attention_row").toHaveCount(1);
+    expect(".o_ai_home_attention_row .o_ai_home_btn_primary").toHaveText("Assign to me");
+    await contains('.o_ai_home_segment:contains("Mine")').click();
+    expect(".o_ai_home_feed_row").toHaveCount(1);
+    await contains('.o_ai_home_segment:contains("My team")').click();
+    expect(".o_ai_home_feed_row").toHaveCount(2);
 });
 
-test("Auto mode sends the question through the Ask dialog's Send", async () => {
-    const calls = [];
-    mockService("orm", {
-        async call(model, method, args) {
-            if (model === "ai.home.item") {
-                return method === "get_home_data" ? homeData() : true;
-            }
-            calls.push([model, method, args]);
-            return { type: "ir.actions.act_window", res_model: "ai.agent.conversation", res_id: 3 };
-        },
-        async create(model, records) {
-            calls.push([model, "create", records]);
-            return [11];
-        },
-    });
-    let opened;
-    mockService("action", { doAction: (action) => { opened = action; } });
-    const dashboard = await mountWithCleanup(WorkDashboard);
-    dashboard.state.agents = [{ id: 7, name: "Sales Assistant" }];
-    dashboard.state.agentId = "7";
-    dashboard.state.mode = "auto";
-    dashboard.state.prompt = "Summarize my pipeline";
-    await dashboard.sendPrompt();
+test("buttons run on the server, then Home reloads; open buttons open the record", async () => {
+    await mountWithCleanup(WorkDashboard);
+    calls = [];
+    await contains(".o_ai_home_attention_row:first .o_ai_home_btn_primary").click();
+    expect(calls[0]).toEqual(["run_home_action", ["approval.center.request", 1, "action_approve"]]);
+    expect(calls[1][0]).toBe("get_home_data");
+    calls = [];
+    await contains('.o_ai_home_attention_row .o_ai_home_btn_primary:contains("Review")').click();
     expect(calls).toEqual([
-        ["ai.agent.ask", "create", [{ agent_id: 7, prompt: "Summarize my pipeline", attachment_ids: [[6, 0, []]] }]],
-        ["ai.agent.ask", "action_send", [[11]]],
+        ["doAction", {
+            type: "ir.actions.act_window",
+            res_model: "ai.agent.run",
+            res_id: 3,
+            views: [[false, "form"]],
+            target: "current",
+        }],
     ]);
-    expect(opened.res_model).toBe("ai.agent.conversation");
-    expect(dashboard.state.prompt).toBe("");
+});
+
+test("tiles with a list open it", async () => {
+    await mountWithCleanup(WorkDashboard);
+    expect(".o_ai_home_tile:last").toHaveAttribute("disabled");
+    await contains(".o_ai_home_tile:first").click();
+    expect(calls.at(-1)).toEqual(["doAction", data.live[0].action]);
+});
+
+test("the assistant answers on Home and keeps the conversation", async () => {
+    data.agents = [{ id: 7, name: "Ops Assistant", description: "" }];
+    data.prompts = ["What needs my approval today?"];
+    data.quickActions = [];
+    browser.localStorage.removeItem("ai_home.agent");
+    await mountWithCleanup(WorkDashboard);
+    expect(".o_ai_home_quick").toHaveCount(0);
+    expect(".o_ai_home_agent_toggle").toHaveText("Ops Assistant ▾");
+    expect(".o_ai_home_rights").toHaveText("Uses your access rights");
+    expect(".o_ai_home_send").toHaveAttribute("disabled");
+    await contains(".o_ai_home_prompt").click();
+    expect(calls.find(([method]) => method === "ask_ai")[1]).toEqual([7, "What needs my approval today?", [], false]);
+    await animationFrame();
+    expect(".o_ai_home_chat_question").toHaveText("What needs my approval today?");
+    expect(".o_ai_home_chat_text").toHaveText("You have 3 approvals waiting.");
+    expect(".o_ai_home_prompts").toHaveCount(0);
+    // A follow-up goes to the same conversation.
+    await contains("#ai_home_prompt").edit("And tomorrow?");
+    await contains(".o_ai_home_send").click();
+    expect(calls.filter(([method]) => method === "ask_ai").at(-1)[1]).toEqual([7, "And tomorrow?", [], 11]);
+    await animationFrame();
+    await contains(".o_ai_home_chat_action").click();
+    expect(calls.at(-1)[1].res_model).toBe("ai.agent.conversation");
+    await contains(".o_ai_home_chat_close").click();
+    expect(".o_ai_home_chat").toHaveCount(0);
+    expect(".o_ai_home_prompt").toHaveCount(1);
+});
+
+test("Home refreshes by itself", async () => {
+    await mountWithCleanup(WorkDashboard);
+    const before = calls.filter(([method]) => method === "get_home_data").length;
+    await advanceTime(60000);
+    expect(calls.filter(([method]) => method === "get_home_data").length).toBe(before + 1);
 });

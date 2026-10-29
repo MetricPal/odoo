@@ -1070,3 +1070,9 @@ class FlowFromRecipe(models.Model):
         self.message_post(body=_('Saved as the recipe “%s”.', recipe.name))
         return {'type': 'ir.actions.act_window', 'res_model': 'mi.flow.recipe', 'res_id': recipe.id,
                 'view_mode': 'form', 'views': [(False, 'form')], 'target': 'current'}
+
+
+class PlanFlows(models.Model):
+    _inherit = 'mi.plan'
+
+    flow_ids = fields.One2many('mi.flow', 'plan_id', string='Workflows')

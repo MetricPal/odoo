@@ -12,6 +12,67 @@ Format:
 
 
 
+## 2026-10-29 — Home: My activities tile
+
+- Change: every role's live figures start with *My activities* (the user's Odoo activities): red when any is overdue, orange when any is due today, green when all are planned; opens the user's activity list.
+
+## 2026-10-29 — Home: live dot with a colour hint
+
+- Change: the "Right now" title is removed; a green live dot remains, and hovering (or tapping) it explains the dot colours on the figures: red overdue or failed, orange due today or waiting, green on track (Odoo activity meanings). Conversations: orange after 5 min waiting, red after 30; approvals: red when the review activity is overdue, orange when due today.
+
+## 2026-10-29 — Home: three columns down to the bottom of the page
+
+- Change: My day + Recently opened (left) | Needs your attention with the assistant docked under it (middle) | What just happened (right); each column scrolls on its own and reaches the bottom of the page; greeting and Right now stay on top. Standard spacing: 24px page padding and column gap, 16px between cards (16px on phones). Under 1200px the page scrolls as one with the assistant kept at the bottom. Replaces the side-column alignment below.
+
+## 2026-10-29 — Home: side column aligned with the assistant box
+
+- Change: from 1400px wide, the side column (What just happened, My day, Recently opened) starts exactly at the assistant box's right edge and runs down to the bottom of the page beside the box; below that the side cards sit under Needs your attention. The page is no longer capped at 1360px.
+
+## 2026-10-29 — Home: assistant box docked at the bottom
+
+- Change: the assistant box no longer floats over the page; it is docked under the scrolling page, like claude.ai (page fades out above it; suggestions are one swipeable row on phones).
+
+## 2026-10-29 — Home redesigned to the approved "Odoo home" design
+
+- Change: Home shows a greeting, quick actions (without an assistant), live "Right now" tiles by role, "Needs your attention" with action buttons and category chips, "What just happened" (Mine / My team / Everything), "My day", "Recently opened", and the assistant box at the bottom centre with answers shown on Home.
+- Removed: the My Work column, Automations and Workflow runs lists, dictation, Manual/Auto mode, "Draft an approval request", the AI disclaimer, and the navbar global search box.
+- API: `ai.home.item.get_home_data()` returns the new shape; `run_home_action(model, res_id, method)` runs whitelisted buttons as the user; `ask_ai` / `get_ai_answer` for the assistant; `_attention_collectors()` lets modules add rows (social_home uses it).
+
+## 2026-10-28 — Marketing: Execution tab without the channel texts list
+
+- Change: the channel starting-text list (subject / text per channel, kept from the old Design tab) is removed from the Execution tab; it was not in the approved design. Drafts still start from the key message, the AI still writes into the drafts, templates keep their texts in *Saved texts*.
+
+## 2026-10-28 — Marketing: management view for HOD / CEO, split by brand
+
+- Change: control panel block `management` (first in the marketing manager's default view; migration adds it to the saved manager view): quarter KPIs (spend vs budget, revenue, return on spend, leads, cost per lead, open pipeline), revenue and spend per campaign, leads by UTM source donut, pipeline by CRM stage, proposal approvals waiting for the viewer, campaign table.
+- Change: *Also for brands* on a proposal (in the approved version); *Split by brand* after approval makes one campaign per brand in Planning with the approved version (`split_from_id`).
+- Fix: donut and pie charts with a single segment draw a full ring.
+
+## 2026-10-28 — Gantt view module; campaign tasks on a Gantt chart
+
+- New module `gantt_view`: a `gantt` view type for any model (ir.ui.view type, act_window view mode, arch validation, OWL view): day / week / month / year scales, grouping by the search Group by or `default_group_by` (many2one, many2many, selection), drag to move, drag the right edge to resize (snapped), click to open, New, dependency arrows (`dependency_field`), progress shading, today line. LGPL, written here (the Odoo Apps sample is OPL-1 and has no dependencies).
+- New module `project_gantt_view` (auto-install with Project): task *Planned start* and a task Gantt (planned start → deadline, by assignee, dependencies) in the task actions.
+- Change (marketing work): tasks get a pillar (`mi_pillar`, carried into copies); the campaign's *Tasks* link opens its tasks on a Gantt by pillar with Kanban, List, Calendar and Activity; Campaign tasks menu gets the Gantt view.
+
+## 2026-10-28 — Marketing: Results from CRM and UTM, Evaluation, review schedule
+
+- Change: Results tab widget `mi_campaign_results` (`mi.plan.get_results`): revenue vs the compared campaign (`compare_plan_id`), revenue / spend, leads and wins against targets, channel contribution by UTM source (leads, wins, revenue; cost per lead and revenue / spend from spend lines that name the channel, `mi.plan.spend.item_id`), lead quality donut, CRM pipeline funnel by stage, comparison pie and bars, notes for missing data; editable takeaway.
+- Change: Evaluation tab: assessment fields, won · lost and top CRM loss reasons, objections and buyer language, recommendations (`mi.plan.advice`), review schedule (monthly / quarterly / six-monthly, cron `_cron_reviews` refreshes results and gives the owner a To-Do).
+- Change: PDF report shows the stage, proposal, takeaway, revenue per spend, cost per lead, evaluation and recommendations; *Print report* button in Results and Evaluation.
+- Change (AI): *Draft with AI* queues the report agent with the results, loss reasons and lead notes; its validated answer (`parse_report`) fills the takeaway, evaluation and recommendations as a draft.
+
+## 2026-10-28 — Marketing: pillars, Overview, Execution channels with schedule
+
+- Change: campaign pillars Awareness / Consideration / Conversion (`mi.plan.pillar`: dates, budget, objective), created with the campaign (dates and budget shares from the campaign); channels get a pillar (default by channel) and a Schedule (`mi.plan.item.schedule_at`, pushed to Email/SMS, Messaging and Social drafts and used when the campaign is released).
+- Change: Overview widget `mi_campaign_overview`: funnel and pillar timeline side by side, budget target vs spend per month / quarter / year (`mi.plan.get_overview`), channels with status and schedule.
+- Change: Execution tab: Design (creatives from Proofs, channel texts), Channels (pillar, status, schedule; next step and app optional), Workflows (flow module); *Execute now* for approved campaigns; the Proofs smart button is replaced by the Design section.
+- Migration: existing campaigns get their three pillars.
+
+## 2026-10-28 — Marketing: Market Research tab and research agent
+
+- Change: Market Research tab: findings, upstream / downstream organisations with role (`mi.plan.party`), audience profile, countries / states / places, action plan, milestones (`mi.plan.milestone`), evidence with source (`mi.plan.evidence`); locked while the proposal is in approval; included in the approved version.
+- Change (AI): *Run research* queues the brand's market research agent (`mi.brand.research_agent_id`, else its AI agent) with the proposal's inputs; the tab shows agent, start, finish, duration and status; the answer is validated (`parse_research`: https links only, known source types, ISO dates) before filling the tab.
+
 ## 2026-10-28 — Marketing: campaign lifecycle and proposal approvals as activities
 
 - Change: campaigns move through Market Research › Planning › Execution › Results › Evaluation (`mi.plan.phase`); status bar, list strip, badges, kanban columns, filters and the portal use these words.

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="gantt_view.GanttController">
+        <div t-att-class="'o_gantt_view h-100 ' + (this.props.className || '')">
+            <Layout display="this.props.display">
+                <t t-set-slot="control-panel-buttons">
+                    <button t-if="this.archInfo.create and this.props.createRecord" type="button"
+                            class="btn btn-primary o-kanban-button-new" t-on-click="() => this.createRecord()">New</button>
+                </t>
+                <t t-set-slot="control-panel-additional-actions">
+                    <CogMenu/>
+                </t>
+                <t t-set-slot="control-panel-actions">
+                    <SearchBar/>
+                </t>
+                <div class="o_gantt bg-view d-flex flex-column h-100">
+                    <div class="o_gantt_toolbar d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                        <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.move(0)">Today</button>
+                        <button type="button" class="btn btn-light btn-sm" aria-label="Previous" t-on-click="() => this.move(-1)"><i class="oi" data-icon="keyboard_arrow_left"/></button>
+                        <button type="button" class="btn btn-light btn-sm" aria-label="Next" t-on-click="() => this.move(1)"><i class="oi" data-icon="keyboard_arrow_right"/></button>
+                        <b class="ms-2" t-out="this.title"/>
+                        <span t-if="this.state.unplanned" class="small text-muted ms-2">· <t t-out="this.state.unplanned"/> without dates</span>
+                        <span class="flex-grow-1"/>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Scale">
+                            <t t-foreach="['day', 'week', 'month', 'year']" t-as="scale" t-key="scale">
+                                <button type="button" class="btn" t-att-class="this.state.scale === scale ? 'btn-secondary active' : 'btn-light'"
+                                        t-on-click="() => this.setScale(scale)" t-out="this.scaleLabel(scale)"/>
+                            </t>
+                        </div>
+                    </div>
+                    <div class="o_gantt_grid flex-grow-1 overflow-auto">
+                        <div class="o_gantt_header d-flex border-bottom position-sticky top-0 bg-view">
+                            <div class="o_gantt_label fw-bold px-3 py-2">Name</div>
+                            <div class="o_gantt_cols d-flex flex-grow-1">
+                                <div t-foreach="this.columns" t-as="col" t-key="col.key" class="o_gantt_col text-center small py-2"
+                                     t-att-class="col.today ? 'o_gantt_today_col fw-bold' : ''" t-out="col.label"/>
+                            </div>
+                        </div>
+                        <div t-if="!this.state.loading and !this.state.rows.length" class="text-muted p-4">Nothing planned in this period.</div>
+                        <div class="o_gantt_body d-flex position-relative">
+                            <div class="o_gantt_labels">
+                                <t t-foreach="this.state.rows" t-as="row" t-key="row.key">
+                                    <div t-if="row.type === 'group'" class="o_gantt_group_label px-3 fw-bold bg-200">
+                                        <t t-out="row.label"/> <span class="text-muted fw-normal small">(<t t-out="row.count"/>)</span>
+                                    </div>
+                                    <div t-else="" class="o_gantt_row_label px-3 text-truncate" t-att-title="row.bar.name" t-out="row.bar.name"/>
+                                </t>
+                            </div>
+                            <div class="o_gantt_track flex-grow-1 position-relative">
+                                <div class="o_gantt_lines d-flex position-absolute top-0 bottom-0 start-0 end-0">
+                                    <div t-foreach="this.columns" t-as="col" t-key="col.key" class="o_gantt_col"
+                                         t-att-class="col.today ? 'o_gantt_today_col' : ''"/>
+                                </div>
+                                <t t-foreach="this.state.rows" t-as="row" t-key="row.key">
+                                    <div t-if="row.type === 'group'" class="o_gantt_group_row bg-200"/>
+                                    <div t-else="" class="o_gantt_row position-relative">
+                                        <div class="o_gantt_bar position-absolute d-flex align-items-center"
+                                             t-att-class="(row.bar.clippedLeft ? ' o_clipped_left' : '') + (row.bar.clippedRight ? ' o_clipped_right' : '') + (this.archInfo.edit ? ' o_gantt_draggable' : '')"
+                                             t-att-style="'left: ' + row.bar.left + '%; width: ' + row.bar.width + '%; background-color: ' + row.bar.color"
+                                             t-att-title="row.bar.name"
+                                             t-on-pointerdown="(ev) => this.startDrag(ev, row.bar, 'move')"
+                                             t-on-click="() => this.openRecord(row.bar)">
+                                            <div t-if="row.bar.progress !== null" class="o_gantt_progress" t-att-style="'width: ' + row.bar.progress + '%'"/>
+                                            <span class="o_gantt_bar_text text-truncate px-2" t-out="row.bar.name"/>
+                                            <span t-if="this.archInfo.edit and !row.bar.clippedRight" class="o_gantt_handle"
+                                                  t-on-pointerdown="(ev) => this.startDrag(ev, row.bar, 'resize')" t-on-click.stop=""/>
+                                        </div>
+                                    </div>
+                                </t>
+                                <svg t-if="this.arrows.length" class="o_gantt_arrows position-absolute top-0 start-0" width="100%"
+                                     t-att-height="this.bodyHeight" aria-hidden="true">
+                                    <defs><marker id="o_gantt_arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                                        <path d="M0,0 L8,4 L0,8 z" fill="#6c757d"/></marker></defs>
+                                    <t t-foreach="this.arrows" t-as="arrow" t-key="arrow.key">
+                                        <line t-att-x1="arrow.x1 + '%'" t-att-y1="arrow.y1" t-att-x2="arrow.x2 + '%'" t-att-y2="arrow.y2"
+                                              stroke="#6c757d" stroke-width="1.5" marker-end="url(#o_gantt_arrowhead)"/>
+                                    </t>
+                                </svg>
+                                <div t-if="this.todayPosition !== null" class="o_gantt_now position-absolute top-0 bottom-0"
+                                     t-att-style="'left: ' + this.todayPosition + '%'"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        </div>
+    </t>
+</templates>

@@ -1,4 +1,4 @@
-"""Database-free checks for Owl 3 dashboard template bindings."""
+"""Database-free checks for the Home template (approved "Odoo home" design)."""
 
 from pathlib import Path
 import re
@@ -6,72 +6,68 @@ import unittest
 
 from lxml import etree
 
+MODULE = Path(__file__).resolve().parents[1]
+
+
+def _template():
+    return etree.parse(str(MODULE / 'static/src/dashboard/dashboard.xml'))
+
 
 class TestDashboardTemplates(unittest.TestCase):
-    def test_favorites_section_is_gone(self):
-        template = etree.parse(str(
-            Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
-        ))
-        self.assertFalse(template.xpath("//*[contains(@class, 'favorite')]"))
-        self.assertFalse(template.xpath("//*[contains(@class, 'o_ai_home_mywork_more')]"),
-                         'My Work sizes itself to the screen instead of a Show more button')
+    def test_sections_follow_the_design(self):
+        template = _template()
+        root = template.xpath('//div[contains(@class, "o_ai_home ")]')[0]
+        self.assertEqual([child.get('class') for child in root], ['o_ai_home_top', 'o_ai_home_grid'])
+        top = [child.get('class').split()[0] for child in root[0]]
+        self.assertEqual(top, ['o_ai_home_greeting', 'o_ai_home_card', 'o_ai_home_live'])
+        grid = root[1]
+        self.assertEqual([child.get('class') for child in grid], ['o_ai_home_panes', 'o_ai_home_ask'])
+        panes = {pane.get('class').split()[-1]: [cls.split()[-1] for cls in pane.xpath('section/@class')]
+                 for pane in grid[0]}
+        self.assertEqual(panes, {
+            'o_ai_home_center': ['o_ai_home_attention'],
+            'o_ai_home_left': ['o_ai_home_day', 'o_ai_home_recent'],
+            'o_ai_home_right': ['o_ai_home_feed'],
+        })
+        # Three columns down to the bottom of the page, the assistant under the middle one; nothing floats.
+        scss = (MODULE / 'static/src/dashboard/dashboard.scss').read_text()
+        self.assertIn('"left center right"', scss)
+        self.assertIn('"left ask right"', scss)
+        self.assertNotIn('position: fixed', scss)
+        self.assertIn('--home-pad: 24px', scss)
+        self.assertIn('--home-pad: 16px', scss)
 
-    def test_dashboard_icons_use_native_odoo20_markup(self):
-        template = etree.parse(str(
-            Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
-        ))
-        icons = template.xpath('//*[@data-icon]')
-        self.assertEqual([icon.get('data-icon') for icon in icons], [
-            'chevron_forward', 'arrow_upward', 'add', 'mic',
-        ])
-        self.assertFalse(template.xpath('//select[contains(@class, "o_ai_home_agent_select")]'),
-                         'Agents are chosen from the picker')
+    def test_live_figures_use_a_hinted_indicator(self):
+        template = _template()
+        self.assertNotIn('Right now', etree.tostring(template, encoding='unicode'))
+        dot = template.xpath('//span[@class="o_ai_home_live_dot"]')[0]
+        self.assertEqual(dot.get('data-tooltip-template'), 'ai_home.LiveHint')
+        self.assertTrue(dot.get('aria-label'))
+        hint = template.xpath('//t[@t-name="ai_home.LiveHint"]')[0]
+        dots = hint.xpath('.//i/@class')
+        self.assertEqual(dots, ['o_ai_home_hint_dot o_tone_bad', 'o_ai_home_hint_dot o_tone_warn',
+                                'o_ai_home_hint_dot o_tone_good'])
+
+    def test_old_home_parts_are_gone(self):
+        template = _template()
+        for old in ('o_ai_home_mywork', 'o_ai_home_automations', 'o_ai_home_runs', 'o_ai_home_dictate',
+                    'o_ai_home_mode_select', 'o_ai_home_prepare', 'o_ai_home_disclaimer', 'favorite',
+                    'o_ai_home_global_search'):
+            self.assertFalse(template.xpath(f'//*[contains(@class, "{old}")]'), old)
+
+    def test_icons_use_native_odoo20_markup(self):
+        icons = _template().xpath('//*[@data-icon]')
+        self.assertEqual([icon.get('data-icon') for icon in icons], ['add', 'arrow_upward'])
         for icon in icons:
             self.assertIn('oi', icon.get('class').split())
             self.assertEqual(icon.get('aria-hidden'), 'true')
-        self.assertFalse(template.xpath('//*[contains(@class, "fa-")]'))
-
-    def test_home_columns_follow_the_layout_brief(self):
-        template = etree.parse(str(
-            Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.xml'
-        ))
-        main = template.xpath('//main[contains(@class, "o_ai_home_container")]')[0]
-        columns = [child.get('class') for child in main]
-        # The composer is its own grid item so the center column can scroll
-        # underneath it without moving it.
-        self.assertEqual(columns, ['o_ai_home_left', 'o_ai_home_center', 'o_ai_home_composer', 'o_ai_home_right'])
-        self.assertTrue(template.xpath('//aside[@class="o_ai_home_left"]//section[contains(@class, "o_ai_home_mywork")]'))
-        right = template.xpath('//aside[@class="o_ai_home_right"]/section/@class')
-        self.assertEqual([cls.split()[-1] for cls in right],
-                         ['o_ai_home_automations', 'o_ai_home_runs', 'o_ai_home_recent'])
-        self.assertTrue(template.xpath('//div[contains(@class, "o_ai_home_status_filter")]'))
-        # Titles stay outside the scrolling item lists.
-        for section in template.xpath('//aside[@class="o_ai_home_right"]/section'):
-            heading = section.xpath('div[contains(@class, "o_ai_home_section_heading")]')
-            scroller = section.xpath('div[contains(@class, "o_ai_home_scroll")]')
-            self.assertTrue(heading and scroller)
-        self.assertTrue(template.xpath(
-            '//section[contains(@class, "o_ai_home_mywork")]/div[contains(@class, "o_ai_home_scroll")]'))
-
-    def test_attention_badge_uses_bundled_shield_image(self):
-        module = Path(__file__).resolve().parents[1]
-        template = etree.parse(str(module / 'static/src/dashboard/dashboard.xml'))
-        icons = template.xpath('//img[@class="o_ai_home_attention_icon"]')
-        self.assertEqual(len(icons), 1)
-        self.assertEqual(icons[0].get('src'), '/ai_home/static/img/shield-logo.svg')
-        self.assertEqual(icons[0].get('alt'), '')
-        self.assertEqual(icons[0].get('aria-hidden'), 'true')
-        asset = module / icons[0].get('src').removeprefix('/ai_home/')
-        self.assertEqual(asset.read_text().splitlines()[0], (
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" '
-            'role="img" aria-label="Green shield logo">'
-        ))
+        self.assertFalse(_template().xpath('//*[contains(@class, "fa-")]'))
 
     def test_component_members_use_owl3_context(self):
-        source = Path(__file__).resolve().parents[1] / 'static/src/dashboard/dashboard.js'
+        source = MODULE / 'static/src/dashboard/dashboard.js'
         members = set(re.findall(r'\bget (\w+)\(', source.read_text()))
-        members.update({'state', 'myWorkRef', 'fileInputRef'})
-        template = etree.parse(str(source.with_suffix('.xml')))
+        members.update({'state', 'fileInputRef', 'promptRef'})
+        template = _template()
         checked = 0
         for element in template.iter():
             for attribute, expression in element.attrib.items():
@@ -79,12 +75,13 @@ class TestDashboardTemplates(unittest.TestCase):
                     continue
                 for member in members:
                     with self.subTest(attribute=attribute, expression=expression):
-                        self.assertIsNone(re.search(
-                            rf'(?<![\w.]){member}\b', expression
-                        ))
+                        self.assertIsNone(re.search(rf'(?<![\w.]){member}\b', expression))
                 checked += 1
         self.assertGreater(checked, 50)
-        self.assertEqual(template.xpath('//*[@t-ref]/@t-ref'), ['this.myWorkRef', 'this.fileInputRef'])
+        self.assertEqual(template.xpath('//*[@t-ref]/@t-ref'), ['this.fileInputRef', 'this.promptRef'])
+
+    def test_global_search_is_removed_from_the_navbar(self):
+        self.assertFalse((MODULE / 'static/src/global_search').exists())
 
 
 if __name__ == '__main__':

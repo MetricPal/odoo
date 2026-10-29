@@ -1,6 +1,6 @@
 {
     'name': 'Marketing: campaigns',
-    'version': '20.0.1.5.0',
+    'version': '20.0.1.7.0',
     'category': 'Marketing',
     'summary': 'Campaigns in Social, Messaging, Email, SMS and Events: brief, content, one review, live results',
     'description': 'Create campaigns by hand or from a suggestion. Drafts are prepared in each app (with your permissions, each under its own approval); results are read back and count towards your goals.',

@@ -1,8 +1,8 @@
 {
     'name': 'AI Home',
-    'version': '1.4',
+    'version': '1.5',
     'category': 'Productivity',
-    'summary': 'AI Home: my work, items needing attention, automations, workflow runs and recent activity',
+    'summary': 'Home: right now, what needs you, what just happened, your day and the assistant',
     'author': 'metric.io',
     'icon': '/ai_home/static/description/icon.svg',
     'depends': ['web', 'website'],

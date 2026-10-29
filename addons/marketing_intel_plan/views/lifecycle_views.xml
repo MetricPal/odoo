@@ -64,6 +64,7 @@
     <field name="arch" type="xml"><list editable="bottom">
       <field name="plan_id" column_invisible="context.get('default_plan_id')"/>
       <field name="name" string="Description"/><field name="partner_id" string="Vendor"/>
+      <field name="item_id" options="{'no_create': True}" optional="show"/>
       <field name="date"/><field name="amount" sum="Total"/><field name="currency_id" column_invisible="1"/>
     </list></field>
   </record>
@@ -82,5 +83,20 @@
       <group><filter name="group_plan" string="Campaign" context="{'group_by': 'plan_id'}"/>
         <filter name="group_month" string="Month" context="{'group_by': 'date:month'}"/></group>
     </search></field>
+  </record>
+
+  <!-- Pillar (opened from the Overview funnel or timeline) -->
+  <record id="pillar_form" model="ir.ui.view">
+    <field name="name">mi.plan.pillar.form</field><field name="model">mi.plan.pillar</field>
+    <field name="arch" type="xml"><form>
+      <group>
+        <field name="pillar" readonly="1"/>
+        <label for="date_start" string="Dates"/>
+        <div class="o_row"><field name="date_start"/> → <field name="date_end"/></div>
+        <field name="budget"/><field name="currency_id" invisible="1"/>
+        <field name="objective"/>
+        <field name="plan_id" invisible="1"/>
+      </group>
+    </form></field>
   </record>
 </odoo>

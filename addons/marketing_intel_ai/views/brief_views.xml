@@ -39,6 +39,7 @@
           <group>
             <group>
               <field name="ai_agent_id"/>
+              <field name="research_agent_id" invisible="not ai_agent_id"/>
               <field name="ai_auto"/>
               <field name="ai_requester_id" invisible="not ai_auto" required="ai_auto"/>
             </group>

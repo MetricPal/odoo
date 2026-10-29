@@ -5,15 +5,23 @@
     <field name="name">mi.plan.form.work</field><field name="model">mi.plan</field>
     <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
     <field name="arch" type="xml">
-      <xpath expr="//div[@name='button_box']" position="inside">
-        <button name="action_open_proofs" type="object" class="oe_stat_button" icon="edit" invisible="is_template"
-                help="Versions of creatives and texts: compare, approve or request changes.">
-          <div class="o_stat_info">
-            <span class="o_stat_value"><field name="proof_count" nolabel="1"/></span>
-            <span class="o_stat_text" invisible="proof_open_count">Proofs</span>
-            <span class="o_stat_text text-warning" invisible="not proof_open_count"><field name="proof_open_count" nolabel="1"/> open</span>
-          </div>
-        </button>
+      <xpath expr="//page[@name='channels']/separator[1]" position="after">
+        <field name="design_proof_ids" mode="kanban" context="{'default_plan_id': id}" invisible="is_template">
+          <kanban create="1" class="o_mi_design_kanban">
+            <field name="image"/><field name="state"/>
+            <templates><t t-name="card" class="p-2">
+              <field name="image" widget="image" invisible="not image" options="{'size': [0, 110]}" class="mb-1"/>
+              <div class="bg-light text-muted small d-flex align-items-center justify-content-center mb-1" style="height: 110px;"
+                   invisible="image">No creative yet</div>
+              <field name="name" class="fw-bold"/>
+              <div class="text-muted small"><field name="item_id"/> · <field name="version_label"/></div>
+              <field name="state" widget="badge" decoration-info="state == 'review'" decoration-warning="state == 'changes'"
+                     decoration-success="state == 'approved'"/>
+            </t></templates>
+          </kanban>
+        </field>
+        <div class="text-muted small mb-2" invisible="is_template">Creatives with their versions: open one to compare versions,
+          send it for review or ask the client.</div>
       </xpath>
       <xpath expr="//div[@name='links']/button[@name='action_open_spend']" position="before">
         <button name="action_open_tasks" type="object" class="btn btn-link p-0 small"
@@ -32,6 +40,7 @@
     <field name="arch" type="xml">
       <xpath expr="//div[@id='date_deadline_and_recurring_task']" position="after">
         <field name="mi_plan_id" invisible="not mi_plan_id"/>
+        <field name="mi_pillar" invisible="not mi_plan_id"/>
         <field name="mi_days_before" invisible="not mi_plan_id"/>
       </xpath>
     </field>
@@ -39,7 +48,7 @@
 
   <record id="action_campaign_tasks" model="ir.actions.act_window">
     <field name="name">Campaign tasks</field><field name="res_model">project.task</field>
-    <field name="view_mode">list,kanban,calendar,form</field>
+    <field name="view_mode">list,kanban,calendar,gantt,form</field>
     <field name="domain">[('mi_plan_id', '!=', False), ('mi_plan_id.is_template', '=', False)]</field>
     <field name="context">{'search_default_my_tasks': 1, 'search_default_open_tasks': 1}</field>
     <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No campaign tasks yet</p>
@@ -277,4 +286,25 @@
   <menuitem id="menu_requests" name="Requests" parent="marketing_intel_plan.menu_campaigns_root" action="action_requests" sequence="40"/>
   <menuitem id="menu_campaign_tasks" name="Tasks" parent="marketing_intel_plan.menu_campaigns_root" action="action_campaign_tasks" sequence="50"/>
   <menuitem id="menu_proofs" name="Proofs" parent="marketing_intel_plan.menu_campaigns_root" action="action_proofs" sequence="60"/>
+  <!-- Campaign tasks on a Gantt chart, by pillar -->
+  <record id="task_gantt_campaign" model="ir.ui.view">
+    <field name="name">project.task.gantt.campaign</field><field name="model">project.task</field>
+    <field name="priority">30</field>
+    <field name="arch" type="xml">
+      <gantt string="Campaign tasks" date_start="planned_date_start" date_stop="date_deadline" color="color"
+             dependency_field="depend_on_ids" default_group_by="mi_pillar" default_scale="month">
+        <field name="name"/><field name="user_ids"/>
+      </gantt>
+    </field>
+  </record>
+  <record id="task_search_campaign" model="ir.ui.view">
+    <field name="name">project.task.search.campaign</field><field name="model">project.task</field>
+    <field name="inherit_id" ref="project.view_task_search_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//search" position="inside">
+        <field name="mi_plan_id"/>
+        <filter name="group_pillar" string="Pillar" context="{'group_by': 'mi_pillar'}"/>
+      </xpath>
+    </field>
+  </record>
 </odoo>

@@ -36,14 +36,13 @@ class TestSocialHome(TransactionCase):
                          'body': 'Our post', 'occurred_at': fields.Datetime.now()})
 
     def _social(self, user):
-        items = self.env['ai.home.item'].with_user(user)._live_attention()
-        return [i for i in items if i['kind'].startswith('social')]
+        return self.env['ai.home.item'].with_user(user)._attention_social()
 
     def test_team_sees_what_to_answer(self):
         items = self._social(self.member)
         self.assertEqual(len(items), 1)
-        self.assertEqual(items[0]['name'], '3 to answer on Home LinkedIn')
-        action = items[0]['action']
+        self.assertEqual(items[0]['title'], '3 to answer on Home LinkedIn')
+        action = items[0]['openAction']
         self.assertEqual(action['res_model'], 'omni.social.activity')
         found = self.env['omni.social.activity'].with_user(self.member).search(action['domain'])
         self.assertEqual(found, self.comments, 'our own posts are never counted')
@@ -51,8 +50,8 @@ class TestSocialHome(TransactionCase):
     def test_answered_and_others_assignments_drop_out(self):
         self.comments[0].with_user(self.member).action_mark_ignored()
         self.comments[1].with_user(self.manager).action_assign_me()
-        self.assertEqual(self._social(self.member)[0]['name'], '1 to answer on Home LinkedIn')
-        self.assertEqual(self._social(self.manager)[0]['name'], '2 to answer on Home LinkedIn')
+        self.assertEqual(self._social(self.member)[0]['title'], '1 to answer on Home LinkedIn')
+        self.assertEqual(self._social(self.manager)[0]['title'], '2 to answer on Home LinkedIn')
 
     def test_outsiders_see_nothing(self):
         self.assertEqual(self._social(self.outsider), [])
@@ -62,6 +61,7 @@ class TestSocialHome(TransactionCase):
             'name': 'Broken post', 'connection_id': self.account.id, 'body': 'x', 'reason': 'QA',
         })
         internal(post.sudo()).write({'state': 'failed'})
-        names = [i['name'] for i in self._social(self.member)]
+        names = [i['title'] for i in self._social(self.member)]
         self.assertIn('Broken post', names)
-        self.assertNotIn('Broken post', [i['name'] for i in self._social(self.manager)])
+        self.assertIn('Broken post', [i['title'] for i in self.env['ai.home.item'].with_user(self.member).get_home_data()['attention']])
+        self.assertNotIn('Broken post', [i['title'] for i in self._social(self.manager)])

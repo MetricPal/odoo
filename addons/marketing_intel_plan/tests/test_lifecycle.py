@@ -1,4 +1,4 @@
-from odoo import Command
+from odoo import Command, fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
@@ -131,3 +131,52 @@ class TestLifecycle(TransactionCase):
         plan.action_mark_evaluated()
         self.assertEqual(plan.phase_label, 'Evaluation · Done')
         self.assertEqual(plan.action_open_spend()['domain'], [('plan_id', '=', plan.id)])
+
+    def test_research_is_part_of_the_proposal(self):
+        supplier = self.env['res.partner'].create({'name': 'Clinic Supplies Sdn Bhd', 'is_company': True})
+        malaysia = self.env.ref('base.my')
+        plan = self._plan(proposal_type='owned', country_ids=[Command.set(malaysia.ids)], places='Penang island',
+                          upstream_ids=[Command.create({'partner_id': supplier.id, 'role': 'supplier'})],
+                          milestone_ids=[Command.create({'name': 'Launch'})],
+                          evidence_ids=[Command.create({'source_type': 'competitor', 'finding': 'Two offers at 25%'})],
+                          research_summary='Owners plan in December.')
+        self.assertEqual(plan.upstream_ids.side, 'upstream')
+        self.assertFalse(plan.downstream_ids)
+        self.assertIn('Penang island', plan.location_label)
+        plan.action_submit_proposal()
+        self.assertTrue(plan.research_locked)
+        with self.assertRaises(UserError):
+            plan.write({'research_summary': 'Changed while in approval'})
+        plan.with_user(self.hod).action_approve_proposal()
+        body = plan.snapshot_id.body
+        for text in ('Clinic Supplies Sdn Bhd', 'Penang island', 'Two offers at 25%', 'Owners plan in December.'):
+            self.assertIn(text, body)
+        plan.write({'research_summary': 'Updated after approval'})
+        self.assertIn('Owners plan in December.', plan.snapshot_id.body, 'the approved version does not change')
+
+    def test_split_by_brand_after_approval(self):
+        other = self.env['mi.brand'].create({'name': 'Klinik Sihat'})
+        plan = self._plan(proposal_type='owned', other_brand_ids=[Command.set(other.ids)])
+        with self.assertRaises(UserError):
+            plan.action_split_by_brand()
+        plan.action_submit_proposal()
+        plan.with_user(self.hod).action_approve_proposal()
+        self.assertIn('Klinik Sihat', plan.snapshot_id.body)
+        action = plan.action_split_by_brand()
+        child = self.env['mi.plan'].search([('split_from_id', '=', plan.id)])
+        self.assertEqual(child.brand_id, other)
+        self.assertEqual((child.phase, child.proposal_state, child.proposal_type), ('planning', 'approved', 'owned'))
+        self.assertEqual(child.snapshot_id.body, plan.snapshot_id.body)
+        self.assertFalse(plan.other_brand_ids)
+        self.assertIn(child.id, action['domain'][0][2])
+
+    def test_management_view_for_hod_and_ceo(self):
+        plan = self._plan(proposal_type='paid', date_start=fields.Date.today(), date_end=fields.Date.today())
+        plan.action_submit_proposal()
+        Panel = self.env['mi.panel'].with_user(self.hod)
+        data = Panel._management(self.brand)
+        self.assertEqual(len(data['tiles']), 6)
+        self.assertIn('HOD approval', [w['label'] for w in data['waiting']])
+        self.assertIn(plan.id, [c['id'] for c in data['campaigns']])
+        self.assertIn('management', self.env['mi.panel.layout']._catalogue())
+        self.assertEqual(self.env['mi.panel.layout']._default_blocks('manager')[0]['key'], 'management')

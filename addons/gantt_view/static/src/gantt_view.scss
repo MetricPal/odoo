@@ -1,0 +1,18 @@
+.o_gantt_view {
+    .o_gantt_label, .o_gantt_labels { width: 260px; min-width: 260px; border-right: 1px solid $border-color; }
+    .o_gantt_col { flex: 1 1 0; min-width: 24px; border-left: 1px solid $gray-200; }
+    .o_gantt_today_col { background-color: rgba($warning, 0.08); }
+    .o_gantt_group_label, .o_gantt_group_row { height: 30px; line-height: 30px; }
+    .o_gantt_row_label, .o_gantt_row { height: 36px; line-height: 36px; border-bottom: 1px solid $gray-100; }
+    .o_gantt_bar { top: 6px; height: 24px; border-radius: 4px; color: #fff; font-size: 12px; overflow: hidden;
+        cursor: pointer; z-index: 2; touch-action: none; }
+    .o_gantt_draggable { cursor: grab; }
+    .o_clipped_left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+    .o_clipped_right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .o_gantt_progress { position: absolute; top: 0; bottom: 0; left: 0; background-color: rgba(0, 0, 0, 0.18); }
+    .o_gantt_bar_text { position: relative; line-height: 24px; }
+    .o_gantt_handle { position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize;
+        background-color: rgba(255, 255, 255, 0.35); }
+    .o_gantt_arrows { pointer-events: none; z-index: 1; overflow: visible; }
+    .o_gantt_now { border-left: 2px dashed $warning; z-index: 3; pointer-events: none; }
+}

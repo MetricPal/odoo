@@ -1,0 +1,24 @@
+.o_mi_results {
+    .o_mi_headline { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 16px;
+        > div + div { border-left: 1px solid $border-color; padding-left: 16px; } }
+    .o_mi_big { font-size: 1.9rem; font-weight: 600; line-height: 1.2; }
+    .o_mi_huge { font-size: 2.6rem; font-weight: 600; }
+    .o_mi_meter { height: 4px; background-color: $gray-200; border-radius: 2px; margin: 4px 0;
+        > div { height: 4px; background-color: #1d6b5a; border-radius: 2px; } }
+    .o_mi_meter_warm > div { background-color: $warning; }
+    .o_mi_contrib { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    .o_mi_contrib_row { display: grid; grid-template-columns: 170px 1fr 90px 80px; gap: 12px; align-items: center; padding: 5px 0; }
+    .o_mi_track_soft { background-color: $gray-200; border-radius: 3px; }
+    .o_mi_fill { height: 26px; min-width: 2px; background-color: #1d6b5a; border-radius: 3px; color: #fff; font-size: 12px;
+        display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; white-space: nowrap; }
+    .o_mi_spotlight { border-left: 1px solid $border-color; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+    .o_mi_two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .o_mi_funnel_row { display: grid; grid-template-columns: 1fr 120px; gap: 12px; align-items: center; margin-bottom: 6px; }
+    .o_mi_funnel_step { margin: 0 auto; height: 32px; border-radius: 3px; color: #fff; font-size: 13px;
+        display: flex; align-items: center; justify-content: center; }
+    .o_mi_swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+    .o_mi_pairs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .o_mi_pairbar { height: 10px; border-radius: 2px; }
+    .o_mi_theirs { background-color: #cfc7e3; }
+    .o_mi_mine { background-color: #71639e; }
+}

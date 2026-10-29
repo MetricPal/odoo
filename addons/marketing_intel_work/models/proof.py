@@ -185,6 +185,7 @@ class Plan(models.Model):
     _inherit = 'mi.plan'
 
     proof_ids = fields.One2many('mi.proof', 'plan_id', string='Proofs')
+    design_proof_ids = fields.One2many('mi.proof', 'plan_id', string='Creatives', domain=[('state', '!=', 'old')])
     proof_open_count = fields.Integer(compute='_compute_proof_counts', string='Open proofs')
     proof_count = fields.Integer(compute='_compute_proof_counts', string='Proofs')
 

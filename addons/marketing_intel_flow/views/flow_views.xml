@@ -329,4 +329,21 @@
       <group><filter name="by_trigger" string="When" context="{'group_by': 'trigger'}"/></group>
     </search></field>
   </record>
+  <record id="plan_form_flows" model="ir.ui.view">
+    <field name="name">mi.plan.form.flows</field><field name="model">mi.plan</field>
+    <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//page[@name='channels']" position="inside">
+        <separator string="Workflows"/>
+        <field name="flow_ids" context="{'default_plan_id': id, 'default_brand_id': brand_id}" readonly="1">
+          <list create="0">
+            <field name="name"/><field name="trigger"/>
+            <field name="state" widget="badge" decoration-success="state == 'active'" decoration-info="state == 'pending'"/>
+          </list>
+        </field>
+        <div class="text-muted small">Workflows that watch this campaign (form submitted, link clicked, event
+          registration, leads). Create them from Marketing › Workflows › New.</div>
+      </xpath>
+    </field>
+  </record>
 </odoo>

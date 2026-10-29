@@ -20,4 +20,14 @@
     <field name="interval_type">days</field>
     <field name="active">True</field>
   </record>
+  <!-- Due results reviews (monthly / quarterly / six-monthly): refresh numbers, give the owner a To-Do. -->
+  <record id="cron_reviews" model="ir.cron">
+    <field name="name">Marketing: campaign result reviews</field>
+    <field name="model_id" ref="model_mi_plan"/>
+    <field name="state">code</field>
+    <field name="code">model._cron_reviews()</field>
+    <field name="interval_number">1</field>
+    <field name="interval_type">days</field>
+    <field name="active">True</field>
+  </record>
 </odoo>

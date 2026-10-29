@@ -5,77 +5,60 @@ import { registry } from "@web/core/registry";
 import { user } from "@web/core/user";
 import { useService } from "@web/core/utils/hooks";
 
-import {
-    Component,
-    onMounted,
-    onWillStart,
-    onWillUnmount,
-    proxy,
-    signal,
-    useProps,
-} from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, proxy, signal, useProps } from "@odoo/owl";
 
-export const MY_WORK_MIN_FIT = 4;
 export const ATTACHMENT_LIMIT = 5;
 export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
 export const ACCEPTED_FILES = ".pdf,.txt,.md,.csv";
 const AGENT_STORAGE_KEY = "ai_home.agent";
-const MY_WORK_ROW_ESTIMATE = 56;
-const ATTENTION_VISIBLE_LIMIT = 3;
-export const AUTOMATION_STATUSES = ["active", "paused", "draft", "failed"];
+const REFRESH_MS = 60000;
+const POLL_MS = 2000;
+const POLL_LIMIT = 90;
+const FINISHED = ["completed", "failed", "cancelled", "discarded", "uncertain"];
 
-export function splitDashboardItems(items) {
-    return {
-        attention: items.filter((item) => item.section === "attention"),
-        automations: items.filter((item) => item.section === "automation"),
-        recent: items.filter((item) => item.section === "recent"),
-    };
+export const CATEGORIES = [
+    ["all", _t("All")],
+    ["approval", _t("Approvals")],
+    ["conversation", _t("Conversations")],
+    ["workflow", _t("Workflows")],
+    ["ai", _t("AI agents")],
+    ["activity", _t("Activities")],
+    ["sales", _t("Sales")],
+];
+export const CATEGORY_LETTERS = {
+    approval: "AP",
+    conversation: "OC",
+    workflow: "WF",
+    ai: "AI",
+    activity: "AC",
+    sales: "SO",
+};
+
+/** Filter chips: "All" and every category that has rows, with counts. */
+export function categoryTabs(items) {
+    return CATEGORIES.map(([key, label]) => ({
+        key,
+        label,
+        count: key === "all" ? items.length : items.filter((item) => item.category === key).length,
+    })).filter((tab) => tab.key === "all" || tab.count);
 }
 
-/**
- * Group "My Work" items by day: Today, Yesterday, This week, Earlier.
- * `now` is injectable for tests.
- */
-export function groupWorkByDay(items, now = luxon.DateTime.local()) {
-    const startOfToday = now.startOf("day");
-    const buckets = [
-        { key: "today", label: _t("Today"), from: startOfToday },
-        { key: "yesterday", label: _t("Yesterday"), from: startOfToday.minus({ days: 1 }) },
-        { key: "week", label: _t("This week"), from: startOfToday.minus({ days: 7 }) },
-        { key: "earlier", label: _t("Earlier"), from: null },
-    ].map((bucket) => ({ ...bucket, items: [] }));
-    for (const item of items) {
-        const when = item.occurred ? deserializeDateTime(item.occurred) : null;
-        const bucket =
-            buckets.find((candidate) => candidate.from && when && when >= candidate.from) ||
-            buckets[buckets.length - 1];
-        bucket.items.push(item);
+/** Mine: my own; My team: mine and my team's; Everything: all. */
+export function feedForScope(items, scope) {
+    if (scope === "mine") {
+        return items.filter((item) => item.scope === "mine");
     }
-    return buckets.filter((bucket) => bucket.items.length);
+    if (scope === "team") {
+        return items.filter((item) => item.scope !== "all");
+    }
+    return items;
 }
 
-export function filterAutomations(items, status) {
-    return status === "all" ? items : items.filter((item) => item.status === status);
-}
-
-/**
- * How many "My Work" rows to render: everything when it fits the visible
- * height, otherwise twice what fits so the column can scroll one more screen.
- */
-export function myWorkVisibleCount(total, fit) {
-    const capacity = Math.max(MY_WORK_MIN_FIT, fit || 0);
-    return total <= capacity ? total : Math.min(total, capacity * 2);
-}
-
-const SECTION_ROW_REM = 3.75;
-const SECTION_HEAD_REM = { automations: 5.75, runs: 3.25, recent: 3.25 };
-
-export function rightSectionStyle(kind, rows) {
-    const head = SECTION_HEAD_REM[kind] || 3.25;
-    const weight = Math.max(1, Math.min(rows, 5));
-    const max = head + Math.max(rows, 1) * SECTION_ROW_REM + 0.25;
-    const min = Math.min(max, head + 1.5 * SECTION_ROW_REM);
-    return `--o-rows: ${weight}; --o-head: ${head}rem; --o-max: ${max}rem; --o-min: ${min}rem;`;
+export function greetingFor(hour) {
+    if (hour < 12) {
+        return _t("Good morning");
+    }
+    return hour < 18 ? _t("Good afternoon") : _t("Good evening");
 }
 
 function readAsBase64(file) {
@@ -90,61 +73,58 @@ function readAsBase64(file) {
 export class WorkDashboard extends Component {
     static template = "ai_home.WorkDashboard";
     props = useProps();
-    myWorkRef = signal.ref();
     fileInputRef = signal.ref();
+    promptRef = signal.ref();
 
     setup() {
         this.notification = useService("notification");
         this.orm = useService("orm");
         this.action = useService("action");
         this.state = proxy({
-            items: [],
+            firstName: "",
+            roleLabel: "",
+            summary: "",
+            live: [],
             attention: [],
-            automations: [],
-            runs: [],
-            myWork: [],
-            myWorkFit: 0,
-            automationFilter: "all",
-            mode: "manual",
-            listening: false,
-            showToolMenu: false,
-            showAgentMenu: false,
-            prompt: "",
+            feed: [],
+            day: [],
+            recent: [],
+            quickActions: [],
             agents: [],
-            agentId: "",
+            prompts: [],
             canManageAgents: false,
+            category: "all",
+            scope: "all",
+            busy: "",
+            prompt: "",
+            agentId: "",
+            showAgentMenu: false,
             attachments: [],
             uploading: false,
-            showAllAttention: false,
+            chat: null,
         });
 
         onWillStart(async () => {
-            const data = await this.orm.call("ai.home.item", "get_home_data", []);
-            this.state.items = data.items.map((item) => ({
-                ...item,
-                key: item.key || `item-${item.id}`,
-                status: item.status || "active",
-            }));
-            this.state.attention = data.attention;
-            this.state.automations = data.automations;
-            this.state.runs = data.runs || [];
-            this.state.myWork = data.myWork;
-            this.state.agents = data.agents || [];
-            this.state.canManageAgents = Boolean(data.canManageAgents);
+            await this.load();
             this.state.agentId = this.initialAgentId();
         });
-
-        onMounted(() => {
-            this.measureMyWork();
-            if (browser.ResizeObserver && this.myWorkRef()) {
-                this.resizeObserver = new browser.ResizeObserver(() => this.measureMyWork());
-                this.resizeObserver.observe(this.myWorkRef());
-            }
+        // "Right now" updates by itself.
+        this.refreshTimer = browser.setInterval(() => this.load(), REFRESH_MS);
+        onWillUnmount(() => {
+            browser.clearInterval(this.refreshTimer);
+            browser.clearTimeout(this.pollTimer);
         });
-        onWillUnmount(() => this.resizeObserver?.disconnect());
     }
 
-    /** The agent chosen last time in this browser, or the only one available. */
+    async load() {
+        const data = await this.orm.call("ai.home.item", "get_home_data", []);
+        Object.assign(this.state, data);
+        if (!this.categories.some((tab) => tab.key === this.state.category)) {
+            this.state.category = "all";
+        }
+    }
+
+    /** The agent chosen last time in this browser, or the first one available. */
     initialAgentId() {
         let stored = "";
         try {
@@ -155,113 +135,155 @@ export class WorkDashboard extends Component {
         if (this.state.agents.some((agent) => String(agent.id) === stored)) {
             return stored;
         }
-        return this.state.agents.length === 1 ? String(this.state.agents[0].id) : "";
+        return this.state.agents.length ? String(this.state.agents[0].id) : "";
     }
 
-    /**
-     * Count the My Work rows that fit the visible height: the column itself
-     * when it scrolls (tablet and desktop), otherwise the window (phone).
-     */
-    measureMyWork() {
-        const list = this.myWorkRef();
-        if (!list) {
-            return;
-        }
-        const scrolls = browser.getComputedStyle(list).overflowY !== "visible";
-        // Phone: the page scrolls, so the window minus the list's offset is visible.
-        const height = scrolls ? list.clientHeight : browser.innerHeight - 48;
-        const row = list.querySelector(".o_ai_home_mywork_item")?.offsetHeight || MY_WORK_ROW_ESTIMATE;
-        // Day headings take roughly a sixth of a row each.
-        const fit = Math.floor(height / (row * 1.15));
-        if (fit !== this.state.myWorkFit) {
-            this.state.myWorkFit = fit;
-        }
+    // ------------------------------------------------------------------
+    // Page
+    // ------------------------------------------------------------------
+
+    get greeting() {
+        return greetingFor(luxon.DateTime.local().hour);
     }
 
-    get sections() {
-        return splitDashboardItems(this.state.items);
+    get dateLine() {
+        return [luxon.DateTime.local().toFormat("cccc, d LLLL"), this.state.roleLabel, this.state.summary]
+            .filter(Boolean)
+            .join(" · ");
     }
 
-    get attentionAll() {
-        return [...this.state.attention, ...this.sections.attention];
+    get aiAvailable() {
+        return this.state.agents.length > 0;
+    }
+
+    get categories() {
+        return categoryTabs(this.state.attention);
     }
 
     get attentionItems() {
-        return this.state.showAllAttention
-            ? this.attentionAll
-            : this.attentionAll.slice(0, ATTENTION_VISIBLE_LIMIT);
+        const category = this.state.category;
+        return category === "all"
+            ? this.state.attention
+            : this.state.attention.filter((item) => item.category === category);
     }
 
-    get automationAll() {
-        return [...this.state.automations, ...this.sections.automations];
+    get scopes() {
+        return [
+            { key: "mine", label: _t("Mine") },
+            { key: "team", label: _t("My team") },
+            { key: "all", label: _t("Everything") },
+        ];
     }
 
-    get automationFilters() {
-        const labels = {
-            all: _t("All"),
-            active: _t("Active"),
-            paused: _t("Paused"),
-            draft: _t("Draft"),
-            failed: _t("Needs attention"),
-        };
-        return ["all", ...AUTOMATION_STATUSES]
-            .map((value) => ({
-                value,
-                label: labels[value],
-                count: filterAutomations(this.automationAll, value).length,
-            }))
-            .filter((filter) => filter.value === "all" || filter.count);
+    get feedItems() {
+        return feedForScope(this.state.feed, this.state.scope).slice(0, 6);
     }
 
-    get automationItems() {
-        return filterAutomations(this.automationAll, this.state.automationFilter);
+    letters(item) {
+        return CATEGORY_LETTERS[item.category] || "AC";
     }
 
-    get myWorkGroups() {
-        const count = myWorkVisibleCount(this.state.myWork.length, this.state.myWorkFit);
-        return groupWorkByDay(this.state.myWork.slice(0, count));
+    formatTime(value) {
+        if (!value) {
+            return "";
+        }
+        const when = deserializeDateTime(value);
+        return when.hasSame(luxon.DateTime.local(), "day")
+            ? when.toLocaleString(luxon.DateTime.TIME_24_SIMPLE)
+            : formatDateTime(when, { format: "MMM d" });
     }
 
-    get canSend() {
-        const agentId = Number(this.state.agentId);
-        return Boolean(
-            this.state.prompt.trim() && this.state.agents.some((agent) => agent.id === agentId)
-        );
+    openRecord(model, resId) {
+        if (!model || !resId) {
+            return;
+        }
+        return this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: model,
+            res_id: resId,
+            views: [[false, "form"]],
+            target: "current",
+        });
     }
 
-    get speechSupported() {
-        return Boolean(browser.SpeechRecognition || browser.webkitSpeechRecognition);
+    openTile(tile) {
+        if (tile.action) {
+            return this.action.doAction(tile.action);
+        }
     }
 
-    get recentItems() {
-        return this.sections.recent;
+    openItem(item) {
+        if (item.openAction) {
+            return this.action.doAction(item.openAction);
+        }
+        return this.openRecord(item.openModel || item.model, item.openId || item.resId);
     }
 
-    /**
-     * Height share of a right-column section (tablet and desktop): its title
-     * always fits, the remaining height is shared by rows (capped so one long
-     * list cannot crowd out the others), and no section grows past its rows.
-     */
-    sectionStyle(kind, rows) {
-        return rightSectionStyle(kind, rows);
+    async press(item, button) {
+        if (button.open) {
+            return this.openItem(item);
+        }
+        this.state.busy = item.key;
+        try {
+            const result = await this.orm.call("ai.home.item", "run_home_action", [
+                item.model,
+                item.resId,
+                button.method,
+            ]);
+            if (result && result.type) {
+                await this.action.doAction(result);
+            }
+        } finally {
+            this.state.busy = "";
+        }
+        await this.load();
     }
 
-    get acceptedFiles() {
-        return ACCEPTED_FILES;
+    openActivities() {
+        return this.action.doAction({
+            type: "ir.actions.act_window",
+            name: _t("My activities"),
+            res_model: "mail.activity",
+            domain: [["user_id", "=", user.userId]],
+            views: [
+                [false, "list"],
+                [false, "form"],
+            ],
+            target: "current",
+        });
     }
+
+    openFeed() {
+        return this.action.doAction("mail.action_discuss");
+    }
+
+    openCalendar() {
+        return this.action.doAction("calendar.action_calendar_event");
+    }
+
+    quickCreate(quick) {
+        return this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: quick.model,
+            views: [[false, "form"]],
+            target: "current",
+            context: quick.context || {},
+        });
+    }
+
+    // ------------------------------------------------------------------
+    // Ask the assistant
+    // ------------------------------------------------------------------
 
     get selectedAgent() {
-        return this.state.agents.find((agent) => this.isSelectedAgent(agent)) || null;
+        return this.state.agents.find((agent) => String(agent.id) === this.state.agentId) || null;
     }
 
-    get agentLabel() {
-        if (this.selectedAgent) {
-            return this.selectedAgent.name;
-        }
-        return this.state.agents.length ? _t("Select agent") : _t("No active agent");
+    get aiName() {
+        return this.selectedAgent?.name || _t("Assistant");
     }
 
-    isSelectedAgent(agent) {
+    isSelected(agent) {
         return String(agent.id) === this.state.agentId;
     }
 
@@ -281,7 +303,6 @@ export class WorkDashboard extends Component {
     }
 
     chooseFiles() {
-        this.state.showToolMenu = false;
         this.fileInputRef()?.click();
     }
 
@@ -292,9 +313,8 @@ export class WorkDashboard extends Component {
     }
 
     /**
-     * Upload chosen files as the user's own attachments. They are linked to
-     * the question when it is sent, so the agent reads them with the
-     * requester's permissions.
+     * Upload chosen files as the user's own attachments. They go with the
+     * question, so the agent reads them with the requester's permissions.
      */
     async addFiles(files) {
         const room = ATTACHMENT_LIMIT - this.state.attachments.length;
@@ -334,145 +354,72 @@ export class WorkDashboard extends Component {
         this.orm.unlink("ir.attachment", [file.id]).catch(() => {});
     }
 
-    async openDashboardItem(item) {
-        this.notification.add(item.subtitle || _t("Dashboard item opened."), {
-            title: item.name,
-            type: item.tone === "danger" ? "warning" : "info",
-        });
-        if (item.section === "recent") {
-            const markedSeen = await this.orm.call(
-                "ai.home.item",
-                "mark_recent_seen",
-                [item.id]
-            );
-            if (markedSeen) {
-                this.state.items = this.state.items.filter((current) => current.id !== item.id);
-            }
-        }
-    }
-
-    openItem(item) {
-        if (item.action && item.action.type) {
-            // A full window action prepared by the server (e.g. a filtered list).
-            return this.action.doAction(item.action);
-        }
-        if (item.action) {
-            return this.action.doAction({
-                type: "ir.actions.act_window",
-                res_model: item.action.res_model,
-                res_id: item.action.res_id,
-                views: [[false, "form"]],
-                target: "current",
-            });
-        }
-        return this.openDashboardItem(item);
-    }
-
-    formatTime(value) {
-        if (!value) {
-            return "";
-        }
-        const when = deserializeDateTime(value);
-        return when.hasSame(luxon.DateTime.local(), "day")
-            ? when.toLocaleString(luxon.DateTime.TIME_SIMPLE)
-            : formatDateTime(when, { format: "MMM d" });
-    }
-
-    statusLabel(status) {
-        return (
-            {
-                active: _t("Active"),
-                paused: _t("Paused"),
-                draft: _t("Draft"),
-                failed: _t("Needs attention"),
-            }[status] || ""
-        );
-    }
-
-    prepareApproval() {
-        this.state.showToolMenu = false;
-        this.state.prompt = _t("Prepare an approval request for ");
-        browser.document?.getElementById("ai_home_prompt")?.focus();
+    get canSend() {
+        return Boolean(this.state.prompt.trim() && this.selectedAgent && !this.state.chat?.waiting);
     }
 
     onPromptKeydown(event) {
         if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
             event.preventDefault();
-            this.sendPrompt();
+            this.send();
         }
     }
 
-    toggleDictation() {
-        if (this.state.listening) {
-            this.recognition?.stop();
-            return;
-        }
-        const Recognition = browser.SpeechRecognition || browser.webkitSpeechRecognition;
-        if (!Recognition) {
-            return;
-        }
-        // Dictation only fills the text box; nothing is sent until the user does.
-        const recognition = new Recognition();
-        recognition.lang = user.lang?.replace("_", "-") || "en-US";
-        recognition.interimResults = false;
-        recognition.onresult = (event) => {
-            const text = Array.from(event.results)
-                .map((result) => result[0].transcript)
-                .join(" ");
-            this.state.prompt = [this.state.prompt.trim(), text].filter(Boolean).join(" ");
-        };
-        recognition.onend = () => {
-            this.state.listening = false;
-        };
-        recognition.onerror = () => {
-            this.state.listening = false;
-        };
-        this.recognition = recognition;
-        this.state.listening = true;
-        recognition.start();
+    askSuggestion(text) {
+        this.state.prompt = text;
+        return this.send();
     }
 
-    async sendPrompt() {
+    async send() {
         if (!this.canSend) {
             return;
         }
-        if (this.state.mode !== "auto") {
-            return this.reviewRequest();
-        }
-        // Auto: the user's Send authorizes one inference request, exactly as
-        // the dialog's Send button does. It never changes records.
-        const [askId] = await this.orm.create("ai.agent.ask", [
-            {
-                agent_id: Number(this.state.agentId),
-                prompt: this.state.prompt.trim(),
-                attachment_ids: [[6, 0, this.state.attachments.map((file) => file.id)]],
-            },
+        const question = this.state.prompt.trim();
+        const conversationId = this.state.chat?.conversationId || false;
+        this.state.chat = { question, answer: "", error: "", waiting: true, conversationId };
+        const { runId, conversationId: newConversation } = await this.orm.call("ai.home.item", "ask_ai", [
+            Number(this.state.agentId),
+            question,
+            this.state.attachments.map((file) => file.id),
+            conversationId,
         ]);
-        const action = await this.orm.call("ai.agent.ask", "action_send", [[askId]]);
         this.state.prompt = "";
         this.state.attachments = [];
-        return this.action.doAction(action);
+        this.state.chat.conversationId = newConversation;
+        this.poll(runId, 0);
     }
 
-    reviewRequest() {
-        const agentId = Number(this.state.agentId);
-        if (!this.canSend) {
+    async poll(runId, round) {
+        const result = await this.orm.call("ai.home.item", "get_ai_answer", [runId]);
+        const chat = this.state.chat;
+        if (!chat) {
             return;
         }
-        return this.action.doAction({
-            type: "ir.actions.act_window",
-            res_model: "ai.agent.ask",
-            views: [[false, "form"]],
-            target: "new",
-            name: _t("Ask me"),
-            context: {
-                default_agent_id: agentId,
-                default_prompt: this.state.prompt.trim(),
-                default_attachment_ids: this.state.attachments.map((file) => file.id),
-            },
-        });
+        if (FINISHED.includes(result.state)) {
+            chat.waiting = false;
+            chat.answer = result.answer;
+            chat.error =
+                result.state === "completed"
+                    ? ""
+                    : result.error || _t("The assistant could not answer. Open the conversation for details.");
+            return;
+        }
+        if (round >= POLL_LIMIT) {
+            chat.waiting = false;
+            chat.error = _t("The answer is taking longer than usual. Open the conversation to follow it.");
+            return;
+        }
+        this.pollTimer = browser.setTimeout(() => this.poll(runId, round + 1), POLL_MS);
     }
 
+    closeChat() {
+        browser.clearTimeout(this.pollTimer);
+        this.state.chat = null;
+    }
+
+    openConversation() {
+        return this.openRecord("ai.agent.conversation", this.state.chat?.conversationId);
+    }
 }
 
 registry.category("actions").add("ai_home.dashboard", WorkDashboard);
