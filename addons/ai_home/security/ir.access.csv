@@ -1,2 +1,4 @@
 id,name,model_id:id,group_id:id,operation
 access_ai_home_item_user,ai.home.item user,model_ai_home_item,base.group_user,r
+access_ai_home_source_user,ai.home.source user,model_ai_home_source,base.group_user,r
+access_ai_home_source_system,ai.home.source system,model_ai_home_source,base.group_system,crud

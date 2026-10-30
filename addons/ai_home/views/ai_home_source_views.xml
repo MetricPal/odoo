@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="ai_home_source_view_list" model="ir.ui.view">
+        <field name="name">ai.home.source.list</field>
+        <field name="model">ai.home.source</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="model_name"/>
+                <field name="group_xmlid"/>
+                <field name="primary_label"/>
+                <field name="limit"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="ai_home_source_view_form" model="ir.ui.view">
+        <field name="name">ai.home.source.form</field>
+        <field name="model">ai.home.source</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="e.g. Time Off"/></h1>
+                    </div>
+                    <group>
+                        <group string="Which records">
+                            <field name="model_name" placeholder="e.g. hr.leave"/>
+                            <field name="domain" widget="domain" options="{'model': 'model_name', 'in_dialog': True}"/>
+                            <field name="check_fields" placeholder="e.g. can_approve,can_validate"/>
+                            <field name="group_xmlid" placeholder="e.g. purchase.group_purchase_manager"/>
+                            <field name="limit"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="How a row looks">
+                            <field name="badge"/>
+                            <field name="title_field"/>
+                            <field name="detail_field"/>
+                            <field name="amount_field"/>
+                            <field name="date_field"/>
+                            <field name="date_mode"/>
+                        </group>
+                        <group string="Buttons">
+                            <field name="primary_label"/>
+                            <field name="primary_method" placeholder="Empty: opens the record"/>
+                            <field name="secondary_label"/>
+                            <field name="secondary_method" placeholder="Empty: opens the record"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ai_home_sources" model="ir.actions.act_window">
+        <field name="name">Home decision sources</field>
+        <field name="res_model">ai.home.source</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <menuitem id="menu_ai_home_sources" name="Home decision sources" parent="base.menu_custom"
+              action="action_ai_home_sources" sequence="90" groups="base.group_system"/>
+
+    <record id="mail_activity_type_view_form_home" model="ir.ui.view">
+        <field name="name">mail.activity.type.form.home</field>
+        <field name="model">mail.activity.type</field>
+        <field name="inherit_id" ref="mail.mail_activity_type_view_form"/>
+        <field name="arch" type="xml">
+            <field name="category" position="after">
+                <field name="home_decision"/>
+            </field>
+        </field>
+    </record>
+</odoo>

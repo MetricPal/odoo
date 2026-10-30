@@ -16,49 +16,52 @@ const POLL_MS = 2000;
 const POLL_LIMIT = 90;
 const FINISHED = ["completed", "failed", "cancelled", "discarded", "uncertain"];
 
-export const CATEGORIES = [
-    ["all", _t("All")],
-    ["approval", _t("Approvals")],
-    ["conversation", _t("Conversations")],
-    ["workflow", _t("Workflows")],
-    ["ai", _t("AI agents")],
-    ["activity", _t("Activities")],
-    ["sales", _t("Sales")],
+export const PLAN_SECTIONS = [
+    ["late", _t("Late")],
+    ["today", _t("Today")],
+    ["tomorrow", _t("Tomorrow")],
+    ["week", _t("This week")],
+    ["later", _t("Later")],
 ];
-export const CATEGORY_LETTERS = {
-    approval: "AP",
-    conversation: "OC",
-    workflow: "WF",
-    ai: "AI",
-    activity: "AC",
-    sales: "SO",
-};
+const RING_RADIUS = 34;
+export const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
-/** Filter chips: "All" and every category that has rows, with counts. */
-export function categoryTabs(items) {
-    return CATEGORIES.map(([key, label]) => ({
+/** Filter chips for Needs your attention: "All", then one per category or app that has rows. */
+export function categoryTabs(groups, total) {
+    return [{ key: "all", label: _t("All"), count: total, action: false }, ...groups];
+}
+
+/** App chips for My plan: "All", then each app with items, most items first. */
+export function planApps(items) {
+    const counts = new Map();
+    for (const item of items) {
+        counts.set(item.app, (counts.get(item.app) || 0) + 1);
+    }
+    const apps = [...counts.entries()]
+        .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+        .map(([app, count]) => ({ key: app, label: app, count }));
+    return [{ key: "all", label: _t("All"), count: items.length }, ...apps];
+}
+
+/** My plan in sections (Late, Today, Tomorrow, This week, Later), for one app or all. */
+export function planSections(items, app = "all") {
+    const shown = app === "all" ? items : items.filter((item) => item.app === app);
+    return PLAN_SECTIONS.map(([key, label]) => ({
         key,
         label,
-        count: key === "all" ? items.length : items.filter((item) => item.category === key).length,
-    })).filter((tab) => tab.key === "all" || tab.count);
+        items: shown.filter((item) => item.section === key),
+    })).filter((section) => section.items.length);
 }
 
-/** Mine: my own; My team: mine and my team's; Everything: all. */
+/** What others did. For me: Odoo notified the user; My team: done by team members; Everything: all. */
 export function feedForScope(items, scope) {
-    if (scope === "mine") {
-        return items.filter((item) => item.scope === "mine");
+    if (scope === "forMe") {
+        return items.filter((item) => item.forMe);
     }
     if (scope === "team") {
-        return items.filter((item) => item.scope !== "all");
+        return items.filter((item) => item.team);
     }
     return items;
-}
-
-export function greetingFor(hour) {
-    if (hour < 12) {
-        return _t("Good morning");
-    }
-    return hour < 18 ? _t("Good afternoon") : _t("Good evening");
 }
 
 function readAsBase64(file) {
@@ -81,20 +84,25 @@ export class WorkDashboard extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.state = proxy({
-            firstName: "",
-            roleLabel: "",
-            summary: "",
-            live: [],
+            today: { done: 0, late: 0, todo: 0, total: 0, label: "" },
+            week: [],
+            plan: [],
+            waiting: [],
+            team: [],
             attention: [],
+            attentionGroups: [],
             feed: [],
-            day: [],
             recent: [],
-            quickActions: [],
             agents: [],
             prompts: [],
             canManageAgents: false,
             category: "all",
-            scope: "all",
+            planApp: "all",
+            openSections: { late: true, today: true, tomorrow: false, week: false, later: false },
+            snoozeKey: "",
+            recentOpen: false,
+            waitingOpen: null,
+            scope: "forMe",
             busy: "",
             prompt: "",
             agentId: "",
@@ -108,7 +116,7 @@ export class WorkDashboard extends Component {
             await this.load();
             this.state.agentId = this.initialAgentId();
         });
-        // "Right now" updates by itself.
+        // Home updates by itself.
         this.refreshTimer = browser.setInterval(() => this.load(), REFRESH_MS);
         onWillUnmount(() => {
             browser.clearInterval(this.refreshTimer);
@@ -121,6 +129,9 @@ export class WorkDashboard extends Component {
         Object.assign(this.state, data);
         if (!this.categories.some((tab) => tab.key === this.state.category)) {
             this.state.category = "all";
+        }
+        if (!this.planAppTabs.some((tab) => tab.key === this.state.planApp)) {
+            this.state.planApp = "all";
         }
     }
 
@@ -142,22 +153,16 @@ export class WorkDashboard extends Component {
     // Page
     // ------------------------------------------------------------------
 
-    get greeting() {
-        return greetingFor(luxon.DateTime.local().hour);
-    }
-
-    get dateLine() {
-        return [luxon.DateTime.local().toFormat("cccc, d LLLL"), this.state.roleLabel, this.state.summary]
-            .filter(Boolean)
-            .join(" · ");
-    }
-
     get aiAvailable() {
         return this.state.agents.length > 0;
     }
 
     get categories() {
-        return categoryTabs(this.state.attention);
+        return categoryTabs(this.state.attentionGroups, this.state.attention.length);
+    }
+
+    get selectedGroup() {
+        return this.state.attentionGroups.find((group) => group.key === this.state.category) || null;
     }
 
     get attentionItems() {
@@ -167,20 +172,82 @@ export class WorkDashboard extends Component {
             : this.state.attention.filter((item) => item.category === category);
     }
 
+    get planAppTabs() {
+        return planApps(this.state.plan);
+    }
+
+    get sections() {
+        return planSections(this.state.plan, this.state.planApp);
+    }
+
+    isOpen(section) {
+        return Boolean(this.state.openSections[section.key]);
+    }
+
+    toggleSection(section) {
+        this.state.openSections[section.key] = !this.state.openSections[section.key];
+    }
+
+    /** Stroke of the "done today" ring: done out of done + due today + late. */
+    get ringDash() {
+        const { done, total } = this.state.today;
+        const filled = total ? (RING_LENGTH * done) / total : 0;
+        return `${filled.toFixed(1)} ${RING_LENGTH.toFixed(1)}`;
+    }
+
+    weekBarHeight(day) {
+        const busiest = Math.max(1, ...this.state.week.map((entry) => entry.count));
+        return `${Math.max(4, Math.round((100 * day.count) / busiest))}%`;
+    }
+
+    weekBarLabel(day) {
+        return day.count === 1
+            ? _t("%s: 1 item", day.longLabel)
+            : _t("%(day)s: %(count)s items", { day: day.longLabel, count: day.count });
+    }
+
+    /** Waiting on others is open, except for managers (Team load covers their people) until they open it. */
+    get waitingOpen() {
+        return this.state.waitingOpen ?? !this.state.team.length;
+    }
+
+    get recentSummary() {
+        return this.state.recent
+            .slice(0, 2)
+            .map((record) => record.name)
+            .join(", ");
+    }
+
     get scopes() {
         return [
-            { key: "mine", label: _t("Mine") },
+            { key: "forMe", label: _t("For me") },
             { key: "team", label: _t("My team") },
             { key: "all", label: _t("Everything") },
         ];
     }
 
     get feedItems() {
-        return feedForScope(this.state.feed, this.state.scope).slice(0, 6);
+        return feedForScope(this.state.feed, this.state.scope);
     }
 
     letters(item) {
-        return CATEGORY_LETTERS[item.category] || "AC";
+        return item.badge || "AC";
+    }
+
+    /** Today, Yesterday, or the date (Oct 29). */
+    humanDate(value) {
+        if (!value) {
+            return "";
+        }
+        const when = deserializeDateTime(value);
+        const now = luxon.DateTime.local();
+        if (when.hasSame(now, "day")) {
+            return _t("Today");
+        }
+        if (when.hasSame(now.minus({ days: 1 }), "day")) {
+            return _t("Yesterday");
+        }
+        return formatDateTime(when, { format: "MMM d" });
     }
 
     formatTime(value) {
@@ -204,12 +271,6 @@ export class WorkDashboard extends Component {
             views: [[false, "form"]],
             target: "current",
         });
-    }
-
-    openTile(tile) {
-        if (tile.action) {
-            return this.action.doAction(tile.action);
-        }
     }
 
     openItem(item) {
@@ -239,6 +300,41 @@ export class WorkDashboard extends Component {
         await this.load();
     }
 
+    openGroup(group) {
+        if (group?.action) {
+            return this.action.doAction(group.action);
+        }
+    }
+
+    toggleSnooze(item) {
+        this.state.snoozeKey = this.state.snoozeKey === item.key ? "" : item.key;
+    }
+
+    snooze(item, method) {
+        this.state.snoozeKey = "";
+        return this.press(item, { method });
+    }
+
+    join(item) {
+        if (item.joinUrl) {
+            browser.open(item.joinUrl, "_blank");
+        }
+    }
+
+    openPerson(row) {
+        return this.action.doAction({
+            type: "ir.actions.act_window",
+            name: row.name,
+            res_model: "mail.activity",
+            domain: [["user_id", "=", row.userId]],
+            views: [
+                [false, "list"],
+                [false, "form"],
+            ],
+            target: "current",
+        });
+    }
+
     openActivities() {
         return this.action.doAction({
             type: "ir.actions.act_window",
@@ -253,22 +349,8 @@ export class WorkDashboard extends Component {
         });
     }
 
-    openFeed() {
+    openInbox() {
         return this.action.doAction("mail.action_discuss");
-    }
-
-    openCalendar() {
-        return this.action.doAction("calendar.action_calendar_event");
-    }
-
-    quickCreate(quick) {
-        return this.action.doAction({
-            type: "ir.actions.act_window",
-            res_model: quick.model,
-            views: [[false, "form"]],
-            target: "current",
-            context: quick.context || {},
-        });
     }
 
     // ------------------------------------------------------------------
@@ -280,7 +362,7 @@ export class WorkDashboard extends Component {
     }
 
     get aiName() {
-        return this.selectedAgent?.name || _t("Assistant");
+        return this.selectedAgent?.name || (this.aiAvailable ? _t("Assistant") : _t("No assistant"));
     }
 
     isSelected(agent) {

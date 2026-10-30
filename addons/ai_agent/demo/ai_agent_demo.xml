@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- A local Hermes connection and an assistant everyone in the company can chat with, so Home shows the
+         assistant box. The connection is marked ready without a real check; answers come only if a Hermes server
+         runs on this computer (127.0.0.1:8643). -->
+    <!-- The demo users may use AI Agent (administrators already can). -->
+    <record id="base.user_admin" model="res.users">
+        <field name="group_ids" eval="[(4, ref('ai_agent.group_user'))]"/>
+    </record>
+    <record id="base.user_demo" model="res.users">
+        <field name="group_ids" eval="[(4, ref('ai_agent.group_user'))]"/>
+    </record>
+
+    <record id="demo_engine_local" model="ai.agent.engine">
+        <field name="name">Demo Hermes (local)</field>
+        <field name="connection_mode">local</field>
+        <field name="demo" eval="True"/>
+        <field name="state">ready</field>
+        <field name="status_message">Demo: not checked against a Hermes server.</field>
+    </record>
+
+    <record id="demo_agent_ops" model="ai.agent">
+        <field name="name">Ops Assistant</field>
+        <field name="description">Answers questions about approvals, activities and your work (demo)</field>
+        <field name="engine_id" ref="demo_engine_local"/>
+        <field name="access_scope">company</field>
+        <field name="state">active</field>
+    </record>
+</odoo>

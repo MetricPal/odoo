@@ -4,7 +4,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.orm.domains import Domain
 
-from .common import digest, internal, manager, trusted
+from .common import digest, internal, loading_demo, manager, trusted
 
 SAFE_MODELS = {'res.partner', 'crm.lead', 'sale.order', 'product.product', 'product.template',
                'stock.quant', 'purchase.order', 'project.task'}
@@ -104,7 +104,12 @@ class Agent(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        return super().create([self._model_values(dict(values)) for values in vals_list])
+        agents = super().create([self._model_values(dict(values)) for values in vals_list])
+        if loading_demo(self):
+            # Demo data creates its assistant already active: record the reviewed configuration like Activate does.
+            for agent in agents.filtered(lambda a: a.state == 'active'):
+                internal(agent.sudo()).write({'activation_hash': agent.sudo()._configuration_hash()})
+        return agents
 
     def _model_values(self, values):
         if 'engine_model_id' not in values and {'provider', 'model'} & values.keys():
@@ -159,6 +164,12 @@ class Agent(models.Model):
 
     def write(self, vals):
         vals = self._model_values(dict(vals))
+        if loading_demo(self) and not trusted(self):
+            # Demo data written again (e.g. reloaded): keep it active with its reviewed configuration.
+            result = super().write(vals)
+            for agent in self.filtered(lambda a: a.state == 'active'):
+                internal(agent.sudo()).write({'activation_hash': agent.sudo()._configuration_hash()})
+            return result
         if not trusted(self):
             if {'state', 'revision', 'activation_hash'} & vals.keys():
                 raise AccessError(_('Use the activation and pause buttons.'))

@@ -5,7 +5,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 from ..services import hermes, secrets
-from .common import FILE_MAX_BYTES, TEXT_MAX_CHARS, extract_text, internal, manager, trusted
+from .common import FILE_MAX_BYTES, TEXT_MAX_CHARS, extract_text, internal, loading_demo, manager, trusted
 
 
 class CompanyConfiguration(models.AbstractModel):
@@ -19,7 +19,7 @@ class CompanyConfiguration(models.AbstractModel):
         manager(self)
         protected = {'state', 'revision', 'activation_hash', 'extracted_text', 'checked_at',
                      'capabilities', 'toolsets', 'models_catalog', 'status_message'}
-        if not trusted(self) and any(protected & vals.keys() for vals in vals_list):
+        if not trusted(self) and not loading_demo(self) and any(protected & vals.keys() for vals in vals_list):
             raise AccessError(_('Create a draft, then use the review and verification buttons.'))
         if any(v.get('company_id', self.env.company.id) not in self.env.companies.ids for v in vals_list):
             raise AccessError(_('Use a selected company.'))
@@ -63,6 +63,8 @@ class Engine(models.Model):
     toolsets = fields.Json(readonly=True, groups='ai_agent.group_manager')
     models_catalog = fields.Json(readonly=True, groups='ai_agent.group_manager')
     status_message = fields.Char(readonly=True)
+    demo = fields.Boolean(readonly=True, copy=False,
+                          help='Created by demo data: a local loopback connection allowed without the deployment allowlist.')
 
     enabled_model_ids = fields.One2many('ai.agent.engine.model', 'engine_id', domain=[('enabled', '=', True)])
     provider_catalog = fields.Json(compute='_compute_provider_catalog', groups='ai_agent.group_manager')
@@ -120,6 +122,8 @@ class Engine(models.Model):
         clean = []
         for values in vals_list:
             values = dict(values)
+            if not trusted(self) and not loading_demo(self):
+                values.pop('demo', None)  # only demo data files may mark a connection as demo
             pending.append((values.pop('api_key', False), values.pop('management_api_key', False)))
             if values.get('connection_mode') == 'local':
                 values.setdefault('url', 'http://127.0.0.1:8643')
@@ -131,6 +135,11 @@ class Engine(models.Model):
         for engine, keys in zip(engines, pending):
             engine._save_keys(*keys)
         return engines
+
+    def _demo_loopback(self):
+        """Demo connections on the local loopback profile skip the deployment allowlist (and only those)."""
+        self.ensure_one()
+        return bool(self.sudo().demo and self.connection_mode == 'local')
 
     def _save_keys(self, api_key=False, management_api_key=False):
         self.ensure_one()
@@ -176,8 +185,10 @@ class Engine(models.Model):
     @api.constrains('url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection')
     def _validate_connection(self):
         for engine in self:
-            hermes.target(engine.url, resolve=False)
-            hermes.target(engine.url if engine.management_same_connection else (engine.management_url or engine.url), resolve=False)
+            demo = engine._demo_loopback()
+            hermes.target(engine.url, resolve=False, demo=demo)
+            hermes.target(engine.url if engine.management_same_connection else (engine.management_url or engine.url),
+                          resolve=False, demo=demo)
             if engine.connection_mode == 'local' and engine.management_same_connection:
                 raise ValidationError(_('The local profile uses a separate management connection.'))
             if engine.connection_mode == 'local' and (engine.url != 'http://127.0.0.1:8643' or engine.management_url != 'http://127.0.0.1:9120'):
@@ -191,9 +202,11 @@ class Engine(models.Model):
             manager(self)
         vals = dict(vals)
         keys = (vals.pop('api_key', False), vals.pop('management_api_key', False))
-        if not trusted(self) and {'state', 'revision', 'checked_at', 'capabilities', 'toolsets', 'models_catalog', 'status_message'} & vals.keys():
+        if not trusted(self) and not loading_demo(self) and \
+                {'state', 'revision', 'checked_at', 'capabilities', 'toolsets', 'models_catalog', 'status_message'} & vals.keys():
             raise AccessError(_('Use Check connection to update readiness.'))
-        if {'url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection'} & vals.keys():
+        if not loading_demo(self) and \
+                {'url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection'} & vals.keys():
             for engine in self:
                 super(Engine, engine).write({**vals, 'state': 'unchecked', 'checked_at': False,
                     'capabilities': False, 'toolsets': False, 'models_catalog': False, 'status_message': False,
@@ -208,7 +221,8 @@ class Engine(models.Model):
 
     def _request(self, method, path, payload=None, headers=None):
         self.ensure_one()
-        return hermes.request(self.url, None, method, path, payload, headers, credential_value=self._credential('run'))
+        return hermes.request(self.url, None, method, path, payload, headers, credential_value=self._credential('run'),
+                              demo=self._demo_loopback())
 
     def _inspect(self):
         """Fresh inspection before every submission; discovery never grants execution."""
@@ -219,7 +233,8 @@ class Engine(models.Model):
         # Older documented contracts return a bare list; validate both shapes.
         if isinstance(tools, dict) and tools.get('object') == 'list':
             tools = tools.get('data')
-        config = hermes.request(self.url if self.management_same_connection else (self.management_url or self.url), None, 'GET', '/api/config', credential_value=self._credential('management'))
+        config = hermes.request(self.url if self.management_same_connection else (self.management_url or self.url), None, 'GET', '/api/config', credential_value=self._credential('management'),
+                                demo=self._demo_loopback())
         memory = config.get('memory', {}) if isinstance(config, dict) else {}
         if (memory.get('memory_enabled') is not False or memory.get('user_profile_enabled') is not False
                 or memory.get('provider') not in (None, '', 'none')):
@@ -307,7 +322,7 @@ class Engine(models.Model):
             return {'type': 'ir.actions.act_url',
                     'url': 'http://127.0.0.1:9119/models?profile=odoo-internal', 'target': 'new'}
         url = self.url if self.management_same_connection else (self.management_url or self.url)
-        hermes.target(url, resolve=False)
+        hermes.target(url, resolve=False, demo=self._demo_loopback())
         return {'type': 'ir.actions.act_url', 'url': url.rstrip('/') + '/models', 'target': 'new'}
 
     def action_check(self):

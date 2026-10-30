@@ -1,15 +1,17 @@
 {
     'name': 'AI Home',
-    'version': '1.5',
+    'version': '1.6',
     'category': 'Productivity',
-    'summary': 'Home: right now, what needs you, what just happened, your day and the assistant',
+    'summary': 'Home: my plan, decisions waiting for me, what others did, and the assistant',
     'author': 'metric.io',
     'icon': '/ai_home/static/description/icon.svg',
-    'depends': ['web', 'website'],
+    'depends': ['web', 'mail', 'website'],
     'data': [
         'security/ir.access.csv',
         'security/ai_home_security.xml',
         'views/ai_home_views.xml',
+        'views/ai_home_source_views.xml',
+        'data/ai_home_sources.xml',
         # 'views/website_templates.xml',
     ],
     'demo': [

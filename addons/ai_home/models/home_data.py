@@ -1,43 +1,53 @@
-"""Home page data: greeting, live tiles, items that need the user, recent activity, the day and recent records.
+"""Home page data. Left: the user's own work (today, my plan, waiting on others, team load, recent). Middle: decisions
+only the user can make. Right: what other people did.
 
 Everything is read with the current user's permissions. A section whose app is not installed, or that the user may
-not read, is left out. Buttons on Home only call the whitelisted methods in HOME_ACTIONS, as the current user, so
-the target model's own checks (approvers, owners, managers) still decide.
+not read, is left out. Buttons on Home only call the whitelisted methods in HOME_ACTIONS, or a decision source's own
+buttons, as the current user, so the target model's own checks (approvers, owners, managers) still decide.
 """
 
 from datetime import UTC, datetime, time, timedelta
 
-from dateutil.relativedelta import relativedelta
-
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
-from odoo.tools import formatLang, html2plaintext
+from odoo.tools import html2plaintext
+from odoo.tools.misc import format_date
 
 LIMIT = 20
-FEED_LIMIT = 6
+PLAN_LIMIT = 300
+WAITING_LIMIT = 5
+FEED_LIMIT = 20
 RECENT_LIMIT = 4
+WEEK_DAYS = 7
 # Not "work": conversations, technical and Home records stay out of recent records and the feed.
 EXCLUDED_MODELS = {
     'discuss.channel', 'mail.channel', 'res.users', 'res.users.log', 'mail.message', 'ai.home.item',
     'ir.ui.view', 'ir.actions.server', 'base.automation', 'ai.agent.conversation', 'ai.agent.run',
 }
-# What the buttons on Home may do: (model, method) run as the current user.
+# What the built-in buttons on Home may do: (model, method) run as the current user.
 HOME_ACTIONS = {
     ('approval.center.request', 'action_approve'),
     ('approval.center.request', 'action_refuse'),
     ('approval.center.request', 'home_remind'),
     ('mail.activity', 'action_done'),
     ('mail.activity', 'action_reschedule_tomorrow'),
+    ('mail.activity', 'action_reschedule_nextweek'),
+    ('mail.activity', 'home_nudge'),
     ('omni.conversation', 'action_assign_me'),
     ('workflow.run', 'action_retry'),
 }
 # Dot colours, the same meanings as Odoo activities: red overdue or failed, orange due today or waiting, green on track.
 GOOD, WARN, BAD = 'good', 'warn', 'bad'
-WAIT_WARN, WAIT_BAD = 5, 30  # minutes a conversation may wait before it turns orange, then red
+SECTIONS = ('late', 'today', 'tomorrow', 'week', 'later')
 
 
 def _iso(value):
     return fields.Datetime.to_string(value) if value else False
+
+
+def _initials(name):
+    parts = (name or '?').split()
+    return ''.join(part[0] for part in parts[:2]).upper()
 
 
 class AiHomeItem(models.Model):
@@ -49,36 +59,41 @@ class AiHomeItem(models.Model):
 
     @api.model
     def get_home_data(self):
-        role = self._home_role()
-        attention = self._home_attention()
+        attention, groups, decided = self._home_attention()
+        plan = self._home_plan(decided)
         agents = self._usable_agents()
-        overdue = sum(1 for item in attention if item.get('overdue'))
         return {
-            'firstName': (self.env.user.name or '').split(' ')[0],
-            'roleLabel': self._home_role_label(role),
-            'summary': self._home_summary(role, attention, overdue),
-            'live': self._home_live(role),
+            'today': self._home_today(plan),
+            'week': self._home_week(plan),
+            'plan': plan,
+            'waiting': self._home_waiting(),
+            'team': self._home_team(),
             'attention': attention,
+            'attentionGroups': groups,
             'feed': self._home_feed(),
-            'day': self._home_day(),
             'recent': self._home_recent(),
-            'quickActions': [] if agents else self._home_quick_actions(role),
             'agents': agents,
-            'prompts': self._home_prompts(role) if agents else [],
+            'prompts': self._home_prompts(self._home_role()) if agents else [],
             'canManageAgents': self.env.user.has_group('ai_agent.group_manager') if 'ai.agent' in self.env else False,
         }
 
     @api.model
     def run_home_action(self, model, res_id, method):
         """Run one Home button on one record, as the current user."""
-        if (model, method) not in HOME_ACTIONS or model not in self.env:
+        if model not in self.env:
             raise UserError(_('This action is not available from Home.'))
         record = self.env[model].browse(int(res_id)).exists()
         if not record:
             raise UserError(_('This record no longer exists.'))
         record.check_access('read')
+        if (model, method) not in HOME_ACTIONS:
+            sources = self.env['ai.home.source'].search([('model_name', '=', model)])
+            if not any(source._allows(record, method) for source in sources):
+                raise UserError(_('This action is not available from Home.'))
         if method == 'home_remind':
             return self._remind_approvers(record)
+        if method == 'home_nudge':
+            return self._nudge(record)
         result = getattr(record, method)()
         return result if isinstance(result, dict) else True
 
@@ -109,11 +124,11 @@ class AiHomeItem(models.Model):
                 'conversationId': run.conversation_id.id}
 
     # ------------------------------------------------------------------
-    # Role
+    # Helpers
     # ------------------------------------------------------------------
 
     def _home_role(self):
-        """Which set of tiles and suggestions fits the user: operations (managers), support or sales."""
+        """Which suggestions fit the user: operations (managers), support or sales."""
         user = self.env.user
         if user.has_group('base.group_system'):
             return 'operations'
@@ -125,28 +140,12 @@ class AiHomeItem(models.Model):
             return 'sales'
         return 'operations'
 
-    def _home_role_label(self, role):
-        employee = self.env.user.employee_id if 'employee_id' in self.env.user._fields else False
-        if employee and employee.job_title:
-            return employee.job_title
-        return {'operations': _('Operations manager'), 'support': _('Support agent'), 'sales': _('Sales rep')}[role]
-
-    def _home_summary(self, role, attention, overdue):
-        if role == 'support':
-            waiting = sum(1 for item in attention if item['category'] == 'conversation')
-            return _('%s customers waiting for you', waiting) if waiting != 1 else _('1 customer waiting for you')
-        if not attention:
-            return _('nothing needs you right now')
-        need = _('1 item needs you') if len(attention) == 1 else _('%s items need you', len(attention))
-        return _('%(need)s, %(overdue)s overdue', need=need, overdue=overdue) if overdue else need
-
     def _home_prompts(self, role):
         if role == 'support':
             return [_('Draft a reply to my oldest conversation'), _('Summarize today’s complaints')]
         if role == 'operations':
-            return [_('What needs my approval today?'), _('Summarize overnight escalations'),
-                    _('Draft the weekly ops update')]
-        return []
+            return [_('What needs my approval today?'), _('Plan my afternoon'), _('What is late and why?')]
+        return [_('Plan my afternoon'), _('What is late and why?')]
 
     @api.model
     def _usable_agents(self):
@@ -166,249 +165,338 @@ class AiHomeItem(models.Model):
         """The model is installed and the user may read it at all."""
         return model in self.env and self.env[model].has_access('read')
 
-    def _money(self, amount):
-        return formatLang(self.env, amount or 0.0, currency_obj=self.env.company.currency_id, digits=0)
+    def _today(self):
+        return fields.Date.context_today(self)
 
-    def _today_range(self):
-        """Start and end of the user's today, in UTC, for datetime fields."""
-        today = fields.Date.context_today(self)
-        start = datetime.combine(today, time.min, tzinfo=self.env.tz).astimezone(UTC).replace(tzinfo=None)
-        return start, start + timedelta(days=1)
+    def _end_of_week(self, today):
+        """Last day of the week of the user's language (Odoo's week start, Monday by default)."""
+        lang = self.env['res.lang']._lang_get(self.env.lang or 'en_US')
+        week_start = int(lang.week_start or 1) if lang else 1
+        days_in = (today.isoweekday() - week_start) % 7
+        return today + timedelta(days=6 - days_in)
 
-    # ------------------------------------------------------------------
-    # Right now
-    # ------------------------------------------------------------------
+    def _local(self, value):
+        return fields.Datetime.context_timestamp(self, value) if value else False
 
-    def _home_live(self, role):
-        providers = {
-            'operations': ['activities', 'conversations', 'approvals', 'workflows', 'agents', 'sales_today', 'team'],
-            'support': ['activities', 'my_queue', 'team_queue', 'my_requests'],
-            'sales': ['activities', 'pipeline', 'quotes_today', 'meetings', 'my_requests', 'orders_month'],
-        }[role]
-        tiles = []
-        for key in providers:
-            try:
-                tile = getattr(self, '_tile_' + key)()
-            except AccessError:
-                tile = None
-            if tile:
-                tiles.append(dict(tile, key=key))
-        return tiles
-
-    def _tile(self, label, value, sub, tone, action=False):
-        return {'label': label, 'value': str(value), 'sub': sub, 'tone': tone, 'action': action}
+    def _local_time(self, value):
+        return self._local(value).strftime('%H:%M') if value else ''
 
     def _list_action(self, model, domain, name):
         return {'type': 'ir.actions.act_window', 'res_model': model, 'name': name, 'domain': domain,
                 'views': [[False, 'list'], [False, 'form']], 'target': 'current'}
 
-    def _tile_activities(self):
-        """The user's Odoo activities, coloured like Odoo's activity list: overdue red, today orange, planned green."""
-        today = fields.Date.context_today(self)
-        domain = [('user_id', '=', self.env.uid)]
-        Activity = self.env['mail.activity']
-        total = Activity.search_count(domain)
-        overdue = Activity.search_count(domain + [('date_deadline', '<', today)])
-        due_today = Activity.search_count(domain + [('date_deadline', '=', today)])
-        if overdue:
-            sub, tone = _('%(overdue)s overdue · %(today)s today', overdue=overdue, today=due_today), BAD
-        elif due_today:
-            sub, tone = _('%s due today', due_today), WARN
-        else:
-            sub, tone = (_('all planned') if total else _('nothing planned')), GOOD
-        return self._tile(_('My activities'), total, sub, tone,
-                          self._list_action('mail.activity', domain, _('My activities')))
+    def _due_text(self, deadline, today):
+        days = (today - deadline).days
+        if days > 0:
+            return _('1 day late') if days == 1 else _('%s days late', days)
+        if days == 0:
+            return _('due today')
+        if days == -1:
+            return _('due tomorrow')
+        return format_date(self.env, deadline, date_format='EEE d MMM')
 
-    def _tile_conversations(self):
-        if not self._can_read('omni.conversation'):
-            return None
-        Conversation = self.env['omni.conversation']
-        domain = [('state', 'in', ['new', 'open', 'waiting'])]
-        waiting = [('state', 'in', ['new', 'waiting'])]
-        now = fields.Datetime.now()
-        late = Conversation.search_count(waiting + [('last_message_at', '<', now - timedelta(minutes=WAIT_WARN))])
-        very_late = Conversation.search_count(waiting + [('last_message_at', '<', now - timedelta(minutes=WAIT_BAD))])
-        if very_late:
-            sub, tone = _('%(count)s waiting over %(min)s min', count=very_late, min=WAIT_BAD), BAD
-        elif late:
-            sub, tone = _('%(count)s waiting over %(min)s min', count=late, min=WAIT_WARN), WARN
-        else:
-            sub, tone = _('none waiting'), GOOD
-        return self._tile(_('Conversations open'), Conversation.search_count(domain), sub, tone,
-                          self._list_action('omni.conversation', domain, _('Conversations')))
+    def _app_names(self, model_names):
+        """App (root menu) of each model, e.g. crm.lead -> CRM; falls back to the model's name."""
+        names = {}
+        model_names = [name for name in set(model_names) if name]
+        if not model_names:
+            return names
+        actions = self.env['ir.actions.act_window'].sudo().search([('res_model', 'in', model_names)], order='id')
+        menus = self.env['ir.ui.menu'].sudo().search(
+            [('action', 'in', [f'ir.actions.act_window,{action.id}' for action in actions])], order='id')
+        roots = {}
+        for menu in menus:
+            model = menu.action.res_model
+            if model not in roots and menu.parent_path:
+                roots[model] = int(menu.parent_path.split('/')[0])
+        root_names = {menu.id: menu.name for menu in self.env['ir.ui.menu'].sudo().browse(set(roots.values()))}
+        for model in model_names:
+            names[model] = root_names.get(roots.get(model)) or self.env['ir.model']._get(model).name or model
+        return names
 
-    def _approval_domain(self):
-        return [('state', '=', 'submitted'),
-                ('approver_ids', 'any', [('user_id', '=', self.env.uid), ('status', '=', 'submitted')])]
+    def _app_label(self, model, cache):
+        if model not in cache:
+            cache.update(self._app_names([model]))
+        return cache[model]
 
-    def _tile_approvals(self):
-        if not self._can_read('approval.center.request'):
-            return None
-        requests = self.env['approval.center.request'].search(self._approval_domain()).filtered('can_review')
-        overdue = sum(1 for request in requests if self._approval_overdue(request))
-        due_today = sum(1 for request in requests if self._approval_due_today(request))
-        if overdue:
-            sub, tone = _('%s overdue', overdue), BAD
-        elif due_today:
-            sub, tone = _('%s due today', due_today), WARN
-        else:
-            sub, tone = _('none overdue'), GOOD
-        return self._tile(_('Approvals pending'), len(requests), sub, tone,
-                          self._list_action('approval.center.request', [('id', 'in', requests.ids)], _('Approvals')))
+    def _excluded_activity_types(self):
+        """Activity types that are decisions (middle column), not part of the plan."""
+        types = self.env['mail.activity.type'].search([('home_decision', '=', True)])
+        review = self.env.ref('approval_center.mail_act_approval_review', raise_if_not_found=False)
+        return types | review if review else types
 
-    def _tile_workflows(self):
-        if not self._can_read('workflow.definition') or not self.env.user.has_group('base.group_system'):
-            return None
-        start, _end = self._today_range()
-        failed = self.env['workflow.run'].search_count([('state', '=', 'failed'), ('is_test', '=', False),
-                                                        ('write_date', '>=', start)])
-        running = self.env['workflow.definition'].search_count([('state', '=', 'active')])
-        return self._tile(_('Workflows running'), running,
-                          _('%s failed today', failed) if failed else _('no failures today'), BAD if failed else GOOD,
-                          self._list_action('workflow.definition', [('state', '=', 'active')], _('Workflows')))
+    # ------------------------------------------------------------------
+    # Left: today, my plan, waiting on others, team load
+    # ------------------------------------------------------------------
 
-    def _tile_agents(self):
-        if not self._can_read('ai.agent') or not self.env.user.has_group('ai_agent.group_manager'):
-            return None
-        start, _end = self._today_range()
-        actions = self.env['ai.agent.run'].search_count([('create_date', '>=', start)])
-        return self._tile(_('AI agents active'), self.env['ai.agent'].search_count([('state', '=', 'active')]),
-                          _('%s requests today', actions), GOOD,
-                          self._list_action('ai.agent', [('state', '=', 'active')], _('AI agents')))
+    def _home_plan(self, decided=frozenset()):
+        """The user's open activities and meetings, in sections, in display order.
 
-    def _tile_sales_today(self):
-        if not self._can_read('sale.order'):
-            return None
-        start, end = self._today_range()
-        domain = [('state', '=', 'sale'), ('date_order', '>=', start), ('date_order', '<', end)]
-        orders = self.env['sale.order'].search(domain)
-        total = sum(order.currency_id._convert(order.amount_total, self.env.company.currency_id, self.env.company,
-                                               fields.Date.today()) for order in orders)
-        return self._tile(_('Sales today'), self._money(total), _('%s orders', len(orders)), GOOD,
-                          self._list_action('sale.order', domain, _('Sales today')))
+        Activities on a record that is already a decision in the middle column (``decided``: model and id pairs) are
+        left out, so each thing shows in one place only.
+        """
+        today = self._today()
+        end_week = self._end_of_week(today)
+        excluded = self._excluded_activity_types()
+        activities = self.env['mail.activity'].search(
+            [('user_id', '=', self.env.uid), ('activity_type_id', 'not in', excluded.ids)],
+            order='date_deadline asc, id asc', limit=PLAN_LIMIT)
+        activities = activities.filtered(lambda activity: activity.res_model in self.env and activity.date_deadline
+                                         and (activity.res_model, activity.res_id) not in decided)
+        apps = self._app_names(activities.mapped('res_model') + ['calendar.event'])
+        rows = {section: [] for section in SECTIONS}
 
-    def _tile_team(self):
-        if not self._can_read('hr.employee.public'):
-            return None
-        Employee = self.env['hr.employee.public']
-        employee = self.env.user.employee_id if 'employee_id' in self.env.user._fields else False
-        domain = [('company_id', '=', self.env.company.id)]
-        if employee and employee.department_id:
-            domain = [('department_id', '=', employee.department_id.id)]
-        team = Employee.search(domain)
-        if not team:
-            return None
-        online = sum(1 for member in team if member.hr_presence_state == 'present')
-        sub = _('%s people', len(team))
-        if 'is_absent' in Employee._fields:
-            absent = sum(1 for member in team if member.is_absent)
-            sub = _('%s on leave', absent) if absent else _('nobody on leave')
-        return self._tile(_('Team online'), '%s / %s' % (online, len(team)), sub, GOOD)
+        def section_of(day):
+            if day < today:
+                return 'late'
+            if day == today:
+                return 'today'
+            if day == today + timedelta(days=1):
+                return 'tomorrow'
+            return 'week' if day <= end_week else 'later'
 
-    def _tile_my_queue(self):
-        if not self._can_read('omni.conversation'):
-            return None
-        mine = self.env['omni.conversation'].search([('assigned_user_id', '=', self.env.uid),
-                                                     ('state', 'in', ['new', 'open', 'waiting'])],
-                                                    order='last_message_at asc')
-        oldest = mine.filtered('last_message_at')[:1]
-        sub, tone = _('nobody waiting'), GOOD
-        if oldest:
-            minutes = int((fields.Datetime.now() - oldest.last_message_at).total_seconds() // 60)
-            sub = _('oldest waiting %s min', minutes)
-            tone = BAD if minutes >= WAIT_BAD else (WARN if minutes >= WAIT_WARN else GOOD)
-        return self._tile(_('My queue'), len(mine), sub, tone,
-                          self._list_action('omni.conversation', [('id', 'in', mine.ids)], _('My queue')))
+        for activity in activities:
+            kind = activity.activity_type_id
+            rows[section_of(activity.date_deadline)].append(({
+                'key': f'activity-{activity.id}',
+                'kind': 'activity',
+                'title': activity.summary or kind.name or _('Activity'),
+                'meta': ' · '.join(part for part in (activity.res_name, self._due_text(activity.date_deadline, today))
+                                   if part),
+                'note': ' '.join(html2plaintext(activity.note or '').split())[:120],
+                'app': apps.get(activity.res_model, ''),
+                'icon': kind.icon or 'checklist',
+                'time': '',
+                'date': fields.Date.to_string(activity.date_deadline),
+                'model': 'mail.activity',
+                'resId': activity.id,
+                'openModel': activity.res_model,
+                'openId': activity.res_id,
+                'canDone': kind.category != 'upload_file',
+                'joinUrl': False,
+            }, (fields.Date.to_string(activity.date_deadline), 2, '', kind.sequence, activity.id)))
 
-    def _tile_team_queue(self):
-        if not self._can_read('omni.conversation'):
-            return None
-        Conversation = self.env['omni.conversation']
-        domain = [('state', 'in', ['new', 'open', 'waiting'])]
-        unassigned = Conversation.search_count(domain + [('assigned_user_id', '=', False)])
-        return self._tile(_('Team queue'), Conversation.search_count(domain),
-                          _('%s unassigned', unassigned) if unassigned else _('all assigned'),
-                          WARN if unassigned else GOOD, self._list_action('omni.conversation', domain, _('Team queue')))
+        now = self._local(fields.Datetime.now())
+        for event in self._my_events(today):
+            start = self._local(event.start)
+            day = event.start_date if event.allday else start.date()
+            minutes = round((event.duration or 0) * 60)
+            parts = [_('Meeting')]
+            if minutes and not event.allday:
+                parts.append(_('%s min', minutes) if minutes < 120 else _('%s h', round(minutes / 60, 1)))
+            if event.videocall_location:
+                parts.append(_('video call'))
+            row = {
+                'key': f'meeting-{event.id}',
+                'kind': 'meeting',
+                'title': event.name,
+                'meta': ' · '.join(parts),
+                'note': '',
+                'app': apps.get('calendar.event', _('Calendar')),
+                'icon': 'event',
+                'time': _('All day') if event.allday else start.strftime('%H:%M'),
+                'date': fields.Date.to_string(day),
+                'model': 'calendar.event',
+                'resId': event.id,
+                'openModel': 'calendar.event',
+                'openId': event.id,
+                'canDone': False,
+                'joinUrl': event.videocall_location or False,
+                'past': bool(not event.allday and start < now),
+            }
+            # Today: past meetings, then activities (no time: "now"), then meetings still to come.
+            if day == today:
+                rank = 0 if event.allday else (1 if row['past'] else 3)
+            else:
+                rank = 0 if event.allday else 1
+            order = (row['date'], rank, '' if event.allday else row['time'], 0, event.id)
+            rows[section_of(day)].append((row, order))
 
-    def _tile_my_requests(self):
-        if not self._can_read('approval.center.request'):
-            return None
-        domain = [('requester_id', '=', self.env.uid), ('state', '=', 'submitted')]
-        count = self.env['approval.center.request'].search_count(domain)
-        return self._tile(_('My requests pending'), count, _('awaiting approval') if count else _('nothing waiting'),
-                          WARN if count else GOOD, self._list_action('approval.center.request', domain, _('My requests')))
+        plan = []
+        for section in SECTIONS:
+            for row, _order in sorted(rows[section], key=lambda pair: pair[1]):
+                row['section'] = section
+                plan.append(row)
+        return plan
 
-    def _tile_pipeline(self):
-        if not self._can_read('crm.lead'):
-            return None
-        domain = [('user_id', '=', self.env.uid), ('type', '=', 'opportunity'), ('active', '=', True),
-                  ('won_status', '=', 'pending')]
-        deals = self.env['crm.lead'].search(domain)
-        return self._tile(_('My pipeline'), self._money(sum(deals.mapped('expected_revenue'))),
-                          _('%s open deals', len(deals)), GOOD, self._list_action('crm.lead', domain, _('My pipeline')))
-
-    def _tile_quotes_today(self):
-        if not self._can_read('sale.order'):
-            return None
-        start, end = self._today_range()
-        domain = [('user_id', '=', self.env.uid), ('state', '=', 'sent'), ('write_date', '>=', start),
-                  ('write_date', '<', end)]
-        open_quotes = self.env['sale.order'].search_count([('user_id', '=', self.env.uid), ('state', '=', 'sent')])
-        return self._tile(_('Quotes sent today'), self.env['sale.order'].search_count(domain),
-                          _('%s open quotes', open_quotes), GOOD, self._list_action('sale.order', domain, _('Quotes')))
-
-    def _my_events_today(self):
+    def _my_events(self, today):
+        """Meetings the user attends and did not decline, today and the next days."""
         if not self._can_read('calendar.event'):
             return []
-        start, end = self._today_range()
-        return self.env['calendar.event'].search([('partner_ids', 'in', self.env.user.partner_id.id),
-                                                  ('start', '<', end), ('stop', '>=', start)], order='start')
+        start = datetime.combine(today, time.min, tzinfo=self.env.tz).astimezone(UTC).replace(tzinfo=None)
+        partner = self.env.user.partner_id
+        events = self.env['calendar.event'].search([
+            ('partner_ids', 'in', partner.id), ('start', '<', start + timedelta(days=WEEK_DAYS)), ('stop', '>=', start),
+        ], order='start', limit=LIMIT * 5)
+        return events.filtered(lambda event: not event.attendee_ids.filtered(
+            lambda attendee: attendee.partner_id == partner and attendee.state == 'declined'))
 
-    def _tile_meetings(self):
-        if not self._can_read('calendar.event'):
-            return None
-        events = self._my_events_today()
-        upcoming = events.filtered(lambda e: e.start >= fields.Datetime.now() and not e.allday)[:1]
-        sub = _('next at %s', self._local_time(upcoming.start)) if upcoming else _('none left today')
-        return self._tile(_('Meetings today'), len(events), sub, GOOD)
+    def _home_today(self, plan):
+        """Activities done today out of done + due today + late (meetings are not counted)."""
+        today = self._today()
+        late = sum(1 for row in plan if row['kind'] == 'activity' and row['section'] == 'late')
+        todo = sum(1 for row in plan if row['kind'] == 'activity' and row['section'] == 'today')
+        done = self.env['mail.activity'].with_context(active_test=False).search_count([
+            ('user_id', '=', self.env.uid), ('active', '=', False), ('date_done', '=', today)])
+        return {'done': done, 'late': late, 'todo': todo, 'total': done + late + todo,
+                'label': format_date(self.env, today, date_format='EEE d MMM')}
 
-    def _tile_orders_month(self):
-        if not self._can_read('sale.order'):
-            return None
-        first = fields.Date.context_today(self).replace(day=1)
-        domain = [('user_id', '=', self.env.uid), ('state', '=', 'sale'), ('date_order', '>=', first)]
-        orders = self.env['sale.order'].search(domain)
-        return self._tile(_('Orders this month'), len(orders), self._money(sum(orders.mapped('amount_untaxed'))), GOOD,
-                          self._list_action('sale.order', domain, _('Orders this month')))
+    def _home_week(self, plan):
+        """Items per day for the next days; a busy day (at least 3 and over 1.5 x the average) is marked."""
+        today = self._today()
+        days = [today + timedelta(days=offset) for offset in range(WEEK_DAYS)]
+        counts = {fields.Date.to_string(day): 0 for day in days}
+        for row in plan:
+            if row['section'] != 'late' and row['date'] in counts:
+                counts[row['date']] += 1
+        average = sum(counts.values()) / WEEK_DAYS
+        return [{
+            'date': fields.Date.to_string(day),
+            'label': format_date(self.env, day, date_format='EEE'),
+            'longLabel': format_date(self.env, day, date_format='EEEE d MMM'),
+            'count': counts[fields.Date.to_string(day)],
+            'heavy': counts[fields.Date.to_string(day)] >= 3 and counts[fields.Date.to_string(day)] > 1.5 * average,
+            'isToday': day == today,
+        } for day in days]
 
-    def _local_time(self, value):
-        return fields.Datetime.context_timestamp(self, value).strftime('%H:%M') if value else ''
+    def _home_waiting(self):
+        """Work the user handed to someone else that is due or late, and the user's pending requests."""
+        today = self._today()
+        rows = []
+        for activity in self.env['mail.activity'].search([
+            ('create_uid', '=', self.env.uid), ('user_id', '!=', False), ('user_id', '!=', self.env.uid),
+            ('date_deadline', '<=', today),
+        ], order='date_deadline asc, id asc', limit=WAITING_LIMIT):
+            if activity.res_model not in self.env:
+                continue
+            late = activity.date_deadline < today
+            who = activity.user_id.name
+            rows.append({
+                'key': f'waiting-activity-{activity.id}',
+                'who': who,
+                'initials': _initials(who),
+                'title': _('%(who)s · %(what)s', who=who.split()[0] if who else '',
+                           what=activity.summary or activity.activity_type_id.name or activity.res_name),
+                'meta': ' · '.join(part for part in (activity.res_name, self._due_text(activity.date_deadline, today))
+                                   if part),
+                'tone': BAD if late else WARN,
+                'since': fields.Date.to_string(activity.date_deadline),
+                'model': 'mail.activity',
+                'resId': activity.id,
+                'openModel': activity.res_model,
+                'openId': activity.res_id,
+                'nudge': {'label': _('Nudge'), 'method': 'home_nudge'},
+            })
+        if self._can_read('approval.center.request'):
+            for request in self.env['approval.center.request'].search(
+                [('requester_id', '=', self.env.uid), ('state', '=', 'submitted')], order='write_date asc',
+                limit=WAITING_LIMIT,
+            ):
+                pending = request.approver_ids.filtered(lambda a: a.status == 'submitted').user_id
+                who = ', '.join(pending.mapped('name')) or _('approver not set')
+                days = (fields.Datetime.now() - (request.write_date or fields.Datetime.now())).days
+                rows.append({
+                    'key': f'waiting-request-{request.id}',
+                    'who': who,
+                    'initials': _initials(pending[:1].name or '?'),
+                    'title': _('%(who)s · approve %(what)s', who=who, what=request.name),
+                    'meta': _('Approvals · waiting %s days', days) if days > 1 else (
+                        _('Approvals · waiting 1 day') if days == 1 else _('Approvals · sent today')),
+                    'tone': WARN,
+                    'since': fields.Date.to_string((request.write_date or fields.Datetime.now()).date()),
+                    'model': 'approval.center.request',
+                    'resId': request.id,
+                    'openModel': 'approval.center.request',
+                    'openId': request.id,
+                    'nudge': {'label': _('Nudge'), 'method': 'home_remind'},
+                })
+        return sorted(rows, key=lambda row: (row['since'], row['key']))[:WAITING_LIMIT]
+
+    def _home_team(self):
+        """Managers: open activities of each direct report (counts only, never their content)."""
+        employee = self.env.user.employee_id if 'employee_id' in self.env.user._fields else False
+        if not employee or not self._can_read('hr.employee.public'):
+            return []
+        reports = self.env['hr.employee.public'].search([('parent_id', '=', employee.id), ('user_id', '!=', False)])
+        if not reports:
+            return []
+        today = self._today()
+        end_week = self._end_of_week(today)
+        users = reports.user_id
+        Activity = self.env['mail.activity'].sudo()
+
+        def counts(domain):
+            return {user.id: count for user, count in Activity._read_group(
+                [('user_id', 'in', users.ids)] + domain, ['user_id'], ['__count'])}
+
+        late = counts([('date_deadline', '<', today)])
+        due = counts([('date_deadline', '=', today)])
+        week = counts([('date_deadline', '<=', end_week)])
+        busiest = max(week.values(), default=0) or 1
+        rows = []
+        for report in reports:
+            user = report.user_id
+            rows.append({
+                'key': f'team-{user.id}',
+                'name': report.name,
+                'initials': _initials(report.name),
+                'userId': user.id,
+                'late': late.get(user.id, 0),
+                'today': due.get(user.id, 0),
+                'open': week.get(user.id, 0),
+                'load': round(100 * week.get(user.id, 0) / busiest),
+                'tone': BAD if late.get(user.id, 0) > 2 else (WARN if late.get(user.id, 0) else GOOD),
+            })
+        return sorted(rows, key=lambda row: (-row['late'], -row['today'], row['name']))
+
+    def _nudge(self, activity):
+        """Remind the assignee of an activity the user handed to them, with a note on the document."""
+        if activity._name != 'mail.activity' or activity.create_uid != self.env.user or not activity.active:
+            raise UserError(_('You can only nudge people about activities you assigned to them.'))
+        document = self.env[activity.res_model].browse(activity.res_id).exists()
+        if not document or not hasattr(document, 'message_post'):
+            raise UserError(_('This document cannot receive notes.'))
+        document.message_post(
+            body=_('Reminder: "%(what)s" was due %(when)s.',
+                   what=activity.summary or activity.activity_type_id.name,
+                   when=format_date(self.env, activity.date_deadline)),
+            partner_ids=activity.user_id.partner_id.ids, message_type='comment', subtype_xmlid='mail.mt_note')
+        return True
 
     # ------------------------------------------------------------------
-    # Needs your attention
+    # Middle: needs your attention (decisions only)
     # ------------------------------------------------------------------
+
+    def _categories(self):
+        """Built-in categories, in chip order, with their label and badge."""
+        return [
+            ('approval', _('Approvals'), 'AP'),
+            ('decision', _('To decide'), 'DE'),
+            ('conversation', _('Conversations'), 'OC'),
+            ('workflow', _('Workflows'), 'WF'),
+            ('ai', _('AI agents'), 'AI'),
+            ('notice', _('Notices'), 'NO'),
+        ]
 
     def _review_deadlines(self, request):
         """Deadlines of the user's review activities on the request (from Odoo activities)."""
         return [activity.date_deadline for activity in request.activity_ids
                 if activity.user_id == self.env.user and activity.date_deadline]
 
-    def _approval_due_today(self, request):
-        return fields.Date.context_today(self) in self._review_deadlines(request)
-
     def _approval_overdue(self, request):
-        today = fields.Date.context_today(self)
-        return any(activity.date_deadline and activity.date_deadline < today
-                   for activity in request.activity_ids if activity.user_id == self.env.user)
+        today = self._today()
+        return any(deadline < today for deadline in self._review_deadlines(request))
 
     def _item(self, category, record, title, meta, primary, secondary=False, tag='', overdue=False, occurred=False,
-              open_action=False):
+              open_action=False, key=''):
         """One row; buttons are {label, method} (run on the server) or {label, open: True} (open the record, or
         open_action when given)."""
+        badges = {key: badge for key, _label, badge in self._categories()}
         return {
             'openAction': open_action,
-            'key': f'{category}-{record._name}-{record.id}',
+            'key': f'{category}-{key + "-" if key else ""}{record._name}-{record.id}',
             'category': category,
+            'badge': badges.get(category, category[:2].upper()),
             'model': record._name,
             'resId': record.id,
             'title': title,
@@ -422,10 +510,12 @@ class AiHomeItem(models.Model):
 
     def _attention_collectors(self):
         """Methods that each return attention rows; other modules add theirs."""
-        return [self._attention_approvals, self._attention_conversations, self._attention_workflows,
-                self._attention_ai, self._attention_activities, self._attention_sales]
+        return [self._attention_approvals, self._attention_decisions, self._attention_conversations,
+                self._attention_workflows, self._attention_ai]
 
     def _home_attention(self):
+        """(rows, chip groups, decided records). Rows: built-in collectors, then decision sources; most urgent first.
+        Decided records are the (model, id) pairs the middle column covers, including source rows past the limit."""
         items = []
         for collect in self._attention_collectors():
             try:
@@ -433,15 +523,51 @@ class AiHomeItem(models.Model):
             except AccessError:
                 continue
         items += self._attention_configured()
-        # Most urgent first: overdue, then tagged, then oldest.
-        return sorted(items, key=lambda item: (not item['overdue'], not item['tag'], item['occurred'] or '9'))
+        groups = []
+        for key, label, _badge in self._categories():
+            rows = [item for item in items if item['category'] == key]
+            if rows:
+                groups.append(self._group(key, label, rows))
+        known = {key for key, _label, _badge in self._categories()}
+        for key in dict.fromkeys(item['category'] for item in items if item['category'] not in known):
+            groups.append(self._group(key, key.replace('_', ' ').title(),
+                                      [item for item in items if item['category'] == key]))
+        decided = {(item['model'], item['resId']) for item in items if item['model'] and item['model'] != 'mail.activity'}
+        for source in self.env['ai.home.source'].search([]):
+            try:
+                rows, records = source._home_rows(self._item)
+            except AccessError:
+                continue
+            if rows:
+                items += rows
+                decided.update((source.model_name, record_id) for record_id in records.ids)
+                groups.append({
+                    'key': f'source_{source.id}', 'label': source.name, 'count': len(records),
+                    'shown': len(rows),
+                    'action': self._list_action(source.model_name, [('id', 'in', records.ids)], source.name),
+                })
+        # One row per key, whatever the collectors return (keys must be unique on the page).
+        seen = set()
+        items = [item for item in items if not (item['key'] in seen or seen.add(item['key']))]
+        items.sort(key=lambda item: (not item['overdue'], not item['tag'], item['occurred'] or '9'))
+        return items, groups, decided
+
+    def _group(self, key, label, rows):
+        models_ = {row['model'] for row in rows}
+        action = False
+        if len(models_) == 1 and next(iter(models_)):
+            model = next(iter(models_))
+            action = self._list_action(model, [('id', 'in', [row['resId'] for row in rows])], label)
+        return {'key': key, 'label': label, 'count': len(rows), 'shown': len(rows), 'action': action}
 
     def _attention_approvals(self):
         if not self._can_read('approval.center.request'):
             return []
         items = []
-        Request = self.env['approval.center.request']
-        for request in Request.search(self._approval_domain(), order='write_date asc', limit=LIMIT).filtered('can_review'):
+        domain = [('state', '=', 'submitted'),
+                  ('approver_ids', 'any', [('user_id', '=', self.env.uid), ('status', '=', 'submitted')])]
+        for request in self.env['approval.center.request'].search(domain, order='write_date asc', limit=LIMIT) \
+                .filtered('can_review'):
             overdue = self._approval_overdue(request)
             days = (fields.Datetime.now() - (request.write_date or fields.Datetime.now())).days
             waiting = _('waiting %s days', days) if days > 1 else (_('waiting 1 day') if days == 1 else _('today'))
@@ -451,14 +577,31 @@ class AiHomeItem(models.Model):
                 {'label': _('Approve'), 'method': 'action_approve'},
                 {'label': _('Reject'), 'method': 'action_refuse'},
                 tag=_('Overdue') if overdue else '', overdue=overdue, occurred=request.write_date))
-        for request in Request.search([('requester_id', '=', self.env.uid), ('state', '=', 'submitted')],
-                                      order='write_date asc', limit=LIMIT):
-            pending = request.approver_ids.filtered(lambda a: a.status == 'submitted').user_id
-            items.append(self._item(
-                'approval', request, _('Your request %s is waiting', request.name),
-                _('Approvals · approver %s', ', '.join(pending.mapped('name')) or _('not set')),
-                {'label': _('Remind'), 'method': 'home_remind'}, {'label': _('View'), 'open': True},
-                occurred=request.write_date))
+        return items
+
+    def _attention_decisions(self):
+        """Activities of a type marked "Decision on Home", assigned to the user."""
+        types = self.env['mail.activity.type'].search([('home_decision', '=', True)])
+        if not types:
+            return []
+        today = self._today()
+        activities = self.env['mail.activity'].search(
+            [('user_id', '=', self.env.uid), ('activity_type_id', 'in', types.ids)],
+            order='date_deadline asc, id asc', limit=LIMIT).filtered(lambda a: a.res_model in self.env)
+        apps = self._app_names(activities.mapped('res_model'))
+        items = []
+        for activity in activities:
+            overdue = bool(activity.date_deadline and activity.date_deadline < today)
+            meta = ' · '.join(part for part in (apps.get(activity.res_model), activity.res_name,
+                                                 activity.date_deadline and self._due_text(activity.date_deadline, today))
+                              if part)
+            item = self._item('decision', activity, activity.summary or activity.activity_type_id.name, meta,
+                              {'label': _('Done'), 'method': 'action_done'}, {'label': _('Open'), 'open': True},
+                              tag=_('Overdue') if overdue else '', overdue=overdue,
+                              occurred=fields.Datetime.to_datetime(activity.date_deadline))
+            # Opening an activity opens the document it is on.
+            item['openModel'], item['openId'] = activity.res_model, activity.res_id
+            items.append(item)
         return items
 
     def _attention_conversations(self):
@@ -503,55 +646,17 @@ class AiHomeItem(models.Model):
                            {'label': _('Review'), 'open': True}, occurred=run.write_date)
                 for run in self.env['ai.agent.run'].search([('state', '=', 'uncertain')], limit=LIMIT)]
 
-    def _attention_activities(self):
-        today = fields.Date.context_today(self)
-        items = []
-        # Approval reviews already show as approvals.
-        skip = self.env.ref('approval_center.mail_act_approval_review', raise_if_not_found=False)
-        for activity in self.env['mail.activity'].search([('user_id', '=', self.env.uid), ('date_deadline', '<=', today)],
-                                                         order='date_deadline asc, id asc', limit=LIMIT):
-            if activity.res_model not in self.env or (skip and activity.activity_type_id == skip):
-                continue
-            overdue = activity.date_deadline < today
-            days = (today - activity.date_deadline).days
-            when = _('due today') if not overdue else (_('due yesterday') if days == 1 else _('due %s days ago', days))
-            title = activity.summary or activity.activity_type_id.name or _('Activity')
-            meta = _('Activity · %(record)s · %(when)s', record=activity.res_name or '', when=when)
-            item = self._item('activity', activity, title, meta, {'label': _('Done'), 'method': 'action_done'},
-                              {'label': _('Reschedule'), 'method': 'action_reschedule_tomorrow'},
-                              tag=_('Overdue') if overdue else '', overdue=overdue,
-                              occurred=fields.Datetime.to_datetime(activity.date_deadline))
-            # Opening an activity opens the document it is on.
-            item['openModel'], item['openId'] = activity.res_model, activity.res_id
-            items.append(item)
-        return items
-
-    def _attention_sales(self):
-        if not self._can_read('sale.order'):
-            return []
-        today = fields.Date.context_today(self)
-        quotes = self.env['sale.order'].search([('user_id', '=', self.env.uid), ('state', 'in', ['draft', 'sent']),
-                                                ('validity_date', '>=', today),
-                                                ('validity_date', '<=', today + relativedelta(days=1))], limit=LIMIT)
-        return [self._item('sales', quote, _('Quote %s expires %s', quote.name,
-                                             _('today') if quote.validity_date == today else _('tomorrow')),
-                           _('Sales · %(customer)s · %(amount)s', customer=quote.partner_id.display_name,
-                             amount=formatLang(self.env, quote.amount_total, currency_obj=quote.currency_id)),
-                           {'label': _('Open'), 'open': True},
-                           tag=_('Expires today') if quote.validity_date == today else _('Expires tomorrow'))
-                for quote in quotes]
-
     def _attention_configured(self):
         """Notices an administrator configured as Home items (section: Needs your attention)."""
         return [{
-            'key': item['key'], 'category': 'activity', 'model': False, 'resId': False, 'openAction': False,
-            'title': item['name'],
-            'meta': item['subtitle'], 'tag': '', 'overdue': False, 'occurred': False,
-            'primary': False, 'secondary': False,
+            'key': item['key'], 'category': 'notice', 'badge': 'NO', 'model': False, 'resId': False,
+            'openAction': False, 'title': item['name'], 'meta': item['subtitle'], 'tag': '', 'overdue': False,
+            'occurred': False, 'primary': False, 'secondary': False,
         } for item in self.get_dashboard_items() if item['section'] == 'attention']
 
     def _remind_approvers(self, request):
-        if request.requester_id != self.env.user or request.state != 'submitted':
+        if request._name != 'approval.center.request' or request.requester_id != self.env.user \
+                or request.state != 'submitted':
             raise UserError(_('Only the requester can send a reminder while the request is waiting.'))
         partners = request.approver_ids.filtered(lambda a: a.status == 'submitted').user_id.partner_id
         if not partners:
@@ -561,7 +666,7 @@ class AiHomeItem(models.Model):
         return True
 
     # ------------------------------------------------------------------
-    # What just happened, my day, recently opened, quick actions
+    # Right: what just happened; left: recent
     # ------------------------------------------------------------------
 
     def _team_partner_ids(self):
@@ -575,20 +680,23 @@ class AiHomeItem(models.Model):
         """Configuration and system records are not news for Home."""
         return model in EXCLUDED_MODELS or model.startswith(('ir.', 'base.', 'res.company', 'res.groups'))
 
-    def _app_label(self, model, cache):
-        if model not in cache:
-            cache[model] = self.env['ir.model']._get(model).name or model
-        return cache[model]
-
     def _home_feed(self):
-        """Latest changes and comments on records the user may read, with the scope each one belongs to."""
+        """What other people did on records the user may read (the user's own work is in Recent, on the left).
+
+        For me: Odoo notified the user (mentioned, or following the record), the same list as the Discuss Inbox.
+        My team: written by people in the user's department.
+        """
         partner = self.env.user.partner_id
         team = self._team_partner_ids()
         since = fields.Datetime.now() - timedelta(days=7)
         messages = self.env['mail.message'].search([
-            ('date', '>=', since), ('model', '!=', False), ('res_id', '!=', 0),
-            ('model', 'not in', list(EXCLUDED_MODELS)), ('message_type', 'in', ['comment', 'notification', 'tracking']),
-        ], order='date desc, id desc', limit=60)
+            ('date', '>=', since), ('model', '!=', False), ('res_id', '!=', 0), ('author_id', '!=', partner.id),
+            ('model', 'not in', list(EXCLUDED_MODELS)),
+            ('message_type', 'in', ['comment', 'email', 'notification', 'tracking']),
+        ], order='date desc, id desc', limit=150)
+        for_me = set(self.env['mail.notification'].sudo().search([
+            ('res_partner_id', '=', partner.id), ('mail_message_id', 'in', messages.ids),
+        ]).mail_message_id.ids)
         labels, items, shown = {}, [], set()
         for message in messages:
             if message.model not in self.env or self._technical(message.model):
@@ -596,7 +704,6 @@ class AiHomeItem(models.Model):
             record = self.env[message.model].browse(message.res_id).exists()
             if not record or not record.has_access('read'):
                 continue
-            mine = message.author_id == partner or partner in message.partner_ids
             text = self._feed_text(message, record)
             if not text or (message.model, message.res_id, message.author_id.id, text) in shown:
                 continue
@@ -604,18 +711,21 @@ class AiHomeItem(models.Model):
             items.append({
                 'key': f'feed-{message.id}',
                 'occurred': _iso(message.date),
-                'actor': _('You') if message.author_id == partner else (message.author_id.name or _('System')),
+                'actor': message.author_id.name or message.email_from or _('System'),
                 'text': text,
                 'app': self._app_label(message.model, labels),
-                'scope': 'mine' if mine else ('team' if message.author_id.id in team else 'all'),
+                'forMe': message.id in for_me,
+                'team': message.author_id.id in team,
                 'model': message.model,
                 'resId': message.res_id,
             })
-        # Keep enough of each scope for the Mine / My team / Everything tabs.
-        kept, counts = [], {'mine': 0, 'team': 0, 'all': 0}
+        # Keep enough for each tab: For me / My team / Everything.
+        kept, counts = [], {'forMe': 0, 'team': 0, 'all': 0}
         for item in items:
-            if counts[item['scope']] < FEED_LIMIT:
-                counts[item['scope']] += 1
+            tabs = [tab for tab in ('forMe', 'team') if item[tab]] + ['all']
+            if any(counts[tab] < FEED_LIMIT for tab in tabs):
+                for tab in tabs:
+                    counts[tab] += 1
                 kept.append(item)
         return kept
 
@@ -630,21 +740,11 @@ class AiHomeItem(models.Model):
             return ''
         if len(body) > 90:
             body = body[:87] + '…'
+        if message.message_type == 'email':
+            return _('emailed about %(record)s: %(text)s', record=record.display_name, text=body)
         if message.message_type == 'comment':
             return _('commented on %(record)s: %(text)s', record=record.display_name, text=body)
         return _('%(text)s · %(record)s', text=body, record=record.display_name)
-
-    def _home_day(self):
-        rows = []
-        for event in self._my_events_today()[:4]:
-            rows.append({'key': f'event-{event.id}', 'time': _('All day') if event.allday else self._local_time(event.start),
-                         'text': event.name, 'model': 'calendar.event', 'resId': event.id})
-        due = self.env['mail.activity'].search_count([('user_id', '=', self.env.uid),
-                                                      ('date_deadline', '=', fields.Date.context_today(self))])
-        if due:
-            rows.append({'key': 'due', 'time': _('Today'),
-                         'text': _('1 task due') if due == 1 else _('%s tasks due', due), 'model': False, 'resId': False})
-        return rows
 
     def _home_recent(self):
         """Records the user worked on most recently: commented on, changed or created."""
@@ -663,16 +763,8 @@ class AiHomeItem(models.Model):
             if not record or not record.has_access('read'):
                 continue
             items.append({'key': f'recent-{message.model}-{message.res_id}', 'name': record.display_name,
-                          'app': self._app_label(message.model, labels), 'model': message.model, 'resId': message.res_id})
+                          'app': self._app_label(message.model, labels), 'model': message.model, 'resId': message.res_id,
+                          'occurred': _iso(message.date)})
             if len(items) >= RECENT_LIMIT:
                 break
         return items
-
-    def _home_quick_actions(self, role):
-        candidates = {
-            'sales': [('sale.order', _('Quotation'), {}), ('crm.lead', _('Opportunity'), {'default_type': 'opportunity'}),
-                      ('res.partner', _('Contact'), {})],
-        }.get(role, [('res.partner', _('Contact'), {}), ('project.task', _('Task'), {}), ('hr.expense', _('Expense'), {})])
-        return [{'key': model, 'label': label, 'model': model, 'context': context}
-                for model, label, context in candidates
-                if model in self.env and self.env[model].has_access('create')]

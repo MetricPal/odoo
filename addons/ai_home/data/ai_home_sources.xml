@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default decision sources. A source whose app is not installed is skipped at runtime, so all of them can ship here.
+     Administrators may switch them off or change them (Settings > Technical > Home decision sources). -->
+<odoo noupdate="1">
+    <record id="source_time_off" model="ai.home.source">
+        <field name="name">Time Off</field>
+        <field name="sequence">10</field>
+        <field name="model_name">hr.leave</field>
+        <field name="domain">[('state', 'in', ['confirm', 'validate1'])]</field>
+        <field name="check_fields">can_approve,can_validate</field>
+        <field name="detail_field">employee_id</field>
+        <field name="date_field">create_date</field>
+        <field name="badge">TO</field>
+        <field name="primary_label">Approve</field>
+        <field name="primary_method">action_approve</field>
+        <field name="secondary_label">Refuse</field>
+        <field name="secondary_method">action_refuse</field>
+    </record>
+    <record id="source_allocation" model="ai.home.source">
+        <field name="name">Allocations</field>
+        <field name="sequence">20</field>
+        <field name="model_name">hr.leave.allocation</field>
+        <field name="domain">[('state', 'in', ['confirm', 'validate1'])]</field>
+        <field name="check_fields">can_approve,can_validate</field>
+        <field name="detail_field">employee_id</field>
+        <field name="date_field">create_date</field>
+        <field name="badge">AL</field>
+        <field name="primary_label">Approve</field>
+        <field name="primary_method">action_approve</field>
+        <field name="secondary_label">Refuse</field>
+        <field name="secondary_method">action_refuse</field>
+    </record>
+    <record id="source_expense" model="ai.home.source">
+        <field name="name">Expenses</field>
+        <field name="sequence">30</field>
+        <field name="model_name">hr.expense</field>
+        <field name="domain">[('approval_state', '=', 'submitted')]</field>
+        <field name="check_fields">can_approve</field>
+        <field name="detail_field">employee_id</field>
+        <field name="amount_field">total_amount</field>
+        <field name="date_field">create_date</field>
+        <field name="badge">EX</field>
+        <field name="primary_label">Approve</field>
+        <field name="primary_method">action_approve</field>
+        <field name="secondary_label">Refuse</field>
+        <field name="secondary_method">action_refuse</field>
+    </record>
+    <record id="source_purchase" model="ai.home.source">
+        <field name="name">Purchase</field>
+        <field name="sequence">40</field>
+        <field name="model_name">purchase.order</field>
+        <field name="domain">[('state', '=', 'to approve')]</field>
+        <field name="group_xmlid">purchase.group_purchase_manager</field>
+        <field name="detail_field">partner_id</field>
+        <field name="amount_field">amount_total</field>
+        <field name="date_field">write_date</field>
+        <field name="badge">PO</field>
+        <field name="primary_label">Approve</field>
+        <field name="primary_method">button_approve</field>
+        <field name="secondary_label">Open</field>
+    </record>
+    <record id="source_quotes" model="ai.home.source">
+        <field name="name">Sales</field>
+        <field name="sequence">50</field>
+        <field name="model_name">sale.order</field>
+        <field name="domain">[('user_id', '=', uid), ('state', 'in', ['draft', 'sent']), ('validity_date', '&gt;=', today), ('validity_date', '&lt;=', tomorrow)]</field>
+        <field name="detail_field">partner_id</field>
+        <field name="amount_field">amount_total</field>
+        <field name="date_field">validity_date</field>
+        <field name="date_mode">due</field>
+        <field name="badge">SO</field>
+        <field name="primary_label">Open</field>
+    </record>
+</odoo>

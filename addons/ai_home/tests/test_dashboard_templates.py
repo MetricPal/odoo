@@ -17,16 +17,15 @@ class TestDashboardTemplates(unittest.TestCase):
     def test_sections_follow_the_design(self):
         template = _template()
         root = template.xpath('//div[contains(@class, "o_ai_home ")]')[0]
-        self.assertEqual([child.get('class') for child in root], ['o_ai_home_top', 'o_ai_home_grid'])
-        top = [child.get('class').split()[0] for child in root[0]]
-        self.assertEqual(top, ['o_ai_home_greeting', 'o_ai_home_card', 'o_ai_home_live'])
-        grid = root[1]
+        self.assertEqual([child.get('class') for child in root], ['o_ai_home_grid'], 'no greeting or top bar')
+        grid = root[0]
         self.assertEqual([child.get('class') for child in grid], ['o_ai_home_panes', 'o_ai_home_ask'])
         panes = {pane.get('class').split()[-1]: [cls.split()[-1] for cls in pane.xpath('section/@class')]
                  for pane in grid[0]}
         self.assertEqual(panes, {
             'o_ai_home_center': ['o_ai_home_attention'],
-            'o_ai_home_left': ['o_ai_home_day', 'o_ai_home_recent'],
+            'o_ai_home_left': ['o_ai_home_today', 'o_ai_home_team', 'o_ai_home_plan', 'o_ai_home_waiting',
+                               'o_ai_home_recent'],
             'o_ai_home_right': ['o_ai_home_feed'],
         })
         # Three columns down to the bottom of the page, the assistant under the middle one; nothing floats.
@@ -37,22 +36,17 @@ class TestDashboardTemplates(unittest.TestCase):
         self.assertIn('--home-pad: 24px', scss)
         self.assertIn('--home-pad: 16px', scss)
 
-    def test_live_figures_use_a_hinted_indicator(self):
-        template = _template()
-        self.assertNotIn('Right now', etree.tostring(template, encoding='unicode'))
-        dot = template.xpath('//span[@class="o_ai_home_live_dot"]')[0]
-        self.assertEqual(dot.get('data-tooltip-template'), 'ai_home.LiveHint')
-        self.assertTrue(dot.get('aria-label'))
-        hint = template.xpath('//t[@t-name="ai_home.LiveHint"]')[0]
-        dots = hint.xpath('.//i/@class')
-        self.assertEqual(dots, ['o_ai_home_hint_dot o_tone_bad', 'o_ai_home_hint_dot o_tone_warn',
-                                'o_ai_home_hint_dot o_tone_good'])
+    def test_live_figures_and_my_day_are_gone(self):
+        text = etree.tostring(_template(), encoding='unicode')
+        for gone in ('Right now', 'o_ai_home_live', 'o_ai_home_tile', 'o_ai_home_day', 'ai_home.LiveHint',
+                     'Open all in Activities', 'See all activity'):
+            self.assertNotIn(gone, text)
 
     def test_old_home_parts_are_gone(self):
         template = _template()
         for old in ('o_ai_home_mywork', 'o_ai_home_automations', 'o_ai_home_runs', 'o_ai_home_dictate',
                     'o_ai_home_mode_select', 'o_ai_home_prepare', 'o_ai_home_disclaimer', 'favorite',
-                    'o_ai_home_global_search'):
+                    'o_ai_home_global_search', 'o_ai_home_quick', 'o_ai_home_greeting', 'o_ai_home_top'):
             self.assertFalse(template.xpath(f'//*[contains(@class, "{old}")]'), old)
 
     def test_icons_use_native_odoo20_markup(self):

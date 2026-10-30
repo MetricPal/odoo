@@ -19,6 +19,13 @@ def manager(records):
         raise AccessError(_('Select the authorized company first.'))
 
 
+def loading_demo(records):
+    """True while Odoo loads this module's demo data files (demo/*.xml), the only place demo-only values come from."""
+    context = records.env.context
+    return bool(context.get('install_mode') and context.get('install_module') == 'ai_agent'
+                and '/demo/' in '/' + (context.get('install_filename') or '').replace('\\', '/'))
+
+
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
 

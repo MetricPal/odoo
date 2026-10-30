@@ -12,6 +12,43 @@ Format:
 
 
 
+## 2026-10-30 — Home: my plan, decisions, what others did
+
+- Change: Home follows the approved "My plan" mock. Left: Today (done / late / to do ring, next 7 days), Team load for managers, My plan (the user's activities and meetings in Late / Today / Tomorrow / This week / Later, app chips, Done and Snooze on hover, Join for meetings), Waiting on others (activities handed to someone else, own pending requests, Nudge) and Recent (folded). Middle: decisions only: approvals, conversations, failed runs, AI checks, social items, activities of a type marked "Decision on Home", and rows from decision sources. Right: For me now means "Odoo notified me" (= Discuss Inbox, "Open inbox"), emails received are included, up to 20 per tab.
+- New: `ai.home.source` decision sources (Settings › Technical › Home decision sources). Defaults for Time Off, allocations, expenses, purchase orders to approve and quotes expiring soon; skipped when the app is not installed. Buttons only call public action_*/button_* methods on records the source lists for the user.
+- Removed: live figure tiles and My day; activities no longer show in Needs your attention (unless their type is a Decision); an activity on a record that is already a decision is left out of My plan.
+- Reason: each thing shows in one place only (left mine, middle decisions, right others), and the middle column scales with the apps a user can access.
+- Affected areas: ai_home (models, views, data, dashboard), docs/DESIGN.md.
+- Migration: update ai_home (new model, new field on mail.activity.type, default sources as noupdate data).
+
+## 2026-10-30 — Home: left is mine, right is others
+
+- Change: What just happened shows only what other people did; the user's own work is in Recent (left). Tabs: For me (mentioned or notified), My team, Everything; the list is no longer capped at six. "Open all in Activities" moves to the top right of Needs your attention.
+
+## 2026-10-30 — Home: "Recent"
+
+- Change: "Recently opened" is renamed "Recent"; each row shows the record name, its app as a tag and when below it (Today, Yesterday, or the date).
+
+## 2026-10-30 — Home: figures in the left column, no greeting
+
+- Change: the greeting line is removed; the live figure tiles move to the top of the left column (two per row), above My day and Recently opened. Under 1200px they come first, across the page.
+
+## 2026-10-29 — Home: lists scroll inside their cards
+
+- Change: the cards stay put and fill their column; only the list inside each card scrolls (Needs your attention, My day, Recently opened, What just happened). The fades at the column edges and above the assistant box are removed.
+
+## 2026-10-29 — Home: Quick actions removed; assistant box always shown
+
+- Change: the Quick actions bar is removed. The assistant box is always shown; without a usable agent it is greyed out and tells the user to ask their admin to set one up in AI Agents.
+
+## 2026-10-29 — AI Agent: demo assistant
+
+- Change: `ai_agent/demo/ai_agent_demo.xml` (manifest `demo`) adds a local Hermes connection ("Demo Hermes (local)", flagged `demo`, ready) and an "Ops Assistant" for the whole company, active, so Home shows the assistant box on demo databases. The connection is marked ready without a real check; answers need a Hermes server on 127.0.0.1:8643. Only this module's demo files may set `demo`, `state` and the activation on create; only demo connections on the local loopback ports skip the `AI_AGENT_ENDPOINTS` allowlist.
+
+## 2026-10-29 — Home: live indicator removed
+
+- Change: the green live dot and its colour hint are removed; the figures still refresh every minute.
+
 ## 2026-10-29 — Home: My activities tile
 
 - Change: every role's live figures start with *My activities* (the user's Odoo activities): red when any is overdue, orange when any is due today, green when all are planned; opens the user's activity list.

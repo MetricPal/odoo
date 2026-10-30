@@ -13,6 +13,7 @@
     'data': ['security/security.xml', 'security/ir.access.csv',
              'data/cron.xml', 'views/agent_views.xml', 'views/configuration_views.xml',
              'views/conversation_views.xml', 'views/wizard_views.xml', 'views/model_picker_views.xml', 'views/approval_views.xml', 'views/menus.xml'],
+    'demo': ['demo/ai_agent_demo.xml'],
     'assets': {'web.assets_backend': ['ai_agent/static/src/model_picker.js', 'ai_agent/static/src/model_picker.xml', 'ai_agent/static/src/model_picker.scss']},
     'icon': '/ai_agent/static/description/icon.svg',
     'application': True,

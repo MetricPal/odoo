@@ -103,58 +103,94 @@ Web and mobile should share concepts and terminology, not necessarily identical 
 
 ## Home layout
 
-Home follows the approved "Odoo home" design (revised 2026-10-29). The navbar is
-unchanged (no global search box; Odoo's command palette, Ctrl+K, stays).
+Home follows the approved "My plan" mock (2026-10-30,
+https://claude.ai/artifact/GbgaQoaMLF4eXQfTtFS49G). The navbar is unchanged (no
+global search box; Odoo's command palette, Ctrl+K, stays). Each thing shows in one
+place only: **left** is the user's own work, **middle** is decisions only the user
+can make, **right** is what other people did.
 
-- **Greeting:** "Good morning / afternoon / evening, <first name>", then the date,
-  the user's job title (or role) and a one-line summary ("5 items need you, 2
-  overdue"; support agents: customers waiting).
-- **Quick actions** (only when the user has no assistant): create buttons for the
-  records the user may create (sales: quotation, opportunity, contact; others:
-  contact, task, expense) and "The AI assistant is not enabled for your role".
-- **Live figures** (refreshed every minute; no title, only a green live dot whose
-  hover or tap hint explains the dot colours, the same meanings as Odoo
-  activities: red overdue or failed, orange due today or waiting, green on track):
-  every role starts with **My activities** (the user's Odoo activities: red when
-  any is overdue, orange when any is due today, green when all are planned; opens
-  the list); tiles chosen by role, each only
-  when its app is installed and readable. Operations: conversations open,
-  approvals pending, workflows running (administrators), AI agents active (AI
-  managers), sales today, team online. Support: my queue, team queue, my requests
-  pending. Sales: my pipeline, quotes sent today, meetings today, my requests
-  pending, orders this month. A tile with a list opens it. Conversations turn
-  orange after 5 minutes of waiting and red after 30; approvals turn red when the
-  review activity is overdue and orange when it is due today.
-- **Needs your attention** (left, wider): approvals waiting for the user (Approve /
-  Reject), the user's own requests (Remind / View), conversations assigned to the
-  user or unassigned (Open, or Assign to me), failed workflow runs for
-  administrators (Retry / View run), AI requests needing a manager check
-  (Review), due and overdue activities (Done / Reschedule to tomorrow), quotes
-  expiring today or tomorrow (Open), social items to answer, and configured Home
-  items. Filter chips per category; most urgent first. Buttons only run the
-  whitelisted methods, as the user, so each model's own checks decide.
-- **Layout:** greeting, quick actions and Right now stay on top; below them three
-  columns reach the bottom of the page, each scrolling on its own with soft fades
-  at its edges: My day and Recently opened (left), Needs your attention with the
-  assistant docked under it (middle, twice as wide), What just happened (right).
-  Spacing: 24px page padding and column gap, 16px between cards (16px everywhere
-  on phones). Under 1200px the page scrolls as a whole: Needs your attention
-  first, then My day and Recently opened side by side, then What just happened,
-  with the assistant kept at the bottom of the screen; phones stack everything.
-- **What just happened:** latest comments and changes on records the user
-  may read, Mine / My team / Everything. **My day:** today's meetings and tasks
-  due. **Recently opened:** the four records the user worked on most recently.
-- **Assistant** (only with a usable agent): docked under the middle column,
-  like claude.ai (the column fades out just above it; on phones the suggestions
-  are one swipeable row), with suggested questions, "+" to attach files, the agent picker and "Uses your
-  access rights". The answer shows on Home above the box, with "Open
-  conversation"; follow-ups continue the same conversation. A question is one
-  inference request, never a record change.
+### Left: my plan
 
-Removed from Home in this revision: the My Work column, the Automations and
-Workflow runs lists, dictation, the Manual / Auto switch, "Draft an approval
-request" and the "AI can make mistakes" note. The design's top bar, apps
-launcher, "Customize home" and "Edit pinned apps" are not built.
+- **Today:** a ring with activities done today out of done + due today + late
+  (done = archived today with `date_done` today), the late count (red), still to do
+  today (orange) and done (green); meetings are not counted. Under it, the **next 7
+  days**: one bar per day (the user's open activities due that day plus meetings
+  they attend and did not decline); a day with at least 3 items and more than 1.5×
+  the 7-day average is orange.
+- **My plan:** the user's open `mail.activity` records plus meetings
+  (`calendar.event` they attend and did not decline, today to 7 days ahead), in
+  sections **Late** (most overdue first), **Today** (meetings by start time;
+  activities without a time sit at the "now" position, so past meetings are above
+  them), **Tomorrow**, **This week** (until the end of the week of the user's
+  language) and **Later** (by deadline, then activity type). Late and Today are open;
+  the others are folded. App chips (root menu of the record's model) filter the
+  list. Row buttons on hover: **Done** (`action_done`; "Upload document" activities
+  only open the record) and **Snooze** (tomorrow or next week); meetings get
+  **Join** when they have a meeting URL. Clicking a row opens the document or
+  meeting. Activities whose type is marked **Decision** and approval reviews are
+  not here; they are decisions (middle). Header link: All activities.
+- **Waiting on others:** activities the user created and assigned to someone else,
+  due today or late, and the user's own approval requests still pending; most late
+  first, at most 5. **Nudge** posts a note on the record mentioning the assignee
+  (approval requests: reminds the pending approvers).
+- **Team load** (only for users with direct reports in Employees): per report, open
+  activities late and due today, and a bar for open work until the end of the
+  week, scaled to the busiest person; most late first. Clicking a person opens
+  their activities (only those the manager may read). Counts only, no content.
+- **Recent:** the four records the user worked on most recently, folded into one
+  line.
+
+### Middle: needs your attention (decisions only)
+
+Rows come from two kinds of collectors, all read with the user's own rights:
+
+- **Built in** (our apps): approvals the user can review (Approve / Reject),
+  conversations assigned to the user or unassigned (Open, or Assign to me), failed
+  workflow runs for administrators (Retry / View run), AI requests needing a
+  manager check (Review), social items to answer, and activities of a **Decision**
+  type assigned to the user (Done / Open).
+- **Decision sources** (`ai.home.source`, Settings › Technical › Home decision
+  sources): one record per app with the model, a domain (`uid`, `today`,
+  `tomorrow` available), boolean fields of which at least one must be true (for
+  example `can_approve`), a required group, the title, detail and date fields,
+  and up to two buttons. A source is used only when its model is installed and
+  the user is in its group. Buttons may only call public `action_*` / `button_*`
+  methods of that model, on a record the source currently lists for the user, so
+  the app's own checks still decide. Defaults: Time Off and allocations to
+  approve, expenses to approve, purchase orders to approve, quotes expiring today
+  or tomorrow. Only administrators can change sources.
+
+Each source shows at most its limit (5 by default); a chip per app with rows
+filters the list, and with a chip selected "Open all in <app>" opens every row of
+that app. Most urgent first: overdue, then oldest wait.
+
+### Right: what just happened
+
+Messages by other people on records the user may read, the last 7 days, never the
+user's own work and never technical records: comments, notes, emails received,
+notifications and tracked changes. Tabs: **For me** (Odoo sent the user a
+notification: mentioned, or following the record; the same list as the Discuss
+Inbox, so the tab ends with "Open inbox"), **My team** (written by people in the
+user's department), **Everything**. Newest first, up to 20 per tab.
+
+### Layout and assistant
+
+- Three columns reach the bottom of the page; cards stay put and only the list
+  inside a card scrolls (no fades). Spacing: 24px page padding and column gap,
+  16px between cards (16px everywhere on phones). Under 1200px the page scrolls as
+  a whole with the assistant kept at the bottom of the screen; phones stack
+  everything. Home refreshes every minute.
+- **Assistant** (always shown; without a usable agent it is greyed out and says
+  "No assistant is available to you yet. Ask your admin to set one up in AI
+  Agents."): docked under the middle column, like claude.ai, with suggested
+  questions, "+" to attach files, the agent picker and "Uses your access rights".
+  The answer shows on Home above the box, with "Open conversation"; follow-ups
+  continue the same conversation. A question is one inference request, never a
+  record change.
+
+Removed from Home: the greeting, the live figure tiles (approvals pending, AI
+agents active, sales today…) and My day (replaced by Today and My plan). Not built:
+the design's top bar, apps launcher, "Customize home" and "Edit pinned apps".
 
 Attached files (up to five readable PDF, text, Markdown or CSV files, 5 MB each)
 are uploaded as the user's own attachments, shown as removable chips above the

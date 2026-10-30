@@ -30,7 +30,11 @@ class HermesUnavailable(UserError):
 DEFINITIVE_REJECTIONS = frozenset(range(400, 500)) - {408, 429}
 
 
-def target(url, resolve=True):
+# Loopback ports of the local Hermes profile; demo connections may use them without the deployment allowlist.
+DEMO_LOOPBACK = frozenset({'127.0.0.1:8643', '127.0.0.1:9120'})
+
+
+def target(url, resolve=True, demo=False):
     if not isinstance(url, str) or not url.strip():
         raise UserError(_('Enter the Hermes server URL, for example https://hermes.example.com.'))
     if url != url.strip() or any(character.isspace() or ord(character) < 32 for character in url):
@@ -54,6 +58,8 @@ def target(url, resolve=True):
     if parsed.path not in ('', '/') or parsed.query or parsed.fragment:
         raise UserError(_('Enter the Hermes server base URL only, for example https://hermes.example.com. Remove page paths, search parameters and fragments.'))
     allowed = {v.strip().lower() for v in os.getenv('AI_AGENT_ENDPOINTS', '').split(',') if v.strip()}
+    if demo:
+        allowed |= DEMO_LOOPBACK
     authority = f'{parsed.hostname}:{port}'.lower()
     if authority not in allowed:
         raise UserError(_('This server (%s) is not approved for AI Agent connections. Ask your system administrator to add this host and port to the deployment endpoint allowlist (AI_AGENT_ENDPOINTS), then restart the application server.', authority))
@@ -79,10 +85,10 @@ def credential(reference):
     return key
 
 
-def request(url, secret_reference, method, path, payload=None, headers=None, *, credential_value=None):
+def request(url, secret_reference, method, path, payload=None, headers=None, *, credential_value=None, demo=False):
     if method not in ('GET', 'POST') or not re.fullmatch(r'/[a-zA-Z0-9_./-]+', path) or '..' in path:
         raise UserError(_('Unsupported Hermes operation.'))
-    parsed, addresses, port = target(url)
+    parsed, addresses, port = target(url, demo=demo)
     key = credential_value if credential_value is not None else credential(secret_reference)
     if not isinstance(key, str) or not key or len(key) > 4096 or '\n' in key or '\r' in key:
         raise UserError(_('Configure a valid API key.'))

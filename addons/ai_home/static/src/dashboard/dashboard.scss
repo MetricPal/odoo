@@ -1,6 +1,7 @@
-// Home, following the approved "Odoo home" design. Layout (wide screens): greeting and Right now on top, then three
-// columns that reach the bottom of the page: My day + Recently opened | Needs your attention with the assistant
-// docked under it (like claude.ai) | What just happened. Each column scrolls on its own; the top stays put.
+// Home, following the approved "Odoo home" design. Layout (wide screens): three columns that reach the bottom of the
+// page: live figures, My day and Recent | Needs your attention with the assistant
+// docked under it (like claude.ai) | What just happened. The cards stay put and fill their column; only the list
+// inside a card scrolls.
 // Spacing scale: 24px page padding and column gap, 16px between cards (16px everywhere on phones).
 .o_ai_home {
     --home-ink: #1F1F24;
@@ -18,7 +19,6 @@
 
     --home-pad: 24px;
     --home-gap: 16px;
-    --home-fade: 12px;
 
     display: flex;
     flex-direction: column;
@@ -58,31 +58,6 @@
     }
 }
 
-.o_ai_home_top {
-    flex: none;
-    padding: var(--home-pad) var(--home-pad) calc(var(--home-pad) - var(--home-fade));
-    display: flex;
-    flex-direction: column;
-    gap: var(--home-gap);
-}
-
-.o_ai_home_greeting {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-
-    h1 {
-        font-size: 26px;
-        font-weight: 700;
-        letter-spacing: -0.3px;
-    }
-
-    > span {
-        font-size: 14px;
-        color: var(--home-muted);
-    }
-}
-
 .o_ai_home_card {
     background: var(--home-card);
     border: 1px solid var(--home-line);
@@ -113,144 +88,12 @@
 
 .o_ai_home_hint {
     font-size: 12px;
+    font-weight: 400;
     color: var(--home-muted);
 }
 
-// Quick actions (no assistant for this user)
-.o_ai_home_quick {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 16px 20px;
-
-    h2 {
-        font-size: 15px;
-    }
-}
-
-.o_ai_home_quick_btn {
-    height: 40px;
-    padding: 0 14px;
-    border: 1px solid var(--home-line);
-    border-radius: 10px;
-    background: #FAFAFB;
-    color: var(--home-ink);
-}
-
-.o_ai_home_quick_note {
-    margin-left: auto;
-    font-size: 12px;
-    color: var(--home-muted);
-}
-
-// Right now
-.o_ai_home_live {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.o_ai_home_live_head {
-    display: flex;
-    align-items: center;
-    height: 12px;
-}
-
-// The live indicator: hover (or tap) shows what the dot colours mean.
-.o_ai_home_live_dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #16A34A;
-    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
-    cursor: help;
-
-    &:focus-visible {
-        outline: 2px solid var(--home-brand);
-        outline-offset: 2px;
-    }
-}
-
-.o_ai_home_hint_panel {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 2px;
-    font-size: 12px;
-
-    > span {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-}
-
-.o_ai_home_hint_dot {
-    width: 8px;
-    height: 8px;
-    flex: none;
-    border-radius: 50%;
-    background: #22C55E;
-
-    &.o_tone_warn { background: #F59E0B; }
-    &.o_tone_bad { background: #EF4444; }
-}
-
-.o_ai_home_tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: var(--home-gap);
-}
-
-.o_ai_home_tile {
-    background: var(--home-card);
-    border: 1px solid var(--home-line);
-    border-radius: 12px;
-    padding: 14px;
-    text-align: left;
-    color: var(--home-ink);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-
-    &:not(:disabled):hover {
-        border-color: var(--home-brand);
-    }
-
-    &:disabled {
-        opacity: 1;
-        cursor: default;
-    }
-
-    --tone: var(--home-good);
-    &.o_tone_warn { --tone: var(--home-warn); }
-    &.o_tone_bad { --tone: var(--home-bad); }
-}
-
-.o_ai_home_tile_label {
-    font-size: 13px;
-    color: var(--home-muted);
-}
-
-.o_ai_home_tile_value {
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-}
-
-.o_ai_home_tile_sub {
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--tone);
-}
-
-.o_ai_home_tile_dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--tone);
+.o_ai_home_card_head h2 .o_ai_home_hint {
+    margin-left: 6px;
 }
 
 // Three columns down to the bottom of the page. The panes wrapper takes no box of its own here, so the three panes
@@ -258,7 +101,7 @@
 .o_ai_home_grid {
     flex: 1 1 auto;
     min-height: 0;
-    padding: 0 var(--home-pad) calc(var(--home-pad) - var(--home-fade));
+    padding: var(--home-pad);
     display: grid;
     grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr) minmax(280px, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
@@ -272,32 +115,47 @@
     display: contents;
 }
 
-// Each column scrolls on its own; its edges fade so cards never look cut off under the top or above the box.
+// The cards fill their column and never move; the list inside a card scrolls (.o_ai_home_scroll).
 .o_ai_home_pane {
     min-height: 0;
-    overflow-y: auto;
-    scrollbar-width: none;
-    padding: var(--home-fade) 0;
     display: flex;
     flex-direction: column;
     gap: var(--home-gap);
-    mask-image: linear-gradient(to bottom, transparent 0, #000 var(--home-fade),
-                                #000 calc(100% - var(--home-fade)), transparent 100%);
 
-    &::-webkit-scrollbar {
-        display: none;
+    > .o_ai_home_card {
+        min-height: 0;
     }
+}
+
+.o_ai_home_scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
 }
 
 .o_ai_home_center {
     grid-area: center;
+
+    > .o_ai_home_attention {
+        flex: 1 1 auto;
+    }
 }
 
 .o_ai_home_left {
     grid-area: left;
+    // On short screens the column itself scrolls rather than squeezing the cards to nothing.
+    overflow-y: auto;
+    scrollbar-width: thin;
 
-    > .o_ai_home_recent {
-        flex: 1 0 auto;
+    > .o_ai_home_card {
+        flex: none;
+    }
+
+    // My plan takes the room that is left; its list scrolls inside the card.
+    > .o_ai_home_plan {
+        flex: 1 1 auto;
+        min-height: 300px;
     }
 }
 
@@ -305,17 +163,17 @@
     grid-area: right;
 
     > .o_ai_home_feed {
-        flex: 1 0 auto;
+        flex: 1 1 auto;
     }
 }
 
-// The middle column without an assistant reaches the bottom too.
-.o_ai_home:not(.o_has_ai) .o_ai_home_center {
-    grid-row: 1 / span 2;
+.o_ai_home_recent_list {
+    display: flex;
+    flex-direction: column;
 }
 
 // Under 1200px: one page that scrolls as a whole (top included); Needs your attention first, then My day,
-// Recently opened and What just happened two by two; the assistant stays docked at the bottom.
+// Recent and What just happened two by two; the assistant stays docked at the bottom.
 @media (max-width: 1199.98px) {
     .o_ai_home {
         overflow-y: auto;
@@ -332,13 +190,16 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: var(--home-gap) var(--home-pad);
         align-items: start;
-        padding: var(--home-fade) 0 var(--home-pad);
+        padding-bottom: var(--home-pad);
     }
 
-    .o_ai_home_pane {
+    // One scrolling page: cards take their natural height.
+    .o_ai_home_pane > .o_ai_home_card {
+        max-height: none;
+    }
+
+    .o_ai_home_scroll {
         overflow: visible;
-        padding: 0;
-        mask-image: none;
     }
 
     .o_ai_home_center,
@@ -350,6 +211,13 @@
     .o_ai_home_left {
         grid-area: auto;
         display: contents;
+    }
+
+    // Narrow screens: Today and My plan come first, across the page.
+    .o_ai_home_today,
+    .o_ai_home_plan {
+        grid-column: 1 / -1;
+        order: -1;
     }
 }
 
@@ -410,7 +278,8 @@
     &.o_cat_conversation { background: #0369A1; }
     &.o_cat_workflow { background: #0F766E; }
     &.o_cat_ai { background: #714B67; }
-    &.o_cat_sales { background: #15803D; }
+    &.o_cat_decision { background: #9D174D; }
+    &.o_cat_source { background: #6D28D9; }
 }
 
 .o_ai_home_attention_copy {
@@ -549,12 +418,10 @@
     border-radius: 999px;
 }
 
-// My day, Recently opened
-.o_ai_home_day {
-    gap: 10px;
+.o_ai_home_recent {
+    gap: 8px;
 }
 
-.o_ai_home_day_row,
 .o_ai_home_recent_row {
     padding: 0;
     border: 0;
@@ -563,50 +430,528 @@
     color: var(--home-ink);
     font-size: 13px;
     display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 0;
+    border-top: 1px solid var(--home-line-soft);
+
+    &:first-child {
+        border-top: 0;
+        padding-top: 0;
+    }
 }
 
-.o_ai_home_day_row {
-    gap: 12px;
+.o_ai_home_recent_title {
+    display: flex;
     align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+
+    .o_ai_home_pill {
+        flex: none;
+        font-size: 11px;
+        color: var(--home-muted);
+    }
 }
 
-.o_ai_home_day_time {
-    width: 48px;
+.o_ai_home_recent_name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_ai_home_recent_date {
+    font-size: 12px;
+    color: var(--home-muted);
+}
+
+// Today: ring, counts and the next 7 days
+.o_ai_home_today,
+.o_ai_home_team,
+.o_ai_home_waiting,
+.o_ai_home_recent {
+    padding: 14px 18px;
+}
+
+.o_ai_home_today_body {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.o_ai_home_ring {
     flex: none;
+}
+
+.o_ai_home_ring_track,
+.o_ai_home_ring_fill {
+    fill: none;
+    stroke-width: 9;
+}
+
+.o_ai_home_ring_track {
+    stroke: var(--home-line-soft);
+}
+
+.o_ai_home_ring_fill {
+    stroke: var(--home-brand);
+    stroke-linecap: round;
+}
+
+.o_ai_home_ring_value {
+    font-size: 18px;
+    font-weight: 700;
+    fill: var(--home-ink);
+}
+
+.o_ai_home_ring_label {
+    font-size: 10px;
+    fill: var(--home-muted);
+}
+
+.o_ai_home_today_counts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+}
+
+.o_tone_good { --tone: #16A34A; }
+.o_tone_warn { --tone: #C2410C; }
+.o_tone_bad { --tone: var(--home-bad); }
+
+.o_ai_home_dot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--tone);
+}
+
+.o_ai_home_week {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.o_ai_home_week_bars,
+.o_ai_home_week_days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.o_ai_home_week_bars {
+    height: 46px;
+    align-items: end;
+}
+
+.o_ai_home_week_bar {
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+
+    > span {
+        display: block;
+        width: 100%;
+        border-radius: 4px;
+        background: #D9CDD5;
+    }
+
+    &.o_is_today > span {
+        background: var(--home-brand);
+    }
+
+    &.o_is_heavy > span {
+        background: #C2410C;
+    }
+}
+
+.o_ai_home_week_days {
+    font-size: 11px;
+    color: var(--home-muted);
+    text-align: center;
+
+    .o_is_today {
+        font-weight: 600;
+        color: var(--home-ink);
+    }
+}
+
+// Team load (managers)
+.o_ai_home_team_list {
+    display: flex;
+    flex-direction: column;
+}
+
+.o_ai_home_team_row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 7px 0;
+    border: 0;
+    border-top: 1px solid var(--home-line-soft);
+    background: transparent;
+    color: var(--home-ink);
+    text-align: left;
+
+    &:first-child {
+        border-top: 0;
+    }
+
+    &:hover .o_ai_home_team_name {
+        color: var(--home-brand);
+    }
+}
+
+.o_ai_home_team_line {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) 36px 36px;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    font-size: 13px;
+}
+
+.o_ai_home_team_name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_ai_home_team_late,
+.o_ai_home_team_today {
+    text-align: right;
+}
+
+.o_ai_home_team_late {
+    font-weight: 700;
+    color: var(--tone);
+}
+
+.o_ai_home_team_row.o_tone_good .o_ai_home_team_late {
+    font-weight: 400;
+    color: var(--home-muted);
+}
+
+.o_ai_home_team_bar {
+    display: block;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--home-line-soft);
+    overflow: hidden;
+
+    > span {
+        display: block;
+        height: 100%;
+        background: var(--tone);
+    }
+}
+
+.o_ai_home_avatar {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    border-radius: 50%;
+    background: #EFE7EC;
+    color: var(--home-brand);
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+// My plan
+.o_ai_home_plan {
+    gap: 10px;
+}
+
+.o_ai_home_plan_apps .o_ai_home_chip {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+}
+
+.o_ai_home_plan_list {
+    display: flex;
+    flex-direction: column;
+}
+
+.o_ai_home_section_head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--home-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    text-align: left;
+}
+
+.o_section_late > .o_ai_home_section_head {
+    color: var(--home-bad);
+}
+
+.o_ai_home_plan_rows,
+.o_ai_home_waiting_list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.o_ai_home_plan_row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 -8px;
+    padding: 0 8px;
+    border-radius: 10px;
+    border-bottom: 1px solid var(--home-line-soft);
+
+    &:hover,
+    &:focus-within {
+        background: #F7F2F5;
+    }
+
+    &.o_is_past {
+        opacity: 0.6;
+    }
+}
+
+.o_ai_home_plan_open,
+.o_ai_home_waiting_open {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border: 0;
+    background: transparent;
+    color: var(--home-ink);
+    text-align: left;
+}
+
+.o_ai_home_plan_time {
+    width: 40px;
+    flex: none;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--home-brand);
+}
+
+.o_ai_home_plan_icon {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border-radius: 8px;
+    background: #F2F2F5;
+    color: var(--home-ink-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.o_section_late .o_ai_home_plan_icon {
+    background: #FDECDF;
+    color: var(--home-warn);
+}
+
+.o_ai_home_plan_copy {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.o_ai_home_plan_title {
+    font-size: 13px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_ai_home_plan_meta,
+.o_ai_home_waiting_meta {
+    font-size: 12px;
+    color: var(--home-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_ai_home_waiting_meta.o_tone_bad,
+.o_ai_home_waiting_meta.o_tone_warn {
+    color: var(--tone);
+}
+
+.o_ai_home_plan_open .o_ai_home_pill {
+    flex: none;
+    font-size: 11px;
+    color: var(--home-muted);
+}
+
+// Row buttons show on hover or keyboard focus, over the app tag.
+.o_ai_home_plan_actions {
+    display: none;
+    flex: none;
+    gap: 4px;
+    align-items: center;
+
+    .btn {
+        height: 28px;
+        padding: 0 9px;
+        font-size: 12px;
+    }
+}
+
+.o_ai_home_plan_row:hover,
+.o_ai_home_plan_row:focus-within {
+    .o_ai_home_plan_actions {
+        display: flex;
+    }
+
+    .o_ai_home_plan_open .o_ai_home_pill {
+        display: none;
+    }
+}
+
+.o_ai_home_plan_actions.o_is_shown {
+    display: flex;
+}
+
+@media (hover: none) {
+    .o_ai_home_plan_actions {
+        display: flex;
+    }
+}
+
+.o_ai_home_snooze {
+    position: relative;
+}
+
+.o_ai_home_snooze_menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    left: auto;
+    z-index: 10;
+    min-width: 140px;
+}
+
+// Waiting on others
+.o_ai_home_waiting {
+    gap: 8px;
+}
+
+.o_ai_home_waiting_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .o_ai_home_avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+}
+
+.o_ai_home_waiting_open {
+    padding: 4px 0;
+}
+
+.o_ai_home_nudge {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--home-brand);
 }
 
-.o_ai_home_recent {
+// Managers: Today in one line, so My plan keeps its room under Team load.
+.o_ai_home_today.o_is_compact {
     gap: 8px;
+
+    .o_ai_home_ring {
+        width: 60px;
+        height: 60px;
+    }
+
+    .o_ai_home_today_counts {
+        flex-direction: row;
+        flex-wrap: wrap;
+        column-gap: 12px;
+    }
 }
 
-.o_ai_home_recent_row {
-    justify-content: space-between;
-    gap: 8px;
-    padding: 6px 0;
+// Waiting on others and Recent fold into one line.
+.o_ai_home_card_toggle {
+    padding: 0;
+    text-transform: none;
+    letter-spacing: 0;
+
+    h2 {
+        margin: 0;
+        color: var(--home-ink);
+    }
 }
 
-// Assistant: docked under the middle column, like claude.ai; the column fades out just above it.
+.o_ai_home_recent_summary {
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--home-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_ai_home_more {
+    padding: 12px 0;
+    border-top: 1px solid var(--home-line-soft);
+}
+
+// Without a usable assistant the box stays, greyed out, and says how to get one.
+.o_ai_home_ask.o_is_unavailable .o_ai_home_composer {
+    background: #FAFAFB;
+
+    textarea::placeholder {
+        color: var(--home-muted);
+    }
+}
+
+// Assistant: docked under the middle column, like claude.ai.
 .o_ai_home_ask {
     grid-area: ask;
     position: relative;
-    padding: 8px 0 var(--home-fade);
+    padding-top: var(--home-gap);
     background: var(--home-bg);
     display: flex;
     flex-direction: column;
     gap: 10px;
-
-    &::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: -16px;
-        height: 16px;
-        background: linear-gradient(to bottom, rgba(245, 245, 247, 0), var(--home-bg));
-        pointer-events: none;
-    }
 }
 
 @media (max-width: 1199.98px) {
@@ -851,10 +1196,6 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .o_ai_home_tiles {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     // One swipeable row of suggestions, so the page keeps its room.
     .o_ai_home_prompts {
         flex-wrap: nowrap;
@@ -867,7 +1208,6 @@
         flex: none;
     }
 
-    .o_ai_home_quick_note,
     .o_ai_home_rights {
         margin-left: 0;
     }

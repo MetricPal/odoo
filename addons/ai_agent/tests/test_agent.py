@@ -34,6 +34,31 @@ class TestAgent(TransactionCase):
     def _queue(self, prompt='Summarize available knowledge'):
         return self.env['ai.agent.run'].with_user(self.user)._queue(self.agent.with_user(self.user), prompt)
 
+    def test_demo_agent_is_usable_by_everyone_in_the_company(self):
+        from odoo.tools import convert_file
+        if not self.env.ref('base.user_demo', raise_if_not_found=False):  # databases without demo data
+            demo = mail_new_test_user(self.env, login='ai_demo_user', groups='base.group_user')
+            self.env['ir.model.data'].create({'module': 'base', 'name': 'user_demo', 'model': 'res.users',
+                                              'res_id': demo.id})
+        with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443'}):
+            convert_file(self.env, 'ai_agent', 'demo/ai_agent_demo.xml', {}, mode='init', noupdate=True)
+        agent = self.env.ref('ai_agent.demo_agent_ops')
+        self.assertTrue(self.env.ref('base.user_admin').has_group('ai_agent.group_user'))
+        demo_user = self.env.ref('base.user_demo')
+        self.assertIn(agent.id, [o['id'] for o in self.env['ai.agent'].with_user(demo_user)._chat_options()])
+        self.assertEqual((agent.engine_id.state, agent.state), ('ready', 'active'))
+        self.assertTrue(agent.engine_id.demo)
+        self.assertIn(agent.id, [o['id'] for o in self.env['ai.agent'].with_user(self.other)._chat_options()])
+        # Outside demo data files nobody can mark a connection as demo or ready.
+        with self.assertRaises((AccessError, UserError)):
+            self.env['ai.agent.engine'].create({'name': 'Not demo', 'connection_mode': 'local', 'state': 'ready'})
+        with self.assertRaises(UserError):
+            self.env['ai.agent.engine'].create({'name': 'Not demo', 'connection_mode': 'local', 'demo': True})
+        # Changing it afterwards still needs a manager to review and activate it again.
+        agent.action_pause()
+        agent.write({'description': 'changed'})
+        self.assertNotIn(agent.id, [o['id'] for o in self.env['ai.agent'].with_user(self.other)._chat_options()])
+
     def test_explicit_audience(self):
         with self.assertRaises(AccessError):
             self.agent.with_user(self.other)._usable()
@@ -724,6 +749,9 @@ class TestAgentReliability(TransactionCase):
             self.agent.write({'max_requests_per_user_day': 5000})
 
     def test_explain_approval_request_prefills_question_only(self):
+        # Only this test's agent is usable (demo databases also have the demo Ops Assistant).
+        internal(self.env['ai.agent'].sudo().search([('id', '!=', self.agent.id), ('state', '=', 'active')])).write(
+            {'state': 'paused'})
         self.user.write({'group_ids': [Command.link(self.env.ref('approval_center.group_approval_center_user').id)]})
         policy = self.env['approval.center.policy'].create({
             'name': 'Explain test', 'has_document': 'no', 'company_id': False,

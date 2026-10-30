@@ -1,77 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <!-- Hint on the live indicator: what the dot colours on the figures mean. -->
-    <t t-name="ai_home.LiveHint">
-        <div class="o_ai_home_hint_panel">
-            <strong>Live · updates every minute</strong>
-            <span><i class="o_ai_home_hint_dot o_tone_bad"/>Overdue or failed: act now</span>
-            <span><i class="o_ai_home_hint_dot o_tone_warn"/>Due today or waiting: look soon</span>
-            <span><i class="o_ai_home_hint_dot o_tone_good"/>On track: nothing to do</span>
-        </div>
-    </t>
-
     <t t-name="ai_home.WorkDashboard">
-        <div class="o_ai_home h-100" t-att-class="{ 'o_has_ai': this.aiAvailable }">
-            <header class="o_ai_home_top" aria-label="Home">
-                <div class="o_ai_home_greeting">
-                    <h1>
-                        <t t-esc="this.greeting"/><t t-if="this.state.firstName">, <t t-esc="this.state.firstName"/></t>
-                    </h1>
-                    <span t-esc="this.dateLine"/>
-                </div>
-
-                <section t-if="!this.aiAvailable" class="o_ai_home_card o_ai_home_quick" aria-labelledby="ai_home_quick_title">
-                    <h2 id="ai_home_quick_title">Quick actions</h2>
-                    <button
-                        t-foreach="this.state.quickActions"
-                        t-as="quick"
-                        t-key="quick.key"
-                        type="button"
-                        class="btn o_ai_home_quick_btn"
-                        t-on-click="() => this.quickCreate(quick)"
-                    >+ <t t-esc="quick.label"/></button>
-                    <span class="o_ai_home_quick_note">The AI assistant is not enabled for your role. Ask your admin.</span>
-                </section>
-
-                <section t-if="this.state.live.length" class="o_ai_home_live" aria-label="Live figures">
-                    <div class="o_ai_home_live_head">
-                        <span
-                            class="o_ai_home_live_dot"
-                            role="img"
-                            tabindex="0"
-                            aria-label="Live, updates every minute. Red: overdue or failed, act now. Orange: due today or waiting, look soon. Green: on track, nothing to do."
-                            data-tooltip-template="ai_home.LiveHint"
-                            data-tooltip-position="right"
-                            data-tooltip-delay="0"
-                            data-tooltip-touch-tap-to-show="true"
-                        />
-                    </div>
-                    <div class="o_ai_home_tiles">
-                        <button
-                            t-foreach="this.state.live"
-                            t-as="tile"
-                            t-key="tile.key"
-                            type="button"
-                            class="o_ai_home_tile"
-                            t-att-class="'o_tone_' + tile.tone"
-                            t-att-disabled="!tile.action"
-                            t-on-click="() => this.openTile(tile)"
-                        >
-                            <span class="o_ai_home_tile_label" t-esc="tile.label"/>
-                            <span class="o_ai_home_tile_value" t-esc="tile.value"/>
-                            <span class="o_ai_home_tile_sub"><span class="o_ai_home_tile_dot" aria-hidden="true"/><t t-esc="tile.sub"/></span>
-                        </button>
-                    </div>
-                </section>
-            </header>
-
+        <div class="o_ai_home h-100">
             <div class="o_ai_home_grid">
                 <div class="o_ai_home_panes">
                     <div class="o_ai_home_pane o_ai_home_center">
                         <section class="o_ai_home_card o_ai_home_attention" aria-labelledby="ai_home_attention_title">
                             <div class="o_ai_home_card_head">
-                                <h2 id="ai_home_attention_title">Needs your attention <span class="o_ai_home_muted">· <t t-esc="this.state.attention.length"/></span></h2>
-                                <span class="o_ai_home_hint">Most urgent first</span>
+                                <h2 id="ai_home_attention_title">Needs your attention <span class="o_ai_home_muted">· <t t-esc="this.state.attention.length"/></span> <span class="o_ai_home_hint">Decisions for you, most urgent first</span></h2>
+                                <a t-if="this.selectedGroup and this.selectedGroup.action" href="#" class="o_ai_home_link o_ai_home_open_group" t-on-click.prevent="() => this.openGroup(this.selectedGroup)">Open all in <t t-esc="this.selectedGroup.label"/> →</a>
                             </div>
                             <div t-if="this.state.attention.length" class="o_ai_home_chips" role="tablist" aria-label="Filter">
                                 <button
@@ -86,10 +23,10 @@
                                     t-on-click="() => this.state.category = tab.key"
                                 ><t t-esc="tab.label"/> <t t-esc="tab.count"/></button>
                             </div>
-                            <p t-if="!this.state.attention.length" class="o_ai_home_empty">Nothing needs you right now.</p>
-                            <ul class="o_ai_home_attention_list">
+                            <p t-if="!this.state.attention.length" class="o_ai_home_empty">No decisions are waiting for you.</p>
+                            <ul class="o_ai_home_attention_list o_ai_home_scroll">
                                 <li t-foreach="this.attentionItems" t-as="item" t-key="item.key" class="o_ai_home_attention_row">
-                                    <span class="o_ai_home_badge" t-att-class="'o_cat_' + item.category" aria-hidden="true" t-esc="this.letters(item)"/>
+                                    <span class="o_ai_home_badge" t-att-class="'o_cat_' + (item.category.startsWith('source_') ? 'source' : item.category)" aria-hidden="true" t-esc="this.letters(item)"/>
                                     <button type="button" class="o_ai_home_attention_copy" t-att-disabled="!item.model and !item.openAction" t-on-click="() => this.openItem(item)">
                                         <span class="o_ai_home_attention_title">
                                             <strong t-esc="item.title"/>
@@ -115,43 +52,181 @@
                                         />
                                     </div>
                                 </li>
+                                <li t-if="this.selectedGroup and this.selectedGroup.count > this.selectedGroup.shown" class="o_ai_home_more">
+                                    <a href="#" class="o_ai_home_link" t-on-click.prevent="() => this.openGroup(this.selectedGroup)">+ <t t-esc="this.selectedGroup.count - this.selectedGroup.shown"/> more in <t t-esc="this.selectedGroup.label"/> →</a>
+                                </li>
                             </ul>
-                            <a href="#" class="o_ai_home_link" t-on-click.prevent="this.openActivities">Open all in Activities →</a>
                         </section>
                     </div>
 
-                    <aside class="o_ai_home_pane o_ai_home_left" aria-label="My day and recently opened">
-                        <section class="o_ai_home_card o_ai_home_day" aria-labelledby="ai_home_day_title">
-                            <h2 id="ai_home_day_title">My day</h2>
-                            <p t-if="!this.state.day.length" class="o_ai_home_empty">No meetings or tasks due today.</p>
-                            <button
-                                t-foreach="this.state.day"
-                                t-as="row"
-                                t-key="row.key"
-                                type="button"
-                                class="o_ai_home_day_row"
-                                t-on-click="() => row.model ? this.openRecord(row.model, row.resId) : this.openActivities()"
-                            >
-                                <span class="o_ai_home_day_time" t-esc="row.time"/>
-                                <span t-esc="row.text"/>
+                    <aside class="o_ai_home_pane o_ai_home_left" aria-label="My plan">
+                        <section class="o_ai_home_card o_ai_home_today" t-att-class="{ 'o_is_compact': this.state.team.length }" aria-labelledby="ai_home_today_title">
+                            <div class="o_ai_home_card_head">
+                                <h2 id="ai_home_today_title">Today</h2>
+                                <span class="o_ai_home_hint" t-esc="this.state.today.label"/>
+                            </div>
+                            <div class="o_ai_home_today_body">
+                                <svg class="o_ai_home_ring" width="84" height="84" viewBox="0 0 84 84" role="img"
+                                     t-att-aria-label="this.state.today.done + ' of ' + this.state.today.total + ' done today'">
+                                    <circle cx="42" cy="42" r="34" class="o_ai_home_ring_track"/>
+                                    <circle t-if="this.state.today.done" cx="42" cy="42" r="34" class="o_ai_home_ring_fill" t-att-stroke-dasharray="this.ringDash" transform="rotate(-90 42 42)"/>
+                                    <text x="42" y="41" text-anchor="middle" class="o_ai_home_ring_value"><t t-esc="this.state.today.done"/>/<t t-esc="this.state.today.total"/></text>
+                                    <text x="42" y="57" text-anchor="middle" class="o_ai_home_ring_label">done</text>
+                                </svg>
+                                <ul class="o_ai_home_today_counts">
+                                    <li class="o_tone_bad"><span class="o_ai_home_dot" aria-hidden="true"/><strong><t t-esc="this.state.today.late"/> late</strong></li>
+                                    <li class="o_tone_warn"><span class="o_ai_home_dot" aria-hidden="true"/><t t-esc="this.state.today.todo"/> still to do today</li>
+                                    <li class="o_tone_good"><span class="o_ai_home_dot" aria-hidden="true"/><t t-esc="this.state.today.done"/> done</li>
+                                </ul>
+                            </div>
+                            <div t-if="this.state.week.length and !this.state.team.length" class="o_ai_home_week">
+                                <span class="o_ai_home_hint">Next 7 days</span>
+                                <div class="o_ai_home_week_bars">
+                                    <span
+                                        t-foreach="this.state.week"
+                                        t-as="day"
+                                        t-key="day.date"
+                                        class="o_ai_home_week_bar"
+                                        t-att-class="{ 'o_is_today': day.isToday, 'o_is_heavy': day.heavy }"
+                                        role="img"
+                                        t-att-aria-label="this.weekBarLabel(day)"
+                                        t-att-title="this.weekBarLabel(day)"
+                                    ><span t-att-style="'height: ' + this.weekBarHeight(day)"/></span>
+                                </div>
+                                <div class="o_ai_home_week_days" aria-hidden="true">
+                                    <span t-foreach="this.state.week" t-as="day" t-key="day.date" t-att-class="{ 'o_is_today': day.isToday }" t-esc="day.label"/>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section t-if="this.state.team.length" class="o_ai_home_card o_ai_home_team" aria-labelledby="ai_home_team_title">
+                            <div class="o_ai_home_card_head">
+                                <h2 id="ai_home_team_title">Team load</h2>
+                                <span class="o_ai_home_hint">Late · Today</span>
+                            </div>
+                            <div class="o_ai_home_team_list">
+                                <button
+                                    t-foreach="this.state.team"
+                                    t-as="row"
+                                    t-key="row.key"
+                                    type="button"
+                                    class="o_ai_home_team_row"
+                                    t-att-class="'o_tone_' + row.tone"
+                                    t-att-title="'Open the activities of ' + row.name"
+                                    t-on-click="() => this.openPerson(row)"
+                                >
+                                    <span class="o_ai_home_team_line">
+                                        <span class="o_ai_home_avatar" aria-hidden="true" t-esc="row.initials"/>
+                                        <span class="o_ai_home_team_name" t-esc="row.name"/>
+                                        <span class="o_ai_home_team_late" t-esc="row.late"/>
+                                        <span class="o_ai_home_team_today" t-esc="row.today"/>
+                                    </span>
+                                    <span class="o_ai_home_team_bar" aria-hidden="true"><span t-att-style="'width: ' + row.load + '%'"/></span>
+                                </button>
+                            </div>
+                        </section>
+
+                        <section class="o_ai_home_card o_ai_home_plan" aria-labelledby="ai_home_plan_title">
+                            <div class="o_ai_home_card_head">
+                                <h2 id="ai_home_plan_title">My plan</h2>
+                                <a href="#" class="o_ai_home_link" t-on-click.prevent="this.openActivities">All activities →</a>
+                            </div>
+                            <div t-if="this.state.plan.length" class="o_ai_home_chips o_ai_home_plan_apps" role="tablist" aria-label="Filter by app">
+                                <button
+                                    t-foreach="this.planAppTabs"
+                                    t-as="tab"
+                                    t-key="tab.key"
+                                    type="button"
+                                    role="tab"
+                                    class="btn o_ai_home_chip"
+                                    t-att-class="{ 'o_is_active': this.state.planApp === tab.key }"
+                                    t-att-aria-selected="this.state.planApp === tab.key ? 'true' : 'false'"
+                                    t-on-click="() => this.state.planApp = tab.key"
+                                ><t t-esc="tab.label"/> <t t-esc="tab.count"/></button>
+                            </div>
+                            <p t-if="!this.state.plan.length" class="o_ai_home_empty">Nothing planned. Activities assigned to you and your meetings appear here.</p>
+                            <div t-if="this.state.plan.length" class="o_ai_home_plan_list o_ai_home_scroll">
+                                <div t-foreach="this.sections" t-as="section" t-key="section.key" class="o_ai_home_plan_section" t-att-class="'o_section_' + section.key">
+                                    <button
+                                        type="button"
+                                        class="o_ai_home_section_head"
+                                        t-att-aria-expanded="this.isOpen(section) ? 'true' : 'false'"
+                                        t-on-click="() => this.toggleSection(section)"
+                                    >
+                                        <span><t t-esc="section.label"/> · <t t-esc="section.items.length"/></span>
+                                        <span aria-hidden="true" t-esc="this.isOpen(section) ? '▾' : '▸'"/>
+                                    </button>
+                                    <ul t-if="this.isOpen(section)" class="o_ai_home_plan_rows">
+                                        <li t-foreach="section.items" t-as="item" t-key="item.key" class="o_ai_home_plan_row" t-att-class="{ 'o_is_meeting': item.kind === 'meeting', 'o_is_past': item.past }">
+                                            <button type="button" class="o_ai_home_plan_open" t-on-click="() => this.openItem(item)">
+                                                <span t-if="item.time" class="o_ai_home_plan_time" t-esc="item.time"/>
+                                                <span t-else="" class="o_ai_home_plan_icon" aria-hidden="true"><span class="oi" t-att-data-icon="item.icon"/></span>
+                                                <span class="o_ai_home_plan_copy">
+                                                    <span class="o_ai_home_plan_title" t-esc="item.title"/>
+                                                    <span class="o_ai_home_plan_meta" t-esc="item.meta"/>
+                                                </span>
+                                                <span class="o_ai_home_pill" t-esc="item.app"/>
+                                            </button>
+                                            <div class="o_ai_home_plan_actions" t-att-class="{ 'o_is_shown': this.state.snoozeKey === item.key }">
+                                                <button t-if="item.canDone" type="button" class="btn o_ai_home_btn_primary o_ai_home_done" t-att-disabled="this.state.busy === item.key" t-on-click="() => this.press(item, { method: 'action_done' })">Done</button>
+                                                <div t-if="item.kind === 'activity'" class="o_ai_home_snooze">
+                                                    <button type="button" class="btn o_ai_home_btn_secondary o_ai_home_snooze_toggle" aria-haspopup="menu" t-att-aria-expanded="this.state.snoozeKey === item.key ? 'true' : 'false'" t-on-click="() => this.toggleSnooze(item)">Snooze ▾</button>
+                                                    <div t-if="this.state.snoozeKey === item.key" class="dropdown-menu show o_ai_home_snooze_menu" role="menu">
+                                                        <button type="button" role="menuitem" class="dropdown-item" t-on-click="() => this.snooze(item, 'action_reschedule_tomorrow')">Tomorrow</button>
+                                                        <button type="button" role="menuitem" class="dropdown-item" t-on-click="() => this.snooze(item, 'action_reschedule_nextweek')">Next week</button>
+                                                    </div>
+                                                </div>
+                                                <button t-if="item.joinUrl" type="button" class="btn o_ai_home_btn_primary o_ai_home_join" t-on-click="() => this.join(item)">Join</button>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section t-if="this.state.waiting.length" class="o_ai_home_card o_ai_home_waiting" aria-labelledby="ai_home_waiting_title">
+                            <button type="button" class="o_ai_home_section_head o_ai_home_card_toggle" t-att-aria-expanded="this.waitingOpen ? 'true' : 'false'" t-on-click="() => this.state.waitingOpen = !this.waitingOpen">
+                                <h2 id="ai_home_waiting_title">Waiting on others <span class="o_ai_home_muted">· <t t-esc="this.state.waiting.length"/></span></h2>
+                                <span aria-hidden="true" t-esc="this.waitingOpen ? '▾' : '▸'"/>
                             </button>
-                            <a href="#" class="o_ai_home_link" t-on-click.prevent="this.openCalendar">Open calendar →</a>
+                            <ul t-if="this.waitingOpen" class="o_ai_home_waiting_list">
+                                <li t-foreach="this.state.waiting" t-as="row" t-key="row.key" class="o_ai_home_waiting_row">
+                                    <button type="button" class="o_ai_home_waiting_open" t-on-click="() => this.openItem(row)">
+                                        <span class="o_ai_home_avatar" aria-hidden="true" t-esc="row.initials"/>
+                                        <span class="o_ai_home_plan_copy">
+                                            <span class="o_ai_home_plan_title" t-esc="row.title"/>
+                                            <span class="o_ai_home_waiting_meta" t-att-class="'o_tone_' + row.tone" t-esc="row.meta"/>
+                                        </span>
+                                    </button>
+                                    <button type="button" class="btn o_ai_home_btn_secondary o_ai_home_nudge" t-att-disabled="this.state.busy === row.key" t-on-click="() => this.press(row, row.nudge)" t-esc="row.nudge.label"/>
+                                </li>
+                            </ul>
                         </section>
 
                         <section class="o_ai_home_card o_ai_home_recent" aria-labelledby="ai_home_recent_title">
-                            <h2 id="ai_home_recent_title">Recently opened</h2>
-                            <p t-if="!this.state.recent.length" class="o_ai_home_empty">Records you work on appear here.</p>
-                            <button
-                                t-foreach="this.state.recent"
-                                t-as="record"
-                                t-key="record.key"
-                                type="button"
-                                class="o_ai_home_recent_row"
-                                t-on-click="() => this.openRecord(record.model, record.resId)"
-                            >
-                                <span t-esc="record.name"/>
-                                <span class="o_ai_home_muted" t-esc="record.app"/>
+                            <button type="button" class="o_ai_home_section_head o_ai_home_card_toggle o_ai_home_recent_toggle" t-att-aria-expanded="this.state.recentOpen ? 'true' : 'false'" t-on-click="() => this.state.recentOpen = !this.state.recentOpen">
+                                <h2 id="ai_home_recent_title">Recent</h2>
+                                <span class="o_ai_home_recent_summary"><t t-if="!this.state.recentOpen" t-esc="this.recentSummary"/> <t t-esc="this.state.recentOpen ? '▾' : '▸'"/></span>
                             </button>
+                            <t t-if="this.state.recentOpen">
+                                <p t-if="!this.state.recent.length" class="o_ai_home_empty">Records you work on appear here.</p>
+                                <div t-if="this.state.recent.length" class="o_ai_home_recent_list">
+                                <button
+                                    t-foreach="this.state.recent"
+                                    t-as="record"
+                                    t-key="record.key"
+                                    type="button"
+                                    class="o_ai_home_recent_row"
+                                    t-on-click="() => this.openRecord(record.model, record.resId)"
+                                >
+                                    <span class="o_ai_home_recent_title">
+                                        <span class="o_ai_home_recent_name" t-esc="record.name"/>
+                                        <span class="o_ai_home_pill" t-esc="record.app"/>
+                                    </span>
+                                    <small class="o_ai_home_recent_date" t-esc="this.humanDate(record.occurred)"/>
+                                </button>
+                                </div>
+                            </t>
                         </section>
                     </aside>
 
@@ -175,7 +250,7 @@
                                 </div>
                             </div>
                             <p t-if="!this.feedItems.length" class="o_ai_home_empty">Nothing new here yet.</p>
-                            <ol class="o_ai_home_feed_list">
+                            <ol class="o_ai_home_feed_list o_ai_home_scroll">
                                 <li t-foreach="this.feedItems" t-as="entry" t-key="entry.key">
                                     <button type="button" class="o_ai_home_feed_row" t-on-click="() => this.openRecord(entry.model, entry.resId)">
                                         <span class="o_ai_home_feed_meta">
@@ -186,12 +261,12 @@
                                     </button>
                                 </li>
                             </ol>
-                            <a href="#" class="o_ai_home_link" t-on-click.prevent="this.openFeed">See all activity →</a>
+                            <a t-if="this.state.scope === 'forMe'" href="#" class="o_ai_home_link o_ai_home_inbox" t-on-click.prevent="this.openInbox">Open inbox →</a>
                         </section>
                     </aside>
                 </div>
 
-                <div t-if="this.aiAvailable" class="o_ai_home_ask">
+                <div class="o_ai_home_ask" t-att-class="{ 'o_is_unavailable': !this.aiAvailable }">
                     <section t-if="this.state.chat" class="o_ai_home_chat" t-att-aria-label="'Conversation with ' + this.aiName">
                         <div class="o_ai_home_chat_head">
                             <span t-esc="this.aiName"/>
@@ -247,16 +322,18 @@
                             t-att-value="this.state.prompt"
                             t-on-input="(event) => this.state.prompt = event.target.value"
                             t-on-keydown="this.onPromptKeydown"
-                            t-att-placeholder="'How can I help you today? Ask a question or ask ' + this.aiName + ' to do something'"
+                            t-att-disabled="!this.aiAvailable"
+                            t-att-placeholder="this.aiAvailable ? 'How can I help you today? Ask a question or ask ' + this.aiName + ' to do something' : 'No assistant is available to you yet. Ask your admin to set one up in AI Agents.'"
                         />
                         <div class="o_ai_home_composer_bar">
-                            <button type="button" class="btn o_ai_home_attach" aria-label="Attach a file" title="Attach a file" t-on-click="this.chooseFiles">
+                            <button type="button" class="btn o_ai_home_attach" aria-label="Attach a file" title="Attach a file" t-att-disabled="!this.aiAvailable" t-on-click="this.chooseFiles">
                                 <span class="oi" data-icon="add" aria-hidden="true"/>
                             </button>
                             <div class="dropdown o_ai_home_agent_picker">
                                 <button
                                     type="button"
                                     class="btn o_ai_home_agent_toggle"
+                                    t-att-disabled="!this.aiAvailable and !this.state.canManageAgents"
                                     aria-haspopup="menu"
                                     t-att-aria-expanded="this.state.showAgentMenu ? 'true' : 'false'"
                                     t-on-click="() => this.state.showAgentMenu = !this.state.showAgentMenu"

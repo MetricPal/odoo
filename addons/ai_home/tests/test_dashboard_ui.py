@@ -16,8 +16,10 @@ class TestHomeLayout(HttpCase):
                 if (!(left.right < center.left && center.right < right.left)) throw new Error('Three columns side by side');
                 if (Math.abs((center.left - left.right) - (right.left - center.right)) > 1) throw new Error('Equal column gaps');
                 if (Math.abs(left.bottom - right.bottom) > 1) throw new Error('Side columns reach the same bottom');
-                if (rect('.o_ai_home_tiles').bottom > center.top) throw new Error('Right now stays above the columns');
-                if (!document.querySelector('.o_ai_home_quick')) throw new Error('Quick actions show without an assistant');
+                if (!document.querySelector('.o_ai_home_left .o_ai_home_today') || !document.querySelector('.o_ai_home_left .o_ai_home_plan')) throw new Error('Today and My plan are in the left column');
+                if (document.querySelector('.o_ai_home_tile')) throw new Error('Live tiles were removed');
+                if (document.querySelector('.o_ai_home_quick')) throw new Error('Quick actions were removed');
+                if (!document.querySelector('.o_ai_home_composer textarea').disabled) throw new Error('Without an assistant the box is shown disabled');
                 if (document.querySelector('.o_ai_home_global_search')) throw new Error('Global search was removed');
                 console.log('test successful');
             })();
