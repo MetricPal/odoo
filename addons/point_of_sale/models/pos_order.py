@@ -433,12 +433,13 @@ class PosOrder(models.Model):
         self.env['account.tax']._round_base_lines_tax_details(base_lines, self.company_id)
 
         cash_rounding = None
-        only_cash = self.config_id.only_round_cash_method
-        available_type = ['cash'] if only_cash else ['cash', 'bank']
+        payment_methods = self.payment_ids
 
-        if self.payment_ids.filtered_domain([
-            ('payment_method_id.type', 'in', available_type),
-        ]):
+        if self.config_id.only_round_cash_method:
+            payment_methods = payment_methods.filtered_domain([
+                ("payment_method_id.type", "in", ["cash"])
+            ])
+        if payment_methods:
             cash_rounding = self.config_id.rounding_method
 
         return self.env['account.tax']._get_tax_totals_summary(
@@ -1146,10 +1147,9 @@ class PosOrder(models.Model):
                 ('state', '!=', 'draft'),
                 ('is_refund', '=', True),
             ])
-        order_domain = state_domain & Domain(domain) & Domain([
-            ('config_id', 'in', [config_id] + pos_config.trusted_config_ids.ids),
-            ('config_id.currency_id', '=', pos_config.currency_id.id)
-        ])
+        order_domain = state_domain & Domain(domain) & Domain(
+            'config_id.currency_id', '=', pos_config.currency_id.id
+        ) & pos_config._get_paid_orders_config_domain()
         orders = self.search(order_domain, limit=limit, offset=offset, order='create_date desc')
         PosOrderLineModel = self.env['pos.order.line']
         line_queries = [
@@ -1500,6 +1500,14 @@ class PosOrder(models.Model):
             ('display_type', '!=', 'rounding'),
         ])
 
+        # The rounding line computed by account.move on the whole move total must
+        # always be dropped, even when no rounding is needed (e.g. card + cash payments).
+        rounding_line = invoice.line_ids.filtered(
+            lambda line: line.display_type == 'rounding' and not line.tax_line_id,
+        )
+        if rounding_line:
+            line_ids_commands.append(Command.unlink(rounding_line.id))
+
         debit = sum(lines.mapped('debit'))
         credit = sum(lines.mapped('credit'))
         invoice_difference = credit - debit
@@ -1518,12 +1526,6 @@ class PosOrder(models.Model):
         profit = invoice.invoice_cash_rounding_id.loss_account_id
         lost = invoice.invoice_cash_rounding_id.profit_account_id
         account = profit if invoice_difference > 0.0 else lost
-        rounding_line = invoice.line_ids.filtered(
-            lambda line: line.display_type == 'rounding' and not line.tax_line_id,
-        )
-
-        if rounding_line:
-            line_ids_commands.append(Command.unlink(rounding_line.id))
 
         line_ids_commands.append(Command.create({
             'name': invoice.invoice_cash_rounding_id.name,
@@ -1666,7 +1668,7 @@ class PosOrder(models.Model):
         # Create rounding line if needed
         data = self._prepare_account_move_line_data_for_rounding(invoice)
         with self.env['account.move']._check_balanced({'records': invoice}):
-            invoice.with_context(linked_to_pos=True).line_ids = data
+            invoice.with_context(linked_to_pos=True, skip_invoice_sync=True).line_ids = data
 
         # Set account_move before _post() so that invoice.pos_order_ids is
         # populated when stock_account computes COGS via _get_cogs_value()

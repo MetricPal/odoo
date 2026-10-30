@@ -252,6 +252,9 @@ export class PosStore extends WithLazyGetterTrap {
          */
         return formatCurrency(amount, currencyId, opts);
     }
+    parseCurrency(value, currency = this.currency) {
+        return parseFloat(value, { digits: [69, currency.decimal_places] });
+    }
     isValidFloat(inputValue) {
         let floatRegex;
         const decimalPoint = localization.decimalPoint;
@@ -889,10 +892,7 @@ export class PosStore extends WithLazyGetterTrap {
             ["product.template"],
             modelDomain,
             modelOffset,
-            modelLimit,
-            {
-                active_test: false,
-            }
+            modelLimit
         );
         this.productAttributesExclusion = this.computeProductAttributesExclusion(
             result["product.template.attribute.value"]
@@ -2077,6 +2077,9 @@ export class PosStore extends WithLazyGetterTrap {
             if (this.config.printerCategories.size && !opts.byPassPrint) {
                 try {
                     isPrinted = await this.ticketPrinter.printOrderChanges({ order, opts });
+                    if (isPrinted) {
+                        order.updateLastOrderChange(opts);
+                    }
                 } catch (e) {
                     logPosMessage(
                         "Store",
@@ -2087,15 +2090,24 @@ export class PosStore extends WithLazyGetterTrap {
                     );
                 }
             }
-            order.updateLastOrderChange(opts);
+            this.updateLastOrderChangeIfNoDevice(order, opts);
         } finally {
             this.syncingOrders.delete(order.uuid);
         }
         // Ensure that other devices are aware of the changes
         // Otherwise several devices can print the same changes
         // We need to check if a preparation display is configured to avoid unnecessary sync
-        if (isPrinted && !this.models["pos.prep.display"]?.length) {
+        if ((isPrinted || !opts.orderDone) && !this.models["pos.prep.display"]?.length) {
             await this.syncAllOrders({ orders: [order] });
+        }
+        return isPrinted;
+    }
+    hasDevice(opts = {}) {
+        return this.config.printerCategories.size || opts.byPassPrint;
+    }
+    updateLastOrderChangeIfNoDevice(order, opts = {}) {
+        if (!this.hasDevice(opts)) {
+            order.updateLastOrderChange(opts);
         }
     }
     async checkPreparationStateAndSentOrderInPreparation(order, opts = {}) {
@@ -2187,6 +2199,9 @@ export class PosStore extends WithLazyGetterTrap {
                     buttonDialogTemplate: "point_of_sale.ProductQuickCreateDialogButtons",
                     onSave: async (record, params) => {
                         await this.loadNewProducts([["id", "=", record.evalContext.id]]);
+                        if (this.selectedCategory?.id && !this.productsToDisplay.length) {
+                            this.setSelectedCategory(0);
+                        }
                         this.action.doAction({
                             type: "ir.actions.act_window_close",
                         });
@@ -2907,6 +2922,30 @@ export class PosStore extends WithLazyGetterTrap {
         const available = this.getAvailableCategories();
         const availableIds = new Set(available.map((c) => c.id));
         return available.filter((c) => !c.parent_id || !availableIds.has(c.parent_id.id));
+    }
+
+    async ensureRefundedOrderLoaded(order) {
+        if (!order?.isRefund || order.refunded_order_id || this.data.network.offline) {
+            return order;
+        }
+
+        const refundedOrderId = order.raw.refunded_order_id;
+        if (!refundedOrderId) {
+            return order;
+        }
+
+        try {
+            await this.data.loadServerOrders([["id", "=", refundedOrderId]]);
+        } catch (error) {
+            logPosMessage(
+                "Store",
+                "ensureRefundedOrderLoaded",
+                `Could not load refunded order ${refundedOrderId}`,
+                CONSOLE_COLOR,
+                [error]
+            );
+        }
+        return order;
     }
 
     get isSelectedLineCombo() {

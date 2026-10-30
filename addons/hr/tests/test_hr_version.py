@@ -863,6 +863,46 @@ class TestHrVersion(TestHrCommon):
         version.unlink()
         self.assertEqual(len(employee.version_ids), 1)
 
+    def test_unlink_employee_unlinks_versions(self):
+        """Deleting an employee deletes its versions: no orphan version is left, as it
+        would be taken for a contract template."""
+        employee = self.env['hr.employee'].create({
+            'name': 'John Doe',
+            'date_version': '2020-01-01',
+        })
+        employee.create_version({
+            'date_version': '2021-01-01',
+        })
+        versions = employee.version_ids
+        self.assertEqual(len(versions), 2)
+        employee.unlink()
+        self.env.flush_all()
+        self.assertFalse(versions.exists())
+        templates = self.env['hr.version'].search([('employee_id', '=', False)])
+        self.assertFalse(templates & versions)
+
+    def test_create_employee_with_contract_template(self):
+        """The values of a contract template given at the employee creation are applied
+        to its first version, explicit values having priority."""
+        job = self.env['hr.job'].create({'name': 'Template Job'})
+        template = self.env['hr.version'].create({
+            'name': 'Template',
+            'job_id': job.id,
+            'wage': 2500,
+        })
+        employee, employee_explicit_wage = self.env['hr.employee'].create([{
+            'name': 'John Doe',
+            'contract_template_id': template.id,
+        }, {
+            'name': 'Jane Doe',
+            'contract_template_id': template.id,
+            'wage': 3000,
+        }])
+        self.assertEqual(employee.job_id, job)
+        self.assertEqual(employee.version_id.wage, 2500)
+        self.assertEqual(employee_explicit_wage.job_id, job)
+        self.assertEqual(employee_explicit_wage.version_id.wage, 3000)
+
     def test_first_contract_date_on_create(self):
         employee = self.env['hr.employee'].create({
             'name': 'Youssef Ahmed',
@@ -963,3 +1003,44 @@ class TestHrVersion(TestHrCommon):
         ])
         versions = self.env['hr.version'].search([('id', 'in', (template_1 | template_2).ids), ('date_end', '=', False)])
         self.assertEqual(versions, template_1 | template_2)
+
+    def test_version_id_context_multi_employees(self):
+        """The ``version_id`` context key applies to its employee in a multi-employee recordset."""
+        employee_a, employee_b = self.env['hr.employee'].create([
+            {'name': 'Employee A', 'date_version': '2020-01-01'},
+            {'name': 'Employee B', 'date_version': '2020-01-01'},
+        ])
+        current_version_a = employee_a.version_id
+        old_version_a = employee_a.create_version({'date_version': '2019-01-01'})
+        self.assertEqual(employee_a.version_id, current_version_a)
+
+        employees = (employee_a | employee_b).with_context(version_id=old_version_a.id)
+        self.assertEqual(employees[0].version_id, old_version_a)
+        self.assertEqual(employees[1].version_id, employee_b.current_version_id)
+        self.assertEqual(employees[0].with_context(version_id=old_version_a.id).version_id, old_version_a)
+
+    def test_date_versions_date_version_before_contract_start(self):
+        """
+        The first version starts (date_version) before its contract, and the next version starts
+        on the contract start date: the first version must end the day before the next one,
+        instead of staying open and overlapping it.
+        """
+        employee = self.env['hr.employee'].create({
+            'name': 'Version Before Contract',
+            'work_location_id': self.work_location.id,
+            'contract_date_start': date(2024, 1, 1),
+            'contract_date_end': False,
+        })
+        version_1 = employee.version_id
+        version_1.date_version = date(2022, 1, 1)
+        version_1.flush_recordset()
+        version_2 = employee.create_version({
+            'date_version': date(2024, 1, 1),
+            'contract_date_start': date(2024, 1, 1),
+            'contract_date_end': False,
+        })
+
+        self.assertEqual(version_1.date_start, date(2024, 1, 1))
+        self.assertEqual(version_1.date_end, date(2023, 12, 31))
+        self.assertEqual(version_2.date_start, date(2024, 1, 1))
+        self.assertFalse(version_2.date_end)

@@ -61,12 +61,18 @@ export class PaymentScreen extends Component {
         }
 
         //Activate the invoice option for refund orders if the original order was invoiced.
-        if (
-            this.currentOrder.isRefund &&
-            this.currentOrder.lines[0].refunded_orderline_id?.order_id?.isToInvoice()
-        ) {
-            this.currentOrder.setToInvoice(true);
+        const currentOrder = this.currentOrder;
+        if (currentOrder.isRefund) {
+            this.pos.ensureRefundedOrderLoaded(currentOrder).then(() => {
+                if (this.shouldInvoiceRefund(currentOrder)) {
+                    currentOrder.setToInvoice(true);
+                }
+            });
         }
+    }
+
+    shouldInvoiceRefund(order) {
+        return Boolean(order.refunded_order_id?.isToInvoice());
     }
 
     getNumpadButtons() {
@@ -280,7 +286,7 @@ export class PaymentScreen extends Component {
                 this.onNewTip({ newValue, type, currentTipAmount: tip.amount, change }),
             formatDisplayedValue: (value, type) => {
                 if (type === "fixed") {
-                    return this.pos.formatCurrency(parseFloat(value));
+                    return this.pos.formatCurrency(this.pos.parseCurrency(value));
                 }
                 if (type === "percent") {
                     return `${value} %`;
@@ -317,7 +323,10 @@ export class PaymentScreen extends Component {
         pLine.setAmount(pLine.getAmount() + tipToAdd);
     }
     computeNewTip({ value, type, currentTipAmount = 0 }) {
-        const valueParsed = typeof value === "string" ? parseFloat(value) : value;
+        let valueParsed = value;
+        if (typeof value === "string") {
+            valueParsed = type === "fixed" ? this.pos.parseCurrency(value) : parseFloat(value);
+        }
         if (isNaN(valueParsed)) {
             return 0;
         }
@@ -345,7 +354,13 @@ export class PaymentScreen extends Component {
         const status = line.getPaymentStatus();
         const cancelableStatuses = ["waiting", "waitingCard", "waitingScan", "timeout"];
         if (cancelableStatuses.includes(status)) {
-            line.cancelPayment(this.currentOrder).then((success) => success && finalizeDeletion());
+            line.cancelPayment(this.currentOrder).then((success) => {
+                if (success) {
+                    finalizeDeletion();
+                } else {
+                    line.setPaymentStatus(status);
+                }
+            });
         } else if (status !== "waitingCancel") {
             finalizeDeletion();
         }
@@ -431,7 +446,7 @@ export class PaymentScreen extends Component {
     }
 
     get orderTotalDue() {
-        return this.currentOrder.orderCurrency.convertFormatted(this.currentOrder.totalDue);
+        return this.currentOrder.paymentAmountInCurrency;
     }
 }
 

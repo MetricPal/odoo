@@ -2,6 +2,7 @@
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 
+from odoo.exceptions import UserError
 from odoo.tests import Form
 from odoo.tests.common import tagged, TransactionCase
 
@@ -233,3 +234,123 @@ class TestResourceCalendar(TransactionCase):
                 (form.hours_per_week, form.hours_per_day),
                 (12, 4),
             )
+
+    def test_attendance_intervals_without_calendar_nor_resource(self):
+        """Computing attendance intervals without calendar requires resources."""
+        start_dt = datetime(2026, 1, 5, tzinfo=UTC)
+        end_dt = datetime(2026, 1, 10, tzinfo=UTC)
+        with self.assertRaises(UserError):
+            self.env['resource.calendar']._attendance_intervals_batch(start_dt, end_dt)
+
+    def test_unusual_days_working_time_leave(self):
+        """Only leaves counted as absence make a day unusual."""
+        calendar = self.env['resource.calendar'].create({
+            'name': 'Morning Calendar',
+            'attendance_ids': [
+                (0, 0, {'dayofweek': str(day), 'hour_from': 8, 'hour_to': 12})
+                for day in range(5)
+            ],
+        })
+        self.env['resource.calendar.leaves'].create([{
+            'name': 'Training',
+            'calendar_id': calendar.id,
+            'date_from': datetime(2026, 1, 7, 8),
+            'date_to': datetime(2026, 1, 7, 12),
+            'count_as': 'working_time',
+        }, {
+            'name': 'Holiday',
+            'calendar_id': calendar.id,
+            'date_from': datetime(2026, 1, 8, 8),
+            'date_to': datetime(2026, 1, 8, 12),
+        }])
+        unusual_days = calendar._get_unusual_days(datetime(2026, 1, 6), datetime(2026, 1, 8))
+        self.assertEqual(unusual_days, {
+            '2026-01-06': False,
+            '2026-01-07': False,
+            '2026-01-08': True,
+        })
+        unusual_days = calendar._get_unusual_days(datetime(2026, 1, 6), datetime(2026, 1, 8), company_id=self.env.company)
+        self.assertEqual(unusual_days['2026-01-07'], False)
+
+    def test_fully_flexible_work_duration_until_midnight(self):
+        """Intervals are split per day at midnight: an interval ending at midnight does not
+        count the next day, and no time is lost at the day boundaries."""
+        fully_flex_calendar = self.env['resource.calendar'].create({
+            'name': 'Fully Flexible Calendar',
+            'calendar_type': 'undefined',
+            'attendance_ids': [],
+            'hours_per_week': 0,
+            'hours_per_day': 0,
+        })
+        self.assertEqual(
+            fully_flex_calendar.get_work_duration_data(datetime(2026, 1, 5, tzinfo=UTC), datetime(2026, 1, 6, tzinfo=UTC)),
+            {'days': 1.0, 'hours': 24.0},
+        )
+        self.assertEqual(
+            fully_flex_calendar.get_work_duration_data(datetime(2026, 1, 5, tzinfo=UTC), datetime(2026, 1, 8, tzinfo=UTC)),
+            {'days': 3.0, 'hours': 72.0},
+        )
+        empty_interval = [(datetime(2026, 1, 5, tzinfo=UTC), datetime(2026, 1, 5, tzinfo=UTC), self.env['resource.calendar.attendance'])]
+        self.assertEqual(
+            fully_flex_calendar._get_attendance_intervals_days_data(empty_interval),
+            {'days': 0, 'hours': 0},
+        )
+
+@tagged('post_install', '-at_install')
+class TestResourceCalendarReference(TransactionCase):
+
+    def test_reference_calendar_of_other_company(self):
+        """ A calendar created for another company than the current one must not get the calendar of the
+        current company as reference: its full time follows the default calendar of its own company. """
+        self.env.company.resource_calendar_id.attendance_ids.filtered(lambda a: a.dayofweek == '4').unlink()
+        company_b = self.env['res.company'].create({'name': 'Company B'})
+        self.assertFalse(company_b.resource_calendar_id.reference_calendar_id)
+        self.assertEqual(company_b.resource_calendar_id.full_time_required_hours, 40)
+
+        half_time = self.env['resource.calendar'].create({
+            'name': 'Half time B',
+            'company_id': company_b.id,
+            'attendance_ids': [(5, 0, 0)] + [
+                (0, 0, {'dayofweek': day, 'hour_from': 8, 'hour_to': 12}) for day in '01234'
+            ],
+        })
+        self.assertFalse(half_time.reference_calendar_id)
+        self.assertRecordValues(half_time, [{'full_time_required_hours': 40, 'work_time_rate': 0.5, 'is_fulltime': False}])
+
+        # The full time follows the default calendar of the company
+        company_b.resource_calendar_id.attendance_ids.filtered(lambda a: a.dayofweek == '4').unlink()
+        self.assertRecordValues(half_time, [{'full_time_required_hours': 32, 'work_time_rate': 0.625}])
+
+        # Without company, the calendar is its own reference
+        no_company = self.env['resource.calendar'].create({
+            'name': 'Half time without company',
+            'company_id': False,
+            'attendance_ids': [(5, 0, 0)] + [
+                (0, 0, {'dayofweek': day, 'hour_from': 8, 'hour_to': 12}) for day in '01234'
+            ],
+        })
+        self.assertFalse(no_company.reference_calendar_id)
+        self.assertRecordValues(no_company, [{'full_time_required_hours': 20, 'is_fulltime': True}])
+
+    def test_copy_calendar_rates(self):
+        """ The rates of a fixed calendar are computed from the attendances of the copy, those of a
+        variable calendar are kept. """
+        calendar = self.env['resource.calendar'].create({
+            'name': 'Full time',
+            'attendance_ids': [(5, 0, 0)] + [
+                (0, 0, {'dayofweek': day, 'hour_from': 8, 'hour_to': 16}) for day in '01234'
+            ],
+        })
+        self.assertRecordValues(calendar, [{'days_per_week': 5, 'hours_per_week': 40, 'hours_per_day': 8}])
+        three_days = calendar.copy({
+            'attendance_ids': [(0, 0, {'dayofweek': day, 'hour_from': 8, 'hour_to': 14}) for day in '012'],
+        })
+        self.assertRecordValues(three_days, [{'days_per_week': 3, 'hours_per_week': 18, 'hours_per_day': 6}])
+
+        variable = self.env['resource.calendar'].create({
+            'name': 'Variable',
+            'calendar_type': 'variable',
+            'days_per_week': 4,
+            'hours_per_week': 30,
+        })
+        self.assertRecordValues(variable.copy(), [{'days_per_week': 4, 'hours_per_week': 30, 'hours_per_day': 7.5}])

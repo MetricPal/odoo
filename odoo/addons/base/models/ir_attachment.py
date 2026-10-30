@@ -284,6 +284,7 @@ class IrAttachment(models.Model):
                     if check_file.endswith(GC_FILE_SUFFIX):
                         # leftover from a previous GC
                         # move the file back if it exists
+                        fname = fname.removesuffix(GC_FILE_SUFFIX)
                         try:
                             full_path = self._full_path(fname)
                             os.replace(full_path + GC_FILE_SUFFIX, full_path)
@@ -293,11 +294,14 @@ class IrAttachment(models.Model):
                             _logger.info("filestore gc was interrupted, moved back %s", filename)
                         # move the check file back, ignore if file already exists
                         original_check_file = check_file.removesuffix(GC_FILE_SUFFIX)
-                        try:
-                            if not os.path.exists(original_check_file):
-                                os.rename(check_file, original_check_file)
-                        except OSError:
+                        if os.path.exists(original_check_file):
                             os.unlink(check_file)
+                        else:
+                            try:
+                                os.rename(check_file, original_check_file)
+                            except OSError:
+                                _logger.info("filestore gc failed to add back %s", original_check_file)
+                                os.unlink(check_file)
                     elif os.path.getmtime(check_file) < limit_time:
                         # we can collect the file
                         yield (fname, check_file)
@@ -781,7 +785,7 @@ class IrAttachment(models.Model):
         records = self.sudo().with_context(active_test=False).search_fetch(
             domain & Domain('res_model', '!=', False) & ~sec_domain, SECURITY_FIELDS, order='id', limit=MAX_SEARCH_LIMIT).sudo(False)
         if len(records) == MAX_SEARCH_LIMIT:  # avoid out of memory
-            raise ValueError(self.env._("Cannot search, too many attachments"))
+            raise UserError(self.env._("Cannot search, too many attachments"))
         records = records._filtered_access(operation)
         # [('id', 'any!', query_with_ids)] is optimized in sec_domain
         return sec_domain | Domain('id', 'any!', records._as_query(ordered=False))
@@ -926,10 +930,10 @@ class IrAttachment(models.Model):
         if self.env.context.get('ir_attachment_from_stream') is not CREATE_FROM_STREAM_FLAG:
             # remove computed field depending of raw
             vals_list = [{
-                key: value
-                for key, value
-                in vals.items()
-                if key not in ('file_size', 'checksum', 'store_fname')
+                **vals,
+                'file_size': 0,
+                'checksum': False,
+                'store_fname': False,
             } for vals in vals_list]
         raw_map = {}
 

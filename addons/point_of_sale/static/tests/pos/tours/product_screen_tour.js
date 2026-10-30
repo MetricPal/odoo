@@ -38,9 +38,11 @@ registry.category("web_tour.tours").add("ProductScreenTour", {
             ProductScreen.firstProductIsFavorite("Whiteboard Pen"),
             // Make sure we don't have any scroll bar on the product list
             {
-                trigger: ".product-list",
+                trigger: ".product-list:has(article.product)",
                 run: function () {
-                    const productList = document.querySelector(".product-list");
+                    const productList = document.querySelector(
+                        ".product-list:has(article.product)"
+                    );
                     if (productList.scrollWidth > document.documentElement.scrollWidth) {
                         throw new Error("Product list is overflowing");
                     }
@@ -937,6 +939,35 @@ registry.category("web_tour.tours").add("test_barcode_scan_preselect_always_vari
                 "Blue, Small"
             ),
 
+            Chrome.endTour(),
+        ].flat(),
+});
+
+registry.category("web_tour.tours").add("test_search_more_skips_archived_variant", {
+    steps: () =>
+        [
+            Chrome.startPoS(),
+            Dialog.confirm("Open Register"),
+            ProductScreen.searchProduct("SHIRT-XL-ARCHIVED"),
+            {
+                content: "Click on 'Search more'",
+                trigger: ".search-more-button button",
+                run: "click",
+            },
+            {
+                content: "Search more did not load the archived variant",
+                trigger:
+                    ".o_notification:contains('No other products found'), .product-list .product-name:contains('Archived Variant Shirt')",
+                run: () => {
+                    const archived = posmodel.models["product.product"].find(
+                        (p) => p.default_code === "SHIRT-XL-ARCHIVED"
+                    );
+                    if (archived) {
+                        throw new Error("The archived variant was loaded by 'Search more'");
+                    }
+                },
+            },
+            ProductScreen.orderIsEmpty(),
             Chrome.endTour(),
         ].flat(),
 });
