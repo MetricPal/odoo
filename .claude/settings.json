@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./odoo-bin:*)",
+      "Bash(python3 odoo-bin:*)",
+      "Bash(python odoo-bin:*)",
+      "Bash(ruff check:*)",
+      "Bash(ruff format --check:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)"
+    ],
+    "deny": [
+      "Bash(git push)",
+      "Bash(git push:*)"
+    ]
+  }
+}
