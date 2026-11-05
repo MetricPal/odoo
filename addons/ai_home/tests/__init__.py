@@ -3,3 +3,4 @@ from . import test_migration
 
 from . import test_dashboard_ui
 from . import test_home_data
+from . import test_home_insight

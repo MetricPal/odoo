@@ -7,6 +7,20 @@
         <field name="target">current</field>
     </record>
 
+    <record id="action_system_overview" model="ir.actions.client">
+        <field name="name">System overview</field>
+        <field name="path">system-overview</field>
+        <field name="tag">ai_home.system_overview</field>
+        <field name="target">current</field>
+    </record>
+
+    <record id="action_insights_overview" model="ir.actions.client">
+        <field name="name">All insights</field>
+        <field name="path">insights</field>
+        <field name="tag">ai_home.insight_report</field>
+        <field name="target">current</field>
+    </record>
+
     <menuitem
         id="menu_ai_home_root"
         name="Home"

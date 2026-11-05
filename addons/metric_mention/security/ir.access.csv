@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,operation
+access_metric_mention_digest_system,metric.mention.digest system,model_metric_mention_digest,base.group_system,crud

@@ -2,3 +2,9 @@ id,name,model_id:id,group_id:id,operation
 access_ai_home_item_user,ai.home.item user,model_ai_home_item,base.group_user,r
 access_ai_home_source_user,ai.home.source user,model_ai_home_source,base.group_user,r
 access_ai_home_source_system,ai.home.source system,model_ai_home_source,base.group_system,crud
+access_ai_home_insight_user,ai.home.insight user,model_ai_home_insight,base.group_user,r
+access_ai_home_insight_system,ai.home.insight system,model_ai_home_insight,base.group_system,crud
+access_ai_home_insight_snapshot_system,ai.home.insight.snapshot system,model_ai_home_insight_snapshot,base.group_system,crud
+access_ai_home_insight_field_user,ai.home.insight.field user,model_ai_home_insight_field,base.group_user,r
+access_ai_home_insight_field_system,ai.home.insight.field system,model_ai_home_insight_field,base.group_system,crud
+access_ai_home_request_stat_system,ai.home.request.stat system,model_ai_home_request_stat,base.group_system,crud

@@ -5,27 +5,11 @@
             <div class="o_ai_home_grid">
                 <div class="o_ai_home_panes">
                     <div class="o_ai_home_pane o_ai_home_center">
-                        <section class="o_ai_home_card o_ai_home_attention" aria-labelledby="ai_home_attention_title">
-                            <div class="o_ai_home_card_head">
-                                <h2 id="ai_home_attention_title">Needs your attention <span class="o_ai_home_muted">· <t t-esc="this.state.attention.length"/></span> <span class="o_ai_home_hint">Decisions for you, most urgent first</span></h2>
-                                <a t-if="this.selectedGroup and this.selectedGroup.action" href="#" class="o_ai_home_link o_ai_home_open_group" t-on-click.prevent="() => this.openGroup(this.selectedGroup)">Open all in <t t-esc="this.selectedGroup.label"/> →</a>
-                            </div>
-                            <div t-if="this.state.attention.length" class="o_ai_home_chips" role="tablist" aria-label="Filter">
-                                <button
-                                    t-foreach="this.categories"
-                                    t-as="tab"
-                                    t-key="tab.key"
-                                    type="button"
-                                    role="tab"
-                                    class="btn o_ai_home_chip"
-                                    t-att-class="{ 'o_is_active': this.state.category === tab.key }"
-                                    t-att-aria-selected="this.state.category === tab.key ? 'true' : 'false'"
-                                    t-on-click="() => this.state.category = tab.key"
-                                ><t t-esc="tab.label"/> <t t-esc="tab.count"/></button>
-                            </div>
-                            <p t-if="!this.state.attention.length" class="o_ai_home_empty">No decisions are waiting for you.</p>
-                            <ul class="o_ai_home_attention_list o_ai_home_scroll">
-                                <li t-foreach="this.attentionItems" t-as="item" t-key="item.key" class="o_ai_home_attention_row">
+                        <section class="o_ai_home_stream o_ai_home_attention" aria-labelledby="ai_home_attention_title">
+                            <p id="ai_home_attention_title" class="o_ai_home_stream_head"><t t-if="this.streamItems.length"><t t-esc="this.streamItems.length"/> things for you, most urgent first</t><t t-else="">Nothing needs you right now.</t></p>
+                            <ul class="o_ai_home_attention_list o_ai_home_stream_list o_ai_home_scroll">
+                                <t t-foreach="this.streamItems" t-as="item" t-key="item.key">
+                                <li t-if="item.kind !== 'insight'" class="o_ai_home_attention_row o_ai_home_stream_row">
                                     <span class="o_ai_home_badge" t-att-class="'o_cat_' + (item.category.startsWith('source_') ? 'source' : item.category)" aria-hidden="true" t-esc="this.letters(item)"/>
                                     <button type="button" class="o_ai_home_attention_copy" t-att-disabled="!item.model and !item.openAction" t-on-click="() => this.openItem(item)">
                                         <span class="o_ai_home_attention_title">
@@ -52,9 +36,15 @@
                                         />
                                     </div>
                                 </li>
-                                <li t-if="this.selectedGroup and this.selectedGroup.count > this.selectedGroup.shown" class="o_ai_home_more">
-                                    <a href="#" class="o_ai_home_link" t-on-click.prevent="() => this.openGroup(this.selectedGroup)">+ <t t-esc="this.selectedGroup.count - this.selectedGroup.shown"/> more in <t t-esc="this.selectedGroup.label"/> →</a>
+                                <li t-else="" class="o_ai_home_insight_row o_ai_home_stream_row" t-att-class="'o_tone_' + item.tone">
+                                    <span class="o_ai_home_insight_dot" aria-hidden="true"><span/></span>
+                                    <button type="button" class="o_ai_home_attention_copy" t-on-click="() => this.openInsight(item)">
+                                        <span class="o_ai_home_insight_text"><t t-esc="item.before"/><strong t-esc="item.number"/><t t-esc="item.after"/></span>
+                                        <span class="o_ai_home_attention_meta" t-esc="item.meta"/>
+                                    </button>
+                                    <button type="button" class="btn o_ai_home_btn_secondary o_ai_home_insight_btn" t-on-click="() => this.openInsight(item)" t-esc="item.buttonLabel"/>
                                 </li>
+                                </t>
                             </ul>
                         </section>
                     </div>
@@ -263,6 +253,10 @@
                             </ol>
                             <a t-if="this.state.scope === 'forMe'" href="#" class="o_ai_home_link o_ai_home_inbox" t-on-click.prevent="this.openInbox">Open inbox →</a>
                         </section>
+                        <button t-if="this.state.systemSummary" type="button" class="o_ai_home_card o_ai_home_system" t-on-click="this.openSystemOverview">
+                            <span class="o_ai_home_system_head"><span class="o_ai_home_system_title">System overview <span class="o_ai_home_badge_text">Admins</span></span><span aria-hidden="true">▸</span></span>
+                            <span class="o_ai_home_hint" t-esc="this.systemLine"/>
+                        </button>
                     </aside>
                 </div>
 

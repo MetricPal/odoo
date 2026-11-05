@@ -7,7 +7,7 @@ import { contains, mockService, mountWithCleanup, patchWithCleanup } from "@web/
 
 import {
     WorkDashboard,
-    categoryTabs,
+    streamList,
     feedForScope,
     planApps,
     planSections,
@@ -91,6 +91,13 @@ function homeData() {
             }),
             attentionRow("source_7", 3, { model: "hr.leave", badge: "TO", primary: { label: "Approve", method: "action_approve" } }),
         ],
+        insights: [
+            { key: "insight-1", kind: "insight", insightId: 1, priority: "act_soon", tone: "bad", before: "",
+              number: "4", after: " opportunities have been in the same stage for more than 7 days",
+              meta: "CRM · worth RM 182,000", buttonLabel: "Open" },
+            { key: "insight-2", kind: "insight", insightId: 2, priority: "incomplete", tone: "info", before: "",
+              number: "23", after: " contacts have no email address", meta: "Contacts", buttonLabel: "Fix" },
+        ],
         attentionGroups: [
             { key: "approval", label: "Approvals", count: 1, shown: 1, action: false },
             { key: "conversation", label: "Conversations", count: 1, shown: 1, action: false },
@@ -105,6 +112,7 @@ function homeData() {
             { key: "f3", occurred: now(), actor: "Workflow", text: "assigned 18 new leads", app: "Workflow",
               forMe: false, team: false, model: "crm.lead", resId: 7 },
         ],
+        systemSummary: false,
         recent: [{ key: "r1", name: "PO/2026/0142", app: "Approvals", model: "approval.center.request", resId: 1,
                    occurred: now() }],
         agents: [],
@@ -121,8 +129,11 @@ beforeEach(() => {
     mockService("action", { doAction: (action) => calls.push(["doAction", action]) });
     mockService("orm", {
         async call(model, method, args) {
-            expect(model).toBe("ai.home.item");
             calls.push([method, args]);
+            if (model === "ai.home.insight") {
+                return { type: "ir.actions.act_window", res_model: "res.partner", domain: [["email", "=", false]] };
+            }
+            expect(model).toBe("ai.home.item");
             if (method === "get_home_data") {
                 return data;
             }
@@ -141,12 +152,13 @@ beforeEach(() => {
 
 test("helpers: chips, plan sections and feed scopes", () => {
     const data = homeData();
-    const tabs = categoryTabs(data.attentionGroups, data.attention.length);
-    expect(tabs.map((tab) => `${tab.key} ${tab.count}`)).toEqual([
-        "all 3",
-        "approval 1",
-        "conversation 1",
-        "source_7 8",
+    // One list: overdue decisions, red insights, other decisions, then grey and green insights.
+    expect(streamList(data.attention, data.insights).map((item) => item.key)).toEqual([
+        "approval-1",
+        "insight-1",
+        "conversation-2",
+        "source_7-3",
+        "insight-2",
     ]);
     expect(planApps(data.plan).map((tab) => `${tab.key} ${tab.count}`)).toEqual([
         "all 4",
@@ -188,7 +200,13 @@ test("renders my plan, decisions and what others did", async () => {
     expect(".o_ai_home_attention_row:first .o_ai_home_tag").toHaveText("Overdue");
     expect(".o_ai_home_attention_row:first .o_ai_home_badge").toHaveText("AP");
     expect(".o_ai_home_badge.o_cat_source").toHaveText("TO");
-    expect(".o_ai_home_open_group").toHaveCount(0);
+    expect(".o_ai_home_insight_row").toHaveCount(2);
+    expect(".o_ai_home_stream_head").toHaveText("5 things for you, most urgent first");
+    expect(".o_ai_home_stream_row:eq(1) .o_ai_home_insight_text").toHaveText(
+        "4 opportunities have been in the same stage for more than 7 days"
+    );
+    expect(".o_ai_home_insight_row.o_tone_info .o_ai_home_insight_btn").toHaveText("Fix");
+    expect(".o_ai_home_chip:contains('Time Off')").toHaveCount(0);
     // For me is the first tab and ends with the inbox link.
     expect(".o_ai_home_feed_row").toHaveCount(1);
     expect(".o_ai_home_inbox").toHaveText("Open inbox →");
@@ -203,14 +221,13 @@ test("renders my plan, decisions and what others did", async () => {
     expect("#ai_home_prompt").toHaveAttribute("placeholder", /No assistant is available to you yet/);
 });
 
-test("chips filter the lists and sections fold", async () => {
+test("insights open their records; plan chips and sections fold", async () => {
     await mountWithCleanup(WorkDashboard);
-    await contains('.o_ai_home_attention .o_ai_home_chip:contains("Time Off")').click();
-    expect(".o_ai_home_attention_row").toHaveCount(1);
-    expect(".o_ai_home_open_group").toHaveText("Open all in Time Off →");
-    expect(".o_ai_home_more").toHaveText("+ 7 more in Time Off →");
-    await contains(".o_ai_home_open_group").click();
-    expect(calls.at(-1)).toEqual(["doAction", data.attentionGroups[2].action]);
+    calls = [];
+    await contains(".o_ai_home_insight_row.o_tone_info .o_ai_home_insight_btn").click();
+    expect(calls[0]).toEqual(["action_open", [[2]]]);
+    expect(calls[1][0]).toBe("doAction");
+    expect(calls[1][1].res_model).toBe("res.partner");
     await contains('.o_ai_home_plan_apps .o_ai_home_chip:contains("Project")').click();
     expect(".o_ai_home_plan_section").toHaveCount(1);
     await contains(".o_ai_home_plan_section .o_ai_home_section_head").click();
@@ -248,6 +265,14 @@ test("plan buttons run on the server, rows open the document", async () => {
     calls = [];
     await contains(".o_ai_home_attention_row:first .o_ai_home_btn_primary").click();
     expect(calls[0]).toEqual(["run_home_action", ["approval.center.request", 1, "action_approve"]]);
+});
+
+test("administrators get the System overview card", async () => {
+    data.systemSummary = { users: 4, transactions: 120, failing: 1 };
+    await mountWithCleanup(WorkDashboard);
+    expect(".o_ai_home_system .o_ai_home_hint").toHaveText("4 active users today · 120 transactions · 1 check failing");
+    await contains(".o_ai_home_system").click();
+    expect(calls.at(-1)).toEqual(["doAction", "ai_home.action_system_overview"]);
 });
 
 test("managers see their team's load", async () => {

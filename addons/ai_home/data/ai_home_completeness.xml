@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Starter completeness insights, one per app in 1.1. A record is scored on the weighted fields it has filled;
+     Home shows the worst three, the dashboard all of them. Fields a model does not have are ignored. -->
+<odoo noupdate="1">
+    <record id="insight_complete_crm" model="ai.home.insight">
+        <field name="name">Opportunities completeness</field>
+        <field name="sequence">200</field>
+        <field name="app_label">CRM</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('type', '=', 'opportunity'), ('won_status', '=', 'pending')]</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} open opportunities are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} open opportunity is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'partner_id', 'label': 'Customer', 'weight': 20}), Command.create({'field_name': 'expected_revenue', 'label': 'Expected revenue', 'weight': 20}), Command.create({'field_name': 'email_from', 'label': 'Email', 'weight': 15}), Command.create({'field_name': 'phone', 'label': 'Phone', 'weight': 15}), Command.create({'field_name': 'date_deadline', 'label': 'Expected closing', 'weight': 15}), Command.create({'field_name': 'user_id', 'label': 'Salesperson', 'weight': 10}), Command.create({'field_name': 'tag_ids', 'label': 'Tags', 'weight': 5})]"/>
+    </record>
+    <record id="insight_complete_staff" model="ai.home.insight">
+        <field name="name">Employee profiles completeness</field>
+        <field name="sequence">201</field>
+        <field name="app_label">Employees</field>
+        <field name="model_name">hr.employee</field>
+        <field name="domain">[]</field>
+        <field name="group_xmlid">hr.group_hr_user</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{percent} of employee profiles are under {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'work_email', 'label': 'Work email', 'weight': 10}), Command.create({'field_name': 'work_phone', 'label': 'Work phone', 'weight': 5}), Command.create({'field_name': 'mobile_phone', 'label': 'Mobile', 'weight': 5}), Command.create({'field_name': 'job_id', 'label': 'Job position', 'weight': 10}), Command.create({'field_name': 'department_id', 'label': 'Department', 'weight': 10}), Command.create({'field_name': 'parent_id', 'label': 'Manager', 'weight': 10}), Command.create({'field_name': 'emergency_contact', 'label': 'Emergency contact', 'weight': 5}), Command.create({'field_name': 'emergency_phone', 'label': 'Emergency phone', 'weight': 5}), Command.create({'field_name': 'bank_account_ids', 'label': 'Bank account', 'weight': 10}), Command.create({'field_name': 'private_email', 'label': 'Private email', 'weight': 5}), Command.create({'field_name': 'birthday', 'label': 'Date of birth', 'weight': 5}), Command.create({'field_name': 'certificate', 'label': 'Education', 'weight': 5}), Command.create({'field_name': 'image_1920', 'label': 'Photo', 'weight': 5}), Command.create({'field_name': 'employee_skill_ids', 'label': 'Skills', 'weight': 5}), Command.create({'field_name': 'user_id', 'label': 'User', 'weight': 5})]"/>
+    </record>
+    <record id="insight_complete_seekers" model="ai.home.insight">
+        <field name="name">Job seeker profiles completeness</field>
+        <field name="sequence">202</field>
+        <field name="app_label">Recruitment</field>
+        <field name="model_name">hr.applicant</field>
+        <field name="domain">[('talent_pool_ids', '!=', False)]</field>
+        <field name="group_xmlid">hr_recruitment.group_hr_recruitment_user</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{percent} of job seekers have profiles under {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'attachment_ids', 'label': 'CV', 'weight': 20}), Command.create({'field_name': 'email_from', 'label': 'Email', 'weight': 15}), Command.create({'field_name': 'partner_phone', 'label': 'Phone', 'weight': 15}), Command.create({'field_name': 'partner_name', 'label': 'Name', 'weight': 10}), Command.create({'field_name': 'type_id', 'label': 'Degree', 'weight': 10}), Command.create({'field_name': 'categ_ids', 'label': 'Skills', 'weight': 10}), Command.create({'field_name': 'linkedin_profile', 'label': 'LinkedIn', 'weight': 10}), Command.create({'field_name': 'availability', 'label': 'Availability', 'weight': 5}), Command.create({'field_name': 'salary_expected', 'label': 'Expected salary', 'weight': 5})]"/>
+    </record>
+    <record id="insight_complete_applicants" model="ai.home.insight">
+        <field name="name">Job applicant profiles completeness</field>
+        <field name="sequence">203</field>
+        <field name="app_label">Recruitment</field>
+        <field name="model_name">hr.applicant</field>
+        <field name="domain">[('job_id', '!=', False), ('application_status', '=', 'ongoing')]</field>
+        <field name="group_xmlid">hr_recruitment.group_hr_recruitment_user</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{percent} of job applicants have profiles under {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'attachment_ids', 'label': 'CV', 'weight': 20}), Command.create({'field_name': 'email_from', 'label': 'Email', 'weight': 15}), Command.create({'field_name': 'partner_phone', 'label': 'Phone', 'weight': 15}), Command.create({'field_name': 'type_id', 'label': 'Degree', 'weight': 10}), Command.create({'field_name': 'salary_expected', 'label': 'Expected salary', 'weight': 10}), Command.create({'field_name': 'availability', 'label': 'Availability', 'weight': 10}), Command.create({'field_name': 'linkedin_profile', 'label': 'LinkedIn', 'weight': 5}), Command.create({'field_name': 'categ_ids', 'label': 'Skills', 'weight': 5}), Command.create({'field_name': 'source_id', 'label': 'Source', 'weight': 5}), Command.create({'field_name': 'interviewer_ids', 'label': 'Interviewers', 'weight': 5})]"/>
+    </record>
+    <record id="insight_complete_expenses" model="ai.home.insight">
+        <field name="name">Expenses completeness</field>
+        <field name="sequence">204</field>
+        <field name="app_label">Expenses</field>
+        <field name="model_name">hr.expense</field>
+        <field name="domain">[('state', '=', 'draft'), ('employee_id.user_id', '=', uid)]</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} of your draft expenses are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} of your draft expenses is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'nb_attachment', 'label': 'Receipt', 'weight': 50}), Command.create({'field_name': 'product_id', 'label': 'Category', 'weight': 25}), Command.create({'field_name': 'description', 'label': 'Notes', 'weight': 25})]"/>
+    </record>
+    <record id="insight_complete_products" model="ai.home.insight">
+        <field name="name">Products completeness</field>
+        <field name="sequence">205</field>
+        <field name="app_label">Inventory</field>
+        <field name="model_name">product.template</field>
+        <field name="domain">[('is_storable', '=', True)]</field>
+        <field name="group_xmlid">stock.group_stock_user</field>
+        <field name="required_module">stock</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} products are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} product is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'default_code', 'label': 'Internal reference', 'weight': 20}), Command.create({'field_name': 'barcode', 'label': 'Barcode', 'weight': 20}), Command.create({'field_name': 'standard_price', 'label': 'Cost', 'weight': 20}), Command.create({'field_name': 'weight', 'label': 'Weight', 'weight': 15}), Command.create({'field_name': 'seller_ids', 'label': 'Vendor', 'weight': 15}), Command.create({'field_name': 'categ_id', 'label': 'Category', 'weight': 10})]"/>
+    </record>
+    <record id="insight_complete_contacts" model="ai.home.insight">
+        <field name="name">Contacts completeness</field>
+        <field name="sequence">206</field>
+        <field name="app_label">Contacts</field>
+        <field name="model_name">res.partner</field>
+        <field name="domain">[('user_ids', '=', False), ('parent_id', '=', False)]</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{percent} of contacts are less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'email', 'label': 'Email', 'weight': 30}), Command.create({'field_name': 'phone', 'label': 'Phone', 'weight': 25}), Command.create({'field_name': 'street', 'label': 'Street', 'weight': 10}), Command.create({'field_name': 'city', 'label': 'City', 'weight': 8}), Command.create({'field_name': 'country_id', 'label': 'Country', 'weight': 7}), Command.create({'field_name': 'function', 'label': 'Job position', 'weight': 10}), Command.create({'field_name': 'category_id', 'label': 'Tags', 'weight': 5}), Command.create({'field_name': 'website', 'label': 'Website', 'weight': 5})]"/>
+    </record>
+    <record id="insight_complete_partners" model="ai.home.insight">
+        <field name="name">Customers and vendors completeness</field>
+        <field name="sequence">207</field>
+        <field name="app_label">Invoicing</field>
+        <field name="model_name">res.partner</field>
+        <field name="domain">[('invoice_ids', '!=', False)]</field>
+        <field name="group_xmlid">account.group_account_invoice</field>
+        <field name="required_module">account</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} customers and vendors are missing billing details</field>
+        <field name="sentence_one">{count} customer or vendor is missing billing details</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'vat', 'label': 'Tax ID', 'weight': 30}), Command.create({'field_name': 'bank_ids', 'label': 'Bank account', 'weight': 30}), Command.create({'field_name': 'property_payment_term_id', 'label': 'Payment terms', 'weight': 20}), Command.create({'field_name': 'email', 'label': 'Email', 'weight': 20})]"/>
+    </record>
+    <record id="insight_complete_quotes" model="ai.home.insight">
+        <field name="name">Quotations completeness</field>
+        <field name="sequence">208</field>
+        <field name="app_label">Sales</field>
+        <field name="model_name">sale.order</field>
+        <field name="domain">[('state', 'in', ['draft', 'sent'])]</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} quotations are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} quotation is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'validity_date', 'label': 'Expiry date', 'weight': 40}), Command.create({'field_name': 'payment_term_id', 'label': 'Payment terms', 'weight': 40}), Command.create({'field_name': 'client_order_ref', 'label': 'Customer reference', 'weight': 20})]"/>
+    </record>
+    <record id="insight_complete_purchases" model="ai.home.insight">
+        <field name="name">Purchase orders completeness</field>
+        <field name="sequence">209</field>
+        <field name="app_label">Purchase</field>
+        <field name="model_name">purchase.order</field>
+        <field name="domain">[('state', 'in', ['draft', 'sent', 'to approve', 'purchase'])]</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} purchase orders are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} purchase order is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'date_planned', 'label': 'Expected arrival', 'weight': 60}), Command.create({'field_name': 'partner_ref', 'label': 'Vendor reference', 'weight': 40})]"/>
+    </record>
+    <record id="insight_complete_webshop" model="ai.home.insight">
+        <field name="name">Published products completeness</field>
+        <field name="sequence">210</field>
+        <field name="app_label">eCommerce</field>
+        <field name="model_name">product.template</field>
+        <field name="domain">[('is_published', '=', True)]</field>
+        <field name="required_module">website_sale</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} published products are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} published product is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'image_1920', 'label': 'Image', 'weight': 30}), Command.create({'field_name': 'list_price', 'label': 'Price', 'weight': 25}), Command.create({'field_name': 'website_description', 'label': 'Website description', 'weight': 25}), Command.create({'field_name': 'description_sale', 'label': 'Sales description', 'weight': 20})]"/>
+    </record>
+    <record id="insight_complete_mailing" model="ai.home.insight">
+        <field name="name">Mailing contacts completeness</field>
+        <field name="sequence">211</field>
+        <field name="app_label">Email Marketing</field>
+        <field name="model_name">mailing.contact</field>
+        <field name="domain">[]</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} mailing contacts are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} mailing contact is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'email', 'label': 'Email', 'weight': 60}), Command.create({'field_name': 'list_ids', 'label': 'Mailing list', 'weight': 40})]"/>
+    </record>
+    <record id="insight_complete_timeoff" model="ai.home.insight">
+        <field name="name">Employees without time off allocation</field>
+        <field name="sequence">212</field>
+        <field name="app_label">Time Off</field>
+        <field name="model_name">hr.employee</field>
+        <field name="domain">[]</field>
+        <field name="group_xmlid">hr_holidays.group_hr_holidays_user</field>
+        <field name="required_module">hr_holidays</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} employees have no time off allocation</field>
+        <field name="sentence_one">{count} employee has no time off allocation</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'allocation_count', 'label': 'Time off allocation', 'weight': 100})]"/>
+    </record>
+    <record id="insight_complete_tasks" model="ai.home.insight">
+        <field name="name">Tasks completeness</field>
+        <field name="sequence">213</field>
+        <field name="app_label">Project</field>
+        <field name="model_name">project.task</field>
+        <field name="domain">[('project_id.user_id', '=', uid), ('state', 'not in', ['1_done', '1_canceled'])]</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} open tasks in your projects are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} open task in your projects is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'user_ids', 'label': 'Assignee', 'weight': 30}), Command.create({'field_name': 'date_deadline', 'label': 'Deadline', 'weight': 30}), Command.create({'field_name': 'description', 'label': 'Description', 'weight': 20}), Command.create({'field_name': 'allocated_hours', 'label': 'Allocated hours', 'weight': 10}), Command.create({'field_name': 'tag_ids', 'label': 'Tags', 'weight': 10})]"/>
+    </record>
+    <record id="insight_complete_events" model="ai.home.insight">
+        <field name="name">Upcoming events completeness</field>
+        <field name="sequence">214</field>
+        <field name="app_label">Events</field>
+        <field name="model_name">event.event</field>
+        <field name="domain">[('date_begin', '&gt;=', now)]</field>
+        <field name="group_xmlid">event.group_event_user</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} upcoming events are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} upcoming event is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'address_id', 'label': 'Venue', 'weight': 25}), Command.create({'field_name': 'event_ticket_ids', 'label': 'Tickets', 'weight': 25}), Command.create({'field_name': 'description', 'label': 'Description', 'weight': 20}), Command.create({'field_name': 'seats_max', 'label': 'Seat limit', 'weight': 15}), Command.create({'field_name': 'organizer_id', 'label': 'Organizer', 'weight': 15})]"/>
+    </record>
+    <record id="insight_complete_surveys" model="ai.home.insight">
+        <field name="name">Surveys completeness</field>
+        <field name="sequence">215</field>
+        <field name="app_label">Survey</field>
+        <field name="model_name">survey.survey</field>
+        <field name="domain">[]</field>
+        <field name="group_xmlid">survey.group_survey_user</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} surveys are less than {threshold}% complete</field>
+        <field name="sentence_one">{count} survey is less than {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'question_ids', 'label': 'Questions', 'weight': 60}), Command.create({'field_name': 'description', 'label': 'Description', 'weight': 25}), Command.create({'field_name': 'user_id', 'label': 'Responsible', 'weight': 15})]"/>
+    </record>
+    <record id="insight_complete_users" model="ai.home.insight">
+        <field name="name">User profiles completeness</field>
+        <field name="sequence">216</field>
+        <field name="app_label">Settings</field>
+        <field name="model_name">res.users</field>
+        <field name="domain">[('share', '=', False)]</field>
+        <field name="group_xmlid">base.group_system</field>
+        <field name="measure">completeness</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{percent} of internal users have profiles under {threshold}% complete</field>
+        <field name="detail">most often missing: {missing}</field>
+        <field name="button_label">Fix</field>
+        <field name="field_ids" eval="[Command.create({'field_name': 'email', 'label': 'Email', 'weight': 20}), Command.create({'field_name': 'totp_enabled', 'label': 'Two-factor authentication', 'weight': 20}), Command.create({'field_name': 'phone', 'label': 'Phone', 'weight': 15}), Command.create({'field_name': 'employee_id', 'label': 'Employee', 'weight': 15}), Command.create({'field_name': 'tz', 'label': 'Time zone', 'weight': 10}), Command.create({'field_name': 'image_1920', 'label': 'Photo', 'weight': 10}), Command.create({'field_name': 'lang', 'label': 'Language', 'weight': 5}), Command.create({'field_name': 'signature', 'label': 'Signature', 'weight': 5})]"/>
+    </record>
+</odoo>

@@ -70,6 +70,8 @@ class AiHomeItem(models.Model):
             'team': self._home_team(),
             'attention': attention,
             'attentionGroups': groups,
+            'insights': self.env['ai.home.insight']._home_rows(),
+            'systemSummary': self.get_system_summary(),
             'feed': self._home_feed(),
             'recent': self._home_recent(),
             'agents': agents,
@@ -692,7 +694,7 @@ class AiHomeItem(models.Model):
         messages = self.env['mail.message'].search([
             ('date', '>=', since), ('model', '!=', False), ('res_id', '!=', 0), ('author_id', '!=', partner.id),
             ('model', 'not in', list(EXCLUDED_MODELS)),
-            ('message_type', 'in', ['comment', 'email', 'notification', 'tracking']),
+            ('message_type', 'in', ['comment', 'email', 'notification', 'tracking', 'user_notification']),
         ], order='date desc, id desc', limit=150)
         for_me = set(self.env['mail.notification'].sudo().search([
             ('res_partner_id', '=', partner.id), ('mail_message_id', 'in', messages.ids),
@@ -740,6 +742,8 @@ class AiHomeItem(models.Model):
             return ''
         if len(body) > 90:
             body = body[:87] + '…'
+        if message.message_type == 'user_notification':
+            return _('%(text)s · %(record)s', text=body, record=record.display_name)
         if message.message_type == 'email':
             return _('emailed about %(record)s: %(text)s', record=record.display_name, text=body)
         if message.message_type == 'comment':

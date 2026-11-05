@@ -74,4 +74,75 @@
             </field>
         </field>
     </record>
+    <record id="ai_home_insight_view_list" model="ir.ui.view">
+        <field name="name">ai.home.insight.list</field>
+        <field name="model">ai.home.insight</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="app_label"/>
+                <field name="priority"/>
+                <field name="tone"/>
+                <field name="model_name"/>
+                <field name="group_xmlid"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="ai_home_insight_view_form" model="ir.ui.view">
+        <field name="name">ai.home.insight.form</field>
+        <field name="model">ai.home.insight</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="e.g. Contacts without email"/></h1>
+                    </div>
+                    <group>
+                        <group string="Which records">
+                            <field name="app_label"/>
+                            <field name="model_name" placeholder="e.g. res.partner"/>
+                            <field name="domain" widget="domain" options="{'model': 'model_name', 'in_dialog': True}"/>
+                            <field name="measure"/>
+                            <field name="check_key" invisible="measure != 'check'" required="measure == 'check'"/>
+                            <field name="amount_field" invisible="measure != 'count'"/>
+                            <field name="threshold" invisible="measure != 'completeness'"/>
+                            <field name="group_xmlid" placeholder="e.g. hr.group_hr_user"/>
+                            <field name="required_module" placeholder="e.g. stock"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="How it shows on Home">
+                            <field name="priority"/>
+                            <field name="tone"/>
+                            <field name="sentence" placeholder="{count} contacts have no email address · {percent} of job seekers are under {threshold}% complete"/>
+                            <field name="sentence_one" placeholder="{count} contact has no email address"/>
+                            <field name="detail" placeholder="worth {sum}"/>
+                            <field name="button_label"/>
+                            <field name="action_xmlid" placeholder="e.g. stock.action_orderpoint_replenish"/>
+                        </group>
+                    </group>
+                    <field name="field_ids" invisible="measure != 'completeness'">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="field_name"/>
+                            <field name="label"/>
+                            <field name="weight"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ai_home_insights" model="ir.actions.act_window">
+        <field name="name">Home insights</field>
+        <field name="res_model">ai.home.insight</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <menuitem id="menu_ai_home_insights" name="Home insights" parent="base.menu_custom"
+              action="action_ai_home_insights" sequence="91" groups="base.group_system"/>
 </odoo>

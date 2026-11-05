@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Starter system checks: administrators only. Each names a built-in check; a check whose app is not installed
+     finds nothing and stays hidden. -->
+<odoo noupdate="1">
+    <record id="insight_check_failed_emails" model="ai.home.insight">
+        <field name="name">Emails that failed to send today</field>
+        <field name="sequence">300</field>
+        <field name="app_label">Email</field>
+        <field name="model_name">mail.mail</field>
+        <field name="group_xmlid">base.group_system</field>
+        <field name="measure">check</field>
+        <field name="check_key">failed_emails</field>
+        <field name="priority">system</field>
+        <field name="tone">bad</field>
+        <field name="sentence">{count} emails failed to send today</field>
+        <field name="sentence_one">{count} email failed to send today</field>
+        <field name="detail">{detail}</field>
+        <field name="button_label">Check</field>
+    </record>
+    <record id="insight_check_failing_crons" model="ai.home.insight">
+        <field name="name">Scheduled actions failing</field>
+        <field name="sequence">301</field>
+        <field name="app_label">Scheduled actions</field>
+        <field name="model_name">ir.cron</field>
+        <field name="group_xmlid">base.group_system</field>
+        <field name="measure">check</field>
+        <field name="check_key">failing_crons</field>
+        <field name="priority">system</field>
+        <field name="tone">bad</field>
+        <field name="sentence">{count} scheduled actions are failing</field>
+        <field name="sentence_one">{count} scheduled action is failing</field>
+        <field name="detail">{detail}</field>
+        <field name="button_label">Check</field>
+    </record>
+    <record id="insight_check_unhealthy_senders" model="ai.home.insight">
+        <field name="name">Omnichannel senders unhealthy</field>
+        <field name="sequence">302</field>
+        <field name="app_label">Omnichannel</field>
+        <field name="model_name">omni.outbound.sender</field>
+        <field name="group_xmlid">base.group_system</field>
+        <field name="measure">check</field>
+        <field name="check_key">unhealthy_senders</field>
+        <field name="priority">system</field>
+        <field name="tone">bad</field>
+        <field name="sentence">{count} Omnichannel senders fail their health check</field>
+        <field name="sentence_one">{count} Omnichannel sender fails its health check</field>
+        <field name="detail">{detail}</field>
+        <field name="button_label">Check</field>
+    </record>
+    <record id="insight_check_ai_engines" model="ai.home.insight">
+        <field name="name">AI engines needing attention</field>
+        <field name="sequence">303</field>
+        <field name="app_label">AI Agents</field>
+        <field name="model_name">ai.agent.engine</field>
+        <field name="group_xmlid">base.group_system</field>
+        <field name="measure">check</field>
+        <field name="check_key">ai_engines</field>
+        <field name="priority">system</field>
+        <field name="tone">bad</field>
+        <field name="sentence">{count} AI engines need attention</field>
+        <field name="sentence_one">{count} AI engine needs attention</field>
+        <field name="detail">{detail}</field>
+        <field name="button_label">Check</field>
+    </record>
+    <record id="insight_check_failed_runs" model="ai.home.insight">
+        <field name="name">Workflow runs failed today</field>
+        <field name="sequence">304</field>
+        <field name="app_label">Workflow</field>
+        <field name="model_name">workflow.run</field>
+        <field name="group_xmlid">base.group_system</field>
+        <field name="measure">check</field>
+        <field name="check_key">failed_runs</field>
+        <field name="priority">system</field>
+        <field name="tone">bad</field>
+        <field name="sentence">{count} workflow runs failed today</field>
+        <field name="sentence_one">{count} workflow run failed today</field>
+        <field name="button_label">Check</field>
+    </record>
+    <record id="insight_check_users_2fa" model="ai.home.insight">
+        <field name="name">Internal users without two-factor authentication</field>
+        <field name="sequence">305</field>
+        <field name="app_label">Security</field>
+        <field name="model_name">res.users</field>
+        <field name="group_xmlid">base.group_system</field>
+        <field name="measure">check</field>
+        <field name="check_key">users_without_2fa</field>
+        <field name="priority">system</field>
+        <field name="tone">warn</field>
+        <field name="sentence">{count} internal users have no two-factor authentication</field>
+        <field name="sentence_one">{count} internal user has no two-factor authentication</field>
+        <field name="button_label">Check</field>
+    </record>
+</odoo>

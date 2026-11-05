@@ -26,9 +26,19 @@ export const PLAN_SECTIONS = [
 const RING_RADIUS = 34;
 export const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
-/** Filter chips for Needs your attention: "All", then one per category or app that has rows. */
-export function categoryTabs(groups, total) {
-    return [{ key: "all", label: _t("All"), count: total, action: false }, ...groups];
+const INSIGHT_RANK = { bad: 1, warn: 3, info: 4, good: 5 };
+
+/**
+ * The one middle list: decisions and insights together, most urgent first. Overdue decisions, then red insights,
+ * then the other decisions, orange, grey (incomplete information) and green (going well) insights.
+ */
+export function streamList(attention, insights) {
+    const rank = (item) =>
+        item.kind === "insight" ? INSIGHT_RANK[item.tone] ?? 4 : item.overdue ? 0 : 2;
+    return [...attention, ...insights]
+        .map((item, index) => ({ item, index, rank: rank(item) }))
+        .sort((a, b) => a.rank - b.rank || a.index - b.index)
+        .map(({ item }) => item);
 }
 
 /** App chips for My plan: "All", then each app with items, most items first. */
@@ -91,12 +101,13 @@ export class WorkDashboard extends Component {
             team: [],
             attention: [],
             attentionGroups: [],
+            insights: [],
+            systemSummary: false,
             feed: [],
             recent: [],
             agents: [],
             prompts: [],
             canManageAgents: false,
-            category: "all",
             planApp: "all",
             openSections: { late: true, today: true, tomorrow: false, week: false, later: false },
             snoozeKey: "",
@@ -127,9 +138,6 @@ export class WorkDashboard extends Component {
     async load() {
         const data = await this.orm.call("ai.home.item", "get_home_data", []);
         Object.assign(this.state, data);
-        if (!this.categories.some((tab) => tab.key === this.state.category)) {
-            this.state.category = "all";
-        }
         if (!this.planAppTabs.some((tab) => tab.key === this.state.planApp)) {
             this.state.planApp = "all";
         }
@@ -157,19 +165,8 @@ export class WorkDashboard extends Component {
         return this.state.agents.length > 0;
     }
 
-    get categories() {
-        return categoryTabs(this.state.attentionGroups, this.state.attention.length);
-    }
-
-    get selectedGroup() {
-        return this.state.attentionGroups.find((group) => group.key === this.state.category) || null;
-    }
-
-    get attentionItems() {
-        const category = this.state.category;
-        return category === "all"
-            ? this.state.attention
-            : this.state.attention.filter((item) => item.category === category);
+    get streamItems() {
+        return streamList(this.state.attention, this.state.insights);
     }
 
     get planAppTabs() {
@@ -300,10 +297,9 @@ export class WorkDashboard extends Component {
         await this.load();
     }
 
-    openGroup(group) {
-        if (group?.action) {
-            return this.action.doAction(group.action);
-        }
+    async openInsight(row) {
+        const action = await this.orm.call("ai.home.insight", "action_open", [[row.insightId]]);
+        return this.action.doAction(action);
     }
 
     toggleSnooze(item) {
@@ -347,6 +343,25 @@ export class WorkDashboard extends Component {
             ],
             target: "current",
         });
+    }
+
+    openSystemOverview() {
+        return this.action.doAction("ai_home.action_system_overview");
+    }
+
+    get systemLine() {
+        const summary = this.state.systemSummary;
+        if (!summary) {
+            return "";
+        }
+        const parts = [
+            _t("%s active users today", summary.users),
+            _t("%s transactions", summary.transactions),
+        ];
+        if (summary.failing) {
+            parts.push(summary.failing === 1 ? _t("1 check failing") : _t("%s checks failing", summary.failing));
+        }
+        return parts.join(" · ");
     }
 
     openInbox() {

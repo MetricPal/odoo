@@ -1,6 +1,6 @@
 {
     'name': 'AI Home',
-    'version': '1.6',
+    'version': '1.10',
     'category': 'Productivity',
     'summary': 'Home: my plan, decisions waiting for me, what others did, and the assistant',
     'author': 'metric.io',
@@ -12,6 +12,9 @@
         'views/ai_home_views.xml',
         'views/ai_home_source_views.xml',
         'data/ai_home_sources.xml',
+        'data/ai_home_insights.xml',
+        'data/ai_home_completeness.xml',
+        'data/ai_home_checks.xml',
         # 'views/website_templates.xml',
     ],
     'demo': [

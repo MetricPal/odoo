@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="ai_home.SystemOverview">
+        <div class="o_ai_home o_ai_home_overview h-100">
+            <div class="o_ai_home_overview_page">
+                <header class="o_ai_home_overview_head">
+                    <div>
+                        <a href="#" class="o_ai_home_link" t-on-click.prevent="this.goHome">← Home</a>
+                        <h1>System overview</h1>
+                        <span class="o_ai_home_hint">All apps · administrators · compared with the previous period · <a href="#" class="o_ai_home_link o_ai_home_all_insights" t-on-click.prevent="this.openAllInsights">All insights →</a></span>
+                    </div>
+                    <div class="o_ai_home_segments" role="tablist" aria-label="Period">
+                        <button t-foreach="this.periods" t-as="period" t-key="period.key" type="button" role="tab"
+                                class="btn o_ai_home_segment" t-att-class="{ 'o_is_active': this.state.period === period.key }"
+                                t-att-aria-selected="this.state.period === period.key ? 'true' : 'false'"
+                                t-on-click="() => this.setPeriod(period.key)" t-esc="period.label"/>
+                    </div>
+                </header>
+                <t t-if="this.state.data">
+                    <div class="o_ai_home_overview_tiles">
+                        <section t-foreach="this.state.data.tiles" t-as="tile" t-key="tile.key" class="o_ai_home_card o_ai_home_overview_tile">
+                            <span class="o_ai_home_hint" t-esc="tile.label"/>
+                            <strong class="o_ai_home_overview_value" t-esc="tile.value"/>
+                            <span class="o_ai_home_hint"><span t-if="tile.trend" class="o_ai_home_overview_trend" t-att-class="{ 'o_is_down': tile.trend.startsWith('▼') }" t-esc="tile.trend + ' · '"/><t t-esc="tile.sub"/></span>
+                        </section>
+                    </div>
+                    <section class="o_ai_home_card o_ai_home_overview_chart" aria-labelledby="ai_home_tx_title">
+                        <div class="o_ai_home_card_head"><h2 id="ai_home_tx_title">Transactions per day</h2><span class="o_ai_home_hint">records created or changed, all apps</span></div>
+                        <svg viewBox="0 0 1280 200" class="o_ai_home_overview_svg" role="img" aria-label="Transactions per day">
+                            <line x1="8" x2="1272" y1="172" y2="172" class="o_ai_home_overview_axis"/>
+                            <polyline t-att-points="this.seriesPoints" class="o_ai_home_overview_line"/>
+                            <text t-foreach="this.seriesLabels" t-as="point" t-key="point.date" t-att-x="point.x" y="194" t-att-text-anchor="point.anchor" class="o_ai_home_overview_tick" t-esc="point.label"/>
+                        </svg>
+                    </section>
+                    <section t-if="this.state.data.traffic.length" class="o_ai_home_card o_ai_home_overview_traffic" aria-labelledby="ai_home_traffic_title">
+                        <div class="o_ai_home_card_head"><h2 id="ai_home_traffic_title">Traffic today</h2><span class="o_ai_home_hint">server requests per hour</span></div>
+                        <svg viewBox="0 0 1280 140" class="o_ai_home_overview_svg" role="img" aria-label="Server requests per hour today">
+                            <line x1="8" x2="1272" y1="116" y2="116" class="o_ai_home_overview_axis"/>
+                            <rect t-foreach="this.trafficBars" t-as="bar" t-key="bar.hour" t-att-x="bar.x" t-att-y="bar.y" width="40" t-att-height="bar.height" rx="3" class="o_ai_home_overview_bar_fill"><title t-esc="bar.hour + ':00 · ' + bar.value"/></rect>
+                            <text t-foreach="this.trafficTicks" t-as="bar" t-key="bar.hour" t-att-x="bar.x + 20" y="134" text-anchor="middle" class="o_ai_home_overview_tick" t-esc="bar.hour"/>
+                        </svg>
+                    </section>
+                    <section class="o_ai_home_card o_ai_home_overview_apps" aria-labelledby="ai_home_apps_title">
+                        <div class="o_ai_home_card_head"><h2 id="ai_home_apps_title">Apps</h2><span class="o_ai_home_hint">click a row to open the app's report</span></div>
+                        <table class="o_ai_home_overview_table">
+                            <thead><tr><th>App</th><th>Created</th><th>Changed</th><th>Open activities</th><th>Overdue</th><th>Active users</th><th>7 days</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="this.state.data.apps" t-as="row" t-key="row.key" class="o_ai_home_overview_row" tabindex="0"
+                                    t-on-click="() => this.openApp(row)" t-on-keydown="(ev) => ev.key === 'Enter' and this.openApp(row)">
+                                    <td><strong t-esc="row.app"/></td>
+                                    <td t-esc="row.created"/>
+                                    <td t-esc="row.changed"/>
+                                    <td t-esc="row.openActivities"/>
+                                    <td t-att-class="{ 'o_tone_bad': row.overdue >= 10, 'o_tone_warn': row.overdue and row.overdue &lt; 10 }" t-esc="row.overdue"/>
+                                    <td t-esc="row.activeUsers"/>
+                                    <td><svg width="84" height="22" viewBox="0 0 84 22" aria-hidden="true"><polyline t-att-points="this.spark(row.spark)" class="o_ai_home_overview_line o_is_thin"/></svg></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+                    <div class="o_ai_home_overview_three">
+                        <section class="o_ai_home_card" aria-labelledby="ai_home_act_title">
+                            <div class="o_ai_home_card_head"><h2 id="ai_home_act_title">Open activities by app</h2></div>
+                            <div class="o_ai_home_overview_legend"><span class="o_tone_bad">Overdue</span><span class="o_tone_warn">Due today</span><span class="o_tone_good">Planned</span></div>
+                            <div t-foreach="this.state.data.activities" t-as="row" t-key="row.key" class="o_ai_home_overview_bar">
+                                <span class="o_ai_home_overview_bar_label" t-esc="row.app"/>
+                                <span class="o_ai_home_overview_bar_track">
+                                    <span class="o_tone_bad" t-att-style="'width: ' + this.barWidth(row, 'late')"/>
+                                    <span class="o_tone_warn" t-att-style="'width: ' + this.barWidth(row, 'today')"/>
+                                    <span class="o_tone_good" t-att-style="'width: ' + this.barWidth(row, 'planned')"/>
+                                </span>
+                                <span class="o_ai_home_hint" t-esc="row.late + row.today + row.planned"/>
+                            </div>
+                        </section>
+                        <section class="o_ai_home_card" aria-labelledby="ai_home_comm_title">
+                            <div class="o_ai_home_card_head"><h2 id="ai_home_comm_title">Communication</h2></div>
+                            <div t-foreach="this.state.data.communication" t-as="row" t-key="row.key" class="o_ai_home_overview_kv">
+                                <span t-esc="row.label"/><strong><t t-esc="row.value"/> <span t-if="row.sub" class="o_ai_home_hint" t-esc="row.sub"/></strong>
+                            </div>
+                        </section>
+                        <section class="o_ai_home_card" aria-labelledby="ai_home_health_title">
+                            <div class="o_ai_home_card_head"><h2 id="ai_home_health_title">Health</h2></div>
+                            <button t-foreach="this.state.data.health" t-as="row" t-key="row.key" type="button" class="o_ai_home_overview_health"
+                                    t-att-class="'o_tone_' + (row.state === 'ok' ? 'good' : row.state)" t-on-click="() => this.openCheck(row)">
+                                <span class="o_ai_home_dot" aria-hidden="true"/>
+                                <span class="o_ai_home_overview_health_text"><strong t-esc="row.name"/> <span class="o_ai_home_hint" t-esc="'· ' + row.detail"/></span>
+                                <span class="o_ai_home_overview_health_state" t-esc="row.state === 'ok' ? 'Healthy' : (row.state === 'warn' ? 'Warning' : 'Failing')"/>
+                            </button>
+                        </section>
+                    </div>
+                    <section class="o_ai_home_card" aria-labelledby="ai_home_tel_title">
+                        <div class="o_ai_home_card_head"><h2 id="ai_home_tel_title">Telemetry</h2><span class="o_ai_home_hint">server and storage</span></div>
+                        <div class="o_ai_home_overview_telemetry">
+                            <div t-foreach="this.state.data.telemetry" t-as="row" t-key="row.key" class="o_ai_home_overview_kv">
+                                <span t-esc="row.label"/><strong><t t-esc="row.value"/> <span t-if="row.sub" class="o_ai_home_hint" t-esc="row.sub"/></strong>
+                            </div>
+                        </div>
+                    </section>
+                </t>
+            </div>
+        </div>
+    </t>
+</templates>

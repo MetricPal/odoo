@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="ai_home.InsightReport">
+        <div class="o_ai_home o_ai_home_overview h-100">
+            <div class="o_ai_home_overview_page">
+                <header class="o_ai_home_overview_head">
+                    <div>
+                        <a href="#" class="o_ai_home_link" t-on-click.prevent="this.goBack">← System overview</a>
+                        <h1 t-if="!this.app">All insights</h1>
+                        <h1 t-else=""><t t-esc="this.app"/> report</h1>
+                        <span class="o_ai_home_hint" t-if="!this.app">Everything Home prioritises and alerts, with the report behind each one</span>
+                        <span class="o_ai_home_hint" t-elif="this.state.report" t-esc="this.state.report.selected.name"/>
+                    </div>
+                </header>
+
+                <!-- Overview -->
+                <t t-if="this.state.overview">
+                    <div class="o_ai_home_overview_tiles">
+                        <section class="o_ai_home_card o_ai_home_overview_tile">
+                            <span class="o_ai_home_hint">Decisions waiting</span>
+                            <strong class="o_ai_home_overview_value" t-esc="this.state.overview.decisions"/>
+                        </section>
+                        <section t-foreach="this.state.overview.groups" t-as="group" t-key="group.key" class="o_ai_home_card o_ai_home_overview_tile">
+                            <span class="o_ai_home_hint" t-esc="group.label"/>
+                            <strong class="o_ai_home_overview_value" t-esc="group.count"/>
+                        </section>
+                    </div>
+                    <section class="o_ai_home_card" aria-labelledby="ai_home_all_title">
+                        <div class="o_ai_home_card_head"><h2 id="ai_home_all_title">All insights</h2><span class="o_ai_home_hint">Home shows the ones above zero</span></div>
+                        <div class="o_ai_home_chips" role="tablist" aria-label="Priority">
+                            <button type="button" role="tab" class="btn o_ai_home_chip" t-att-class="{ 'o_is_active': this.state.filter === 'all' }" t-on-click="() => this.state.filter = 'all'">All <t t-esc="this.state.overview.rows.length"/></button>
+                            <button t-foreach="this.state.overview.groups" t-as="group" t-key="group.key" type="button" role="tab" class="btn o_ai_home_chip"
+                                    t-att-class="{ 'o_is_active': this.state.filter === group.key }" t-on-click="() => this.state.filter = group.key" t-esc="group.label"/>
+                        </div>
+                        <table class="o_ai_home_overview_table">
+                            <thead><tr><th>Insight</th><th>App</th><th>Now</th><th>30 days ago</th><th>30 days</th><th/></tr></thead>
+                            <tbody>
+                                <tr t-foreach="this.overviewRows" t-as="row" t-key="row.key" t-att-class="{ 'o_is_quiet': !row.value }">
+                                    <td><span class="o_ai_home_dot" t-att-class="'o_tone_' + (row.value ? row.tone : 'info')"/> <strong t-esc="row.name"/></td>
+                                    <td t-esc="row.app"/>
+                                    <td><strong t-esc="row.now"/></td>
+                                    <td t-esc="row.before || '—'"/>
+                                    <td><svg width="84" height="22" viewBox="0 0 84 22" aria-hidden="true"><polyline t-att-points="this.spark(row.spark)" class="o_ai_home_overview_line o_is_thin"/></svg></td>
+                                    <td><a href="#" class="o_ai_home_link" t-on-click.prevent="() => this.openReport(row.app)">Report →</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </t>
+
+                <!-- App report -->
+                <t t-if="this.state.report">
+                    <t t-set="sel" t-value="this.state.report.selected"/>
+                    <div class="o_ai_home_overview_tiles">
+                        <button t-foreach="this.state.report.cards" t-as="card" t-key="card.insightId" type="button"
+                                class="o_ai_home_card o_ai_home_overview_tile o_ai_home_report_card"
+                                t-att-class="{ 'o_is_active': card.insightId === sel.insightId }" t-on-click="() => this.select(card)">
+                            <span class="o_ai_home_hint"><span class="o_ai_home_dot" t-att-class="'o_tone_' + (card.value ? card.tone : 'info')"/> <t t-esc="card.name"/></span>
+                            <strong class="o_ai_home_overview_value" t-esc="card.now"/>
+                        </button>
+                    </div>
+                    <div class="o_ai_home_overview_three">
+                        <section t-if="sel.measure === 'completeness'" class="o_ai_home_card" aria-labelledby="ai_home_bands_title">
+                            <div class="o_ai_home_card_head"><h2 id="ai_home_bands_title">Records by completeness</h2><span class="o_ai_home_hint">share of weighted fields filled</span></div>
+                            <svg viewBox="0 0 420 170" class="o_ai_home_overview_svg" role="img" aria-label="Records by completeness">
+                                <t t-foreach="sel.bands" t-as="band" t-key="band_index">
+                                    <rect t-att-x="30 + band_index * 96" t-att-y="140 - this.bandHeight(band)" width="72" t-att-height="this.bandHeight(band)" rx="4" t-att-class="'o_ai_home_band o_band_' + band_index"/>
+                                    <text t-att-x="66 + band_index * 96" t-att-y="132 - this.bandHeight(band)" text-anchor="middle" class="o_ai_home_overview_tick o_is_strong" t-esc="band"/>
+                                    <text t-att-x="66 + band_index * 96" y="160" text-anchor="middle" class="o_ai_home_overview_tick" t-esc="['0–25%', '25–50%', '50–75%', '75–100%'][band_index]"/>
+                                </t>
+                            </svg>
+                        </section>
+                        <section t-if="sel.measure === 'completeness'" class="o_ai_home_card" aria-labelledby="ai_home_missing_title">
+                            <div class="o_ai_home_card_head"><h2 id="ai_home_missing_title">What is missing</h2><span class="o_ai_home_hint">records without each field</span></div>
+                            <div t-foreach="sel.missingCounts" t-as="row" t-key="row.label" class="o_ai_home_overview_bar">
+                                <span class="o_ai_home_overview_bar_label" t-esc="row.label"/>
+                                <span class="o_ai_home_overview_bar_track"><span class="o_ai_home_report_bar" t-att-style="'width: ' + this.missingWidth(row.count)"/></span>
+                                <span class="o_ai_home_hint" t-esc="row.count"/>
+                            </div>
+                        </section>
+                        <section class="o_ai_home_card" t-att-class="{ 'o_ai_home_report_wide': sel.measure !== 'completeness' }" aria-labelledby="ai_home_trend_title">
+                            <div class="o_ai_home_card_head"><h2 id="ai_home_trend_title">Last 30 days</h2><span class="o_ai_home_hint">your daily value</span></div>
+                            <svg viewBox="0 0 460 160" class="o_ai_home_overview_svg" role="img" aria-label="Last 30 days">
+                                <line x1="8" x2="452" y1="142" y2="142" class="o_ai_home_overview_axis"/>
+                                <polyline t-att-points="this.trendPoints(sel.trend)" class="o_ai_home_overview_line"/>
+                            </svg>
+                        </section>
+                    </div>
+                    <section class="o_ai_home_card" aria-labelledby="ai_home_records_title">
+                        <div class="o_ai_home_card_head">
+                            <h2 id="ai_home_records_title">Records <span class="o_ai_home_muted">· <t t-esc="sel.total"/></span></h2>
+                            <button type="button" class="btn o_ai_home_btn_primary" t-on-click="() => this.openInsight(sel.insightId)">Open in <t t-esc="this.app"/></button>
+                        </div>
+                        <table class="o_ai_home_overview_table o_ai_home_report_table">
+                            <thead><tr><th>Name</th><th t-foreach="sel.columns" t-as="col" t-key="col.key" t-esc="col.label"/><th t-if="sel.measure === 'completeness'">Complete</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="sel.rows" t-as="row" t-key="row.id" class="o_ai_home_overview_row" tabindex="0" t-on-click="() => this.openRecord(row)">
+                                    <td><strong t-esc="row.name"/></td>
+                                    <td t-foreach="row.cells" t-as="cell" t-key="cell.key" t-att-class="{ 'o_is_missing': cell.missing }" t-esc="cell.missing ? 'missing' : cell.value"/>
+                                    <td t-if="sel.measure === 'completeness'"><t t-esc="row.score"/>%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <span t-if="sel.total > sel.rows.length" class="o_ai_home_hint">Showing <t t-esc="sel.rows.length"/> of <t t-esc="sel.total"/> · open the list for all of them</span>
+                    </section>
+                </t>
+            </div>
+        </div>
+    </t>
+</templates>

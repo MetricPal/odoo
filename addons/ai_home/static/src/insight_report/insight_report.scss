@@ -1,0 +1,51 @@
+.o_ai_home_report_card {
+    text-align: left;
+    color: var(--home-ink);
+
+    &.o_is_active {
+        border-color: var(--home-brand);
+        box-shadow: 0 0 0 1px var(--home-brand);
+    }
+}
+
+.o_ai_home_band {
+    fill: #E9DDE5;
+
+    &.o_band_1 { fill: #C9AFC1; }
+    &.o_band_2 { fill: #9C7590; }
+    &.o_band_3 { fill: var(--home-brand); }
+}
+
+.o_ai_home_overview_tick.o_is_strong {
+    font-weight: 600;
+    fill: var(--home-ink);
+}
+
+.o_ai_home_report_bar {
+    background: var(--home-brand) !important;
+}
+
+.o_ai_home_report_table {
+    th,
+    td {
+        text-align: left;
+    }
+
+    .o_is_missing {
+        color: var(--home-bad);
+        font-weight: 600;
+    }
+}
+
+.o_ai_home_overview_table tr.o_is_quiet td {
+    color: var(--home-muted);
+}
+
+.o_ai_home_overview_table .o_ai_home_dot {
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.o_ai_home_report_wide {
+    grid-column: 1 / -1;
+}

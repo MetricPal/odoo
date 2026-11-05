@@ -231,6 +231,10 @@ class TestHomeData(TransactionCase):
         self.assertFalse([e for e in feed if 'My own note' in e['text']], 'your own work is in Recent, not here')
         self.assertIn('Tan Holdings', [r['name'] for r in self._data()['recent']])
         self.assertFalse([entry for entry in feed if entry['model'].startswith('ir.')], 'no configuration records')
+        partner.message_notify(partner_ids=self.user.partner_id.ids, body='You were assigned a follow-up',
+                               author_id=colleague.partner_id.id)
+        notice = next(e for e in self._data()['feed'] if 'You were assigned a follow-up' in e['text'])
+        self.assertTrue(notice['forMe'], 'direct notifications are For me')
 
     def test_without_an_assistant(self):
         data = self._data()

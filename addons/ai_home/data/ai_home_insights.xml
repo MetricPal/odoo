@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Starter insights: one or two useful facts per app. A rule whose app is not installed is skipped at runtime.
+     Administrators switch them off, change them or add their own (Settings > Technical > Home insights). -->
+<odoo noupdate="1">
+    <record id="insight_crm_stuck" model="ai.home.insight">
+        <field name="name">Opportunities stuck in one stage</field>
+        <field name="sequence">10</field>
+        <field name="app_label">CRM</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('type', '=', 'opportunity'), ('won_status', '=', 'pending'), ('date_last_stage_update', '&lt;', days_ago(7))]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">bad</field>
+        <field name="amount_field">expected_revenue</field>
+        <field name="sentence">{count} opportunities have been in the same stage for more than 7 days</field>
+        <field name="sentence_one">{count} opportunity has been in the same stage for more than 7 days</field>
+        <field name="detail">worth {sum}</field>
+    </record>
+    <record id="insight_crm_won" model="ai.home.insight">
+        <field name="name">Opportunities won this week</field>
+        <field name="sequence">11</field>
+        <field name="app_label">CRM</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('won_status', '=', 'won'), ('date_closed', '&gt;=', days_ago(7))]</field>
+        <field name="priority">going_well</field>
+        <field name="tone">good</field>
+        <field name="amount_field">expected_revenue</field>
+        <field name="sentence">{count} opportunities were won in the last 7 days</field>
+        <field name="sentence_one">{count} opportunity was won in the last 7 days</field>
+        <field name="detail">worth {sum}</field>
+    </record>
+    <record id="insight_sale_no_reply" model="ai.home.insight">
+        <field name="name">Quotations without reply</field>
+        <field name="sequence">20</field>
+        <field name="app_label">Sales</field>
+        <field name="model_name">sale.order</field>
+        <field name="domain">[('state', '=', 'sent'), ('write_date', '&lt;', days_ago(7))]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">warn</field>
+        <field name="sentence">{count} quotations were sent more than 7 days ago with no reply</field>
+        <field name="sentence_one">{count} quotation was sent more than 7 days ago with no reply</field>
+    </record>
+    <record id="insight_sale_confirmed" model="ai.home.insight">
+        <field name="name">Orders confirmed this week</field>
+        <field name="sequence">21</field>
+        <field name="app_label">Sales</field>
+        <field name="model_name">sale.order</field>
+        <field name="domain">[('state', '=', 'sale'), ('date_order', '&gt;=', days_ago(7))]</field>
+        <field name="priority">going_well</field>
+        <field name="tone">good</field>
+        <field name="sentence">{count} orders were confirmed in the last 7 days</field>
+        <field name="sentence_one">{count} order was confirmed in the last 7 days</field>
+    </record>
+    <record id="insight_invoice_overdue" model="ai.home.insight">
+        <field name="name">Overdue customer invoices</field>
+        <field name="sequence">30</field>
+        <field name="app_label">Invoicing</field>
+        <field name="model_name">account.move</field>
+        <field name="domain">[('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ['not_paid', 'partial']), ('invoice_date_due', '&lt;', today)]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">bad</field>
+        <field name="amount_field">amount_residual_signed</field>
+        <field name="sentence">{count} customer invoices are overdue</field>
+        <field name="sentence_one">{count} customer invoice is overdue</field>
+        <field name="detail">{sum} to collect</field>
+    </record>
+    <record id="insight_bills_due" model="ai.home.insight">
+        <field name="name">Vendor bills due this week</field>
+        <field name="sequence">31</field>
+        <field name="app_label">Invoicing</field>
+        <field name="model_name">account.move</field>
+        <field name="domain">[('move_type', '=', 'in_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ['not_paid', 'partial']), ('invoice_date_due', '&gt;=', today), ('invoice_date_due', '&lt;=', days_ahead(7))]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">warn</field>
+        <field name="amount_field">amount_residual_signed</field>
+        <field name="sentence">{count} vendor bills are due in the next 7 days</field>
+        <field name="sentence_one">{count} vendor bill is due in the next 7 days</field>
+        <field name="detail">{sum} to pay</field>
+    </record>
+    <record id="insight_purchase_late" model="ai.home.insight">
+        <field name="name">Late receipts</field>
+        <field name="sequence">40</field>
+        <field name="app_label">Purchase</field>
+        <field name="model_name">purchase.order</field>
+        <field name="domain">[('state', '=', 'purchase'), ('receipt_status', 'in', ['pending', 'partial']), ('date_planned', '&lt;', now)]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">warn</field>
+        <field name="sentence">{count} purchase orders are late to arrive</field>
+        <field name="sentence_one">{count} purchase order is late to arrive</field>
+    </record>
+    <record id="insight_stock_replenish" model="ai.home.insight">
+        <field name="name">Products below minimum stock</field>
+        <field name="sequence">50</field>
+        <field name="app_label">Inventory</field>
+        <field name="model_name">stock.warehouse.orderpoint</field>
+        <field name="domain">[('qty_to_order', '&gt;', 0)]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">warn</field>
+        <field name="sentence">{count} products need replenishment</field>
+        <field name="sentence_one">{count} product needs replenishment</field>
+        <field name="button_label">Replenish</field>
+        <field name="action_xmlid">stock.action_orderpoint_replenish</field>
+    </record>
+    <record id="insight_stock_late_delivery" model="ai.home.insight">
+        <field name="name">Late deliveries</field>
+        <field name="sequence">51</field>
+        <field name="app_label">Inventory</field>
+        <field name="model_name">stock.picking</field>
+        <field name="domain">[('picking_type_code', '=', 'outgoing'), ('state', 'in', ['confirmed', 'waiting', 'assigned']), ('scheduled_date', '&lt;', now)]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">bad</field>
+        <field name="sentence">{count} deliveries are late</field>
+        <field name="sentence_one">{count} delivery is late</field>
+    </record>
+    <record id="insight_project_overdue" model="ai.home.insight">
+        <field name="name">Overdue tasks in my projects</field>
+        <field name="sequence">60</field>
+        <field name="app_label">Project</field>
+        <field name="model_name">project.task</field>
+        <field name="domain">[('project_id.user_id', '=', uid), ('state', 'not in', ['1_done', '1_canceled']), ('date_deadline', '&lt;', now)]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">warn</field>
+        <field name="sentence">{count} tasks in the projects you manage are overdue</field>
+        <field name="sentence_one">{count} task in the projects you manage is overdue</field>
+    </record>
+    <record id="insight_project_no_deadline" model="ai.home.insight">
+        <field name="name">Tasks without deadline</field>
+        <field name="sequence">61</field>
+        <field name="app_label">Project</field>
+        <field name="model_name">project.task</field>
+        <field name="domain">[('project_id.user_id', '=', uid), ('state', 'not in', ['1_done', '1_canceled']), ('date_deadline', '=', False)]</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} open tasks in your projects have no deadline</field>
+        <field name="sentence_one">{count} open task in your projects has no deadline</field>
+        <field name="button_label">Fix</field>
+    </record>
+    <record id="insight_employee_permits" model="ai.home.insight">
+        <field name="name">Work permits expiring</field>
+        <field name="sequence">70</field>
+        <field name="app_label">Employees</field>
+        <field name="model_name">hr.employee</field>
+        <field name="domain">[('work_permit_expiration_date', '&gt;=', today), ('work_permit_expiration_date', '&lt;=', days_ahead(30))]</field>
+        <field name="group_xmlid">hr.group_hr_user</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">warn</field>
+        <field name="sentence">{count} work permits expire in the next 30 days</field>
+        <field name="sentence_one">{count} work permit expires in the next 30 days</field>
+    </record>
+    <record id="insight_employee_contracts" model="ai.home.insight">
+        <field name="name">Contracts ending</field>
+        <field name="sequence">71</field>
+        <field name="app_label">Employees</field>
+        <field name="model_name">hr.employee</field>
+        <field name="domain">[('contract_date_end', '&gt;=', today), ('contract_date_end', '&lt;=', days_ahead(30))]</field>
+        <field name="group_xmlid">hr.group_hr_user</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">warn</field>
+        <field name="sentence">{count} employee contracts end in the next 30 days</field>
+        <field name="sentence_one">{count} employee contract ends in the next 30 days</field>
+    </record>
+    <record id="insight_recruitment_stuck" model="ai.home.insight">
+        <field name="name">Applicants waiting in one stage</field>
+        <field name="sequence">80</field>
+        <field name="app_label">Recruitment</field>
+        <field name="model_name">hr.applicant</field>
+        <field name="domain">[('application_status', '=', 'ongoing'), ('job_id', '!=', False), ('date_last_stage_update', '&lt;', days_ago(5))]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">warn</field>
+        <field name="sentence">{count} applicants have waited in the same stage for more than 5 days</field>
+        <field name="sentence_one">{count} applicant has waited in the same stage for more than 5 days</field>
+    </record>
+    <record id="insight_recruitment_hired" model="ai.home.insight">
+        <field name="name">Applicants hired</field>
+        <field name="sequence">81</field>
+        <field name="app_label">Recruitment</field>
+        <field name="model_name">hr.applicant</field>
+        <field name="domain">[('application_status', '=', 'hired'), ('date_closed', '&gt;=', days_ago(30))]</field>
+        <field name="priority">going_well</field>
+        <field name="tone">good</field>
+        <field name="sentence">{count} applicants were hired in the last 30 days</field>
+        <field name="sentence_one">{count} applicant was hired in the last 30 days</field>
+    </record>
+    <record id="insight_expense_to_post" model="ai.home.insight">
+        <field name="name">Approved expenses to post</field>
+        <field name="sequence">90</field>
+        <field name="app_label">Expenses</field>
+        <field name="model_name">hr.expense</field>
+        <field name="domain">[('state', '=', 'approved')]</field>
+        <field name="group_xmlid">account.group_account_invoice</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">warn</field>
+        <field name="amount_field">total_amount</field>
+        <field name="sentence">{count} approved expenses are waiting to be posted and paid</field>
+        <field name="sentence_one">{count} approved expense is waiting to be posted and paid</field>
+        <field name="detail">{sum} in total</field>
+    </record>
+    <record id="insight_contacts_no_email" model="ai.home.insight">
+        <field name="name">Contacts without email</field>
+        <field name="sequence">100</field>
+        <field name="app_label">Contacts</field>
+        <field name="model_name">res.partner</field>
+        <field name="domain">[('email', '=', False), ('user_ids', '=', False), ('parent_id', '=', False)]</field>
+        <field name="priority">incomplete</field>
+        <field name="tone">info</field>
+        <field name="sentence">{count} contacts have no email address</field>
+        <field name="sentence_one">{count} contact has no email address</field>
+        <field name="button_label">Fix</field>
+    </record>
+    <record id="insight_marketing_failed" model="ai.home.insight">
+        <field name="name">Failed marketing emails today</field>
+        <field name="sequence">110</field>
+        <field name="app_label">Email Marketing</field>
+        <field name="model_name">mailing.trace</field>
+        <field name="domain">[('trace_status', 'in', ['error', 'bounce']), ('write_date', '&gt;=', today)]</field>
+        <field name="priority">act_soon</field>
+        <field name="tone">bad</field>
+        <field name="sentence">{count} marketing messages failed or bounced today</field>
+        <field name="sentence_one">{count} marketing message failed or bounced today</field>
+    </record>
+    <record id="insight_survey_answers" model="ai.home.insight">
+        <field name="name">Survey answers this week</field>
+        <field name="sequence">120</field>
+        <field name="app_label">Survey</field>
+        <field name="model_name">survey.user_input</field>
+        <field name="domain">[('state', '=', 'done'), ('create_date', '&gt;=', days_ago(7))]</field>
+        <field name="priority">going_well</field>
+        <field name="tone">good</field>
+        <field name="sentence">{count} survey answers came in during the last 7 days</field>
+        <field name="sentence_one">{count} survey answer came in during the last 7 days</field>
+    </record>
+</odoo>

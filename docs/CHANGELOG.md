@@ -12,6 +12,56 @@ Format:
 
 
 
+## 2026-11-06 — Request counter for the System overview
+
+- Change: new `ai.home.request.stat` (requests, durations in buckets and 5xx errors per hour and route), counted in `ir.http` per worker and written once a minute; the System overview shows server requests with p95, traffic today per hour, server errors and the slowest page.
+- Reason: Odoo keeps no request history; traffic and response times were the missing part of the System overview's telemetry.
+- Affected areas: ai_home models (request_stat.py, system_overview.py), access file, System overview page, tests.
+- Compatibility: new table only; nothing is shown until requests have been counted. Rows older than 90 days are removed by the autovacuum. Phase 5 of the Home insights plan is complete.
+
+## 2026-11-06 — Insights overview and app reports
+
+- Change: new "All insights" page (every rule, priority, now vs 30 days ago, 30-day trend) and app reports opened from the System overview's Apps table (insight cards, completeness bands, what is missing, 30-day trend, the records behind the insight).
+- Reason: administrators see the full picture behind each Home alert.
+- Affected areas: ai_home (models/insight_report.py, static/src/insight_report, system overview links, views, tests), docs/DESIGN.md.
+- Next: hourly request counter for traffic, response times and server errors.
+
+## 2026-11-06 — System overview page for administrators
+
+- Change: Home gets a "System overview" card for administrators that opens a new page with headline figures, transactions per day, the Apps table, activities by app, communication, health and telemetry, all from Odoo records.
+- Reason: administrators see how every app is used and whether integrations work, in one place.
+- Affected areas: ai_home (models/system_overview.py, static/src/system_overview, views, tests), docs/DESIGN.md.
+- Next: insights overview and app reports; an hourly request counter for traffic and response times.
+
+## 2026-11-06 — Mentions outside the chatter (metric_mention)
+
+- Change: new addon `metric_mention`: mentions in activity notes, SMS, Omnichannel messages and social comments notify the user once per channel, text and day, with a running count and one sample. Home's For me now includes direct notifications.
+- Reason: users are told when they are mentioned anywhere, without 100 copies of the same alert.
+- Affected areas: metric_mention (new), ai_home (feed), docs/DESIGN.md.
+- Migration: install metric_mention; update ai_home.
+- Not yet: a "mention users" option on workflow_center message steps (steps can already post to chosen recipients).
+
+## 2026-11-06 — Home: system checks for administrators
+
+- Change: insights get a "system check" measure with six starter checks (failed emails, failing scheduled actions, unhealthy Omnichannel senders, AI engines needing attention, failed workflow runs, users without 2FA), shown to administrators only.
+- Reason: administrators see broken integrations on Home, not only installed modules.
+- Affected areas: ai_home (models, data, views, tests), docs/DESIGN.md.
+- Migration: update ai_home; checks are noupdate data.
+
+## 2026-11-06 — Home: completeness insights
+
+- Change: insights get a completeness measure (weighted fields, threshold, "most often missing") and 17 starter rules covering every app in 1.1; Home shows the three worst. Rules can name a required module.
+- Reason: tell users how complete their records are in every app, not only profiles.
+- Affected areas: ai_home (models, data, views, tests), docs/DESIGN.md.
+- Migration: update ai_home; new rules are noupdate data.
+
+## 2026-11-05 — Home: insights in one middle list
+
+- Change: Home's middle column is one list of decisions and insights on the page background (no card, sections, tabs or chips), most urgent first. New `ai.home.insight` rules (with a daily `ai.home.insight.snapshot` per user for "more than yesterday") and 19 starter insights across the apps in 1.1.
+- Reason: Home should tell each user what is going on in the apps they use, not only what waits for their decision.
+- Affected areas: ai_home (models, data, views, dashboard), docs/DESIGN.md.
+- Migration: update ai_home; starter insights are noupdate data, administrators manage them in Settings › Technical › Home insights.
+
 ## 2026-10-30 — Home: my plan, decisions, what others did
 
 - Change: Home follows the approved "My plan" mock. Left: Today (done / late / to do ring, next 7 days), Team load for managers, My plan (the user's activities and meetings in Late / Today / Tomorrow / This week / Later, app chips, Done and Snooze on hover, Join for meetings), Waiting on others (activities handed to someone else, own pending requests, Nudge) and Recent (folded). Middle: decisions only: approvals, conversations, failed runs, AI checks, social items, activities of a type marked "Decision on Home", and rows from decision sources. Right: For me now means "Odoo notified me" (= Discuss Inbox, "Open inbox"), emails received are included, up to 20 per tab.

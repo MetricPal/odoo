@@ -140,9 +140,14 @@ can make, **right** is what other people did.
 - **Recent:** the four records the user worked on most recently, folded into one
   line.
 
-### Middle: needs your attention (decisions only)
+### Middle: one list of decisions and insights
 
-Rows come from two kinds of collectors, all read with the user's own rights:
+The middle column above the assistant is one list on the page background, like the claude.ai app: no card, no
+sections, no tabs, no chips. It starts with one line ("12 things for you, most urgent first"); a row turns white on
+hover. Order: overdue decisions, red insights, the other decisions, then orange, grey and green insights.
+
+**Decisions** (rows with a letter badge and their buttons) come from two kinds of collectors, all read with the user's
+own rights:
 
 - **Built in** (our apps): approvals the user can review (Approve / Reject),
   conversations assigned to the user or unassigned (Open, or Assign to me), failed
@@ -150,19 +155,34 @@ Rows come from two kinds of collectors, all read with the user's own rights:
   manager check (Review), social items to answer, and activities of a **Decision**
   type assigned to the user (Done / Open).
 - **Decision sources** (`ai.home.source`, Settings › Technical › Home decision
-  sources): one record per app with the model, a domain (`uid`, `today`,
-  `tomorrow` available), boolean fields of which at least one must be true (for
-  example `can_approve`), a required group, the title, detail and date fields,
-  and up to two buttons. A source is used only when its model is installed and
-  the user is in its group. Buttons may only call public `action_*` / `button_*`
-  methods of that model, on a record the source currently lists for the user, so
-  the app's own checks still decide. Defaults: Time Off and allocations to
-  approve, expenses to approve, purchase orders to approve, quotes expiring today
-  or tomorrow. Only administrators can change sources.
+  sources): one record per app with the model, a domain, boolean fields of which at least one must be true (for
+  example `can_approve`), a required group, the title, detail and date fields, and up to two buttons limited to
+  public `action_*` / `button_*` methods on records the source lists for the user. Defaults: Time Off and allocations,
+  expenses and purchase orders to approve, quotes expiring today or tomorrow.
 
-Each source shows at most its limit (5 by default); a chip per app with rows
-filters the list, and with a chip selected "Open all in <app>" opens every row of
-that app. Most urgent first: overdue, then oldest wait.
+**Insights** (rows with a tinted square and a coloured dot: red, orange, grey, green) come from `ai.home.insight`
+(Settings › Technical › Home insights): one record per useful fact from an app, with the model, a domain (`uid`,
+`today`, `now`, `days_ago(n)`, `days_ahead(n)`), an optional total field, a priority (act soon, incomplete
+information, going well, system), a tone, a sentence with `{count}` (and a singular form), a detail line, an
+audience group and a button that opens the matching records or a named screen (for example Replenishment). An
+insight is counted with the user's rights and hidden at zero; the detail line adds "N more than yesterday" from a
+daily snapshot per user. Starter insights cover CRM, Sales, Invoicing, Purchase, Inventory, Project, Employees,
+Recruitment, Expenses, Contacts, Email Marketing and Survey; a rule whose app is not installed is skipped.
+
+**Completeness** is a second insight measure: the rule lists weighted fields (`ai.home.insight.field`), a record's
+score is the share of the weight it has filled, and the insight counts the records under the threshold (60% by
+default). Its sentence may use `{percent}`, `{total}` and `{threshold}`; the detail line names the fields most often
+missing; the button opens the records under the threshold. Seventeen starter rules cover every app in 1.1
+(opportunities, employees, job seekers, applicants, expenses, products, contacts, customers and vendors, quotations,
+purchase orders, published products, mailing contacts, time off allocations, tasks, events, surveys, users). Home
+shows only the three worst completeness rows; a rule scores at most 1,000 records and is recomputed at most every 15
+minutes per user.
+
+**System checks** are a third measure, for administrators only (group `base.group_system`, priority System): the rule
+names a built-in check instead of a domain. Starter checks: emails that failed to send today (with the last failure
+reason), scheduled actions failing, Omnichannel senders failing their health check, AI engines needing attention,
+workflow runs failed today, internal users without two-factor authentication. The button opens the records behind
+the check.
 
 ### Right: what just happened
 
@@ -171,7 +191,7 @@ user's own work and never technical records: comments, notes, emails received,
 notifications and tracked changes. Tabs: **For me** (Odoo sent the user a
 notification: mentioned, or following the record; the same list as the Discuss
 Inbox, so the tab ends with "Open inbox"), **My team** (written by people in the
-user's department), **Everything**. Newest first, up to 20 per tab.
+user's department), **Everything**. Newest first, up to 20 per tab. Direct notifications (`user_notification`, for example "assigned to you" and mention digests) count as For me.
 
 ### Layout and assistant
 
@@ -195,3 +215,41 @@ the design's top bar, apps launcher, "Customize home" and "Edit pinned apps".
 Attached files (up to five readable PDF, text, Markdown or CSV files, 5 MB each)
 are uploaded as the user's own attachments, shown as removable chips above the
 text box, and handed to the agent with the question (see AI_AGENT.md).
+
+## Mentions outside the chatter (`metric_mention`)
+
+A user mentioned (a mention link, or "@" followed by their full name) in an activity's note, an SMS, an Omnichannel
+message or a social comment gets an Inbox notification, which Home shows under For me. Mentions are grouped per
+user, channel, text and day: the same SMS sent 100 times gives one notification whose count says 100, with one
+sample; a differently worded message notifies on its own. Activity notes notify each mentioned user once per
+activity (not the assignee, who is told by the assignment). SMS are read when they are logged; Omnichannel and
+social messages are read by a scheduled action every 5 minutes, only while those apps are installed. Digests are
+listed in Settings › Technical › Mention digests (administrators).
+
+## System overview (administrators)
+
+Home shows administrators a folded **System overview** card under What just happened ("4 active users today · 120
+transactions · 1 check failing"). It opens the System overview page (`/odoo/system-overview`): a period switch
+(today, 7 days, 30 days) compared with the previous period; headline figures (active users and sessions from login
+records, transactions = records created or changed in the apps of 1.1, activities done and the share on time, emails
+sent and the share failed); transactions per day; the **Apps** table (records created and changed, open and overdue
+activities, active users and a 7-day trend per app; a row opens the app); open activities by app (overdue, due
+today, planned); communication (messages, emails in and out, SMS, Omnichannel conversations, Inbox notifications);
+health (one row per system check, opening its records); telemetry (database and filestore size, mail queue,
+scheduled actions).
+
+Traffic comes from the **request counter** (`ai.home.request.stat`, one row per hour and route, numbers in paths
+replaced by `:id`). Each worker counts in memory in `ir.http` (`_pre_dispatch` starts the clock, `_post_dispatch`
+and `_handle_error` record the duration and whether it was a server error, 5xx) and writes its totals with its own
+cursor at most once a minute, so a request only pays a dictionary update and a failed write never breaks a request.
+Durations are kept in five buckets (under 100 ms, 300 ms, 1 s, 3 s, slower), so p95 is the bucket's upper bound.
+Once there is data the page adds a "Server requests" figure (with p95), "Traffic today" (requests per hour), server
+errors and the slowest page (routes with at least five requests). Rows older than 90 days are removed by the
+autovacuum.
+
+From the System overview, **All insights** (`/odoo/insights`) lists every insight rule the viewer can use, including
+those at zero: priority, now, the value 30 days ago (from the daily snapshots), a 30-day trend and a link to its app
+report. A row of the Apps table opens that app's **report** (no side menu; back goes to the System overview): one
+card per insight of the app (click to select), for a completeness insight the records by completeness band and what
+is missing, the selected insight's last 30 days, and the records behind it (least complete first, missing fields
+marked, up to 50 rows) with "Open in <app>". Administrators only for now.

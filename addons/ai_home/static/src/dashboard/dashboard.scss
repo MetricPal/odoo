@@ -142,6 +142,86 @@
     }
 }
 
+// The middle list sits on the page background, like the claude.ai app: no card, no sections, no tabs.
+.o_ai_home_stream {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 2px 8px 0;
+}
+
+.o_ai_home_stream_head {
+    margin: 0 0 4px;
+    font-size: 13px;
+    color: var(--home-muted);
+}
+
+.o_ai_home_stream_list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0 -12px;
+}
+
+.o_ai_home .o_ai_home_stream_row {
+    padding: 10px 12px;
+    border-top: 0;
+    border-radius: 12px;
+
+    &:hover,
+    &:focus-within {
+        background: var(--home-card);
+        box-shadow: 0 1px 3px rgba(31, 31, 36, 0.08);
+    }
+}
+
+.o_ai_home_insight_row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    --dot: #6B7280;
+    --dot-bg: #EEEEF2;
+
+    &.o_tone_bad { --dot: #B91C1C; --dot-bg: #FDECEC; }
+    &.o_tone_warn { --dot: #C2410C; --dot-bg: #FDF0E6; }
+    &.o_tone_good { --dot: #16A34A; --dot-bg: #E8F5EC; }
+}
+
+.o_ai_home_insight_dot {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 10px;
+    background: var(--dot-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    > span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--dot);
+    }
+}
+
+.o_ai_home_insight_text {
+    font-size: 14px;
+    color: var(--home-ink);
+
+    strong {
+        font-weight: 700;
+    }
+}
+
+.o_ai_home_insight_btn {
+    flex: none;
+    color: var(--home-brand);
+    font-weight: 600;
+    background: transparent;
+}
+
 .o_ai_home_left {
     grid-area: left;
     // On short screens the column itself scrolls rather than squeezing the cards to nothing.
@@ -932,6 +1012,40 @@
 .o_ai_home_more {
     padding: 12px 0;
     border-top: 1px solid var(--home-line-soft);
+}
+
+// System overview entry (administrators), under What just happened.
+.o_ai_home_system {
+    flex: none;
+    gap: 4px;
+    padding: 14px 18px;
+    color: var(--home-ink);
+    text-align: left;
+
+    &:hover {
+        border-color: var(--home-brand);
+    }
+}
+
+.o_ai_home_system_head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.o_ai_home_system_title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.o_ai_home_badge_text {
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #EFE7EC;
+    color: var(--home-brand);
+    font-size: 11px;
 }
 
 // Without a usable assistant the box stays, greyed out, and says how to get one.

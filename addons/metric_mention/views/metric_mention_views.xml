@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="metric_mention_digest_view_list" model="ir.ui.view">
+        <field name="name">metric.mention.digest.list</field>
+        <field name="model">metric.mention.digest</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false">
+                <field name="day"/>
+                <field name="user_id"/>
+                <field name="channel"/>
+                <field name="count"/>
+                <field name="sample"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_metric_mention_digest" model="ir.actions.act_window">
+        <field name="name">Mention digests</field>
+        <field name="res_model">metric.mention.digest</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <menuitem id="menu_metric_mention_digest" name="Mention digests" parent="base.menu_custom"
+              action="action_metric_mention_digest" sequence="92" groups="base.group_system"/>
+</odoo>

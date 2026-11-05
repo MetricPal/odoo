@@ -1,0 +1,225 @@
+// System overview: a full page on the Home background, cards in a grid.
+.o_ai_home_overview {
+    overflow-y: auto;
+    display: block;
+}
+
+.o_ai_home_overview_page {
+    padding: var(--home-pad);
+    display: flex;
+    flex-direction: column;
+    gap: var(--home-gap);
+    max-width: 1440px;
+}
+
+.o_ai_home_overview_head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    h1 {
+        margin: 2px 0;
+        font-size: 22px;
+        font-weight: 700;
+    }
+}
+
+.o_ai_home_overview_tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--home-gap);
+}
+
+.o_ai_home_overview_tile {
+    gap: 4px;
+    padding: 14px 16px;
+}
+
+.o_ai_home_overview_value {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+}
+
+.o_ai_home_overview_trend {
+    font-weight: 600;
+    color: var(--home-good);
+
+    &.o_is_down {
+        color: var(--home-bad);
+    }
+}
+
+.o_ai_home_overview_svg {
+    width: 100%;
+    height: auto;
+}
+
+.o_ai_home_overview_axis {
+    stroke: var(--home-line);
+}
+
+.o_ai_home_overview_line {
+    fill: none;
+    stroke: var(--home-brand);
+    stroke-width: 2;
+    stroke-linejoin: round;
+
+    &.o_is_thin {
+        stroke-width: 1.5;
+    }
+}
+
+.o_ai_home_overview_tick {
+    font-size: 12px;
+    fill: var(--home-muted);
+}
+
+.o_ai_home_overview_table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th {
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--home-line);
+        color: var(--home-muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        text-align: right;
+    }
+
+    td {
+        padding: 8px;
+        border-bottom: 1px solid var(--home-line-soft);
+        text-align: right;
+    }
+
+    th:first-child,
+    td:first-child {
+        text-align: left;
+    }
+
+    td.o_tone_bad,
+    td.o_tone_warn {
+        color: var(--tone);
+        font-weight: 600;
+    }
+}
+
+.o_ai_home_overview_row {
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+        background: #F7F2F5;
+        outline: none;
+    }
+}
+
+.o_ai_home_overview_three {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--home-gap);
+}
+
+.o_ai_home_overview_legend {
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--home-muted);
+
+    span::before {
+        content: "";
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 6px;
+        border-radius: 2px;
+        background: var(--tone);
+    }
+}
+
+.o_ai_home_overview_bar {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) 32px;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.o_ai_home_overview_bar_label {
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_ai_home_overview_bar_track {
+    display: flex;
+    gap: 2px;
+    height: 14px;
+
+    > span {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: var(--tone);
+    }
+}
+
+.o_ai_home_overview_kv {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--home-line-soft);
+    font-size: 13px;
+}
+
+.o_ai_home_overview_health {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 0;
+    border: 0;
+    border-bottom: 1px solid var(--home-line-soft);
+    background: transparent;
+    color: var(--home-ink);
+    font-size: 13px;
+    text-align: left;
+}
+
+.o_ai_home_overview_health_text {
+    flex: 1;
+    min-width: 0;
+}
+
+.o_ai_home_overview_health_state {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--tone);
+}
+
+.o_ai_home_overview_telemetry {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    column-gap: 32px;
+}
+
+@media (max-width: 1199.98px) {
+    .o_ai_home_overview_three {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.o_ai_home_overview_bar_fill {
+    fill: var(--home-brand);
+    opacity: 0.85;
+}
