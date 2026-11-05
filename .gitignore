@@ -9,10 +9,7 @@ _build/
 !.codex
 !.codex/
 !.codex/**
-!.claude
 !.claude/
-!.claude/**
-.claude/settings.local.json
 !.mailmap
 !.weblate.json
 # compiled python files
