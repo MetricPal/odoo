@@ -182,7 +182,19 @@
           <field name="setup_policy_id" invisible="1"/>
           <field name="setup_policy_state" invisible="1"/>
           <div class="o_omni_setup_stage o_omni_setup_stage_0">
-            <group><field name="name" placeholder="Sales enquiries"/><field name="channel_type_id" readonly="setup_has_bindings" domain="[('adapter_ready', '=', True)]" options="{'no_create': True}" help="Only channel types with an installed connector are offered. More connectors are installed as separate Omnichannel add-ons."/><field name="company_id" readonly="setup_has_bindings"/><field name="purpose_id" widget="radio" options="{'horizontal': true}" readonly="setup_has_bindings"/></group>
+            <div class="oe_title">
+              <label for="name"/>
+              <h1><field name="name" placeholder="Sales enquiries"/></h1>
+            </div>
+            <group>
+              <group>
+                <field name="channel_type_id" readonly="setup_has_bindings" domain="[('adapter_ready', '=', True)]" options="{'no_create': True}" help="Only channel types with an installed connector are offered. More connectors are installed as separate Omnichannel add-ons."/>
+                <field name="company_id" readonly="setup_has_bindings"/>
+              </group>
+              <group>
+                <field name="purpose_id" widget="radio" readonly="setup_has_bindings"/>
+              </group>
+            </group>
           </div>
           <div class="o_omni_setup_stage o_omni_setup_stage_1">
             <field name="setup_connection_mode" widget="radio" class="mb-3" options="{'horizontal': True}" readonly="setup_has_bindings"/>

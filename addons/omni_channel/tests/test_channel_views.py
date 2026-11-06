@@ -48,8 +48,13 @@ class TestChannelViews(unittest.TestCase):
         self.assertFalse(form.xpath('.//button[@name="action_manage_connections"]'))
         self.assertNotIn('Manage connections', ''.join(form.itertext()))
         template = etree.parse(str(module / 'static/src/channel_setup/channel_setup.xml'))
-        for css in ('o_search_panel', 'o_search_panel_resize', 'o_form_renderer', 'o_form_sheet_bg', 'o-mail-ChatterContainer'):
-            self.assertTrue(template.xpath('//*[contains(@class,"%s")]' % css))
+        # Standard Odoo form: a form header with the buttons and the steps as a status bar, the guide as an info box.
+        for css in ('o_form_sheet_bg', 'o_form_statusbar', 'o_statusbar_buttons', 'o_statusbar_status', 'o_arrow_button',
+                    'alert-info'):
+            self.assertTrue(template.xpath('//*[contains(@class,"%s")]' % css), css)
+        for css in ('o_search_panel', 'o-mail-ChatterContainer', 'o_omni_setup_footer'):
+            self.assertFalse(template.xpath('//*[contains(@class,"%s")]' % css), css)
+        self.assertTrue(form.xpath('.//div[contains(@class,"o_omni_setup_stage_0")]/div[contains(@class,"oe_title")]//field[@name="name"]'))
 
     def test_connection_help_lives_in_guidance_panel(self):
         module = Path(__file__).resolve().parents[1]
@@ -60,7 +65,7 @@ class TestChannelViews(unittest.TestCase):
         self.assertEqual(field.getparent().get('invisible'), "setup_connection_mode != 'existing'")
         self.assertTrue(root.xpath('//record[@id="channel_setup_form"]//field[@name="setup_connection_mode"][@widget="radio"]'))
         template = etree.parse(str(module / 'static/src/channel_setup/channel_setup.xml'))
-        guide = template.xpath('//aside[@aria-label="Setup guidance"]')[0]
+        guide = template.xpath('//div[contains(@class,"o_omni_setup_guide")]')[0]
         for step in range(1, 5):
             self.assertTrue(guide.xpath('.//t[@t-if="this.setupState.step === %s"]' % step))
         text = ''.join(guide.itertext())

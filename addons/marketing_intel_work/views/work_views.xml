@@ -50,7 +50,7 @@
     <field name="name">Campaign tasks</field><field name="res_model">project.task</field>
     <field name="view_mode">list,kanban,calendar,gantt,form</field>
     <field name="domain">[('mi_plan_id', '!=', False), ('mi_plan_id.is_template', '=', False)]</field>
-    <field name="context">{'search_default_my_tasks': 1, 'search_default_open_tasks': 1}</field>
+    <field name="context">{'search_default_my_tasks': 1, 'search_default_open_tasks': 1, 'mi_campaign_tasks': True}</field>
     <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No campaign tasks yet</p>
       <p>Open a campaign and click <b>Tasks</b> to plan who does what by when.</p></field>
   </record>

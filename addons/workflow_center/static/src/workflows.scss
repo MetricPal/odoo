@@ -120,8 +120,37 @@
 
 // Step palette: explanation under each step and a clear insertion point.
 .wf_palette {
+    // A gap between the step cards and the scrollbar (the scrollbar stays at the panel's right edge).
+    padding-right: .75rem;
+    scrollbar-gutter: stable;
     .wf_palette_item { white-space: normal; line-height: 1.3; }
     .wf_palette_help { margin-left: 1.6rem; }
     .wf_insert_hint { border-left: 3px solid $o-action; background: rgba($o-action, .06); padding: .35rem .5rem; border-radius: .25rem; }
 }
 .wf_editor_view .wf_node.wf_drop_target { outline: 2px dashed $o-action; outline-offset: 3px; }
+
+// Step groups have one colour each, in the palette (full border and icon) and on the canvas (left stripe and the
+// small step label): Actions blue, Logic amber, Optional teal; the trigger stays grey.
+.wf_editor_view {
+    --wf-actions: #378ADD; --wf-actions-text: #0C447C;
+    --wf-logic: #BA7517; --wf-logic-text: #633806;
+    --wf-optional: #1D9E75; --wf-optional-text: #085041;
+    --wf-trigger: #888780; --wf-trigger-text: #444441;
+
+    .wf_palette_item {
+        &.wf_group_actions { --wf-group: var(--wf-actions); }
+        &.wf_group_logic { --wf-group: var(--wf-logic); }
+        &.wf_group_optional { --wf-group: var(--wf-optional); }
+        border: 1px solid var(--wf-group);
+        .oi { color: var(--wf-group); }
+    }
+
+    .wf_node {
+        &.action { --wf-group: var(--wf-actions); --wf-group-text: var(--wf-actions-text); }
+        &.condition, &.branch, &.wait, &.foreach { --wf-group: var(--wf-logic); --wf-group-text: var(--wf-logic-text); }
+        &.approval { --wf-group: var(--wf-optional); --wf-group-text: var(--wf-optional-text); }
+        &.wf_trigger { --wf-group: var(--wf-trigger); --wf-group-text: var(--wf-trigger-text); }
+        box-shadow: inset 3px 0 0 var(--wf-group, transparent);
+        small:not(.wf_end) { color: var(--wf-group-text, inherit); }
+    }
+}

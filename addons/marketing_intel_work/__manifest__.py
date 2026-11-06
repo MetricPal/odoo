@@ -1,6 +1,6 @@
 {
     'name': 'Marketing: work management',
-    'version': '20.0.1.0.0',
+    'version': '20.0.1.0.1',
     'category': 'Marketing',
     'summary': 'Campaign tasks (Project), request intake, proofs with versions and compare, team workload',
     'description': 'Each campaign gets its task list in Project, with owners and due dates; templates and copies '

@@ -12,6 +12,41 @@ Format:
 
 
 
+## 2026-11-06 — Campaign tasks: every stage visible
+
+- Change: campaign task screens (menu Campaign tasks and a campaign's Tasks button) show every campaign stage as a kanban column, also when empty (`mi_campaign_tasks` context, `project.task._read_group_stage_ids`). The campaign Done stage is no longer folded, so the task form's status bar shows To do, In progress and Done in line.
+- Reason: owner feedback.
+- Affected areas: marketing_intel_work (tasks model, Campaign tasks action, stages data; version 20.0.1.0.1).
+- Compatibility: the stage data unfolds the three campaign stages on every module install and update (so they cannot be folded by hand); other Project stages and task screens are unchanged.
+
+## 2026-11-06 — Marketing workflow recipes: simpler cards
+
+- Change: the Workflow recipes cards no longer show an icon; the Use this recipe button sits in the card footer, on the right (Odoo's kanban card footer).
+- Reason: owner feedback.
+- Affected areas: marketing_intel_flow (recipe kanban view).
+- Compatibility: view only; the recipe icon field stays on the form.
+
+## 2026-11-06 — Marketing control panel: Odoo control panel and search box
+
+- Change: the Marketing control panel uses Odoo's Layout and control panel: the page name ("Marketing control panel", the action is renamed) with the summary line on the left; Odoo's own search bar in the middle (WithSearch on campaigns, `mi.plan`): searching a brand narrows the panel to it (a picked brand, or the first brand matching the typed text), Favorites saves searches, and the dropdown adds a View section (my view and the role views); New campaign, Portfolio, Ask the assistant and Customise (gear) on the right. The summary uses singular and plural ("1 brand", "3 brands").
+- Reason: owner feedback (approved mock); reuse the standard Odoo layout.
+- Affected areas: marketing_intel_plan (panel template, component, scss, control panel action name), docs/DESIGN.md.
+- Compatibility: no data changes. The Portfolio page keeps its own header. `TestCampaignPage.test_smart_buttons` and `TestCampaignPlan.test_plan_creates_linked_drafts_in_each_installed_app` fail with and without this change (they depend on which apps are installed).
+
+## 2026-11-06 — Messaging Marketing: WhatsApp-green preview
+
+- Change: in the mailing form, the phone preview's top bar is WhatsApp green (#008069) when WhatsApp is the channel; Telegram keeps the blue bar.
+- Reason: owner feedback; the preview should look like the app the message goes to.
+- Affected areas: messaging_marketing (mailing.scss).
+- Compatibility: CSS only.
+
+## 2026-11-06 — Create channel as a standard Odoo form; workflow step panel gap
+
+- Change: the Omnichannel Create channel wizard drops its left step panel, guidance column and footer: Back / Next sit in a standard form header with the steps as Odoo's status bar (the current step highlighted like a current stage), the step guide is an info box above the sheet, and the first step uses the channel name as the form title. The workflow editor's Add a step panel has a gap between the step cards and its scrollbar, and step groups have one colour each (Actions blue, Logic amber, Optional teal, the trigger grey): a full border and icon colour in the panel, a left stripe and label colour on the canvas.
+- Reason: owner feedback (approved mock); reuse the standard Odoo form layout.
+- Affected areas: omni_channel (channel_setup template and controller, setup form arch, scss, tests), workflow_center (scss), docs/DESIGN.md. Connector extensions (omni_teams, omni_slack, omni_messenger, omni_whatsapp) keep working: the guide nodes and buttons they target are unchanged.
+- Compatibility: no data changes. `TestOmniDeployment` has 2 errors that also occur without this change.
+
 ## 2026-11-06 — Approvals dashboard: list view, even cards
 
 - Change: the Approvals dashboard (`action_approval_center_dashboard`) offers Kanban (default) and List. The new list (`approval_center_type_view_list_dashboard`) shows what the cards show and a row click runs `action_card_click`. Cards share one layout: the Needs approvers tag at the top right, the description clamped to three lines, and the details and buttons at the bottom across the full card width.

@@ -1,16 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="1">
-  <record id="stage_todo" model="project.task.type">
-    <field name="name">To do</field>
-    <field name="sequence">1</field>
-  </record>
-  <record id="stage_doing" model="project.task.type">
-    <field name="name">In progress</field>
-    <field name="sequence">2</field>
-  </record>
-  <record id="stage_done" model="project.task.type">
-    <field name="name">Done</field>
-    <field name="sequence">3</field>
-    <field name="fold" eval="True"/>
-  </record>
+<odoo>
+  <data noupdate="1">
+    <record id="stage_todo" model="project.task.type">
+      <field name="name">To do</field>
+      <field name="sequence">1</field>
+    </record>
+    <record id="stage_doing" model="project.task.type">
+      <field name="name">In progress</field>
+      <field name="sequence">2</field>
+    </record>
+    <record id="stage_done" model="project.task.type">
+      <field name="name">Done</field>
+      <field name="sequence">3</field>
+    </record>
+  </data>
+  <!-- Campaign stages are never folded: every stage shows as a kanban column and in the task form's status bar.
+       Runs on every install and update, so databases where Done was folded are fixed too. -->
+  <function model="project.task.type" name="write"
+            eval="[[ref('marketing_intel_work.stage_todo'), ref('marketing_intel_work.stage_doing'), ref('marketing_intel_work.stage_done')], {'fold': False}]"/>
 </odoo>

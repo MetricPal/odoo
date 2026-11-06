@@ -269,3 +269,27 @@ request** or **Set up approvers**, and **To review**) across the full card width
 height, so the buttons line up. The list shows the same things (name, setup status with the same wording, who
 approves, to review, requests, the same buttons); clicking a row does what clicking a card does.
 
+## Create channel (`omni_channel`)
+
+The channel setup is a standard Odoo form (approved mock, 2026-11-06): breadcrumbs in the control panel; a form
+header with **Back** and **Next: <step>** (or **Save draft** / **Finish setup**) on the left and the five steps
+(Prepare, Credentials, Connect & verify, Branding, Test & go live) as Odoo's status bar on the right; the step guide
+as an info box above the sheet; then the sheet, whose first step shows the channel name as the title, channel type
+and company on the left and the communication team on the right. A step can be opened from the status bar once it
+is reached. There is no left step panel and no guidance column.
+
+## Workflow builder (`workflow_center`)
+
+Step groups have one colour each, in the Add a step panel and on the canvas: **Actions** blue, **Logic** (Condition,
+Branch, Wait, For each record) amber, **Optional** (Approval) teal; the trigger (When) is grey. In the panel each
+step has a full border and icon in its group colour; on the canvas each step card has a left stripe and its small
+label in that colour. The panel keeps a gap between the step cards and its scrollbar.
+
+## Marketing control panel (`marketing_intel_plan`)
+
+The top of the page is Odoo's control panel (approved mock, 2026-11-06): the page name and a one-line summary on the
+left; Odoo's own search bar in the middle (it searches campaigns: typing a brand gives "Search Brand for: ...", and the
+panel shows that brand; removing the tag shows all brands), with Favorites and a **View** section (My view and one
+view per role) in its dropdown; **New campaign**,
+**Portfolio**, **Ask the assistant** and **Customise** (gear) on the right.
+

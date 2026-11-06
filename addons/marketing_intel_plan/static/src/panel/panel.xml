@@ -1,43 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
+    <t t-name="marketing_intel_plan.PanelAction">
+        <WithSearch t-props="this.withSearchProps">
+            <MarketingPanel/>
+        </WithSearch>
+    </t>
+
     <t t-name="marketing_intel_plan.Panel">
-        <div class="o_mi_panel h-100 overflow-auto">
+        <!-- Odoo's control panel: the page name and summary on the left, the search box (views and brands) in the
+             middle, the buttons on the right. -->
+        <div class="o_mi_panel_root h-100">
+          <Layout display="{ controlPanel: {} }">
+            <t t-set-slot="control-panel-additional-actions">
+                <span t-if="this.state.data" class="text-muted small ms-2 text-nowrap o_mi_panel_summary" t-esc="this.summary"/>
+            </t>
+            <t t-set-slot="control-panel-actions">
+                <!-- Odoo's search bar: brands are searched in the box; the dropdown adds a View section. -->
+                <SearchBar t-if="this.state.data" autofocus="false">
+                    <t t-set-slot="search-bar-additional-menu">
+                        <div class="o_dropdown_container o_mi_view_menu w-100 w-lg-auto border-start p-3">
+                            <div class="fs-5 mb-2">
+                                <i class="o_dropdown_title_icon oi oi-filled text-primary" data-icon="widgets"/>
+                                <h5 class="o_dropdown_title d-inline ms-1">View</h5>
+                            </div>
+                            <CheckboxItem t-foreach="this.views" t-as="view" t-key="view.key"
+                                          class="{ 'o_menu_item text-truncate': true, selected: this.state.data.layout.view === view.key }"
+                                          checked="this.state.data.layout.view === view.key" closingMode="'none'"
+                                          onSelected="() => this.setView(view.key)">
+                                <t t-esc="view.label"/>
+                            </CheckboxItem>
+                        </div>
+                    </t>
+                </SearchBar>
+            </t>
+            <t t-set-slot="control-panel-navigation-additional">
+                <div t-if="this.state.data" class="d-flex flex-wrap gap-1 o_mi_panel_tools">
+                    <button class="btn btn-primary" t-on-click="() => this.newCampaign()">
+                        <i class="oi me-1" data-icon="add"/>New campaign</button>
+                    <button class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_plan.action_portfolio')">
+                        <i class="oi me-1" data-icon="show_chart"/>Portfolio</button>
+                    <button t-if="this.state.data.assistant" class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_assistant.action_assistant_new')">
+                        <i class="oi me-1" data-icon="forum"/>Ask the assistant</button>
+                    <button t-if="!this.state.editing" class="btn btn-secondary" title="Customise" aria-label="Customise" t-on-click="() => this.startEdit()">
+                        <i class="oi" data-icon="settings"/></button>
+                </div>
+            </t>
+        <div class="o_mi_panel">
             <div t-if="!this.state.data" class="p-5 text-center text-muted">Loading…</div>
             <t t-else="">
                 <t t-set="data" t-value="this.state.data"/>
-                <header class="o_mi_panel_head">
-                    <div>
-                        <h1>Marketing control panel</h1>
-                        <p class="text-muted mb-0">
-                            <t t-esc="data.counts.active"/> active campaigns · <t t-esc="data.flows.length"/> workflows ·
-                            <t t-esc="data.counts.brands"/> brand(s)
-                        </p>
-                    </div>
-                    <div class="o_mi_panel_tools">
-                        <select class="form-select" t-on-change="(ev) => this.onBrand(ev)" aria-label="Brand">
-                            <option value="" t-att-selected="!this.state.brandId">All brands</option>
-                            <t t-foreach="this.brandGroups" t-as="group" t-key="group.name">
-                                <optgroup t-att-label="group.name">
-                                    <option t-foreach="group.brands" t-as="brand" t-key="brand.id" t-att-value="brand.id"
-                                            t-att-selected="brand.id === this.state.brandId" t-esc="brand.name"/>
-                                </optgroup>
-                            </t>
-                        </select>
-                        <select class="form-select o_mi_view_select" t-on-change="(ev) => this.chooseView(ev)" aria-label="View">
-                            <option value="mine" t-att-selected="data.layout.view === 'mine'" t-att-disabled="!data.layout.has_mine">My view</option>
-                            <option t-foreach="data.layout.roles" t-as="r" t-key="r.key" t-att-value="r.key"
-                                    t-att-selected="data.layout.view === r.key" t-esc="r.label + ' view'"/>
-                        </select>
-                        <button t-if="!this.state.editing" class="btn btn-secondary" t-on-click="() => this.startEdit()">
-                            <i class="oi me-1" data-icon="edit"/>Customise</button>
-                        <button t-if="data.assistant" class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_assistant.action_assistant_new')">
-                            <i class="oi me-1" data-icon="forum"/>Ask the assistant</button>
-                        <button class="btn btn-primary" t-on-click="() => this.newCampaign()">
-                            <i class="oi me-1" data-icon="add"/>New campaign</button>
-                        <button class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_plan.action_portfolio')">
-                            <i class="oi me-1" data-icon="show_chart"/>Portfolio</button>
-                    </div>
-                </header>
 
                 <t>
                 <div t-if="this.state.editing" class="o_mi_edit_bar">
@@ -349,6 +360,8 @@
                 </div>
                 </t>
             </t>
+        </div>
+          </Layout>
         </div>
     </t>
 </templates>

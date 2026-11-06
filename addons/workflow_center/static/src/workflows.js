@@ -42,7 +42,7 @@ export class Workflows extends Component {
         });
         // [kind, action type, label, icon, one-line description, hover help with an example]
         this.blocks = [
-            { title: _t("Actions"), items: [
+            { key: "actions", title: _t("Actions"), items: [
                 ["action", "object_write", _t("Update record"), "edit", _t("Change fields on the record"),
                     _t("Set or change fields on the record the workflow runs on. Example: assign a salesperson or move the stage to Qualified.")],
                 ["action", "object_create", _t("Create record"), "add", _t("Create a related record"),
@@ -60,7 +60,7 @@ export class Workflows extends Component {
                 ["action", "code", _t("Python code"), "code", _t("Run reviewed code"),
                     _t("Run Python code written by an administrator. Use only when no other step fits; it is checked again before activation.")],
             ] },
-            { title: _t("Logic"), items: [
+            { key: "logic", title: _t("Logic"), items: [
                 ["condition", "object_write", _t("Condition"), "filter_alt", _t("Continue only if it matches"),
                     _t("Check the record against a filter. If it matches, continue; if not, this run stops here. Example: only posted, unpaid invoices.")],
                 ["branch", "object_write", _t("Branch"), "account_tree", _t("Split into Yes and No"),
@@ -70,7 +70,7 @@ export class Workflows extends Component {
                 ["foreach", "object_write", _t("For each record"), "autorenew", _t("Repeat for related records"),
                     _t("Run an action once for each related record. Example: for each order line, update its delivery date.")],
             ] },
-            { title: _t("Optional"), items: [["approval", "object_write", _t("Approval"), "checklist", _t("Wait for approvers"),
+            { key: "optional", title: _t("Optional"), items: [["approval", "object_write", _t("Approval"), "checklist", _t("Wait for approvers"),
                 _t("Ask the approvers of an approval type to accept before continuing. Refusal stops the run. Put the action to approve after this step.")]] },
         ];
         onWillStart(async () => {

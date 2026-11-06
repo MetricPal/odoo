@@ -1,3 +1,11 @@
+// Odoo's control panel on top; the panel content scrolls under it.
+.o_mi_panel_root {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    > .o_content { overflow: auto; }
+}
+
 .o_mi_panel {
     --mi-out: #2a9d8f;
     --mi-scheduled: #3d7dd8;
@@ -7,6 +15,7 @@
     background: var(--body-bg, #f6f7f9);
     padding: 1.25rem 1.5rem 2rem;
 
+    // Portfolio page header (the control panel page uses Odoo's control panel instead).
     .o_mi_panel_head {
         display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center;
         margin-bottom: 1.25rem;
@@ -108,7 +117,6 @@
     .o_mi_block { min-width: 0; }
     .o_mi_full { grid-column: 1 / -1; }
     @media (max-width: 991px) { .o_mi_blocks { grid-template-columns: 1fr; } .o_mi_half { grid-column: 1 / -1; } }
-    .o_mi_view_select { min-width: 170px; max-width: 220px; }
     .o_mi_edit_bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: .75rem 1rem; margin-bottom: 1rem;
         border: 1px dashed #714b67; border-radius: .9rem; background: #faf7fa; }
     .o_mi_edit_actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-left: auto; .form-select { width: auto; } }

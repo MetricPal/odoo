@@ -29,6 +29,20 @@ class Task(models.Model):
                                     'campaign: the deadline is this many days before the campaign start (negative: '
                                     'after the start).')
 
+    @api.model
+    def _read_group_stage_ids(self, stages, domain):
+        """Campaign task screens show every campaign stage as a column, also when no task is in it."""
+        stages = super()._read_group_stage_ids(stages, domain)
+        if self.env.context.get('mi_campaign_tasks'):
+            stages |= self._mi_campaign_stages()
+            stages = stages.sorted(lambda stage: (stage.sequence, stage.id))
+        return stages
+
+    @api.model
+    def _mi_campaign_stages(self):
+        return self.env.ref('marketing_intel_work.stage_todo') | self.env.ref('marketing_intel_work.stage_doing') \
+            | self.env.ref('marketing_intel_work.stage_done')
+
 
 class Plan(models.Model):
     _inherit = 'mi.plan'
@@ -59,8 +73,7 @@ class Plan(models.Model):
     def _ensure_project(self):
         self.ensure_one()
         if not self.project_id:
-            stages = self.env.ref('marketing_intel_work.stage_todo') | self.env.ref('marketing_intel_work.stage_doing') \
-                | self.env.ref('marketing_intel_work.stage_done')
+            stages = self.env['project.task']._mi_campaign_stages()
             project = self.env['project.project'].sudo().create({
                 'name': _('Campaign: %s', self.name), 'company_id': self.company_id.id, 'user_id': self.user_id.id,
                 'mi_plan_id': self.id, 'privacy_visibility': 'employees', 'type_ids': [(6, 0, stages.ids)]})
@@ -79,7 +92,7 @@ class Plan(models.Model):
                       (False, 'form')],
             'domain': [('project_id', '=', project.id)],
             'context': {'default_project_id': project.id, 'default_user_ids': [(6, 0, [self.env.uid])],
-                        'mi_template': self.is_template},
+                        'mi_template': self.is_template, 'mi_campaign_tasks': True},
         }
 
     # -- carrying tasks into copies ---------------------------------------------------------------------------------

@@ -6,7 +6,6 @@ import { ListController } from "@web/views/list/list_controller";
 import { listView } from "@web/views/list/list_view";
 import { KanbanController } from "@web/views/kanban/kanban_controller";
 import { kanbanView } from "@web/views/kanban/kanban_view";
-import { SearchPanel } from "@web/search/search_panel/search_panel";
 import { useSetupAction } from "@web/search/action_hook";
 
 const openSetup = (controller) => controller.actionService.doAction(
@@ -35,13 +34,17 @@ export class ChannelSetupController extends FormController {
         this.setupState = proxy({ step: Math.min(this.props.state?.setupStep ?? (completed.length ? Math.max(...completed) : 0), 4), busy: false,
             completed: this.props.state?.setupCompleted || completed });
         this.steps = [
-            { title: "Prepare", hint: "Choose the channel, company and team.", about: "Give the channel a name, choose its type, and select the company and team that will use it." },
-            { title: "Credentials", hint: "Connect and verify your account.", about: "Create a new connection or choose an existing one." },
-            { title: "Connect & verify", hint: "Set up and check receiving.", about: "Enable receiving when the connection is ready, or choose Next: Branding to continue with a draft." },
-            { title: "Branding", hint: "Choose how the channel appears.", about: "Set the channel's display name and internal description. Public bot names and pictures are managed by the provider, not by these internal labels." },
-            { title: "Test & go live", hint: "Review a test and activate explicitly.", about: "Send a short test message to the displayed tester, then finish setup." },
+            { title: "Prepare", about: "Give the channel a name, choose its type, and select the company and team that will use it." },
+            { title: "Credentials", about: "Create a new connection or choose an existing one." },
+            { title: "Connect & verify", about: "Enable receiving when the connection is ready, or choose Next: Branding to continue with a draft." },
+            { title: "Branding", about: "Set the channel's display name and internal description. Public bot names and pictures are managed by the provider, not by these internal labels." },
+            { title: "Test & go live", about: "Send a short test message to the displayed tester, then finish setup." },
         ];
         useSetupAction({ getLocalState: () => ({ setupStep: this.setupState.step, setupCompleted: this.setupState.completed }) });
+    }
+    /** The steps last to first, as Odoo's status bar markup expects. */
+    get stepsReversed() {
+        return this.steps.map((step, index) => ({ ...step, index })).reverse();
     }
     async beforeExecuteActionButton(clickParams) {
         // Saving new credentials already verifies getMe. Do not issue a second
@@ -98,10 +101,6 @@ export class ChannelSetupController extends FormController {
         try {
             if (await this.save()) await this.actionService.doAction("omni_channel.action_channels");
         } finally { this.setupState.busy = false; }
-    }
-    resizeSteps(ev) {
-        const panel = ev.currentTarget.previousElementSibling;
-        SearchPanel.prototype._onStartResize.call({ root: () => panel }, ev);
     }
     async finishSetup() {
         if (this.setupState.busy) return;

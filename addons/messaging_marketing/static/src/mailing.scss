@@ -38,6 +38,10 @@
 
         .o_field_widget, a, span { color: #fff !important; }
     }
+    // WhatsApp selected: the preview's top bar takes WhatsApp's header green (Telegram keeps the blue above).
+    &:has(.o_field_widget[name="channel"] input[data-value="whatsapp"]:checked) .o_mm_phone_bar {
+        background: #008069;
+    }
     .o_mm_phone_avatar {
         width: 2rem;
         height: 2rem;

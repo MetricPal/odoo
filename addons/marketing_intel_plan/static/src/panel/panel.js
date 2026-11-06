@@ -1,7 +1,11 @@
 import { _t } from "@web/core/l10n/translation";
 import { deserializeDateTime } from "@web/core/l10n/dates";
 import { registry } from "@web/core/registry";
-import { useService } from "@web/core/utils/hooks";
+import { useBus, useService } from "@web/core/utils/hooks";
+import { CheckboxItem } from "@web/core/dropdown/checkbox_item";
+import { Layout } from "@web/search/layout";
+import { SearchBar } from "@web/search/search_bar/search_bar";
+import { WithSearch } from "@web/search/with_search/with_search";
 import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 
 const GROUP_ORDER = ["out", "scheduled", "waiting", "fix", "todo"];
@@ -47,6 +51,7 @@ export function groupByDay(events) {
 
 export class MarketingPanel extends Component {
     static template = "marketing_intel_plan.Panel";
+    static components = { Layout, SearchBar, CheckboxItem };
     props = useProps();
 
     setup() {
@@ -54,7 +59,19 @@ export class MarketingPanel extends Component {
         this.action = useService("action");
         this.state = proxy({ data: null, brandId: false, tab: "upcoming", loading: true, editing: false, draft: [] });
         this.notification = useService("notification");
-        onWillStart(() => this.load());
+        // The brand comes from Odoo's search bar (searching campaigns by brand).
+        this.searchModel = this.env.searchModel;
+        onWillStart(async () => {
+            this.state.brandId = await this.searchedBrand();
+            await this.load();
+        });
+        useBus(this.searchModel, "update", async () => {
+            const brandId = await this.searchedBrand();
+            if (brandId !== this.state.brandId) {
+                this.state.brandId = brandId;
+                await this.load();
+            }
+        });
     }
 
     async load() {
@@ -63,9 +80,40 @@ export class MarketingPanel extends Component {
         this.state.loading = false;
     }
 
-    async onBrand(ev) {
-        this.state.brandId = parseInt(ev.target.value) || false;
-        await this.load();
+    // -- control panel: summary and the search box (views and brands) --------------------------------------------
+    get summary() {
+        const { counts, flows } = this.state.data;
+        const plural = (n, one, many) => (n === 1 ? one : many).replace("%s", n);
+        return [
+            plural(counts.active, _t("%s active campaign"), _t("%s active campaigns")),
+            plural(flows.length, _t("%s workflow"), _t("%s workflows")),
+            plural(counts.brands, _t("%s brand"), _t("%s brands")),
+        ].join(" · ");
+    }
+
+    /** The views the panel offers: the user's own (when saved) and one per role. */
+    get views() {
+        const layout = this.state.data.layout;
+        const views = layout.has_mine ? [{ key: "mine", label: _t("My view") }] : [];
+        return views.concat(layout.roles.map((role) => ({ key: role.key, label: _t("%s view", role.label) })));
+    }
+
+    /**
+     * The brand searched in the search bar: a brand picked from the suggestions, or the first brand whose name
+     * matches the typed text. The panel shows one brand at a time (all brands when nothing is searched).
+     */
+    async searchedBrand() {
+        const leaves = this.searchModel.domain.filter((leaf) => Array.isArray(leaf) && leaf[0] === "brand_id");
+        for (const [, operator, value] of leaves) {
+            if (typeof value === "number") {
+                return value;
+            }
+            const ids = await this.orm.search("mi.brand", [["name", operator, value]], { limit: 1, order: "name" });
+            if (ids.length) {
+                return ids[0];
+            }
+        }
+        return false;
     }
 
     // -- customising -------------------------------------------------------------------------------------------
@@ -147,8 +195,11 @@ export class MarketingPanel extends Component {
         }
     }
 
-    async chooseView(ev) {
-        await this.orm.call("mi.panel.layout", "choose_view", [ev.target.value]);
+    async setView(key) {
+        if (key === this.state.data.layout.view) {
+            return;
+        }
+        await this.orm.call("mi.panel.layout", "choose_view", [key]);
         this.state.editing = false;
         await this.load();
     }
@@ -223,4 +274,22 @@ export class MarketingPanel extends Component {
     }
 }
 
-registry.category("actions").add("marketing_intel_plan.control_panel", MarketingPanel);
+/** The client action: Odoo's search (campaigns, searched by brand) around the panel. */
+export class MarketingPanelAction extends Component {
+    static template = "marketing_intel_plan.PanelAction";
+    static components = { WithSearch, MarketingPanel };
+    props = useProps();
+
+    get withSearchProps() {
+        return {
+            resModel: "mi.plan",
+            searchViewId: false,
+            searchViewArch: '<search><field name="brand_id"/></search>',
+            searchMenuTypes: ["favorite"],
+            loadIrFilters: true,
+            context: this.props.action?.context || {},
+        };
+    }
+}
+
+registry.category("actions").add("marketing_intel_plan.control_panel", MarketingPanelAction);

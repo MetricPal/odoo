@@ -169,16 +169,12 @@
     <field name="name">mi.flow.recipe.kanban</field><field name="model">mi.flow.recipe</field>
     <field name="arch" type="xml"><kanban class="o_mi_recipes" quick_create="0">
       <header><button name="action_blank" type="object" string="Start from scratch" display="always"/></header>
-      <field name="icon"/>
       <templates><t t-name="card">
-        <div class="d-flex gap-3">
-          <div class="fs-2 text-primary"><i class="oi" t-att-data-icon="record.icon.raw_value"/></div>
-          <div class="flex-grow-1">
-            <field name="name" class="fw-bold"/>
-            <div class="text-muted small my-1"><field name="description"/></div>
-            <button name="action_use" type="object" class="btn btn-sm btn-primary">Use this recipe</button>
-          </div>
-        </div>
+        <field name="name" class="fw-bold"/>
+        <div class="text-muted small my-1"><field name="description"/></div>
+        <footer>
+          <button name="action_use" type="object" class="btn btn-sm btn-primary ms-auto">Use this recipe</button>
+        </footer>
       </t></templates>
     </kanban></field>
   </record>

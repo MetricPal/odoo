@@ -67,7 +67,7 @@ class TestOmniUI(HttpCase):
                 await waitFor(() => document.querySelector('.o-kanban-button-new'));
                 document.querySelector('.o-kanban-button-new').click();
                 await waitFor(() => document.querySelector('.o_omni_setup[data-setup-step="0"]'));
-                if (!document.querySelector('.o_search_panel_resize') || !document.querySelector('.o-mail-ChatterContainer')) throw new Error('Setup layout missing');
+                if (!document.querySelector('.o_omni_setup .o_form_statusbar .o_statusbar_status') || !document.querySelector('.o_omni_setup_guide')) throw new Error('Setup layout missing');
                 const next = () => [...document.querySelectorAll('.o_omni_setup button')].find(el => el.textContent.trim().startsWith('Next:'));
                 next().click();
                 await waitFor(() => document.querySelector('.o_field_invalid'));
@@ -108,21 +108,20 @@ class TestOmniUI(HttpCase):
                     self.browser_size = size
                     self.browser_js('/odoo/action-omni_channel.action_channel_setup', """
                         (async () => {
-                            for (let i = 0; i < 100 && !document.querySelector('.o_omni_setup_form'); i++) {
+                            for (let i = 0; i < 100 && !document.querySelector('.o_omni_setup .o_form_sheet'); i++) {
                                 await new Promise(resolve => setTimeout(resolve, 100));
                             }
-                            const content = document.querySelector('.o_omni_setup_content');
-                            const form = document.querySelector('.o_omni_setup_form');
-                            const guide = document.querySelector('.o_omni_setup > .o-mail-ChatterContainer');
-                            if (!content || !form || !guide) throw new Error('Setup did not render');
+                            const content = document.querySelector('.o_form_view .o_content');
+                            const sheet = document.querySelector('.o_omni_setup .o_form_sheet');
+                            const header = document.querySelector('.o_omni_setup .o_form_statusbar');
+                            const guide = document.querySelector('.o_omni_setup_guide');
+                            if (!content || !sheet || !header || !guide) throw new Error('Setup did not render');
                             const width = content.clientWidth;
-                            const box = form.getBoundingClientRect();
                             if (content.scrollWidth > width + 1) throw new Error('Setup overflows horizontally');
-                            if (box.width < Math.min(350, width - 32)) throw new Error('Form is squeezed');
-                            if (width <= 1200 && guide.getBoundingClientRect().top < box.bottom - 1) throw new Error('Guidance must stack below form');
-                            if (width <= 767 && box.top < document.querySelector('.o_omni_setup_steps').getBoundingClientRect().bottom - 1) throw new Error('Steps must sit above form');
-                            for (const button of document.querySelectorAll('.o_omni_setup_footer .btn')) {
-                                if (button.getBoundingClientRect().height > 60) throw new Error('Footer button stretched');
+                            if (sheet.getBoundingClientRect().width < Math.min(350, width - 32)) throw new Error('Form is squeezed');
+                            if (guide.getBoundingClientRect().bottom > sheet.getBoundingClientRect().top + 1) throw new Error('Guide must sit above the sheet');
+                            for (const button of header.querySelectorAll('.o_statusbar_buttons .btn')) {
+                                if (button.getBoundingClientRect().height > 60) throw new Error('Header button stretched');
                             }
                             console.log('test successful');
                         })().catch(error => console.error(error));

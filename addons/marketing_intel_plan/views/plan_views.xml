@@ -450,7 +450,7 @@
     <field name="view_id" ref="goal_report_list"/><field name="context">{'group_by': 'brand_id'}</field>
   </record>
   <record id="action_control_panel" model="ir.actions.client">
-    <field name="name">Marketing</field><field name="tag">marketing_intel_plan.control_panel</field>
+    <field name="name">Marketing control panel</field><field name="tag">marketing_intel_plan.control_panel</field>
     <field name="path">marketing-panel</field>
   </record>
   <record id="marketing_intel.menu_root" model="ir.ui.menu">

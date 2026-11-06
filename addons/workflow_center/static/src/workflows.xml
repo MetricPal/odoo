@@ -30,7 +30,7 @@
           <t t-else="">Select the step it should follow on the canvas first.</t>
         </div>
         <t t-foreach="this.blocks" t-as="group" t-key="group.title"><h4 class="mt-3" t-out="group.title"/>
-          <button class="btn btn-light w-100 text-start mb-2 wf_palette_item" t-foreach="group.items" t-as="item" t-key="item[2]"
+          <button class="btn btn-light w-100 text-start mb-2 wf_palette_item" t-att-class="'wf_group_' + group.key" t-foreach="group.items" t-as="item" t-key="item[2]"
                   t-on-click="() => this.addFromPalette(item)" t-att-disabled="this.state.workflow.state === 'active' || this.state.busy"
                   t-att-data-tooltip="item[5]" data-tooltip-position="right"
                   t-att-draggable="this.state.workflow.state !== 'active' &amp;&amp; !this.state.busy ? 'true' : 'false'"
