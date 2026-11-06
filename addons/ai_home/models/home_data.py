@@ -341,7 +341,29 @@ class AiHomeItem(models.Model):
         done = self.env['mail.activity'].with_context(active_test=False).search_count([
             ('user_id', '=', self.env.uid), ('active', '=', False), ('date_done', '=', today)])
         return {'done': done, 'late': late, 'todo': todo, 'total': done + late + todo,
-                'label': format_date(self.env, today, date_format='EEE d MMM')}
+                'label': format_date(self.env, today, date_format='EEE d MMM'),
+                'actions': self._home_today_actions(today)}
+
+    def _home_today_actions(self, today):
+        """List actions behind the Today card, with the same rules as its counts: the ring (all), late, still to
+        do today (plan activities) and done today (any activity of the user, as counted)."""
+        today = fields.Date.to_string(today)
+        excluded = self._excluded_activity_types().ids
+        open_ = [('active', '=', True), ('activity_type_id', 'not in', excluded)]
+        done = [('active', '=', False), ('date_done', '=', today)]
+        archived = {'active_test': False}
+
+        def action(domain, name, context=None):
+            result = self._list_action('mail.activity', [('user_id', '=', self.env.uid)] + domain, name)
+            return dict(result, context=context) if context else result
+
+        return {
+            'all': action(['|', '&', '&', *open_, ('date_deadline', '<=', today), '&', *done],
+                          _("Today's activities"), archived),
+            'late': action(open_ + [('date_deadline', '<', today)], _("Late activities")),
+            'todo': action(open_ + [('date_deadline', '=', today)], _("Still to do today")),
+            'done': action(done, _("Done today"), archived),
+        }
 
     def _home_week(self, plan):
         """Items per day for the next days; a busy day (at least 3 and over 1.5 x the average) is marked."""
@@ -352,6 +374,7 @@ class AiHomeItem(models.Model):
             if row['section'] != 'late' and row['date'] in counts:
                 counts[row['date']] += 1
         average = sum(counts.values()) / WEEK_DAYS
+        mine = [('user_id', '=', self.env.uid), ('activity_type_id', 'not in', self._excluded_activity_types().ids)]
         return [{
             'date': fields.Date.to_string(day),
             'label': format_date(self.env, day, date_format='EEE'),
@@ -359,6 +382,8 @@ class AiHomeItem(models.Model):
             'count': counts[fields.Date.to_string(day)],
             'heavy': counts[fields.Date.to_string(day)] >= 3 and counts[fields.Date.to_string(day)] > 1.5 * average,
             'isToday': day == today,
+            'action': self._list_action('mail.activity', mine + [('date_deadline', '=', fields.Date.to_string(day))],
+                                        _("Due %s", format_date(self.env, day, date_format='EEE d MMM'))),
         } for day in days]
 
     def _home_waiting(self):

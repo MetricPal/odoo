@@ -63,10 +63,14 @@ function planRow(key, section, extra = {}) {
 
 function homeData() {
     return {
-        today: { done: 4, late: 2, todo: 3, total: 9, label: "Fri 30 Oct" },
+        today: {
+            done: 4, late: 2, todo: 3, total: 9, label: "Fri 30 Oct",
+            actions: { all: { name: "all" }, late: { name: "late" }, todo: { name: "todo" }, done: { name: "done" } },
+        },
         week: [
             { date: "2026-10-30", label: "Fri", longLabel: "Friday 30 Oct", count: 5, heavy: false, isToday: true },
-            { date: "2026-10-31", label: "Sat", longLabel: "Saturday 31 Oct", count: 12, heavy: true, isToday: false },
+            { date: "2026-10-31", label: "Sat", longLabel: "Saturday 31 Oct", count: 12, heavy: true, isToday: false,
+              action: { name: "Due Sat 31 Oct" } },
         ],
         plan: [
             planRow("Send contract", "late", { meta: "Enrique · 27 days late" }),
@@ -184,8 +188,8 @@ test("renders my plan, decisions and what others did", async () => {
     expect(".o_ai_home_day").toHaveCount(0);
     expect(".o_ai_home_ring_value").toHaveText("4/9");
     expect(".o_ai_home_today_counts li:first").toHaveText("2 late");
-    expect(".o_ai_home_week_bar").toHaveCount(2);
-    expect(".o_ai_home_week_bar.o_is_heavy").toHaveCount(1);
+    expect(".o_ai_home_week_day").toHaveCount(2);
+    expect(".o_ai_home_week_day.o_is_heavy").toHaveCount(1);
     // Late and Today are open, Tomorrow is folded.
     expect(".o_ai_home_plan_section").toHaveCount(3);
     expect(".o_ai_home_plan_row").toHaveCount(3);
@@ -201,7 +205,7 @@ test("renders my plan, decisions and what others did", async () => {
     expect(".o_ai_home_attention_row:first .o_ai_home_badge").toHaveText("AP");
     expect(".o_ai_home_badge.o_cat_source").toHaveText("TO");
     expect(".o_ai_home_insight_row").toHaveCount(2);
-    expect(".o_ai_home_stream_head").toHaveText("5 things for you, most urgent first");
+    expect(".o_ai_home_stream_head").toHaveCount(0);
     expect(".o_ai_home_stream_row:eq(1) .o_ai_home_insight_text").toHaveText(
         "4 opportunities have been in the same stage for more than 7 days"
     );
@@ -235,6 +239,17 @@ test("insights open their records; plan chips and sections fold", async () => {
     await contains('.o_ai_home_segment:contains("My team")').click();
     expect(".o_ai_home_feed_row").toHaveCount(2);
     expect(".o_ai_home_inbox").toHaveCount(0);
+});
+
+test("the Today counts, ring and days open their lists", async () => {
+    await mountWithCleanup(WorkDashboard);
+    calls = [];
+    await contains(".o_ai_home_ring_open").click();
+    await contains('.o_ai_home_count_open:contains("late")').click();
+    await contains('.o_ai_home_count_open:contains("still to do today")').click();
+    await contains('.o_ai_home_count_open:contains("done")').click();
+    await contains('.o_ai_home_week_day:contains("Sat")').click();
+    expect(calls.map((call) => call[1].name)).toEqual(["all", "late", "todo", "done", "Due Sat 31 Oct"]);
 });
 
 test("plan buttons run on the server, rows open the document", async () => {

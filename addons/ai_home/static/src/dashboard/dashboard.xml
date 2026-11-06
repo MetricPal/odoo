@@ -6,7 +6,8 @@
                 <div class="o_ai_home_panes">
                     <div class="o_ai_home_pane o_ai_home_center">
                         <section class="o_ai_home_stream o_ai_home_attention" aria-labelledby="ai_home_attention_title">
-                            <p id="ai_home_attention_title" class="o_ai_home_stream_head"><t t-if="this.streamItems.length"><t t-esc="this.streamItems.length"/> things for you, most urgent first</t><t t-else="">Nothing needs you right now.</t></p>
+                            <h2 id="ai_home_attention_title" class="visually-hidden">Needs your attention</h2>
+                            <p t-if="!this.streamItems.length" class="o_ai_home_stream_head">Nothing needs you right now.</p>
                             <ul class="o_ai_home_attention_list o_ai_home_stream_list o_ai_home_scroll">
                                 <t t-foreach="this.streamItems" t-as="item" t-key="item.key">
                                 <li t-if="item.kind !== 'insight'" class="o_ai_home_attention_row o_ai_home_stream_row">
@@ -56,35 +57,38 @@
                                 <span class="o_ai_home_hint" t-esc="this.state.today.label"/>
                             </div>
                             <div class="o_ai_home_today_body">
-                                <svg class="o_ai_home_ring" width="84" height="84" viewBox="0 0 84 84" role="img"
-                                     t-att-aria-label="this.state.today.done + ' of ' + this.state.today.total + ' done today'">
-                                    <circle cx="42" cy="42" r="34" class="o_ai_home_ring_track"/>
-                                    <circle t-if="this.state.today.done" cx="42" cy="42" r="34" class="o_ai_home_ring_fill" t-att-stroke-dasharray="this.ringDash" transform="rotate(-90 42 42)"/>
-                                    <text x="42" y="41" text-anchor="middle" class="o_ai_home_ring_value"><t t-esc="this.state.today.done"/>/<t t-esc="this.state.today.total"/></text>
-                                    <text x="42" y="57" text-anchor="middle" class="o_ai_home_ring_label">done</text>
-                                </svg>
+                                <button type="button" class="o_ai_home_ring_open" title="Open today's activities" t-on-click="() => this.openToday('all')">
+                                    <svg class="o_ai_home_ring" width="84" height="84" viewBox="0 0 84 84" role="img"
+                                         t-att-aria-label="this.state.today.done + ' of ' + this.state.today.total + ' done today'">
+                                        <circle cx="42" cy="42" r="34" class="o_ai_home_ring_track"/>
+                                        <circle t-if="this.state.today.done" cx="42" cy="42" r="34" class="o_ai_home_ring_fill" t-att-stroke-dasharray="this.ringDash" transform="rotate(-90 42 42)"/>
+                                        <text x="42" y="41" text-anchor="middle" class="o_ai_home_ring_value"><t t-esc="this.state.today.done"/>/<t t-esc="this.state.today.total"/></text>
+                                        <text x="42" y="57" text-anchor="middle" class="o_ai_home_ring_label">done</text>
+                                    </svg>
+                                </button>
                                 <ul class="o_ai_home_today_counts">
-                                    <li class="o_tone_bad"><span class="o_ai_home_dot" aria-hidden="true"/><strong><t t-esc="this.state.today.late"/> late</strong></li>
-                                    <li class="o_tone_warn"><span class="o_ai_home_dot" aria-hidden="true"/><t t-esc="this.state.today.todo"/> still to do today</li>
-                                    <li class="o_tone_good"><span class="o_ai_home_dot" aria-hidden="true"/><t t-esc="this.state.today.done"/> done</li>
+                                    <li class="o_tone_bad"><button type="button" class="o_ai_home_count_open" t-on-click="() => this.openToday('late')"><span class="o_ai_home_dot" aria-hidden="true"/><strong><t t-esc="this.state.today.late"/> late</strong></button></li>
+                                    <li class="o_tone_warn"><button type="button" class="o_ai_home_count_open" t-on-click="() => this.openToday('todo')"><span class="o_ai_home_dot" aria-hidden="true"/><t t-esc="this.state.today.todo"/> still to do today</button></li>
+                                    <li class="o_tone_good"><button type="button" class="o_ai_home_count_open" t-on-click="() => this.openToday('done')"><span class="o_ai_home_dot" aria-hidden="true"/><t t-esc="this.state.today.done"/> done</button></li>
                                 </ul>
                             </div>
                             <div t-if="this.state.week.length and !this.state.team.length" class="o_ai_home_week">
                                 <span class="o_ai_home_hint">Next 7 days</span>
-                                <div class="o_ai_home_week_bars">
-                                    <span
+                                <div class="o_ai_home_week_days">
+                                    <button
                                         t-foreach="this.state.week"
                                         t-as="day"
                                         t-key="day.date"
-                                        class="o_ai_home_week_bar"
+                                        type="button"
+                                        class="o_ai_home_week_day"
                                         t-att-class="{ 'o_is_today': day.isToday, 'o_is_heavy': day.heavy }"
-                                        role="img"
                                         t-att-aria-label="this.weekBarLabel(day)"
                                         t-att-title="this.weekBarLabel(day)"
-                                    ><span t-att-style="'height: ' + this.weekBarHeight(day)"/></span>
-                                </div>
-                                <div class="o_ai_home_week_days" aria-hidden="true">
-                                    <span t-foreach="this.state.week" t-as="day" t-key="day.date" t-att-class="{ 'o_is_today': day.isToday }" t-esc="day.label"/>
+                                        t-on-click="() => this.openDay(day)"
+                                    >
+                                        <span class="o_ai_home_week_bar" aria-hidden="true"><span t-att-style="'height: ' + this.weekBarHeight(day)"/></span>
+                                        <span class="o_ai_home_week_label" aria-hidden="true" t-esc="day.label"/>
+                                    </button>
                                 </div>
                             </div>
                         </section>
@@ -260,7 +264,7 @@
                     </aside>
                 </div>
 
-                <div class="o_ai_home_ask" t-att-class="{ 'o_is_unavailable': !this.aiAvailable }">
+                <div class="o_ai_home_ask" t-att-class="{ 'o_is_unavailable': !this.aiAvailable }" t-ref="this.askRef">
                     <section t-if="this.state.chat" class="o_ai_home_chat" t-att-aria-label="'Conversation with ' + this.aiName">
                         <div class="o_ai_home_chat_head">
                             <span t-esc="this.aiName"/>

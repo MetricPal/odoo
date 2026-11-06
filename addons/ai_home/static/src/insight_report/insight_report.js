@@ -1,16 +1,21 @@
+import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { Layout } from "@web/search/layout";
 
 import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 
+import { useOverviewControlPanel } from "@ai_home/overview_layout/overview_layout";
 import { linePoints } from "@ai_home/system_overview/system_overview";
 
 /** Insights overview (no app) or one app's report, opened from the System overview. */
 export class InsightReport extends Component {
     static template = "ai_home.InsightReport";
+    static components = { Layout };
     props = useProps();
 
     setup() {
+        useOverviewControlPanel();
         this.orm = useService("orm");
         this.action = useService("action");
         this.state = proxy({ overview: null, report: null, filter: "all" });
@@ -52,15 +57,11 @@ export class InsightReport extends Component {
         return `${Math.max(2, (100 * value) / max)}%`;
     }
 
-    goBack() {
-        return this.action.doAction("ai_home.action_system_overview");
-    }
-
     openReport(app) {
         return this.action.doAction({
             type: "ir.actions.client",
             tag: "ai_home.insight_report",
-            name: app,
+            name: _t("%s report", app),
             params: { app },
         });
     }

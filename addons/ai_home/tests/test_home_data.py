@@ -66,6 +66,25 @@ class TestHomeData(TransactionCase):
         today = self._data()['today']
         self.assertEqual((today['done'], today['late'], today['todo'], today['total']), (1, 1, 1, 3))
 
+    def test_today_counts_open_lists_with_the_same_records(self):
+        self._activity(-1, 'Late one')
+        due = self._activity(0, 'Due one')
+        self._activity(0, 'Due two')
+        self._activity(2, 'Later')
+        self.Home.run_home_action('mail.activity', due.id, 'action_done')
+        data = self._data()
+        today = data['today']
+
+        def count(action):
+            return self.env[action['res_model']].with_context(**action.get('context', {})).search_count(
+                action['domain'])
+
+        self.assertEqual(
+            {key: count(action) for key, action in today['actions'].items()},
+            {'all': today['total'], 'late': today['late'], 'todo': today['todo'], 'done': today['done']})
+        for day in data['week']:
+            self.assertEqual(count(day['action']), day['count'], day['date'])
+
     def test_week_strip_counts_each_day(self):
         self._activity(0, 'A')
         self._activity(2, 'B')

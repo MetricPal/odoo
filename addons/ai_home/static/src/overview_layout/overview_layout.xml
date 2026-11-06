@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="ai_home.FullBreadcrumbs" t-inherit="web.Breadcrumbs" t-inherit-mode="primary">
+        <xpath expr="//li[@t-if='collapsedBreadcrumbs.length']" position="replace">
+            <li t-foreach="this.props.breadcrumbs.slice(0, -2)" t-as="crumb" t-key="crumb.jsId"
+                class="breadcrumb-item d-inline-flex min-w-0" t-on-click.prevent="crumb.onSelected">
+                <a t-att-href="crumb.url" class="text-truncate" t-att-data-tooltip="this.getBreadcrumbTooltip(crumb)">
+                    <t t-call="web.Breadcrumb.Name" breadcrumb="crumb"/>
+                </a>
+            </li>
+        </xpath>
+    </t>
+</templates>

@@ -116,7 +116,9 @@ can make, **right** is what other people did.
   today (orange) and done (green); meetings are not counted. Under it, the **next 7
   days**: one bar per day (the user's open activities due that day plus meetings
   they attend and did not decline); a day with at least 3 items and more than 1.5×
-  the 7-day average is orange.
+  the 7-day average is orange. Everything on the card opens a list of activities: the
+  ring (late, due today and done today), each count, and each day (activities due that
+  day; meetings are not in that list).
 - **My plan:** the user's open `mail.activity` records plus meetings
   (`calendar.event` they attend and did not decline, today to 7 days ahead), in
   sections **Late** (most overdue first), **Today** (meetings by start time;
@@ -143,8 +145,9 @@ can make, **right** is what other people did.
 ### Middle: one list of decisions and insights
 
 The middle column above the assistant is one list on the page background, like the claude.ai app: no card, no
-sections, no tabs, no chips. It starts with one line ("12 things for you, most urgent first"); a row turns white on
-hover. Order: overdue decisions, red insights, the other decisions, then orange, grey and green insights.
+sections, no tabs, no chips, and no count line above it (only "Nothing needs you right now." when it is empty); a
+row turns white on hover. The list runs from the navbar to the bottom of the page, behind the assistant, with its
+scrollbar next to the right column; the space above the first item and under the last one scrolls with the list. Order: overdue decisions, red insights, the other decisions, then orange, grey and green insights.
 
 **Decisions** (rows with a letter badge and their buttons) come from two kinds of collectors, all read with the user's
 own rights:
@@ -229,14 +232,17 @@ listed in Settings › Technical › Mention digests (administrators).
 ## System overview (administrators)
 
 Home shows administrators a folded **System overview** card under What just happened ("4 active users today · 120
-transactions · 1 check failing"). It opens the System overview page (`/odoo/system-overview`): a period switch
+transactions · 1 check failing"). It opens the System overview page (`/odoo/system-overview`). The System overview, All insights and app report pages
+use Odoo's standard control panel on top (`Layout` with `o_control_panel`): breadcrumbs written out in full, never folded into "…" (Home / System overview /
+Sales report), the page's short description, the **All insights** button and the period switch as a standard button
+group. Under it: a period switch
 (today, 7 days, 30 days) compared with the previous period; headline figures (active users and sessions from login
 records, transactions = records created or changed in the apps of 1.1, activities done and the share on time, emails
 sent and the share failed); transactions per day; the **Apps** table (records created and changed, open and overdue
 activities, active users and a 7-day trend per app; a row opens the app); open activities by app (overdue, due
 today, planned); communication (messages, emails in and out, SMS, Omnichannel conversations, Inbox notifications);
 health (one row per system check, opening its records); telemetry (database and filestore size, mail queue,
-scheduled actions).
+scheduled actions). The page uses the full width of the screen.
 
 Traffic comes from the **request counter** (`ai.home.request.stat`, one row per hour and route, numbers in paths
 replaced by `:id`). Each worker counts in memory in `ir.http` (`_pre_dispatch` starts the clock, `_post_dispatch`
@@ -249,7 +255,7 @@ autovacuum.
 
 From the System overview, **All insights** (`/odoo/insights`) lists every insight rule the viewer can use, including
 those at zero: priority, now, the value 30 days ago (from the daily snapshots), a 30-day trend and a link to its app
-report. A row of the Apps table opens that app's **report** (no side menu; back goes to the System overview): one
+report. A row of the Apps table opens that app's **report** (no side menu; the breadcrumbs lead back): one
 card per insight of the app (click to select), for a completeness insight the records by completeness band and what
 is missing, the selected insight's last 30 days, and the records behind it (least complete first, missing fields
 marked, up to 50 rows) with "Open in <app>". Administrators only for now.

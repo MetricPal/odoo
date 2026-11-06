@@ -5,7 +5,7 @@ import { registry } from "@web/core/registry";
 import { user } from "@web/core/user";
 import { useService } from "@web/core/utils/hooks";
 
-import { Component, onWillStart, onWillUnmount, proxy, signal, useProps } from "@odoo/owl";
+import { Component, onMounted, onWillStart, onWillUnmount, proxy, signal, useProps } from "@odoo/owl";
 
 export const ATTACHMENT_LIMIT = 5;
 export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
@@ -88,6 +88,7 @@ export class WorkDashboard extends Component {
     props = useProps();
     fileInputRef = signal.ref();
     promptRef = signal.ref();
+    askRef = signal.ref();
 
     setup() {
         this.notification = useService("notification");
@@ -129,9 +130,21 @@ export class WorkDashboard extends Component {
         });
         // Home updates by itself.
         this.refreshTimer = browser.setInterval(() => this.load(), REFRESH_MS);
+        // The middle list runs behind the assistant to the bottom of the page; its bottom padding is the assistant's
+        // height (--home-ask-height), so the last item can always scroll clear of it.
+        onMounted(() => {
+            const ask = this.askRef();
+            if (ask) {
+                this.askObserver = new ResizeObserver(() =>
+                    ask.parentElement.style.setProperty("--home-ask-height", `${ask.offsetHeight}px`)
+                );
+                this.askObserver.observe(ask);
+            }
+        });
         onWillUnmount(() => {
             browser.clearInterval(this.refreshTimer);
             browser.clearTimeout(this.pollTimer);
+            this.askObserver?.disconnect();
         });
     }
 
@@ -315,6 +328,16 @@ export class WorkDashboard extends Component {
         if (item.joinUrl) {
             browser.open(item.joinUrl, "_blank");
         }
+    }
+
+    /** Open the list behind a Today count: all (the ring), late, todo or done. */
+    openToday(key) {
+        return this.action.doAction(this.state.today.actions[key]);
+    }
+
+    /** Open the activities due on a day of Next 7 days. */
+    openDay(day) {
+        return this.action.doAction(day.action);
     }
 
     openPerson(row) {

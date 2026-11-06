@@ -12,6 +12,20 @@ Format:
 
 
 
+## 2026-11-06 — Odoo control panel on the System overview, All insights and app reports
+
+- Change: the three pages use Odoo's `Layout` with the standard control panel (`o_control_panel d-flex flex-column gap-3 px-3 pt-2`): breadcrumbs replace the "← Home" / "← System overview" links, the period switch is a standard button group, All insights is a control panel button, the description line sits in the control panel. App report actions are named "<App> report". These pages write out every breadcrumb (Home / System overview / All insights / Contacts report) instead of Odoo's "…" fold, through their own control panel (`ai_home/static/src/overview_layout`); the description line is centred vertically. Breadcrumbs elsewhere in Odoo are unchanged. Home's middle list no longer starts with "N things for you, most urgent first"; it runs from the navbar to the bottom of the page behind the assistant (the space above the first item and under the last one is inside the list and scrolls away; the bottom space follows the assistant's height, so the last item always scrolls clear of it), and its scrollbar sits 6px from the right column, with its track in the page background colour.
+- Reason: owner feedback; reuse the standard Odoo layout.
+- Affected areas: ai_home (system_overview, insight_report, dashboard templates and styles, JS test), docs/DESIGN.md.
+- Compatibility: no data changes.
+
+## 2026-11-06 — Home feedback: Today opens lists, My plan scrollbar, full-width System overview
+
+- Change: on Home, the Today ring, the late / still to do today / done counts and each day of Next 7 days open the matching activities (actions built on the server with the same rules as the counts). My plan has no horizontal scroll; its vertical scrollbar, and those of the middle list and What just happened, sit at the right edge of their card or column with a gap before the content. The System overview page uses the full screen width (the 1440px cap is gone).
+- Reason: owner feedback on Home and the System overview.
+- Affected areas: ai_home (models/home_data.py, static/src/dashboard, system_overview.scss, tests), docs/DESIGN.md.
+- Compatibility: the `today` payload gains `actions` and each `week` day gains `action`; no data changes.
+
 ## 2026-11-06 — Request counter for the System overview
 
 - Change: new `ai.home.request.stat` (requests, durations in buckets and 5xx errors per hour and route), counted in `ir.http` per worker and written once a minute; the System overview shows server requests with p95, traffic today per hour, server errors and the slowest page.

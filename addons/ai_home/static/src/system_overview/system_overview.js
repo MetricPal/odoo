@@ -1,8 +1,11 @@
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { Layout } from "@web/search/layout";
 
 import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+
+import { useOverviewControlPanel } from "@ai_home/overview_layout/overview_layout";
 
 export const PERIODS = [
     ["today", _t("Today")],
@@ -29,9 +32,11 @@ export function linePoints(values, width, height, pad = 8) {
 
 export class SystemOverview extends Component {
     static template = "ai_home.SystemOverview";
+    static components = { Layout };
     props = useProps();
 
     setup() {
+        useOverviewControlPanel();
         this.orm = useService("orm");
         this.action = useService("action");
         this.state = proxy({ period: "7", data: null, loading: true });
@@ -90,16 +95,12 @@ export class SystemOverview extends Component {
         return `${(100 * row[part]) / max}%`;
     }
 
-    goHome() {
-        return this.action.doAction("ai_home.action_ai_home");
-    }
-
     async openApp(row) {
         if (row.hasReport) {
             return this.action.doAction({
                 type: "ir.actions.client",
                 tag: "ai_home.insight_report",
-                name: row.app,
+                name: _t("%s report", row.app),
                 params: { app: row.app },
             });
         }
