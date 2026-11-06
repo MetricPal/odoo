@@ -3,3 +3,21 @@
         align-content: center;
     }
 }
+
+// Approvals dashboard cards: every card has the same layout and height in its row; the description stops at three
+// lines (full text on hover) so the details and buttons line up at the bottom.
+.o_kanban_dashboard .o_kanban_record:has(.o_approval_type_card) {
+    display: flex;
+}
+
+.o_approval_type_card {
+    flex: 1 1 auto;
+    min-height: 120px;
+}
+
+.o_approval_type_description {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

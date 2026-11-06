@@ -259,3 +259,13 @@ report. A row of the Apps table opens that app's **report** (no side menu; the b
 card per insight of the app (click to select), for a completeness insight the records by completeness band and what
 is missing, the selected insight's last 30 days, and the records behind it (least complete first, missing fields
 marked, up to 50 rows) with "Open in <app>". Administrators only for now.
+
+## Approvals dashboard (`approval_center`)
+
+The Approvals menu opens the approval types as **Kanban** (default) or **List**. Every card has the same layout: icon,
+name and the **Needs approvers** tag at the top right; the description (three lines at most, full text on hover);
+then, at the bottom, the "not available yet" note, who approves and the request count, and the buttons (**New
+request** or **Set up approvers**, and **To review**) across the full card width. Cards in a row have the same
+height, so the buttons line up. The list shows the same things (name, setup status with the same wording, who
+approves, to review, requests, the same buttons); clicking a row does what clicking a card does.
+

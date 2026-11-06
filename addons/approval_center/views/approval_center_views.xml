@@ -207,27 +207,33 @@
                 <field name="approval_summary"/>
                 <templates>
                     <t t-name="card">
-                        <div class="oe_kanban_card d-flex gap-2 p-2" style="min-height: 120px;">
-                            <field name="image_128" widget="image" class="oe_avatar flex-shrink-0" options="{'size': [52, 52]}"/>
-                            <div class="flex-grow-1 min-w-0">
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="fw-bold text-truncate"><field name="name"/></div>
-                                    <span t-if="record.setup_state.raw_value === 'needs_approvers'" class="badge rounded-pill text-bg-warning o_approval_needs_approvers">Needs approvers</span>
+                        <!-- Same layout on every card: icon, name and the setup tag on top (tag at the right),
+                             description, then the details and the buttons at the bottom, full width. -->
+                        <div class="o_approval_type_card d-flex flex-column h-100 p-2 gap-2">
+                            <div class="d-flex gap-2">
+                                <field name="image_128" widget="image" class="oe_avatar flex-shrink-0" options="{'size': [52, 52]}"/>
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <div class="fw-bold text-truncate flex-grow-1 min-w-0"><field name="name"/></div>
+                                        <span t-if="record.setup_state.raw_value === 'needs_approvers'" class="badge rounded-pill text-bg-warning flex-shrink-0 ms-auto o_approval_needs_approvers">Needs approvers</span>
+                                    </div>
+                                    <div class="text-muted small o_approval_type_description" t-att-title="record.description.value">
+                                        <field name="description"/>
+                                    </div>
                                 </div>
-                                <div class="text-muted small" style="min-height: 38px;">
-                                    <field name="description"/>
+                            </div>
+                            <div class="mt-auto d-flex flex-column gap-2">
+                                <div t-if="record.setup_state.raw_value !== 'ready'" class="small text-muted o_approval_not_ready">Not available yet: ask an Approvals manager to add approvers.</div>
+                                <div class="d-flex gap-3 text-muted small justify-content-between">
+                                    <span class="text-truncate" t-att-title="record.approval_summary.value"><field name="approval_summary"/></span>
+                                    <span class="text-nowrap">Requests <field name="request_count"/></span>
                                 </div>
-                                <div class="d-flex gap-2 mt-2">
+                                <div class="d-flex gap-2 o_approval_type_buttons">
                                     <button t-if="record.setup_state.raw_value === 'ready'" name="action_new_request" type="object" class="btn btn-primary btn-sm flex-fill">New request</button>
                                     <button t-else="" name="action_setup" type="object" class="btn btn-primary btn-sm flex-fill o_approval_setup" groups="approval_center.group_approval_center_manager">Set up approvers</button>
                                     <button name="action_view_submitted_requests" type="object" class="btn btn-secondary btn-sm flex-fill">
                                         To review <field name="submitted_count"/>
                                     </button>
-                                </div>
-                                <div t-if="record.setup_state.raw_value !== 'ready'" class="small text-muted mt-1 o_approval_not_ready">Not available yet: ask an Approvals manager to add approvers.</div>
-                                <div class="d-flex gap-3 mt-2 text-muted small justify-content-between">
-                                    <span class="text-truncate" t-att-title="record.approval_summary.value"><field name="approval_summary"/></span>
-                                    <span class="text-nowrap">Requests <field name="request_count"/></span>
                                 </div>
                             </div>
                         </div>
@@ -396,10 +402,44 @@
         </field>
     </record>
 
+    <!-- The Approvals dashboard as a list: what the cards show, a row click does what a card click does. -->
+    <record id="approval_center_type_view_list_dashboard" model="ir.ui.view">
+        <field name="name">approval.center.type.list.dashboard</field>
+        <field name="model">approval.center.policy</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <list create="0" action="action_card_click" type="object" class="o_approval_center_list">
+                <field name="image_128" widget="image" options="{'size': [32, 32]}" string=" " width="48px"/>
+                <field name="name"/>
+                <field name="description" optional="hide"/>
+                <field name="setup_state" widget="badge" decoration-warning="setup_state == 'needs_approvers'" decoration-success="setup_state == 'ready'"/>
+                <field name="approval_summary"/>
+                <field name="submitted_count" string="To review"/>
+                <field name="request_count" string="Requests"/>
+                <button name="action_new_request" type="object" string="New request" class="btn-primary" invisible="setup_state != 'ready'"/>
+                <button name="action_setup" type="object" string="Set up approvers" class="btn-primary" invisible="setup_state == 'ready'" groups="approval_center.group_approval_center_manager"/>
+            </list>
+        </field>
+    </record>
+
     <record id="action_approval_center_dashboard" model="ir.actions.act_window">
         <field name="name">Approvals</field>
         <field name="res_model">approval.center.policy</field>
+        <field name="view_mode">kanban,list</field>
+    </record>
+
+    <record id="action_approval_center_dashboard_view_kanban" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
         <field name="view_mode">kanban</field>
+        <field name="view_id" ref="approval_center_type_view_kanban"/>
+        <field name="act_window_id" ref="action_approval_center_dashboard"/>
+    </record>
+
+    <record id="action_approval_center_dashboard_view_list" model="ir.actions.act_window.view">
+        <field name="sequence">2</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="approval_center_type_view_list_dashboard"/>
+        <field name="act_window_id" ref="action_approval_center_dashboard"/>
     </record>
 
     <record id="action_approval_center_requests" model="ir.actions.act_window">

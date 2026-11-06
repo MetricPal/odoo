@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-11-06 — Approvals dashboard: list view, even cards
+
+- Change: the Approvals dashboard (`action_approval_center_dashboard`) offers Kanban (default) and List. The new list (`approval_center_type_view_list_dashboard`) shows what the cards show and a row click runs `action_card_click`. Cards share one layout: the Needs approvers tag at the top right, the description clamped to three lines, and the details and buttons at the bottom across the full card width.
+- Reason: owner feedback; cards had items in different places and only Kanban was available.
+- Affected areas: approval_center (views, scss, static test), docs/DESIGN.md.
+- Compatibility: no data changes; the request kanban is unchanged.
+
 ## 2026-11-06 — Odoo control panel on the System overview, All insights and app reports
 
 - Change: the three pages use Odoo's `Layout` with the standard control panel (`o_control_panel d-flex flex-column gap-3 px-3 pt-2`): breadcrumbs replace the "← Home" / "← System overview" links, the period switch is a standard button group, All insights is a control panel button, the description line sits in the control panel. App report actions are named "<App> report". These pages write out every breadcrumb (Home / System overview / All insights / Contacts report) instead of Odoo's "…" fold, through their own control panel (`ai_home/static/src/overview_layout`); the description line is centred vertically. Breadcrumbs elsewhere in Odoo are unchanged. Home's middle list no longer starts with "N things for you, most urgent first"; it runs from the navbar to the bottom of the page behind the assistant (the space above the first item and under the last one is inside the list and scrolls away; the bottom space follows the assistant's height, so the last item always scrolls clear of it), and its scrollbar sits 6px from the right column, with its track in the page background colour.
