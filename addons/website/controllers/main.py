@@ -1476,6 +1476,7 @@ class Website(Home):
     def get_new_page_templates(self, **kw):
         View = request.env['ir.ui.view']
         result = []
+        website_lang = self.env.website.default_lang_id.code
         groups_html = self.env.website._render_template("website.new_page_template_groups")
         groups_el = etree.fromstring(f'<data>{groups_html}</data>')
         for group_el in groups_el.getchildren():
@@ -1486,7 +1487,7 @@ class Website(Home):
             }
             if group_el.attrib['id'] == 'custom':
                 for page in self.env.website._get_website_pages(domain=[('is_new_page_template', '=', True)]):
-                    html_tree = html.fromstring(self.env.website.with_context(inherit_branding=False)._render_template(
+                    html_tree = html.fromstring(self.env.website.with_context(inherit_branding=False, lang=website_lang)._render_template(
                         page.key,
                     ))
                     wrap_el = html_tree.xpath('//div[@id="wrap"]')[0]
@@ -1506,7 +1507,7 @@ class Website(Home):
                 self.env.website.website_domain(),
             ], order='key'):
                 try:
-                    html_tree = html.fromstring(self.env.website.with_context(inherit_branding=False)._render_template(
+                    html_tree = html.fromstring(self.env.website.with_context(inherit_branding=False, lang=website_lang)._render_template(
                         template.key,
                     ))
                     for section_el in html_tree.xpath("//section[@data-snippet]"):
@@ -1672,14 +1673,14 @@ class Website(Home):
             img['field'] = 'arch_db' if img['field'] == 'arch' else img['field']
             tree = html.fromstring(str(record[img['field']]))
             modified = False
-            for index, element in enumerate(tree.xpath('//img')):
+            for index, element in enumerate(tree.xpath('//img[@src]')):
                 imgId = self._get_image_id(img['res_model'], img['res_id'], img['field'], str(index))
                 if imgId == img['id']:
                     if (img['decorative']):
                         element.set('alt', '')
                         element.set('role', 'presentation')
                     else:
-                        element.set('alt', markup_escape(img['alt']))
+                        element.set('alt', img['alt'])
                         element.attrib.pop('role', None)
                     modified = True
             if modified:
@@ -1707,7 +1708,7 @@ class Website(Home):
                     if link['remove']:
                         element.drop_tag()
                     else:
-                        element.set('href', markup_escape(link['newLink']))
+                        element.set('href', link['newLink'])
                     modified = True
             if modified:
                 new_html_content = html.tostring(tree, encoding='unicode', method='html')

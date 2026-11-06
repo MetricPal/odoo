@@ -2750,6 +2750,23 @@ test(`basic grouped list rendering with groupby m2m field`, async () => {
     ]);
 });
 
+test(`group aggregate cells have the same widget class as record cells`, async () => {
+    await mountView({
+        resModel: "foo",
+        type: "list",
+        arch: `
+            <list>
+                <field name="amount" widget="monetary" sum="Total"/>
+            </list>
+        `,
+        groupBy: ["bar"],
+    });
+
+    expect(".o_group_header td.o_monetary_cell").toHaveCount(2);
+    await contains(".o_group_name").click();
+    expect(".o_data_row td.o_monetary_cell").toHaveCount(1);
+});
+
 test(`grouped list rendering with groupby m2o and m2m field`, async () => {
     await mountView({
         resModel: "foo",
@@ -11233,6 +11250,31 @@ test(`list with handle widget`, async () => {
     expect(`.o_data_row:eq(3) [name='amount']`).toHaveText("1,200", {
         message: "new first record should have amount 1,200",
     });
+});
+
+test(`list with handle widget on a readonly field`, async () => {
+    Foo._fields.int_field = fields.Integer({ readonly: true });
+    onRpc("web_resequence", () => {
+        expect.step("web_resequence");
+    });
+
+    await mountView({
+        resModel: "foo",
+        type: "list",
+        arch: `
+            <list>
+                <field name="int_field" widget="handle"/>
+                <field name="amount" widget="float" digits="[5,0]"/>
+            </list>
+        `,
+    });
+    expect(`.o_row_draggable`).toHaveCount(0);
+    expect(`.o_field_handle:first span`).not.toBeEnabled();
+    expect(queryAllTexts(`.o_data_cell[name='amount']`)).toEqual(["0", "500", "1,200", "300"]);
+
+    await contains(`tbody tr:eq(3) .o_handle_cell`).dragAndDrop(queryFirst(`tbody tr:eq(1)`));
+    expect.verifySteps([]);
+    expect(queryAllTexts(`.o_data_cell[name='amount']`)).toEqual(["0", "500", "1,200", "300"]);
 });
 
 test.tags("desktop");

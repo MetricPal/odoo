@@ -705,6 +705,7 @@ class StockPicking(models.Model):
             raise UserError(_("Changing the operation type of this record is forbidden at this point."))
 
         old_batches = self.batch_id
+        moves_to_sync_final_location = self.env['stock.move']
         if vals.get('picking_type_id'):
             picking_type = self.env['stock.picking.type'].browse(vals.get('picking_type_id'))
             for picking in self:
@@ -712,6 +713,15 @@ class StockPicking(models.Model):
                     picking.name = picking_type.sequence_id.next_by_id()
                     vals['location_id'] = picking_type.default_location_src_id.id
                     vals['location_dest_id'] = picking_type.default_location_dest_id.id
+                    # The final location of moves in an internal picking must be updated
+                    # to the new warehouse to reflect in the forecast.
+                    if picking.picking_type_id.code == picking_type.code:
+                        moves_to_sync_final_location |= picking.move_ids.filtered(
+                            lambda m: m.state not in ('done', 'cancel')
+                            and m.location_dest_usage != 'inventory'
+                            and m.forecasted_location_id
+                            and m.forecasted_location_id.usage == 'internal'
+                        )
         res = super().write(vals)
 
         if vals.get('batch_id'):
@@ -734,6 +744,8 @@ class StockPicking(models.Model):
             after_vals['location_dest_id'] = vals['location_dest_id']
         if after_vals:
             self.move_ids.filtered(lambda move: move.location_dest_usage != 'inventory').write(after_vals)
+        if moves_to_sync_final_location:
+            moves_to_sync_final_location.forecasted_location_id = picking_type.warehouse_id.lot_stock_id
         if vals.get('move_ids'):
             self._autoconfirm_picking()
 
@@ -933,8 +945,11 @@ class StockPicking(models.Model):
         # |              ↓                                | return_line.move_id              ↓
         # |       return pick(Add as dest)          return toLink                    return ship(Add as orig)
         # +--------------------------------------------------------------------------------------------------------+
+        location_id = self.location_id or move_id.location_dest_id
         origin_move = move_id.origin_returned_move_id or move_id
-        move_orig_to_link = origin_move.move_dest_ids.returned_move_ids
+        # Only keep the returns that deliver back where this return picks from, so that the
+        # chain never sources the new move from an unrelated location
+        move_orig_to_link = origin_move.move_dest_ids.returned_move_ids.filtered(lambda m: m.location_dest_id._child_of(location_id))
         if not move_id.origin_returned_move_id:
             # link to original move
             move_orig_to_link |= origin_move
@@ -959,7 +974,7 @@ class StockPicking(models.Model):
             'picking_id': self.id,
             'state': 'draft',
             'date': fields.Datetime.now(),
-            'location_id': self.location_id.id or move_id.location_dest_id.id,
+            'location_id': location_id.id,
             'location_dest_id': self.location_dest_id.id or move_id.location_id.id,
             'forecasted_location_id': False,
             'picking_type_id': self.picking_type_id.id,

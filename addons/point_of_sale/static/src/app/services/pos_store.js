@@ -389,6 +389,15 @@ export class PosStore extends WithLazyGetterTrap {
         this.navigate(page, params);
     }
 
+    get configFastPaymentMethod() {
+        const fastPaymentMethods = this.config.paymentMethods.filter(
+            (pm) => pm.type !== "pay_later"
+        );
+        // Fall back to all payment methods when there is no cash/bank method
+        // configured, so a fast payment method is always available if any method exists.
+        return fastPaymentMethods.length ? fastPaymentMethods : this.config.paymentMethods;
+    }
+
     get defaultPage() {
         return {
             page: "ProductScreen",
@@ -419,10 +428,16 @@ export class PosStore extends WithLazyGetterTrap {
         return [
             {
                 timeout: 180000, // 3 minutes
-                action: () =>
-                    this.router.currentScreen() !== "PaymentScreen" &&
-                    this.saveIfOrder() &&
-                    this.navigate("SaverScreen"),
+                action: () => {
+                    if (this.router.currentScreen() === "PaymentScreen") {
+                        return false;
+                    }
+                    if (!this.saveIfOrder()) {
+                        return false;
+                    }
+                    this.resetCashier();
+                    return this.navigate("SaverScreen");
+                },
             },
             {
                 timeout: 120000, // 2 minutes
@@ -971,7 +986,7 @@ export class PosStore extends WithLazyGetterTrap {
     async openConfigurator(pTemplate, opts = {}) {
         const attrById = this.models["product.attribute"].getAllBy("id");
         const attributeLines = pTemplate.attribute_line_ids.filter(
-            (attr) => attr.attribute_id?.id in attrById
+            (attr) => attr.active !== false && attr.attribute_id?.id in attrById
         );
         let attributeLinesValues = attributeLines.map((attr) => attr.product_template_value_ids);
         let variantProduct = null;
@@ -2358,40 +2373,42 @@ export class PosStore extends WithLazyGetterTrap {
                           size: "md",
                           bodyClass: "pb-4",
                       });
+            // Keep the existing preset if the user cancels the selection popup.
+            if (!preset && order.preset_id) {
+                return;
+            }
         }
+        preset ??= this.config.default_preset_id;
+        order.setPreset(preset);
 
-        if (preset) {
-            order.setPreset(preset);
-
-            if (preset.needsPartner) {
-                const partner = order.partner_id || (await this.selectPartner(order));
-                if (!partner) {
+        if (preset.needsPartner) {
+            const partner = order.partner_id || (await this.selectPartner(order));
+            if (!partner) {
+                return;
+            }
+            if (!(partner.street || partner.street2)) {
+                this.notification.add(_t("Customer address is required"), { type: "warning" });
+                await this.editPartner(partner);
+                if (!(partner.street || partner.street2)) {
                     return;
                 }
-                if (!(partner.street || partner.street2)) {
-                    this.notification.add(_t("Customer address is required"), { type: "warning" });
-                    await this.editPartner(partner);
-                    if (!(partner.street || partner.street2)) {
-                        return;
-                    }
-                }
             }
+        }
 
-            if (preset.identification === "name") {
-                await this.handleSelectNamePreset(order);
-                // re-set the order in case an order was selected from the current orders list in the EditOrderNamePopup
-                order = this.getOrder();
-            }
+        if (preset.identification === "name") {
+            await this.handleSelectNamePreset(order);
+            // re-set the order in case an order was selected from the current orders list in the EditOrderNamePopup
+            order = this.getOrder();
+        }
 
-            if (preset.use_timing && !order.preset_time) {
-                await this.openPresetTiming(order);
-                if (!order.preset_time) {
-                    await this.syncPresetSlotAvaibility(preset);
-                    order.preset_time = preset.nextSlot?.datetime || false;
-                }
-            } else if (!preset.use_timing) {
-                order.preset_time = false;
+        if (preset.use_timing && !order.preset_time) {
+            await this.openPresetTiming(order);
+            if (!order.preset_time) {
+                await this.syncPresetSlotAvaibility(preset);
+                order.preset_time = preset.nextSlot?.datetime || false;
             }
+        } else if (!preset.use_timing) {
+            order.preset_time = false;
         }
     }
     orderUsageUTCtoLocal(data) {
@@ -2848,7 +2865,7 @@ export class PosStore extends WithLazyGetterTrap {
                 paymentLines[0].payment_method_id.type === "pay_later" &&
                 this.currency.isNegative(paymentLines[0].amount))
         ) {
-            opts.fastPaymentMethod = this.config.paymentMethods[0];
+            opts.fastPaymentMethod = this.configFastPaymentMethod[0];
         }
         return opts;
     }

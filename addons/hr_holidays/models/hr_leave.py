@@ -833,27 +833,22 @@ class HrLeave(models.Model):
             ]
         return domain
 
-    # so that when we consider allocated work entry types for employees that don't have allocations, it doesn't revert back to a generic one
     @api.onchange('employee_id', 'request_date_from', 'request_date_to')
     def _onchange_work_entry_type_id(self):
+        """Replace the time type when it is no longer valid for the employee and period.
+
+        The candidates are the allowed time types, as in the domain of the form view. Types
+        requiring an allocation are preferred over the others, so that an employee having
+        allocations does not fall back on a generic type.
+        """
         for holiday in self:
-            if not holiday.work_entry_type_id.requires_allocation:
+            if not holiday.employee_id or not holiday.request_date_from or not holiday.request_date_to:
                 continue
-            if not holiday.work_entry_type_id.get_work_entry_types_with_valid_allocations(holiday.request_date_from, holiday.request_date_to, holiday.employee_id.id):
-                local_work_entry_types = self.env['hr.work.entry.type'].with_context(
-                    default_date_from=holiday.request_date_from,
-                    default_date_to=holiday.request_date_to,
-                ).search([('country_id', 'in', [holiday.employee_id.country_id.id or holiday.employee_id.company_id.country_id.id] + [False])])
-                all_valid_work_entry_types = local_work_entry_types.with_context(
-                    default_date_from=holiday.request_date_from,
-                    default_date_to=holiday.request_date_to,
-                ).filtered_domain([('has_valid_allocation', '=', True)])
-                no_allocation_required = local_work_entry_types.filtered_domain([('requires_allocation', '=', False)])
-                valid_types = all_valid_work_entry_types.get_work_entry_types_with_valid_allocations(holiday.request_date_from, holiday.request_date_to, holiday.employee_id.id)
-                if not valid_types or not holiday.employee_id:
-                    holiday.work_entry_type_id = no_allocation_required[:1] or False
-                else:
-                    holiday.work_entry_type_id = valid_types[0]
+            valid_types = holiday.allowed_work_entry_type_ids._origin.get_work_entry_types_with_valid_allocations(
+                holiday.request_date_from, holiday.request_date_to, holiday.employee_id.id)
+            if holiday.work_entry_type_id._origin in valid_types:
+                continue
+            holiday.work_entry_type_id = valid_types.filtered('requires_allocation')[:1] or valid_types[:1]
 
     @api.depends('employee_id')
     def _compute_department_id(self):
@@ -912,7 +907,8 @@ class HrLeave(models.Model):
         triggering the computes depending on ``number_of_days``/``number_of_hours``. The hours
         are the working hours of the schedule within ``[date_from, date_to]``, minus the absence
         leaves: public holidays (unless the type has ``include_public_holidays_in_duration``) and
-        the other validated absences of the employee, but not the leave itself. Then:
+        the other validated absences of the employee, but not the leave itself nor its time rule
+        source. Then:
 
         - types counted in calendar days (``count_days_as = 'calendar'``) count every day;
         - a flexible schedule counts the real length of a single-day request;
@@ -944,8 +940,10 @@ class HrLeave(models.Model):
         domain = [('count_as', '=', 'absence'),
                   ('company_id', 'in', self.env.companies.ids + self.env.context.get('allowed_company_ids', [])),
                   # When searching for resource leave intervals, we exclude the one that
-                  # is related to the leave we're currently trying to compute for.
-                  '|', ('holiday_id', '=', False), ('holiday_id', 'not in', employee_leaves.ids)]
+                  # is related to the leave we're currently trying to compute for, and the one
+                  # of its time rule source, which can still span the output while it is created.
+                  '|', ('holiday_id', '=', False),
+                  ('holiday_id', 'not in', (employee_leaves | employee_leaves.source_leave_id).ids)]
         if additional_domain:
             domain = Domain.AND([domain, additional_domain])
         # Precompute values in batch for performance purposes
