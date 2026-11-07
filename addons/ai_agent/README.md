@@ -66,6 +66,13 @@ Conversation/Activity to see updated results. Pause blocks new admission and
 requests cooperative cancellation; it cannot retract already submitted context,
 undo remote actions or guarantee that accepted inference stops incurring cost.
 
+## Odoo tools (ADR 0012)
+
+Runs on a synced Odoo-managed profile use Odoo's MCP endpoint `/ai_agent/mcp` (read-only tools). Hermes must reach
+Odoo at `ai_agent.odoo_url` (system parameter; default `web.base.url`). Each profile has its own bearer token and
+each run a one-run key; results are limited to the agent's data scope, the AI assistant user's access and, in a
+chat, the asking person's access. Re-sync a profile after upgrading to register the tools.
+
 ## Safety and recovery
 
 The model has no business execution tools in this increment. This is enforced by

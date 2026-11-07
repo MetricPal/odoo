@@ -73,15 +73,20 @@ class HrDepartment(models.Model):
     ai_agent_count = fields.Integer(string='Agents', compute='_compute_ai_agent_count')
     ai_can_manage = fields.Boolean(compute='_compute_ai_can_manage')
     ai_profile_id = fields.Many2one('ai.agent.profile', string='Hermes profile', compute='_compute_ai_profile_id')
-    ai_profile_state = fields.Selection(related='ai_profile_id.state', string='Profile status')
-    ai_profile_synced_at = fields.Datetime(related='ai_profile_id.synced_at', string='Last synced')
-    ai_profile_engine_id = fields.Many2one(related='ai_profile_id.engine_id', string='Hermes connection')
+    ai_profile_state = fields.Selection([('draft', 'Not created'), ('needs_sync', 'Needs sync'), ('in_sync', 'In sync'),
+                                         ('failed', 'Failed')], string='Profile status', compute='_compute_ai_profile_id')
+    ai_profile_synced_at = fields.Datetime(string='Last synced', compute='_compute_ai_profile_id')
+    ai_profile_engine_id = fields.Many2one('ai.agent.engine', string='Hermes connection',
+                                           compute='_compute_ai_profile_id')
 
     def _compute_ai_profile_id(self):
         Profile = self.env['ai.agent.profile'].sudo()
         for department in self:
-            department.ai_profile_id = Profile.search([('kind', '=', 'department'),
-                                                       ('department_id', '=', department.id)], limit=1).id
+            profile = Profile.search([('kind', '=', 'department'), ('department_id', '=', department.id)], limit=1)
+            department.ai_profile_id = profile.id
+            department.ai_profile_state = profile.state
+            department.ai_profile_synced_at = profile.synced_at
+            department.ai_profile_engine_id = profile.engine_id.id
 
     def action_open_ai_profile(self):
         self.ensure_one()

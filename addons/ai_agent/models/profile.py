@@ -21,8 +21,10 @@ PROFILE_NAME = re.compile(r'[a-z0-9][a-z0-9_-]{0,63}')
 DEFAULT_PERSONA = ('You are an assistant of {company}. You help people at work, you state uncertainty, and you never '
                    'claim to have changed anything: you prepare drafts and proposals for a person to approve.')
 # Memory and every Hermes toolset stay off on Odoo profiles; Odoo's own tools come in phase 3.
+# Runs through the API server get Odoo's tools only (the MCP server named "odoo"); nothing else anywhere.
+MCP_SERVER = 'odoo'
 SAFE_CONFIG = {'memory': {'memory_enabled': False, 'user_profile_enabled': False, 'provider': ''},
-               'platform_toolsets': {'api_server': [], 'cli': [], 'dashboard': []}}
+               'platform_toolsets': {'api_server': [MCP_SERVER], 'cli': [], 'dashboard': []}}
 # What department managers and AI admins may change on their department's profile.
 DEPARTMENT_PROFILE_FIELDS = {'persona', 'engine_model_id'}
 
@@ -59,6 +61,8 @@ class Profile(models.Model):
     synced_at = fields.Datetime(string='Last synced', readonly=True)
     sync_message = fields.Char(readonly=True)
     secret_reference = fields.Char(default='AI_AGENT_SECRET_UNSET', groups=fields.NO_ACCESS, copy=False)
+    mcp_token_hash = fields.Char(groups=fields.NO_ACCESS, copy=False, index='btree_not_null',
+                                 help='Hash of the bearer token Hermes uses for this profile on Odoo\'s MCP endpoint.')
     agent_ids = fields.One2many('ai.agent', 'profile_id', string='Agents')
     assistant_user_id = fields.Many2one('res.users', string='Acts as', compute='_compute_assistant_user_id')
     can_configure = fields.Boolean(compute='_compute_can_configure', search='_search_can_configure')
@@ -199,6 +203,7 @@ class Profile(models.Model):
                 raise UserError(_('The profile key could not be saved securely. Ask your system administrator to '
                                   'check private credential storage.')) from None
             internal(self.sudo()).write({'secret_reference': reference})
+        self._sync_mcp()
         # Read back: memory off, toolsets off, and the gateway serves the profile with its own key.
         config = engine._management('GET', '/api/config', query={'profile': name})
         memory = config.get('memory', {}) if isinstance(config, dict) else {}
@@ -212,6 +217,28 @@ class Profile(models.Model):
         features = capabilities.get('features', {}) if isinstance(capabilities, dict) else {}
         if not features.get('run_submission') or not features.get('run_status'):
             raise UserError(_('This Hermes version does not support durable runs.'))
+
+    def _odoo_url(self):
+        """The Odoo address Hermes uses to call the tools: ``ai_agent.odoo_url``, else ``web.base.url``."""
+        params = self.env['ir.config_parameter'].sudo()
+        return (params.get_str('ai_agent.odoo_url') or params.get_str('web.base.url') or '').rstrip('/')
+
+    def _sync_mcp(self):
+        """Register Odoo's MCP server on the profile, with a new bearer token when it is missing in Hermes."""
+        from .tools import key_hash
+        engine = self.engine_id.sudo()
+        listing = engine._management('GET', '/api/mcp/servers', query={'profile': self.hermes_name})
+        servers = listing if isinstance(listing, list) else (listing or {}).get('servers', [])
+        names = {s.get('name') for s in servers if isinstance(s, dict)}
+        if MCP_SERVER in names and self.sudo().mcp_token_hash:
+            return
+        if MCP_SERVER in names:
+            engine._management('DELETE', f'/api/mcp/servers/{MCP_SERVER}', query={'profile': self.hermes_name})
+        token = token_generator.token_urlsafe(32)
+        engine._management('POST', '/api/mcp/servers', {
+            'name': MCP_SERVER, 'url': f'{self._odoo_url()}/ai_agent/mcp', 'auth': 'header', 'bearer_token': token},
+            query={'profile': self.hermes_name})
+        internal(self.sudo()).write({'mcp_token_hash': key_hash(token)})
 
     def action_sync(self):
         """Sync to Hermes: managers, and department managers and AI admins for their department's profile."""

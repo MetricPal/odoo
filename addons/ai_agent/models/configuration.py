@@ -237,9 +237,14 @@ class Engine(models.Model):
         return hermes.request(url, None, method, path, payload, credential_value=self._credential('management'),
                               demo=self._demo_loopback(), query=query)
 
-    def _inspect(self):
-        """Fresh inspection before every submission; discovery never grants execution."""
+    def _inspect(self, profile=None):
+        """Fresh inspection before every submission; discovery never grants execution.
+
+        With ``profile`` (an Odoo-managed profile, ADR 0012) the profile is inspected: its only enabled toolset may be
+        Odoo's own MCP server."""
         health = self._request('GET', '/health/detailed')
+        if profile:
+            return self._inspect_profile(profile, health)
         capabilities = self._request('GET', '/v1/capabilities')
         tools = self._request('GET', '/v1/toolsets')
         # Verified local Hermes 6cd2502 wraps discovery in an OpenAI list object.
@@ -263,6 +268,28 @@ class Engine(models.Model):
         # v1 supplies bounded context from Odoo. No Hermes terminal/file/browser/MCP bypass.
         if any(t.get('enabled') and t.get('tools') for t in tools):
             raise UserError(_('Use a dedicated profile with all agent-callable toolsets disabled for this release.'))
+        return capabilities, tools
+
+    def _inspect_profile(self, profile, health):
+        from .profile import MCP_SERVER
+        if not isinstance(health, dict) or health.get('status') != 'ok':
+            raise UserError(_('Hermes is not ready.'))
+        capabilities = self._request('GET', '/v1/capabilities', profile=profile)
+        tools = self._request('GET', '/v1/toolsets', profile=profile)
+        if isinstance(tools, dict) and tools.get('object') == 'list':
+            tools = tools.get('data')
+        config = self._management('GET', '/api/config', query={'profile': profile.hermes_name})
+        memory = config.get('memory', {}) if isinstance(config, dict) else {}
+        if memory.get('memory_enabled') is not False or memory.get('user_profile_enabled') is not False:
+            raise UserError(_('Memory is on in the Hermes profile "%s". Sync it again.', profile.name))
+        features = capabilities.get('features', {}) if isinstance(capabilities, dict) else {}
+        if not features.get('run_submission') or not features.get('run_status'):
+            raise UserError(_('This Hermes version does not support durable runs.'))
+        if not isinstance(tools, list) or any(not isinstance(t, dict) for t in tools):
+            raise UserError(_('Hermes tool discovery is invalid.'))
+        allowed = {MCP_SERVER, f'mcp-{MCP_SERVER}', f'mcp_{MCP_SERVER}', f'mcp:{MCP_SERVER}'}
+        if any(t.get('enabled') and t.get('tools') and t.get('name') not in allowed for t in tools):
+            raise UserError(_('The Hermes profile "%s" has tools other than Odoo\'s. Sync it again.', profile.name))
         return capabilities, tools
 
     def _model_catalog(self):

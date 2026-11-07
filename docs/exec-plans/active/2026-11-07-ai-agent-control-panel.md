@@ -163,6 +163,9 @@ department managers of ADR 0009. Department changes take effect without approval
    existing agents keep the connection default until a company or department profile is synced (no automatic move
    of `odoo-internal`: it is a separate gateway, not a multiplexed profile).
 3. Odoo MCP read tools with the permission rules; pre-sent business data removed.
+   **Done 2026-11-07** (`ai_agent` 20.0.1.9.0): MCP endpoint, four read tools, assistant and person permissions,
+   one-run key, profile inspection; pre-sent data kept for runs without a profile. A model calling the tools during a
+   run is not yet seen live (needs a Hermes with an AI provider).
 4. Prepare-only tools through Approval Center.
 5. Ask agent step in Workflows.
 6. Tools and services view.

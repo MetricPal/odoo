@@ -39,6 +39,14 @@ class FakeHermes:
         if (method, path) == ('PUT', '/api/env'):
             self.profiles[profile]['key'] = payload['value']
             return {'ok': True}
+        if (method, path) == ('GET', '/api/mcp/servers'):
+            return [{'name': name} for name in self.profiles[profile].get('mcp', {})]
+        if (method, path) == ('POST', '/api/mcp/servers'):
+            self.profiles[profile].setdefault('mcp', {})[payload['name']] = payload
+            return {'name': payload['name']}
+        if method == 'DELETE' and path.startswith('/api/mcp/servers/'):
+            self.profiles[profile].get('mcp', {}).pop(path.rsplit('/', 1)[1], None)
+            return {'ok': True}
         if method == 'DELETE':
             self.profiles.pop(path.split('/')[3], None)
             return {'ok': True}
@@ -108,7 +116,11 @@ class TestHermesProfiles(TransactionCase):
         remote = fake.profiles['odoo-human-resources']
         self.assertEqual(remote['soul'], 'You help HR.')
         self.assertIs(remote['config']['memory']['memory_enabled'], False)
-        self.assertEqual(remote['config']['platform_toolsets'], {'api_server': [], 'cli': [], 'dashboard': []})
+        self.assertEqual(remote['config']['platform_toolsets'], {'api_server': ['odoo'], 'cli': [], 'dashboard': []})
+        odoo_server = remote['mcp']['odoo']
+        self.assertTrue(odoo_server['url'].endswith('/ai_agent/mcp'))
+        self.assertEqual(odoo_server['auth'], 'header')
+        self.assertEqual(self.env['ai.agent.tools']._profile_for_token(odoo_server['bearer_token']), profile)
         self.assertEqual(len(remote['key']), 64)
         self.assertEqual(profile._run_key(), remote['key'])
         self.assertEqual(self.agent._run_profile(), profile)
@@ -116,6 +128,7 @@ class TestHermesProfiles(TransactionCase):
         self._sync(profile, fake)
         self.assertEqual(len([c for c in fake.calls if c[:2] == ('POST', '/api/profiles')]), 1)
         self.assertEqual(len([c for c in fake.calls if c[:2] == ('PUT', '/api/env')]), 1)
+        self.assertEqual(len([c for c in fake.calls if c[:2] == ('POST', '/api/mcp/servers')]), 1)
         # A run is sent to /p/<name> with the profile's key, and remembers it for status and stop.
         self.agent.action_activate()
         run = self.env['ai.agent.run'].with_user(self.ai_admin)._queue(self.agent.with_user(self.ai_admin), 'Hello').sudo()

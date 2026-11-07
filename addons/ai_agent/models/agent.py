@@ -402,11 +402,14 @@ class Agent(models.Model):
         return {'type': 'ir.actions.act_window', 'res_model': self._name, 'res_id': self.id,
                 'view_mode': 'form', 'target': 'current'}
 
-    def _context_for(self, prompt):
-        """Read as requester, never as a bot or sudo. No relation display-name traversal."""
+    def _context_for(self, prompt, with_records=True):
+        """Read as requester, never as a bot or sudo. No relation display-name traversal.
+
+        Without ``with_records`` (runs that have Odoo's tools, ADR 0012) no business data is pre-sent: the agent looks
+        up what the question needs through the tools."""
         self._usable()
         context = {'company': self.company_id.name, 'records': [], 'sources': []}
-        for access in self.sudo().access_ids:
+        for access in (self.sudo().access_ids if with_records else self.env['ai.agent.access']):
             model = self.env[access.model_name].with_company(self.company_id).with_context(allowed_company_ids=[self.company_id.id])
             names = access._fields_allowed(model)
             domain = Domain(json.loads(access.domain_json))

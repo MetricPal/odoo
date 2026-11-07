@@ -111,8 +111,7 @@
               </group>
             </page>
             <page string="Data access" groups="ai_agent.group_manager">
-              <p class="text-muted">Reads use the requesting person's permissions. Business changes and external actions are disabled in this release.</p>
-              <p class="text-muted">Choose which business data may be supplied as context. These scopes narrow access; they never grant extra permissions.</p>
+              <p class="text-muted">Choose the business data this agent may use. On a synced Hermes profile the agent looks it up with Odoo's tools, as the department's AI assistant and, in a chat, only what the person asking may see too. Without a profile the data is sent with the question, read as the person asking. These scopes narrow access; they never grant extra permissions. Business changes and external actions are disabled.</p>
               <field name="access_ids" readonly="state == 'active'">
                 <list editable="bottom">
                   <field name="model_name" string="Business document" />
