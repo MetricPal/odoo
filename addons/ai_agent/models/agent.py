@@ -319,6 +319,7 @@ class Agent(models.Model):
                        'sources': [(s.id, s.revision, s.state, s.active) for s in self.source_ids],
                        'access': [(a.id, a.model_name, a.field_names, a.domain_json, a.limit)
                                   + ((a.record_order,) if a.record_order != 'recent' else ())
+                                  + (('propose',) if a.can_propose else ())
                                   for a in self.access_ids]})
 
     def action_choose_model(self):
@@ -461,6 +462,8 @@ class Access(models.Model):
     model_name = fields.Selection(selection=lambda s: [(n, s.env[n]._description) for n in sorted(SAFE_MODELS) if n in s.env],
                                   required=True, string='Business data')
     field_names = fields.Char(required=True, string='Fields', default='name', help='Explicit scalar field allowlist, separated by commas.')
+    can_propose = fields.Boolean(string='May propose', help='The agent may propose notes, to-dos and changes to these '
+                                 'fields. A person approves each proposal before anything changes.')
     domain_json = fields.Text(default='[]', required=True, string='Record filter', help='JSON record filter; no Python expressions.')
     limit = fields.Integer(default=10, required=True)
     record_order = fields.Selection([

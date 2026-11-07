@@ -6,7 +6,7 @@ The bearer token names the Hermes profile; each tool call also carries the run's
 
 import json
 
-from odoo import http
+from odoo import SUPERUSER_ID, http
 from odoo.http import request
 
 from odoo.addons.ai_agent.models.tools import TOOLS
@@ -36,7 +36,9 @@ class AgentMcpController(http.Controller):
     def mcp(self, **kwargs):
         header = request.httprequest.headers.get('Authorization', '')
         token = header[7:].strip() if header.lower().startswith('bearer ') else ''
-        profile = request.env['ai.agent.tools'].sudo()._profile_for_token(token)
+        # Run as OdooBot, not the public user: tools then act explicitly as the assistant and the person who asked.
+        tools = request.env(user=SUPERUSER_ID)['ai.agent.tools']
+        profile = tools._profile_for_token(token)
         if not profile:
             return _json({'error': 'unauthorized'}, status=401)
         raw = request.httprequest.get_data(cache=False)
@@ -65,8 +67,7 @@ class AgentMcpController(http.Controller):
         if method == 'tools/list':
             return _json({'jsonrpc': '2.0', 'id': message_id, 'result': {'tools': TOOLS}})
         if method == 'tools/call':
-            text, is_error = request.env['ai.agent.tools'].sudo()._call(profile, params.get('name'),
-                                                                        params.get('arguments'))
+            text, is_error = tools._call(profile, params.get('name'), params.get('arguments'))
             return _json({'jsonrpc': '2.0', 'id': message_id, 'result': {
                 'content': [{'type': 'text', 'text': text}], 'isError': is_error}})
         return _error(message_id, -32601, 'Method not found')

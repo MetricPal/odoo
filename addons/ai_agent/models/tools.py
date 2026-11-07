@@ -47,6 +47,24 @@ TOOLS = [
      'inputSchema': {'type': 'object', 'required': ['run_key', 'model', 'id'], 'properties': {
          'run_key': {'type': 'string'}, 'model': {'type': 'string'}, 'id': {'type': 'integer'},
          'limit': {'type': 'integer', 'minimum': 1, 'maximum': 20}}}},
+    # Prepare-only (phase 4): each creates an approval request; nothing changes until a person approves it.
+    {'name': 'propose_note',
+     'description': 'Propose an internal note on a record. A person approves it before it is posted.',
+     'inputSchema': {'type': 'object', 'required': ['run_key', 'model', 'id', 'text'], 'properties': {
+         'run_key': {'type': 'string'}, 'model': {'type': 'string'}, 'id': {'type': 'integer'},
+         'text': {'type': 'string', 'maxLength': 4000}}}},
+    {'name': 'propose_activity',
+     'description': 'Propose a to-do on a record for the person who asked. A person approves it before it is created.',
+     'inputSchema': {'type': 'object', 'required': ['run_key', 'model', 'id', 'summary', 'due_date'], 'properties': {
+         'run_key': {'type': 'string'}, 'model': {'type': 'string'}, 'id': {'type': 'integer'},
+         'summary': {'type': 'string', 'maxLength': 200}, 'note': {'type': 'string', 'maxLength': 4000},
+         'due_date': {'type': 'string', 'description': 'YYYY-MM-DD'}}}},
+    {'name': 'propose_change',
+     'description': 'Propose new values for fields of a record. A person approves it before anything changes.',
+     'inputSchema': {'type': 'object', 'required': ['run_key', 'model', 'id', 'values'], 'properties': {
+         'run_key': {'type': 'string'}, 'model': {'type': 'string'}, 'id': {'type': 'integer'},
+         'values': {'type': 'object', 'description': 'Field name to new value, for fields the agent may read.'},
+         'reason': {'type': 'string', 'maxLength': 1000}}}},
 ]
 
 
@@ -166,7 +184,9 @@ class AgentTools(models.AbstractModel):
         try:
             run = self._run_for(profile, arguments.get('run_key'))
             handler = {'search_records': self._tool_search, 'read_record': self._tool_read,
-                       'record_activities': self._tool_activities, 'record_messages': self._tool_messages}.get(name)
+                       'record_activities': self._tool_activities, 'record_messages': self._tool_messages,
+                       'propose_note': self._tool_propose_note, 'propose_activity': self._tool_propose_activity,
+                       'propose_change': self._tool_propose_change}.get(name)
             if not handler:
                 raise ToolCallError(_('Unknown tool %s.', name))
             result = handler(run, arguments)
@@ -244,3 +264,58 @@ class AgentTools(models.AbstractModel):
         rows = [{'date': str(m.date), 'author': m.author_id.name or m.email_from or '',
                  'text': html2plaintext(m.body or '')[:MESSAGE_MAX]} for m in messages]
         return {'record': record.display_name, 'messages': rows, 'summary': _('%s messages', len(rows))}
+
+    # -- prepare-only tools ----------------------------------------------------------------------------------
+    def _proposable(self, run, arguments):
+        access, users, field_names, record = self._single(run, arguments)
+        if not access.can_propose:
+            raise ToolCallError(_('This agent may only read %s; it may not propose changes.', access.model_name))
+        return access, users, field_names, record
+
+    def _sent(self, proposal, request):
+        approvers = ', '.join(request.sudo().approver_ids.user_id.mapped('name'))
+        return {'proposal': proposal.id, 'approval_request': request.id, 'state': 'waiting for approval',
+                'approvers': approvers,
+                'summary': _('proposal %(id)s sent to %(approvers)s', id=proposal.id, approvers=approvers)}
+
+    def _tool_propose_note(self, run, arguments):
+        _access, _users, _fields, record = self._proposable(run, arguments)
+        text = str(arguments.get('text') or '').strip()[:4000]
+        if not text:
+            raise ToolCallError(_('Pass the note text.'))
+        proposal, request = self.env['ai.agent.proposal']._propose(
+            run, 'note', record, _('Note on %s', record.display_name), text=text)
+        return self._sent(proposal, request)
+
+    def _tool_propose_activity(self, run, arguments):
+        _access, _users, _fields, record = self._proposable(run, arguments)
+        summary = str(arguments.get('summary') or '').strip()[:200]
+        try:
+            due = fields.Date.to_date(arguments.get('due_date'))
+        except (TypeError, ValueError):
+            due = None
+        if not summary or not due:
+            raise ToolCallError(_('Pass a summary and a due_date as YYYY-MM-DD.'))
+        proposal, request = self.env['ai.agent.proposal']._propose(
+            run, 'activity', record, _('To-do on %(record)s: %(summary)s', record=record.display_name, summary=summary),
+            text=str(arguments.get('note') or '')[:4000], values={'summary': summary, 'due': str(due)})
+        return self._sent(proposal, request)
+
+    def _tool_propose_change(self, run, arguments):
+        access, users, field_names, record = self._proposable(run, arguments)
+        values = arguments.get('values')
+        if not isinstance(values, dict) or not values or len(values) > 20:
+            raise ToolCallError(_('Pass values as {field: new value}.'))
+        writable = set(self._allowed_fields(run, access, users, list(values)))
+        for name, value in values.items():
+            if name not in writable or name in ('id', 'company_id'):
+                raise ToolCallError(_('%(field)s is not a field this agent may propose. It may use: %(fields)s.',
+                                      field=name, fields=', '.join(sorted(set(field_names) - {'id'}))))
+            if not isinstance(value, (str, int, float, bool)) and value is not None:
+                raise ToolCallError(_('%s takes a simple value (text, number, true/false or a date).', name))
+        reason = str(arguments.get('reason') or '')[:1000]
+        proposal, request = self.env['ai.agent.proposal']._propose(
+            run, 'change', record, _('Change %(fields)s on %(record)s', fields=', '.join(values), record=record.display_name),
+            text=reason, values=values)
+        return self._sent(proposal, request)
+

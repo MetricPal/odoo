@@ -73,6 +73,11 @@ Odoo at `ai_agent.odoo_url` (system parameter; default `web.base.url`). Each pro
 each run a one-run key; results are limited to the agent's data scope, the AI assistant user's access and, in a
 chat, the asking person's access. Re-sync a profile after upgrading to register the tools.
 
+Data scope rows with **May propose** also allow `propose_note`, `propose_activity` and `propose_change`. Each creates
+an "AI agent proposal" approval request; nothing changes until it is approved, and then the change is made by the
+AI assistant user after checking that the person who asked may still make it. Give assistant users the write rights
+their agents may propose.
+
 ## Safety and recovery
 
 The model has no business execution tools in this increment. This is enforced by

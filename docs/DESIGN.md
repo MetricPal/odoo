@@ -308,3 +308,11 @@ the profile's agents) and **Agents**. Skills and Tools and services tabs come wi
 Pause and the Instructions and Skills tabs, and edit an active agent directly; the Knowledge, Data access and
 Engine & limits parts stay with AI Agent managers.
 
+## AI agent proposals (`ai_agent`)
+
+On an agent's Data access rows, **May propose** lets the agent propose notes, to-dos and field changes on that
+model. Each proposal is an Approval Center request of type **AI agent proposal** owned by the person who asked, with
+a description of exactly what would change; approvers see it in Approvals like any request. **Proposals** (AI Agent
+menu) lists them with their status: Waiting for approval, Applied, Refused, Failed, Cancelled. A proposal is applied
+right after the last approval; a failure (missing rights) shows on the request.
+

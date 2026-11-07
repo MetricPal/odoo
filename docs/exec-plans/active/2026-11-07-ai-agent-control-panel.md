@@ -167,6 +167,8 @@ department managers of ADR 0009. Department changes take effect without approval
    one-run key, profile inspection; pre-sent data kept for runs without a profile. A model calling the tools during a
    run is not yet seen live (needs a Hermes with an AI provider).
 4. Prepare-only tools through Approval Center.
+   **Done 2026-11-07** (`ai_agent` 20.0.1.10.0): propose note, to-do and field change; approval type "AI agent
+   proposal"; applied once after approval as the assistant, after re-checking the person who asked.
 5. Ask agent step in Workflows.
 6. Tools and services view.
 

@@ -150,3 +150,94 @@ class TestAgentMcpEndpoint(HttpCase):
                            'params': {'name': 'search_records', 'arguments': {'run_key': 'none', 'model': 'res.partner'}}})
         self.assertTrue(call.json()['result']['isError'])
         self.assertEqual(self.url_open('/ai_agent/mcp').status_code, 405)
+
+
+@tagged('post_install', '-at_install')
+class TestAgentProposals(ToolsCase):
+    """ADR 0012 phase 4: prepare-only tools; a person approves before anything changes."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        company = [Command.set(cls.env.company.ids)]
+        cls.boss = mail_new_test_user(cls.env, login='tools_boss', company_ids=company,
+                                      groups='base.group_user,approval_center.group_approval_center_approver')
+        boss_employee = cls.env['hr.employee'].create({'name': 'Boss', 'user_id': cls.boss.id})
+        cls.env['hr.employee'].create({'name': 'Person', 'user_id': cls.person.id, 'parent_id': boss_employee.id})
+        contacts = Command.link(cls.env.ref('base.group_partner_manager').id)
+        cls.person.write({'group_ids': [contacts]})
+        cls.assistant.sudo().write({'group_ids': [contacts]})  # an administrator gives the assistant its role
+        cls._set_propose(True)
+
+    @classmethod
+    def _set_propose(cls, value):
+        # Fixture only: the scope of an active agent is otherwise changed by pausing it first.
+        cls.env.cr.execute('UPDATE ai_agent_access SET can_propose = %s WHERE agent_id = %s', [value, cls.agent.id])
+        cls.env.invalidate_all()
+        internal(cls.agent.sudo()).write({'activation_hash': cls.agent.sudo()._configuration_hash()})
+
+    def _approve(self, proposal):
+        proposal.request_id.with_user(self.boss).action_approve()
+
+    def test_a_change_waits_for_approval_then_the_assistant_applies_it(self):
+        result, is_error = self.call('propose_change', model='res.partner', id=self.open_contact.id,
+                                     values={'email': 'new@zephyr.example'}, reason='The customer wrote from it.')
+        self.assertFalse(is_error, result)
+        self.assertIn(self.boss.name, result['approvers'], "The asker's manager approves")
+        proposal = self.env['ai.agent.proposal'].browse(result['proposal'])
+        self.assertEqual(proposal.state, 'waiting')
+        self.assertEqual(self.open_contact.email, 'open@zephyr.example', 'Nothing changes before approval')
+        self.assertIn('new@zephyr.example', proposal.request_id.reason)
+        self._approve(proposal)
+        self.assertEqual(self.open_contact.email, 'new@zephyr.example')
+        self.assertEqual(proposal.state, 'applied')
+        self.assertEqual(self.open_contact.write_uid, self.assistant, 'The assistant makes the change')
+        # Applied once only.
+        with self.assertRaises(Exception):
+            proposal.with_user(self.person).action_apply()
+
+    def test_the_assistant_needs_the_right_too(self):
+        self.assistant.sudo().write({'group_ids': [Command.unlink(self.env.ref('base.group_partner_manager').id)]})
+        result, _error = self.call('propose_change', model='res.partner', id=self.open_contact.id,
+                                   values={'email': 'blocked@zephyr.example'})
+        proposal = self.env['ai.agent.proposal'].browse(result['proposal'])
+        self._approve(proposal)
+        self.assertEqual(proposal.state, 'failed')
+        self.assertEqual(self.open_contact.email, 'open@zephyr.example')
+        self.assertTrue(proposal.request_id.failure_reason)
+
+    def test_refused_proposals_are_never_applied(self):
+        result, _error = self.call('propose_change', model='res.partner', id=self.open_contact.id,
+                                   values={'email': 'refused@zephyr.example'})
+        proposal = self.env['ai.agent.proposal'].browse(result['proposal'])
+        proposal.request_id.with_user(self.boss).action_refuse()
+        self.assertEqual(proposal.state, 'refused')
+        self.assertEqual(self.open_contact.email, 'open@zephyr.example')
+
+    def test_the_person_must_still_be_allowed_when_it_is_approved(self):
+        result, _error = self.call('propose_change', model='res.partner', id=self.open_contact.id,
+                                   values={'email': 'late@zephyr.example'})
+        proposal = self.env['ai.agent.proposal'].browse(result['proposal'])
+        self.env['ir.access'].create({'name': 'Tools test: no partner writes for the person',
+                                      'model_id': self.env.ref('base.model_res_partner').id, 'operation': 'u',
+                                      'domain': "[(0, '=', 1)] if user.id == %d else []" % self.person.id})
+        self._approve(proposal)
+        self.assertEqual(self.open_contact.email, 'open@zephyr.example')
+        self.assertEqual(proposal.state, 'failed')
+
+    def test_notes_and_todos_and_the_propose_permission(self):
+        note, _error = self.call('propose_note', model='res.partner', id=self.open_contact.id, text='Prefers e-mail.')
+        todo, _error = self.call('propose_activity', model='res.partner', id=self.open_contact.id,
+                                 summary='Send the quote', due_date='2026-12-01')
+        for result in (note, todo):
+            self._approve(self.env['ai.agent.proposal'].browse(result['proposal']))
+        self.assertIn('Prefers e-mail.', self.open_contact.message_ids.mapped('body')[0])
+        activity = self.open_contact.activity_ids.filtered(lambda a: a.summary == 'Send the quote')
+        self.assertEqual(activity.user_id, self.person, 'The to-do is for the person who asked')
+        self._set_propose(False)
+        error, is_error = self.call('propose_note', model='res.partner', id=self.open_contact.id, text='No.')
+        self.assertTrue(is_error)
+        self.assertIn('may only read', error)
+        error, is_error = self.call('propose_change', model='res.partner', id=self.open_contact.id,
+                                    values={'phone': '1'})
+        self.assertTrue(is_error)

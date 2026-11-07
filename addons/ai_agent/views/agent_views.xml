@@ -118,6 +118,7 @@
                   <field name="field_names" string="Fields to share" placeholder="name, email" />
                   <field name="domain_json" string="Record filter" optional="hide" />
                   <field name="limit" string="Maximum records" />
+                  <field name="can_propose" />
                   <field name="record_order" optional="show" />
                 </list>
                 <form string="Permitted business data">
@@ -126,6 +127,7 @@
                       <field name="model_name" string="Business document" />
                       <field name="field_names" string="Fields to share" placeholder="name, email" />
                       <field name="limit" string="Maximum records" />
+                      <field name="can_propose" />
                       <field name="record_order" widget="radio" />
                     </group>
                     <group string="Advanced record filter">

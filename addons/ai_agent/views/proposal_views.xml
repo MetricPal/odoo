@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="proposal_list" model="ir.ui.view">
+    <field name="name">ai.agent.proposal.list</field>
+    <field name="model">ai.agent.proposal</field>
+    <field name="arch" type="xml">
+      <list create="0" delete="0">
+        <field name="name"/>
+        <field name="kind"/>
+        <field name="agent_id"/>
+        <field name="target_name"/>
+        <field name="requester_id" widget="many2one_avatar_user"/>
+        <field name="state" widget="badge" decoration-success="state == 'applied'" decoration-info="state == 'waiting'"
+               decoration-danger="state in ('failed', 'refused')"/>
+        <field name="create_date" string="Proposed on"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="proposal_form" model="ir.ui.view">
+    <field name="name">ai.agent.proposal.form</field>
+    <field name="model">ai.agent.proposal</field>
+    <field name="arch" type="xml">
+      <form create="0" delete="0" edit="0">
+        <header>
+          <field name="state" widget="statusbar" statusbar_visible="waiting,applied"/>
+        </header>
+        <sheet>
+          <div class="oe_title"><h1><field name="name"/></h1></div>
+          <group>
+            <group>
+              <field name="kind"/>
+              <field name="target_name"/>
+              <field name="target_model" groups="base.group_no_one"/>
+              <field name="agent_id"/>
+            </group>
+            <group>
+              <field name="requester_id"/>
+              <field name="assistant_user_id" placeholder="The person who asked"/>
+              <field name="request_id"/>
+              <field name="applied_at"/>
+            </group>
+          </group>
+          <group string="Proposed">
+            <field name="text" nolabel="1" colspan="2" invisible="not text"/>
+            <field name="values" nolabel="1" colspan="2" invisible="kind == 'note'"/>
+          </group>
+          <p class="text-muted">Nothing changes until the approval request is approved. It is then applied once, as
+            the agent's AI assistant, after checking that the person who asked may still make the change.</p>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_proposals" model="ir.actions.act_window">
+    <field name="name">Proposals</field>
+    <field name="res_model">ai.agent.proposal</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">No proposal yet</p>
+      <p>When an agent may propose changes, its notes, to-dos and field changes appear here and wait for approval.</p>
+    </field>
+  </record>
+</odoo>
