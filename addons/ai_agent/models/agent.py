@@ -11,6 +11,10 @@ SAFE_MODELS = {'res.partner', 'crm.lead', 'sale.order', 'product.product', 'prod
 SCALAR_TYPES = {'char', 'text', 'integer', 'float', 'monetary', 'boolean', 'date', 'datetime', 'selection'}
 CONTEXT_BUDGET = 60000  # characters of JSON context sent with one question
 SOURCE_EXCERPT_MAX = 8000
+# What department managers and department AI admins may change on their department's agents (ADR 0012). The
+# connection, model, data scopes and limits stay with AI Agent managers.
+DEPARTMENT_FIELDS = {'name', 'description', 'system_prompt', 'response_style', 'access_scope', 'department_ids',
+                     'user_ids', 'skill_ids', 'department_id'}
 
 
 
@@ -37,20 +41,26 @@ class Agent(models.Model):
     _order = 'name'
 
     name = fields.Char(required=True, tracking=True)
-    description = fields.Char()
+    description = fields.Char(tracking=True)
     active = fields.Boolean(default=True)
     state = fields.Selection([('draft', 'Draft'), ('active', 'Active'), ('paused', 'Paused')],
                              default='draft', readonly=True, tracking=True)
     engine_id = fields.Many2one('ai.agent.engine', required=True, ondelete='restrict', check_company=True)
     engine_model_id = fields.Many2one('ai.agent.engine.model', string='AI model', ondelete='restrict', check_company=True)
-    access_scope = fields.Selection([('company', 'Company'), ('users', 'Departments & users')], default='users', required=True, string='Access scope')
+    department_id = fields.Many2one('hr.department', string='Department', check_company=True, tracking=True,
+                                    index='btree_not_null',
+                                    help='The department that owns this agent. Its managers and AI admins configure it.')
+    can_configure = fields.Boolean(compute='_compute_can_configure', search='_search_can_configure')
+    edit_live = fields.Boolean(compute='_compute_can_configure',
+                               help='Department managers and AI admins change an active agent directly.')
+    access_scope = fields.Selection([('company', 'Company'), ('users', 'Departments & users')], default='users', required=True, string='Access scope', tracking=True)
     department_ids = fields.Many2many('hr.department', string='Departments', check_company=True)
     user_ids = fields.Many2many('res.users', string='Users')
     can_chat = fields.Boolean(compute='_compute_can_chat', search='_search_can_chat')
-    system_prompt = fields.Text(required=True, default='Explain permitted business context, draft and recommend. State uncertainty. Never claim to have performed a business action.')
+    system_prompt = fields.Text(string='Instructions', required=True, tracking=True, default='Explain permitted business context, draft and recommend. State uncertainty. Never claim to have performed a business action.')
     response_style = fields.Selection([('standard', 'Standard — Balanced, direct responses.'), ('nuanced', 'Nuanced — Context-aware and detailed.'),
                                        ('creative', 'Snappy & Creative — Concise, engaging, and dynamic.'), ('rigorous', 'Slow & Rigorous — Deeply analyzed and checked.')],
-                                      default='standard', required=True)
+                                      default='standard', required=True, tracking=True)
     provider = fields.Char(help='Hermes provider slug. Leave blank to use its configured default.')
     model = fields.Char(string='Model', help='Verified Hermes model ID; leave blank for its default.')
     skill_ids = fields.Many2many('ai.agent.skill', check_company=True)
@@ -95,6 +105,48 @@ class Agent(models.Model):
         for agent in self:
             agent.can_chat = agent in permitted
 
+    def _is_manager(self):
+        return self.env.user.has_group('ai_agent.group_manager')
+
+    @api.depends_context('uid')
+    def _compute_can_configure(self):
+        managed = None if self._is_manager() else set(self.env.user._ai_admin_department_ids())
+        for agent in self:
+            agent.can_configure = managed is None or agent.sudo().department_id.id in managed
+            agent.edit_live = managed is not None and agent.can_configure
+
+    def _search_can_configure(self, operator, value):
+        values = boolean_search_values(operator, value)
+        if values is None:
+            return NotImplemented
+        if values == {True, False} or (self._is_manager() and True in values):
+            return []
+        if not values or self._is_manager():
+            return [('id', 'in', [])]
+        managed = self.env.user._ai_admin_department_ids()
+        if True in values:
+            return [('department_id', 'in', managed)]
+        return ['|', ('department_id', '=', False), ('department_id', 'not in', managed)]
+
+    def _configurator(self):
+        """AI Agent managers configure every agent; department managers and AI admins their department's."""
+        if self._is_manager():
+            manager(self)
+            return
+        if not self.env.user.has_group('ai_agent.group_user') or not self or not all(a.can_configure for a in self):
+            raise AccessError(_('Only AI Agent managers, and the managers and AI admins of the agent\'s department, '
+                                'can configure it.'))
+        self.check_access('write')
+        if any(a.company_id not in self.env.companies for a in self):
+            raise AccessError(_('Select the authorized company first.'))
+
+    def _check_department_values(self, values):
+        extra = values.keys() - DEPARTMENT_FIELDS
+        if extra:
+            raise AccessError(_('Only AI Agent managers can change the connection, model, data access and limits.'))
+        if values.get('department_id') and values['department_id'] not in self.env.user._ai_admin_department_ids():
+            raise AccessError(_('Choose a department whose agents you configure.'))
+
     @api.onchange('engine_id')
     def _onchange_engine_model(self):
         if self.engine_model_id and self.engine_model_id.engine_id != self.engine_id:
@@ -104,6 +156,15 @@ class Agent(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if not trusted(self) and not loading_demo(self) and not self._is_manager():
+            # Department managers and AI admins add agents to their department, on a connection a manager set up.
+            if not self.env.user.has_group('ai_agent.group_user'):
+                raise AccessError(_('Only AI Agent users can add agents.'))
+            for values in vals_list:
+                if not values.get('department_id'):
+                    raise AccessError(_('Choose your department for the new agent.'))
+                self._check_department_values({k: v for k, v in values.items() if k not in ('engine_id', 'company_id')})
+            return internal(self).create([dict(values) for values in vals_list]).with_env(self.env)
         agents = super().create([self._model_values(dict(values)) for values in vals_list])
         if loading_demo(self):
             # Demo data creates its assistant already active: record the reviewed configuration like Activate does.
@@ -173,6 +234,8 @@ class Agent(models.Model):
         if not trusted(self):
             if {'state', 'revision', 'activation_hash'} & vals.keys():
                 raise AccessError(_('Use the activation and pause buttons.'))
+            if not self._is_manager():
+                return self._department_write(vals)
             manager(self)
             if vals and any(a.state == 'active' for a in self):
                 raise UserError(_('Pause the agent before changing its configuration.'))
@@ -180,6 +243,18 @@ class Agent(models.Model):
                 super(Agent, agent).write({**vals, 'revision': agent.revision + 1, 'activation_hash': False})
             return True
         return super().write(vals)
+
+    def _department_write(self, vals):
+        """A department manager or AI admin changes their department's agents. No approval: an active agent stays
+        active with the new configuration, which is recorded (revision and chatter)."""
+        self._configurator()
+        self._check_department_values(vals)
+        for agent in self:
+            values = {**vals, 'revision': agent.revision + 1}
+            internal(agent).write(values)
+            # activation_hash is manager-only: written privileged after the permission checks above.
+            internal(agent.sudo()).write({'activation_hash': agent.sudo()._configuration_hash() if agent.state == 'active' else False})
+        return True
 
     def _configuration_hash(self):
         self.ensure_one()
@@ -203,7 +278,7 @@ class Agent(models.Model):
                 'view_mode': 'form', 'target': 'new', 'name': _('Choose provider and model')}
 
     def action_activate(self):
-        manager(self)
+        self._configurator()
         for agent in self:
             agent._check_enabled_model()
             if agent.access_scope == 'users' and not (agent.department_ids or agent.user_ids):
@@ -214,11 +289,11 @@ class Agent(models.Model):
                 raise UserError(_('Prepare and activate every assigned source first.'))
             if agent.engine_id.state != 'ready':
                 raise UserError(_('Check the Hermes connection first.'))
-            internal(agent).write({'state': 'active', 'activation_hash': agent._configuration_hash()})
+            internal(agent.sudo()).write({'state': 'active', 'activation_hash': agent.sudo()._configuration_hash()})
         return True
 
     def action_pause(self):
-        manager(self)
+        self._configurator()
         internal(self).write({'state': 'paused'})
         runs = self.env['ai.agent.run'].sudo().search([('agent_id', 'in', self.ids),
                                                       ('state', 'in', ['queued', 'running', 'submitting'])])
@@ -268,7 +343,7 @@ class Agent(models.Model):
 
     def action_configure(self):
         self.ensure_one()
-        manager(self)
+        self._configurator()
         return {'type': 'ir.actions.act_window', 'res_model': self._name, 'res_id': self.id,
                 'view_mode': 'form', 'target': 'current'}
 

@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-11-07 — AI Agent: department AI assistants and admins (phase 1 of the control panel plan)
+
+- Change: a department can have an AI assistant user (created by an AI Agent manager from the department's new AI tab; internal, cannot sign in, not an employee; its groups are its role, set by administrators). AI Agent managers choose department AI admins. An agent belongs to a department; the department's managers in Employees (with sub-departments) and its AI admins change its name, description, instructions, response style, audience and approved skills, add agents to their department, and activate or pause them, without approval: an active agent stays active with the new configuration (the revision goes up and the chatter shows each change of instructions, description, response style and audience). Connection, model, data access, knowledge sources and limits stay with AI Agent managers, whose pause-and-reactivate flow is unchanged.
+- Reason: owner decisions 2026-11-07 (ADR 0012); agents must not depend on a person's account.
+- Affected areas: ai_agent (models department.py and agent.py, access rules, department and agent views, demo: Sales assistant, the demo user as Sales AI admin, a Sales agent), docs (ADR 0012, plan 2026-11-07-ai-agent-control-panel).
+- Compatibility: version 20.0.1.7.0; existing agents have no department and stay with AI Agent managers. Department managers and AI admins need AI Agent / User. Agents do not act as the assistant user yet (phase 3).
+
 ## 2026-11-06 — Campaign tasks: every stage visible
 
 - Change: campaign task screens (menu Campaign tasks and a campaign's Tasks button) show every campaign stage as a kanban column, also when empty (`mi_campaign_tasks` context, `project.task._read_group_stage_ids`). The campaign Done stage is no longer folded, so the task form's status bar shows To do, In progress and Done in line.

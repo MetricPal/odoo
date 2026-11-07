@@ -40,6 +40,10 @@ class TestAgent(TransactionCase):
             demo = mail_new_test_user(self.env, login='ai_demo_user', groups='base.group_user')
             self.env['ir.model.data'].create({'module': 'base', 'name': 'user_demo', 'model': 'res.users',
                                               'res_id': demo.id})
+        if not self.env.ref('hr.dep_sales', raise_if_not_found=False):  # databases without HR demo data
+            sales = self.env['hr.department'].create({'name': 'Sales'})
+            self.env['ir.model.data'].create({'module': 'hr', 'name': 'dep_sales', 'model': 'hr.department',
+                                              'res_id': sales.id})
         with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443'}):
             convert_file(self.env, 'ai_agent', 'demo/ai_agent_demo.xml', {}, mode='init', noupdate=True)
         agent = self.env.ref('ai_agent.demo_agent_ops')

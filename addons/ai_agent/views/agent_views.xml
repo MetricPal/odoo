@@ -60,49 +60,52 @@
     <field name="arch" type="xml">
       <form string="AI Agent">
         <header>
-          <button name="action_pause" string="Pause / Edit" type="object" groups="ai_agent.group_manager" invisible="state != 'active'" confirm="New requests are blocked and active ones are canceled, but you may still be billed for work already started." />
+          <field name="can_configure" invisible="1"/><field name="edit_live" invisible="1"/>
+          <button name="action_pause" string="Pause / Edit" type="object" invisible="state != 'active' or not can_configure" confirm="New requests are blocked and active ones are canceled, but you may still be billed for work already started." />
           <button name="action_chat" string="Chat" type="object" class="btn-primary" invisible="state != 'active'" />
-          <button name="action_activate" string="Activate" type="object" groups="ai_agent.group_manager" invisible="state == 'active'" confirm="Selected users will be able to chat using your configured data settings and limits." />
+          <button name="action_activate" string="Activate" type="object" invisible="state == 'active' or not can_configure" confirm="Selected users will be able to chat using your configured data settings and limits." />
           <field name="state" widget="statusbar" />
         </header>
         <sheet>
           <div class="oe_title">
             <label for="name" string="Agent name" />
             <h1>
-              <field name="name" placeholder="e.g. Sales Assistant" readonly="state == 'active'" />
+              <field name="name" placeholder="e.g. Sales Assistant" readonly="state == 'active' and not edit_live" />
             </h1>
           </div>
           <group>
             <group string="Purpose">
-              <field name="description" string="What it helps with" placeholder="e.g. Review opportunities and prepare follow-ups" readonly="state == 'active'" />
-              <field name="response_style" widget="radio" readonly="state == 'active'" />
+              <field name="description" string="What it helps with" placeholder="e.g. Review opportunities and prepare follow-ups" readonly="state == 'active' and not edit_live" />
+              <field name="department_id" options="{'no_create': True}" readonly="state == 'active' and not edit_live" />
+              <field name="response_style" widget="radio" readonly="state == 'active' and not edit_live" />
             </group>
             <group string="People &amp; company">
               <field name="company_id" groups="base.group_multi_company" readonly="id" />
-              <field name="access_scope" string="Who can chat" widget="radio" options="{'horizontal': true}" readonly="state == 'active'"/>
-              <field name="department_ids" widget="many2many_tags" placeholder="Select departments…" domain="[('company_id', '=', company_id), ('active', '=', True)]" options="{'no_create': True}" invisible="access_scope == 'company'" readonly="state == 'active'"/>
-              <field name="user_ids" widget="many2many_tags" placeholder="Select users…" domain="[('share', '=', False), ('active', '=', True), ('company_ids', 'in', [company_id])]" invisible="access_scope == 'company'" readonly="state == 'active'"/>
+              <field name="access_scope" string="Who can chat" widget="radio" options="{'horizontal': true}" readonly="state == 'active' and not edit_live"/>
+              <field name="department_ids" widget="many2many_tags" placeholder="Select departments…" domain="[('company_id', '=', company_id), ('active', '=', True)]" options="{'no_create': True}" invisible="access_scope == 'company'" readonly="state == 'active' and not edit_live"/>
+              <field name="user_ids" widget="many2many_tags" placeholder="Select users…" domain="[('share', '=', False), ('active', '=', True), ('company_ids', 'in', [company_id])]" invisible="access_scope == 'company'" readonly="state == 'active' and not edit_live"/>
             </group>
           </group>
-          <notebook groups="ai_agent.group_manager">
+          <notebook invisible="not can_configure">
             <page string="Instructions">
               <p class="text-muted">Define the role, goals and expected answers. Instructions never override permissions.</p>
-              <field name="system_prompt" nolabel="1" readonly="state == 'active'" placeholder="Describe what the agent should help with, how it should answer, and when it should ask for clarification." />
+              <field name="system_prompt" nolabel="1" readonly="state == 'active' and not edit_live" placeholder="Describe what the agent should help with, how it should answer, and when it should ask for clarification." />
+              <p class="text-muted" invisible="not edit_live">Your changes apply at once and are recorded in the history below.</p>
             </page>
             <page string="Skills &amp; sources">
               <group>
                 <group string="Skills">
-                  <field name="skill_ids" string="Approved skills" placeholder="Select approved skills…" widget="many2many_tags" domain="[('company_id', '=', company_id), ('state', '=', 'approved')]" readonly="state == 'active'" />
+                  <field name="skill_ids" string="Approved skills" placeholder="Select approved skills…" widget="many2many_tags" domain="[('company_id', '=', company_id), ('state', '=', 'approved')]" readonly="state == 'active' and not edit_live" />
                   <div class="text-muted" colspan="2">Skills define how the agent reasons and prepares work.</div>
                 </group>
-                <group string="Knowledge">
+                <group string="Knowledge" groups="ai_agent.group_manager">
                   <field name="source_ids" string="Knowledge sources" widget="many2many_tags" domain="[('company_id', '=', company_id), ('state', '=', 'ready')]" readonly="state == 'active'" />
                   <field name="restrict_sources" string="Ground answers in sources" readonly="state == 'active'" />
                   <div class="text-muted" colspan="2">Each source is checked against the requesting person's access rights.</div>
                 </group>
               </group>
             </page>
-            <page string="Data access">
+            <page string="Data access" groups="ai_agent.group_manager">
               <p class="text-muted">Reads use the requesting person's permissions. Business changes and external actions are disabled in this release.</p>
               <p class="text-muted">Choose which business data may be supplied as context. These scopes narrow access; they never grant extra permissions.</p>
               <field name="access_ids" readonly="state == 'active'">
@@ -129,7 +132,7 @@
                 </form>
               </field>
             </page>
-            <page string="Engine &amp; limits">
+            <page string="Engine &amp; limits" groups="ai_agent.group_manager">
               <group>
                 <group string="Connection">
                   <field name="engine_id" string="Hermes connection" placeholder="Select a Hermes connection…" domain="[('company_id', '=', company_id)]" readonly="state == 'active'" />

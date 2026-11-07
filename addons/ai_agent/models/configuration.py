@@ -16,7 +16,8 @@ class CompanyConfiguration(models.AbstractModel):
 
     @api.model_create_multi
     def create(self, vals_list):
-        manager(self)
+        if not trusted(self):
+            manager(self)
         protected = {'state', 'revision', 'activation_hash', 'extracted_text', 'checked_at',
                      'capabilities', 'toolsets', 'models_catalog', 'status_message'}
         if not trusted(self) and not loading_demo(self) and any(protected & vals.keys() for vals in vals_list):

@@ -293,3 +293,13 @@ panel shows that brand; removing the tag shows all brands), with Favorites and a
 view per role) in its dropdown; **New campaign**,
 **Portfolio**, **Ask the assistant** and **Customise** (gear) on the right.
 
+## Department AI (`ai_agent`)
+
+A department form has an **AI** tab (approved mock 2026-11-07): its AI assistant (the user agents act as, its
+access, "cannot sign in"; **Create AI assistant** for AI Agent managers when there is none), who configures the
+department's agents (the department manager and AI admins, chosen by AI Agent managers; "No approval needed"),
+and the department's agents with **Add an agent**; an **Agents** button counts them. The Hermes profile section
+comes with phase 2. On an agent, **Department** sets the owner; department managers and AI admins see Activate,
+Pause and the Instructions and Skills tabs, and edit an active agent directly; the Knowledge, Data access and
+Engine & limits parts stay with AI Agent managers.
+

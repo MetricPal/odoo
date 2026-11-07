@@ -26,4 +26,28 @@
         <field name="access_scope">company</field>
         <field name="state">active</field>
     </record>
+
+    <!-- Department AI (ADR 0012): Sales has an AI assistant user that its agents act as, the demo user is its AI
+         admin (configures Sales agents without approval), and one agent belongs to Sales. -->
+    <record id="demo_sales_assistant" model="res.users">
+        <field name="name">Sales Assistant</field>
+        <field name="login">ai-assistant-demo-sales</field>
+        <field name="ai_assistant" eval="True"/>
+        <field name="ai_assistant_department_id" ref="hr.dep_sales"/>
+        <field name="notification_type">inbox</field>
+        <field name="group_ids" eval="[(6, 0, [ref('base.group_user'), ref('ai_agent.group_user')])]"/>
+    </record>
+    <record id="hr.dep_sales" model="hr.department">
+        <field name="ai_assistant_user_id" ref="demo_sales_assistant"/>
+        <field name="ai_admin_ids" eval="[(4, ref('base.user_demo'))]"/>
+    </record>
+    <record id="demo_agent_sales" model="ai.agent">
+        <field name="name">Sales helper</field>
+        <field name="description">Prepares follow-ups and answers questions about customers (demo)</field>
+        <field name="department_id" ref="hr.dep_sales"/>
+        <field name="engine_id" ref="demo_engine_local"/>
+        <field name="access_scope">users</field>
+        <field name="department_ids" eval="[(4, ref('hr.dep_sales'))]"/>
+        <field name="state">draft</field>
+    </record>
 </odoo>

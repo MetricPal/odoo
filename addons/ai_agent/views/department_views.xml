@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Department > AI (ADR 0012): the department's AI assistant and who configures its agents. -->
+  <record id="hr_department_form_ai" model="ir.ui.view">
+    <field name="name">hr.department.form.ai_agent</field>
+    <field name="model">hr.department</field>
+    <field name="inherit_id" ref="hr.view_department_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//div[@name='button_box']" position="inside">
+        <button class="oe_stat_button" type="object" name="action_open_ai_agents" icon="wand_stars"
+                groups="ai_agent.group_user">
+          <field string="Agents" name="ai_agent_count" widget="statinfo"/>
+        </button>
+      </xpath>
+      <xpath expr="//sheet/group[@col='12']" position="after">
+        <notebook groups="ai_agent.group_user">
+          <page string="AI" name="ai">
+            <field name="ai_can_manage" invisible="1"/>
+            <group>
+              <group string="AI assistant">
+                <field name="ai_assistant_user_id" string="Assistant user" options="{'no_open': True}"
+                       invisible="not ai_assistant_user_id"/>
+                <field name="ai_assistant_access" invisible="not ai_assistant_user_id"/>
+                <div class="text-muted" colspan="2" invisible="not ai_assistant_user_id">
+                  Cannot sign in. Agents act as this user. Administrators set its access in Users. It keeps working
+                  when a person leaves.
+                </div>
+                <div colspan="2" invisible="ai_assistant_user_id">
+                  <p class="text-muted">This department has no AI assistant yet.</p>
+                  <button name="action_create_ai_assistant" type="object" string="Create AI assistant"
+                          class="btn-secondary" invisible="not ai_can_manage"/>
+                </div>
+                <button name="action_open_ai_assistant" type="object" string="Set its access" class="btn-link p-0"
+                        colspan="2" groups="base.group_erp_manager" invisible="not ai_assistant_user_id"/>
+              </group>
+              <group string="Who configures the agents">
+                <field name="manager_id" string="Department manager" readonly="1"
+                       widget="many2one_avatar_employee"/>
+                <field name="ai_admin_ids" widget="many2many_avatar_user" readonly="not ai_can_manage"
+                       options="{'no_create': True}"/>
+                <div class="text-muted" colspan="2">
+                  They change this department's agents: instructions, skills and who can chat. No approval needed.
+                </div>
+              </group>
+            </group>
+            <field name="ai_agent_ids" readonly="1" context="{'default_department_id': id}">
+              <list>
+                <field name="name" string="Agent"/>
+                <field name="engine_model_id" string="Model" placeholder="Profile default"/>
+                <field name="state" string="Status" widget="badge" decoration-success="state == 'active'"
+                       decoration-warning="state == 'paused'"/>
+              </list>
+            </field>
+            <button name="action_open_ai_agents" type="object" string="Add an agent" class="btn-link p-0"/>
+          </page>
+        </notebook>
+      </xpath>
+    </field>
+  </record>
+</odoo>
