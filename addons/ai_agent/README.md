@@ -33,7 +33,10 @@ Hermes supplies inference through its HTTP run API. No NATS or custom broker.
    distinct Hermes surfaces and may have different addresses/credentials. The
    management API must describe this exact profile; omitted profile scope must
    not accidentally refer to another profile. Provision separate per-profile
-   origins for this increment; multiplexed profile prefixes are not supported.
+   origins for the connection's default profile. Odoo-managed profiles (Profiles menu, ADR 0012) need
+   `gateway.multiplex_profiles: true` on the Hermes default profile: Odoo then creates each profile through the
+   management API and sends its runs to `/p/<profile>` with the profile's own key. Hermes writes a shell shortcut
+   `~/.local/bin/<profile>` on its host for each profile it creates; Odoo's profile names start with `odoo-`.
 3. Set `AI_AGENT_ENDPOINTS=hermes.example.com:443,management.example.com:443`
    on the Odoo process. Only deployment-approved origins may be contacted;
    HTTP is accepted only for `127.0.0.1` or `::1` and is pinned to loopback.

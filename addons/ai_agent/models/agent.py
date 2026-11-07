@@ -13,6 +13,8 @@ CONTEXT_BUDGET = 60000  # characters of JSON context sent with one question
 SOURCE_EXCERPT_MAX = 8000
 # What department managers and department AI admins may change on their department's agents (ADR 0012). The
 # connection, model, data scopes and limits stay with AI Agent managers.
+# Changing these points the agent at another Hermes profile.
+PROFILE_KEYS = {'department_id', 'profile_mode', 'engine_id', 'company_id'}
 DEPARTMENT_FIELDS = {'name', 'description', 'system_prompt', 'response_style', 'access_scope', 'department_ids',
                      'user_ids', 'skill_ids', 'department_id'}
 
@@ -50,6 +52,12 @@ class Agent(models.Model):
     department_id = fields.Many2one('hr.department', string='Department', check_company=True, tracking=True,
                                     index='btree_not_null',
                                     help='The department that owns this agent. Its managers and AI admins configure it.')
+    profile_mode = fields.Selection([('department', 'Department profile'), ('own', 'Own profile')],
+                                    string='Hermes profile', default='department', required=True, tracking=True)
+    profile_id = fields.Many2one('ai.agent.profile', string='Profile', readonly=True, index='btree_not_null',
+                                 ondelete='set null', check_company=True,
+                                 help='The Hermes profile this agent runs in. Until it is synced, runs use the '
+                                      'connection\'s default profile.')
     can_configure = fields.Boolean(compute='_compute_can_configure', search='_search_can_configure')
     edit_live = fields.Boolean(compute='_compute_can_configure',
                                help='Department managers and AI admins change an active agent directly.')
@@ -166,6 +174,7 @@ class Agent(models.Model):
                 self._check_department_values({k: v for k, v in values.items() if k not in ('engine_id', 'company_id')})
             return internal(self).create([dict(values) for values in vals_list]).with_env(self.env)
         agents = super().create([self._model_values(dict(values)) for values in vals_list])
+        agents._assign_profiles()
         if loading_demo(self):
             # Demo data creates its assistant already active: record the reviewed configuration like Activate does.
             for agent in agents.filtered(lambda a: a.state == 'active'):
@@ -241,8 +250,52 @@ class Agent(models.Model):
                 raise UserError(_('Pause the agent before changing its configuration.'))
             for agent in self:
                 super(Agent, agent).write({**vals, 'revision': agent.revision + 1, 'activation_hash': False})
+            if PROFILE_KEYS & vals.keys():
+                self._assign_profiles()
             return True
         return super().write(vals)
+
+    def _assign_profiles(self):
+        """Point each agent at its Hermes profile: its own one, else its department's, else the company's, on the
+        agent's connection. An active agent stays active (an administrator set the profiles up)."""
+        Profile = self.env['ai.agent.profile'].sudo()
+        for agent in self.sudo():
+            profile = Profile
+            if agent.profile_mode == 'own':
+                profile = Profile.search([('kind', '=', 'agent'), ('id', '=', agent.profile_id.id),
+                                          ('engine_id', '=', agent.engine_id.id)], limit=1)
+            if not profile and agent.department_id:
+                profile = Profile.search([('kind', '=', 'department'), ('department_id', '=', agent.department_id.id),
+                                          ('engine_id', '=', agent.engine_id.id)], limit=1)
+            if not profile:
+                profile = Profile.search([('kind', '=', 'company'), ('company_id', '=', agent.company_id.id),
+                                          ('engine_id', '=', agent.engine_id.id)], limit=1)
+            if profile != agent.profile_id:
+                values = {'profile_id': profile.id}
+                internal(agent).write(values)
+                if agent.state == 'active':
+                    internal(agent).write({'activation_hash': agent._configuration_hash()})
+
+    def _run_profile(self):
+        """The profile runs go to, or None while the agent's profile has never been synced."""
+        profile = self.sudo().profile_id
+        if profile and profile.active and profile.state in ('in_sync', 'needs_sync'):
+            return profile
+        return None
+
+    def action_own_profile(self):
+        """Give the agent its own Hermes profile (managers): for different tools or full isolation."""
+        manager(self)
+        self.ensure_one()
+        if self.state == 'active':
+            raise UserError(_('Pause the agent before changing its profile.'))
+        profile = self.env['ai.agent.profile'].create({
+            'name': self.name, 'kind': 'agent', 'engine_id': self.engine_id.id, 'company_id': self.company_id.id,
+            'department_id': self.department_id.id,
+            'hermes_name': f"odoo-agent-{self.id}"})
+        internal(self.sudo()).write({'profile_mode': 'own', 'profile_id': profile.id})
+        return {'type': 'ir.actions.act_window', 'res_model': profile._name, 'res_id': profile.id,
+                'view_mode': 'form', 'target': 'current'}
 
     def _department_write(self, vals):
         """A department manager or AI admin changes their department's agents. No approval: an active agent stays
@@ -254,11 +307,13 @@ class Agent(models.Model):
             internal(agent).write(values)
             # activation_hash is manager-only: written privileged after the permission checks above.
             internal(agent.sudo()).write({'activation_hash': agent.sudo()._configuration_hash() if agent.state == 'active' else False})
+        if PROFILE_KEYS & vals.keys():
+            self._assign_profiles()
         return True
 
     def _configuration_hash(self):
         self.ensure_one()
-        return digest({'revision': self.revision, 'engine': self.engine_id.id,
+        return digest({'revision': self.revision, 'engine': self.engine_id.id, 'profile': self.profile_id.id,
                        'engine_revision': self.engine_id.revision,
                        'skills': [(s.id, s.revision, s.state) for s in self.skill_ids],
                        'sources': [(s.id, s.revision, s.state, s.active) for s in self.source_ids],

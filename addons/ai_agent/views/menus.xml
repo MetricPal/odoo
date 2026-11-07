@@ -1,6 +1,7 @@
 <odoo>
   <menuitem id="menu_root" name="AI Agent" action="action_agents" web_icon="ai_agent,static/description/icon.svg" groups="ai_agent.group_user" sequence="35"/>
   <menuitem id="menu_agents" name="Agents" parent="menu_root" action="action_agents" sequence="10"/>
+  <menuitem id="menu_profiles" name="Profiles" parent="menu_root" action="action_profiles" groups="ai_agent.group_manager" sequence="15"/>
   <menuitem id="menu_conversations" name="Conversations" parent="menu_root" action="action_conversations" sequence="20"/>
   <menuitem id="menu_sources" name="Sources" parent="menu_root" action="action_sources" groups="ai_agent.group_manager" sequence="40"/>
   <menuitem id="menu_activity" name="Activity" parent="menu_root" action="action_activity" sequence="60"/>

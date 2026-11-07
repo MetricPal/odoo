@@ -28,6 +28,8 @@ class TestOmniAiReply(test_inbox.TestOmniInbox):
         cls.agent = cls.env['ai.agent'].create({'name': 'Reply drafter', 'engine_id': engine.id,
                                                'user_ids': [Command.set(cls.operator.ids)]})
         cls.agent.action_activate()
+        # With several agents to choose from the button opens a picker; these tests use this one agent only.
+        cls.env['ai.agent'].search([('state', '=', 'active'), ('id', '!=', cls.agent.id)]).action_pause()
 
     def _reply_draft(self):
         self._receive()

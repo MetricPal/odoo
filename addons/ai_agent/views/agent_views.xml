@@ -77,6 +77,11 @@
             <group string="Purpose">
               <field name="description" string="What it helps with" placeholder="e.g. Review opportunities and prepare follow-ups" readonly="state == 'active' and not edit_live" />
               <field name="department_id" options="{'no_create': True}" readonly="state == 'active' and not edit_live" />
+              <field name="profile_mode" widget="radio" groups="ai_agent.group_manager" readonly="state == 'active'"/>
+              <field name="profile_id" groups="ai_agent.group_manager" placeholder="Connection default"/>
+              <button name="action_own_profile" type="object" string="Give it its own profile" class="btn-link p-0"
+                      colspan="2" groups="ai_agent.group_manager"
+                      invisible="state == 'active' or profile_mode == 'own'"/>
               <field name="response_style" widget="radio" readonly="state == 'active' and not edit_live" />
             </group>
             <group string="People &amp; company">

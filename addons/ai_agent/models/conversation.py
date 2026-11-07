@@ -68,6 +68,8 @@ class Run(models.Model):
     answer = fields.Text(readonly=True)
     state = fields.Selection(STATES, default='queued', required=True, readonly=True, index=True)
     remote_id = fields.Char(readonly=True, groups='ai_agent.group_manager')
+    profile_id = fields.Many2one('ai.agent.profile', string='Hermes profile', readonly=True, ondelete='restrict',
+                                 groups='ai_agent.group_manager', help='The Hermes profile the run was sent to; status and stop go to the same one.')
     request_key = fields.Char(readonly=True, groups='ai_agent.group_manager')
     request_payload = fields.Json(readonly=True, groups='ai_agent.group_manager')
     configuration_hash = fields.Char(readonly=True, groups='ai_agent.group_manager')
@@ -226,6 +228,11 @@ class Run(models.Model):
             payload.update({'model': agent.model, 'provider': agent.provider})
         return payload, digest(context)
 
+    def _profile_kwargs(self):
+        """Send to the run's Hermes profile when it has one (ADR 0012); otherwise the connection's default."""
+        profile = self.sudo().profile_id
+        return {'profile': profile} if profile else {}
+
     def _submit(self):
         self.ensure_one()
         # Fresh inspection before every network submission; no cached-ready bypass.
@@ -234,12 +241,14 @@ class Run(models.Model):
             self.agent_id._check_enabled_model()
             self.agent_id.engine_id._validate_catalog_model(self.agent_id.provider, self.agent_id.model)
         payload, context_hash = self._prepare_payload()
-        internal(self).write({'request_payload': payload, 'context_hash': context_hash,
+        profile = self.agent_id._run_profile()
+        internal(self).write({'request_payload': payload, 'context_hash': context_hash, 'profile_id': profile.id if profile else False,
                               'state': 'submitting', 'started_at': fields.Datetime.now()})
         self._event('claim', _('Submission claimed; automatic POST retries are disabled.'))
         self.env['ir.cron']._commit_progress()
         result = self.agent_id.engine_id._request('POST', '/v1/runs', payload,
-                     {'Idempotency-Key': self.request_key, 'X-Hermes-Session-Key': self.request_key})
+                     {'Idempotency-Key': self.request_key, 'X-Hermes-Session-Key': self.request_key},
+                     **self._profile_kwargs())
         if not isinstance(result, dict) or not re.fullmatch(r'[A-Za-z0-9_-]{1,150}', result.get('run_id', '')):
             raise HermesUncertain(_('Hermes did not return a valid run identifier. Check the remote session.'))
         # Pause may have committed during I/O; preserve its stop request.
@@ -255,7 +264,7 @@ class Run(models.Model):
             internal(self).write({'state': 'uncertain', 'error_message': _('Remote run identity is unknown. Check Hermes; do not repeat the request.')})
             return
         try:
-            result = self.agent_id.engine_id._request('GET', f'/v1/runs/{self.remote_id}')
+            result = self.agent_id.engine_id._request('GET', f'/v1/runs/{self.remote_id}', **self._profile_kwargs())
         except HermesUnavailable:
             # A status read is safe to repeat: keep the run and retry with backoff.
             failures = self.poll_failures + 1
@@ -362,7 +371,8 @@ class Run(models.Model):
                             internal(run).write({'stop_claimed': True})
                             run._event('stop_claim', _('Cancellation claimed; no automatic retry.'))
                             self.env['ir.cron']._commit_progress()
-                            run.agent_id.engine_id._request('POST', f'/v1/runs/{run.remote_id}/stop', {})
+                            run.agent_id.engine_id._request('POST', f'/v1/runs/{run.remote_id}/stop', {},
+                                                            **run._profile_kwargs())
                         run._poll()
                     else:
                         internal(run).write({'state': 'uncertain', 'error_message': _('Stop could not identify the remote run.')})

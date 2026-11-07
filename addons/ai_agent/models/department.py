@@ -36,6 +36,21 @@ class ResUsers(models.Model):
             raise AccessError(_('Create AI assistants from the department.'))
         return super().write(vals)
 
+    @api.model
+    def _ai_create_assistant(self, name, login, company, department=None):
+        """An AI assistant user: internal, no password, cannot sign in, not an employee; AI Agent / User only
+        until an administrator gives it groups."""
+        return self.sudo().with_context(no_reset_password=True, mail_create_nosubscribe=True).create({
+            'name': name,
+            'login': login,
+            'ai_assistant': True,
+            'ai_assistant_department_id': department.id if department else False,
+            'company_id': company.id,
+            'company_ids': [(6, 0, company.ids)],
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('ai_agent.group_user').id])],
+            'notification_type': 'inbox',
+        })
+
     def _ai_admin_department_ids(self):
         """Departments, with their sub-departments, whose agents this user configures: those they manage in
         Employees and those an AI Agent manager made them AI admin of."""
@@ -57,6 +72,29 @@ class HrDepartment(models.Model):
     ai_agent_ids = fields.One2many('ai.agent', 'department_id', string='Agents')
     ai_agent_count = fields.Integer(string='Agents', compute='_compute_ai_agent_count')
     ai_can_manage = fields.Boolean(compute='_compute_ai_can_manage')
+    ai_profile_id = fields.Many2one('ai.agent.profile', string='Hermes profile', compute='_compute_ai_profile_id')
+    ai_profile_state = fields.Selection(related='ai_profile_id.state', string='Profile status')
+    ai_profile_synced_at = fields.Datetime(related='ai_profile_id.synced_at', string='Last synced')
+    ai_profile_engine_id = fields.Many2one(related='ai_profile_id.engine_id', string='Hermes connection')
+
+    def _compute_ai_profile_id(self):
+        Profile = self.env['ai.agent.profile'].sudo()
+        for department in self:
+            department.ai_profile_id = Profile.search([('kind', '=', 'department'),
+                                                       ('department_id', '=', department.id)], limit=1).id
+
+    def action_open_ai_profile(self):
+        self.ensure_one()
+        values = {'type': 'ir.actions.act_window', 'res_model': 'ai.agent.profile', 'view_mode': 'form',
+                  'target': 'current'}
+        if self.ai_profile_id:
+            return {**values, 'res_id': self.ai_profile_id.id}
+        if not self.env.user.has_group('ai_agent.group_manager'):
+            raise AccessError(_('Ask an AI Agent manager to create this department\'s Hermes profile.'))
+        engine = self.env['ai.agent.engine'].search([('company_id', '=', (self.company_id or self.env.company).id)],
+                                                   limit=1)
+        return {**values, 'context': {'default_kind': 'department', 'default_department_id': self.id,
+                                      'default_name': self.name, 'default_engine_id': engine.id}}
 
     @api.depends('ai_assistant_user_id.group_ids')
     def _compute_ai_assistant_access(self):
@@ -94,21 +132,12 @@ class HrDepartment(models.Model):
         until an administrator gives it groups)."""
         if not self.env.user.has_group('ai_agent.group_manager'):
             raise AccessError(_('Only AI Agent managers create AI assistants.'))
-        Users = self.env['res.users'].sudo().with_context(no_reset_password=True, mail_create_nosubscribe=True)
         for department in self:
             if department.ai_assistant_user_id:
                 raise UserError(_('%s already has an AI assistant.', department.name))
             company = department.company_id or self.env.company
-            user = Users.create({
-                'name': _('%s Assistant', department.name),
-                'login': f'ai-assistant-{department.id}',
-                'ai_assistant': True,
-                'ai_assistant_department_id': department.id,
-                'company_id': company.id,
-                'company_ids': [(6, 0, company.ids)],
-                'group_ids': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('ai_agent.group_user').id])],
-                'notification_type': 'inbox',
-            })
+            user = self.env['res.users']._ai_create_assistant(_('%s Assistant', department.name),
+                                                               f'ai-assistant-{department.id}', company, department)
             department.sudo().ai_assistant_user_id = user
         return True
 
@@ -124,3 +153,26 @@ class HrDepartment(models.Model):
                       context={'default_department_id': self.id, 'default_access_scope': 'users',
                                'default_department_ids': [(6, 0, self.ids)]})
         return action
+
+
+class ResCompany(models.Model):
+    _inherit = 'res.company'
+
+    ai_assistant_user_id = fields.Many2one('res.users', string='Company AI assistant', readonly=True, copy=False,
+                                           help='Company-wide agents act as this user.')
+
+    def write(self, vals):
+        if 'ai_assistant_user_id' in vals and not self.env.su:
+            raise AccessError(_('Use Create company assistant.'))
+        return super().write(vals)
+
+    def _ai_create_company_assistant(self):
+        if not self.env.user.has_group('ai_agent.group_manager'):
+            raise AccessError(_('Only AI Agent managers create AI assistants.'))
+        for company in self:
+            if company.ai_assistant_user_id:
+                raise UserError(_('%s already has an AI assistant.', company.name))
+            user = self.env['res.users']._ai_create_assistant(_('%s Assistant', company.name),
+                                                               f'ai-assistant-company-{company.id}', company)
+            company.sudo().ai_assistant_user_id = user
+        return True

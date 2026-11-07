@@ -4,7 +4,7 @@ import json
 import os
 import re
 import socket
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 import urllib3
 
@@ -85,9 +85,21 @@ def credential(reference):
     return key
 
 
-def request(url, secret_reference, method, path, payload=None, headers=None, *, credential_value=None, demo=False):
-    if method not in ('GET', 'POST') or not re.fullmatch(r'/[a-zA-Z0-9_./-]+', path) or '..' in path:
+# Writes Odoo makes: runs (POST) and, on the management API, profile configuration (PUT/PATCH/DELETE).
+WRITE_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
+# Query values Odoo sends: Hermes profile names only.
+QUERY_VALUE = re.compile(r'[a-z0-9][a-z0-9_-]{0,63}')
+
+
+def request(url, secret_reference, method, path, payload=None, headers=None, *, credential_value=None, demo=False,
+            query=None):
+    if method not in WRITE_METHODS | {'GET'} or not re.fullmatch(r'/[a-zA-Z0-9_./-]+', path) or '..' in path:
         raise UserError(_('Unsupported Hermes operation.'))
+    if query:
+        if any(k not in ('profile',) or not isinstance(v, str) or not QUERY_VALUE.fullmatch(v)
+               for k, v in query.items()):
+            raise UserError(_('Unsupported Hermes operation.'))
+        path = f'{path}?{urlencode(query)}'
     parsed, addresses, port = target(url, demo=demo)
     key = credential_value if credential_value is not None else credential(secret_reference)
     if not isinstance(key, str) or not key or len(key) > 4096 or '\n' in key or '\r' in key:
@@ -107,7 +119,7 @@ def request(url, secret_reference, method, path, payload=None, headers=None, *, 
                                          'Content-Type': 'application/json', **(headers or {})},
                                 redirect=False, preload_content=False, retries=False)
         status = response.status
-        if method == 'POST' and status in DEFINITIVE_REJECTIONS:
+        if method in WRITE_METHODS and status in DEFINITIVE_REJECTIONS:
             raise HermesRejected(_('Hermes refused the request (HTTP %s). Nothing was submitted; check the agent configuration and credentials.', status))
         raw = response.read(MAX_RESPONSE + 1)
         if len(raw) > MAX_RESPONSE:

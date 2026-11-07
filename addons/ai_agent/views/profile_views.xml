@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Hermes profiles managed from Odoo (ADR 0012, approved mock 2026-11-07). -->
+  <record id="profile_list" model="ir.ui.view">
+    <field name="name">ai.agent.profile.list</field>
+    <field name="model">ai.agent.profile</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="kind"/>
+        <field name="department_id" optional="show"/>
+        <field name="hermes_name" optional="show"/>
+        <field name="engine_id" optional="hide"/>
+        <field name="state" widget="badge" decoration-success="state == 'in_sync'"
+               decoration-warning="state == 'needs_sync'" decoration-danger="state == 'failed'"/>
+        <field name="synced_at" optional="show"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="profile_form" model="ir.ui.view">
+    <field name="name">ai.agent.profile.form</field>
+    <field name="model">ai.agent.profile</field>
+    <field name="arch" type="xml">
+      <form string="Hermes profile">
+        <header>
+          <field name="can_configure" invisible="1"/><field name="can_manage" invisible="1"/>
+          <button name="action_sync" type="object" string="Sync to Hermes" class="btn-primary"
+                  invisible="not can_configure or not id"/>
+          <button name="action_remove_from_hermes" type="object" string="Remove from Hermes"
+                  invisible="not can_manage or state == 'draft'"
+                  confirm="Delete this profile in Hermes? Agents that use it fall back to the next profile."/>
+          <field name="state" widget="statusbar" statusbar_visible="needs_sync,in_sync,failed"/>
+        </header>
+        <sheet>
+          <div class="alert alert-danger" role="alert" invisible="state != 'failed'">
+            <field name="sync_message" nolabel="1" class="d-inline"/>
+          </div>
+          <div class="oe_title">
+            <label for="name" string="Profile"/>
+            <h1><field name="name" readonly="not can_manage"/></h1>
+          </div>
+          <group>
+            <group>
+              <field name="kind" string="For" readonly="not can_manage or state != 'draft'"/>
+              <field name="department_id" invisible="kind == 'company'" required="kind == 'department'"
+                     readonly="not can_manage or state != 'draft'" options="{'no_create': True}"/>
+              <field name="hermes_name" readonly="not can_manage or state != 'draft'"/>
+            </group>
+            <group>
+              <field name="engine_id" readonly="not can_manage or state != 'draft'" options="{'no_create': True}"/>
+              <field name="engine_model_id" placeholder="Connection default" options="{'no_create': True, 'no_open': True}"
+                     readonly="not can_configure"/>
+              <field name="assistant_user_id" options="{'no_open': True}" placeholder="No AI assistant yet"/>
+              <button name="action_create_company_assistant" type="object" string="Create company assistant"
+                      class="btn-link p-0" colspan="2" invisible="not can_manage or kind != 'company' or assistant_user_id"/>
+              <button name="action_create_department_assistant" type="object" string="Create department assistant"
+                      class="btn-link p-0" colspan="2" invisible="not can_manage or kind != 'department' or assistant_user_id"/>
+              <field name="synced_at"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Persona" name="persona">
+              <p class="text-muted">Shared by every agent on this profile. Each agent adds its own instructions.</p>
+              <field name="persona" nolabel="1" readonly="not can_configure"
+                     placeholder="You are the Human Resources assistant of metric.io. You only use data the Odoo tools return. You never change records: you prepare drafts and proposals for a person to approve."/>
+            </page>
+            <page string="Agents" name="agents">
+              <field name="agent_ids" readonly="1">
+                <list>
+                  <field name="name"/>
+                  <field name="department_id"/>
+                  <field name="state" widget="badge" decoration-success="state == 'active'"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+          <p class="text-muted">Memory and Hermes tools stay off on this profile. Changes take effect at the next sync.</p>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_profiles" model="ir.actions.act_window">
+    <field name="name">Profiles</field>
+    <field name="res_model">ai.agent.profile</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Create the company's Hermes profile</p>
+      <p>Each department gets its own profile with its persona and default model; agents run in their department's
+        profile. Odoo creates and updates the profiles in Hermes.</p>
+    </field>
+  </record>
+</odoo>

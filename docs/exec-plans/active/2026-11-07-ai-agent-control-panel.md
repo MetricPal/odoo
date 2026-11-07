@@ -159,6 +159,9 @@ department managers of ADR 0009. Department changes take effect without approval
    profile section of the tab come with phase 2.
 2. Profiles managed from Odoo; existing agents move to the company profile; the hand-made `odoo-internal`
    profile becomes the company profile.
+   **Done 2026-11-07** (`ai_agent` 20.0.1.8.0): profiles, sync, per-profile keys and runs, company assistant;
+   existing agents keep the connection default until a company or department profile is synced (no automatic move
+   of `odoo-internal`: it is a separate gateway, not a multiplexed profile).
 3. Odoo MCP read tools with the permission rules; pre-sent business data removed.
 4. Prepare-only tools through Approval Center.
 5. Ask agent step in Workflows.

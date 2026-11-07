@@ -298,8 +298,13 @@ view per role) in its dropdown; **New campaign**,
 A department form has an **AI** tab (approved mock 2026-11-07): its AI assistant (the user agents act as, its
 access, "cannot sign in"; **Create AI assistant** for AI Agent managers when there is none), who configures the
 department's agents (the department manager and AI admins, chosen by AI Agent managers; "No approval needed"),
-and the department's agents with **Add an agent**; an **Agents** button counts them. The Hermes profile section
-comes with phase 2. On an agent, **Department** sets the owner; department managers and AI admins see Activate,
+and the department's agents with **Add an agent**; an **Agents** button counts them. The **Hermes profile** section
+shows the department's profile, its status (Needs sync, In sync, Failed), connection and last sync, with **Open
+profile** (or **Create Hermes profile** for AI Agent managers).
+
+A **Hermes profile** form (approved mock, phase 2 part): **Sync to Hermes** and a status bar; For, Department, Name
+in Hermes, Hermes connection, Default model, Acts as (the assistant user), Last synced; tabs **Persona** (shared by
+the profile's agents) and **Agents**. Skills and Tools and services tabs come with later phases. On an agent, **Department** sets the owner; department managers and AI admins see Activate,
 Pause and the Instructions and Skills tabs, and edit an active agent directly; the Knowledge, Data access and
 Engine & limits parts stay with AI Agent managers.
 

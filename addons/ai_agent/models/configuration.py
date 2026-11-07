@@ -220,10 +220,22 @@ class Engine(models.Model):
         self.invalidate_recordset(['api_key', 'management_api_key', 'api_key_saved', 'management_key_saved'])
         return result
 
-    def _request(self, method, path, payload=None, headers=None):
+    def _request(self, method, path, payload=None, headers=None, profile=None):
+        """A run API call. With ``profile`` (an Odoo-managed Hermes profile) it goes to that profile on the
+        multiplexing gateway, ``/p/<name>``, with the profile's own key (ADR 0012)."""
         self.ensure_one()
+        if profile:
+            return hermes.request(self.url, None, method, f'/p/{profile.hermes_name}{path}', payload, headers,
+                                  credential_value=profile._run_key(), demo=self._demo_loopback())
         return hermes.request(self.url, None, method, path, payload, headers, credential_value=self._credential('run'),
                               demo=self._demo_loopback())
+
+    def _management(self, method, path, payload=None, query=None):
+        """A Hermes management API call (profiles, config, keys)."""
+        self.ensure_one()
+        url = self.url if self.management_same_connection else (self.management_url or self.url)
+        return hermes.request(url, None, method, path, payload, credential_value=self._credential('management'),
+                              demo=self._demo_loopback(), query=query)
 
     def _inspect(self):
         """Fresh inspection before every submission; discovery never grants execution."""

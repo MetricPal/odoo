@@ -43,9 +43,25 @@
                 </div>
               </group>
             </group>
+            <group string="Hermes profile">
+              <field name="ai_profile_id" string="Profile" invisible="not ai_profile_id" options="{'no_open': True}"/>
+              <field name="ai_profile_state" string="Status" invisible="not ai_profile_id" widget="badge"
+                     decoration-success="ai_profile_state == 'in_sync'" decoration-warning="ai_profile_state == 'needs_sync'"
+                     decoration-danger="ai_profile_state == 'failed'"/>
+              <field name="ai_profile_engine_id" invisible="not ai_profile_id" options="{'no_open': True}"/>
+              <field name="ai_profile_synced_at" invisible="not ai_profile_id"/>
+              <div colspan="2">
+                <span class="text-muted" invisible="ai_profile_id">No Hermes profile yet: agents use the connection's default profile. </span>
+                <button name="action_open_ai_profile" type="object" class="btn-secondary"
+                        string="Open profile" invisible="not ai_profile_id"/>
+                <button name="action_open_ai_profile" type="object" class="btn-secondary"
+                        string="Create Hermes profile" invisible="ai_profile_id or not ai_can_manage"/>
+              </div>
+            </group>
             <field name="ai_agent_ids" readonly="1" context="{'default_department_id': id}">
               <list>
                 <field name="name" string="Agent"/>
+                <field name="profile_mode" string="Profile"/>
                 <field name="engine_model_id" string="Model" placeholder="Profile default"/>
                 <field name="state" string="Status" widget="badge" decoration-success="state == 'active'"
                        decoration-warning="state == 'paused'"/>
