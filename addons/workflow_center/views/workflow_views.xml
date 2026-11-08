@@ -269,10 +269,11 @@
           <group string="What happens next">
             <field name="end"/>
             <field name="next_id" invisible="end" domain="[('workflow_id', '=', workflow_id), ('id', '!=', id)]" options="{'no_create': True}"/>
-            <field name="false_id" invisible="kind != 'branch'" domain="[('workflow_id', '=', workflow_id), ('id', '!=', id)]" options="{'no_create': True}"/>
+            <field name="splits" invisible="1"/>
+            <field name="false_id" invisible="not splits" domain="[('workflow_id', '=', workflow_id), ('id', '!=', id)]" options="{'no_create': True}"/>
           </group>
           <p class="text-muted">If Next is empty, continue to the next step on the canvas. For a branch, choose where the No path goes. End this path prevents it from continuing into another branch.</p>
-          <group string="If the action fails" invisible="kind not in ('action', 'foreach')">
+          <group name="on_error" string="If the action fails" invisible="kind not in ('action', 'foreach')">
             <field name="on_error"/><field name="max_attempts" invisible="on_error != 'retry'"/>
           </group>
           <p class="text-muted" invisible="action_type != 'webhook'">Webhook delivery is tracked. If delivery cannot be confirmed, the run stops for review; check the destination before retrying.</p>

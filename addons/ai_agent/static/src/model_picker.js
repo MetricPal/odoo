@@ -1,4 +1,5 @@
 import { Component, useProps, proxy } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
@@ -9,7 +10,7 @@ export class HermesModelPicker extends Component {
     setup() {
         this.orm = useService("orm");
         this.notification = useService("notification");
-        this.state = proxy({ busy: false, query: "", slug: this.props.record.data.provider || this.catalog.provider || "" });
+        this.state = proxy({ busy: false, query: "", key: "", slug: this.props.record.data.provider || this.catalog.provider || "" });
     }
     get catalog() { return this.props.record.data[this.props.name] || { providers: [] }; }
     get defaultProviderName() { return this.catalog.providers.find(p => p.slug === this.catalog.provider)?.name || this.catalog.provider || "Not reported"; }
@@ -24,7 +25,22 @@ export class HermesModelPicker extends Component {
         const term = this.state.query.trim().toLowerCase();
         return p.models.filter(m => !term || `${p.name} ${p.slug}`.toLowerCase().includes(term) || m.toLowerCase().includes(term));
     }
-    selectProvider(p) { this.state.slug = p.slug; }
+    selectProvider(p) { this.state.slug = p.slug; this.state.key = ""; }
+    /** Same wording as the connection form (approved mock 2026-11-07, boards 5 and 7). */
+    status(p) {
+        if (p.authenticated) { return _t("%s models · Ready", p.models.length); }
+        return p.key_env ? _t("Needs a key") : _t("Sign in in Hermes");
+    }
+    async saveKey() {
+        const key = this.state.key.trim();
+        if (this.state.busy || !key) { return; }
+        this.state.busy = true;
+        try {
+            await this.orm.call(this.props.record.resModel, "save_provider_key", [[this.props.record.resId], this.selected.slug, key]);
+            this.state.key = "";
+            await this.props.record.load();
+        } finally { this.state.busy = false; }
+    }
     get isEngine() { return this.props.record.resModel === "ai.agent.engine" || (this.props.record.resModel === "ai.agent.model.picker" && !this.props.record.data.agent_id); }
     isEnabled(model) { return (this.selected?.enabled_models || []).includes(model); }
     async toggleModel(model) {

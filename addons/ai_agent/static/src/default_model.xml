@@ -1,0 +1,79 @@
+<templates xml:space="preserve">
+  <t t-name="ai_agent.DefaultModel">
+    <div class="o_ai_default_model mb-4">
+      <p t-if="this.state.loading" class="text-muted">Loading providers from Hermes&#8230;</p>
+      <div t-elif="this.state.error" class="alert alert-warning" role="alert" t-out="this.state.error"/>
+      <t t-elif="this.state.data">
+        <section t-if="!this.showChooser" aria-label="Default model" class="o_ai_default_line d-flex flex-wrap align-items-center gap-3">
+          <div class="d-flex flex-column flex-grow-1">
+            <span class="text-muted small">Default model</span>
+            <strong class="fs-5"><t t-out="this.state.data.current.name"/> &#183; <t t-out="this.state.data.current.model"/></strong>
+            <span class="text-muted small">Profiles and agents use this model unless they choose their own.</span>
+          </div>
+          <button type="button" class="btn btn-outline-primary" t-on-click="() =&gt; { this.state.choosing = true; }">Change model</button>
+        </section>
+        <t t-else="">
+          <section aria-label="Choose the default model" class="d-flex flex-column gap-3">
+            <div>
+              <h2 class="fs-5 mb-1">Choose the default model</h2>
+              <p class="text-muted small mb-0">Profiles and agents use it unless they choose their own.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-3">
+              <div class="o_ai_model_card o_ai_model_card_main d-flex flex-column gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2"><strong>Use your own key</strong><span class="badge rounded-pill o_ai_badge_good">Recommended for company data</span></div>
+                <label class="d-flex flex-column gap-1 small"><span class="fw-semibold">Provider</span>
+                  <select class="form-select" t-att-value="this.state.slug" t-att-disabled="this.state.busy" t-on-change="(ev) =&gt; this.selectProvider(ev.target.value)">
+                    <option t-foreach="this.providerOptions" t-as="p" t-key="p.slug" t-att-value="p.slug" t-att-selected="p.slug === this.state.slug" t-out="p.name"/>
+                  </select>
+                </label>
+                <label t-if="this.selected and this.selected.key_env" class="d-flex flex-column gap-1 small"><span class="fw-semibold">API key</span>
+                  <input type="password" class="form-control" autocomplete="new-password" t-att-placeholder="this.selected.ready ? 'Saved in Hermes. Enter a new key to replace it.' : ''"
+                         t-att-value="this.state.key" t-att-disabled="this.state.busy" t-on-input="(ev) =&gt; { this.state.key = ev.target.value; }"/>
+                </label>
+                <a t-elif="this.selected" class="small" t-att-href="this.state.data.setup_url" target="_blank" rel="noopener">Sign in in Hermes</a>
+                <label class="d-flex flex-column gap-1 small"><span class="fw-semibold">Model</span>
+                  <select class="form-select" t-att-disabled="this.state.busy || !this.state.models.length" t-on-change="(ev) =&gt; { this.state.model = ev.target.value; }">
+                    <option t-if="!this.state.models.length" value="">Recommended model (chosen once the key is checked)</option>
+                    <option t-foreach="this.state.models" t-as="m" t-key="m" t-att-value="m" t-att-selected="m === this.state.model" t-out="m === this.state.model ? m + ' (recommended)' : m"/>
+                  </select>
+                </label>
+                <span class="text-muted small">The key is saved securely and sent only to Hermes. Models load once the key is checked.</span>
+                <div><button type="button" class="btn btn-primary" t-att-disabled="this.state.busy" t-on-click="() =&gt; this.useOwnKey()">Use this model</button></div>
+              </div>
+              <div t-if="this.state.data.free" class="o_ai_model_card d-flex flex-column gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2"><strong t-out="this.state.data.free.name"/><span class="badge rounded-pill o_ai_badge_try">For trying it out</span></div>
+                <div class="alert alert-warning small mb-0" role="note">No key needed, but questions and the business data agents read go to an outside service (opencode.ai) under its free-tier terms. Not for company data.</div>
+                <label class="d-flex flex-column gap-1 small"><span class="fw-semibold">Model</span>
+                  <select class="form-select" t-att-disabled="this.state.busy" t-on-change="(ev) =&gt; { this.state.freeModel = ev.target.value; }">
+                    <option t-foreach="this.state.data.free.models" t-as="m" t-key="m" t-att-value="m" t-att-selected="m === this.state.freeModel" t-out="m"/>
+                  </select>
+                </label>
+                <div><button type="button" class="btn btn-outline-primary" t-att-disabled="this.state.busy" t-on-click="() =&gt; this.useFree()">Use free model</button></div>
+              </div>
+            </div>
+          </section>
+          <section aria-label="All providers" class="d-flex flex-column gap-2 mt-3">
+            <h3 class="fs-6 mb-0">All providers Hermes offers</h3>
+            <div class="table-responsive border rounded">
+              <table class="table table-sm mb-0 align-middle">
+                <thead><tr><th>Provider</th><th>Status</th><th>Models</th><th/></tr></thead>
+                <tbody>
+                  <tr t-foreach="this.state.data.providers" t-as="p" t-key="p.slug">
+                    <td t-out="p.name"/>
+                    <td><t t-set="s" t-value="this.status(p)"/><span class="badge rounded-pill" t-att-class="s.cls" t-out="s.label"/></td>
+                    <td t-out="p.ready ? p.models.length : '&#8212;'"/>
+                    <td class="text-end">
+                      <a t-if="!p.ready and !p.key_env" t-att-href="this.state.data.setup_url" target="_blank" rel="noopener">Sign in in Hermes</a>
+                      <button t-else="" type="button" class="btn btn-link p-0" t-on-click="() =&gt; this.pick(p)" t-out="p.ready ? 'Choose' : 'Add key'"/>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <span class="text-muted small">The list comes from Hermes. Providers that need a sign-in instead of a key are shown with “Sign in in Hermes”.</span>
+          </section>
+        </t>
+      </t>
+    </div>
+  </t>
+</templates>

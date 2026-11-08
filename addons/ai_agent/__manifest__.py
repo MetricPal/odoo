@@ -1,6 +1,6 @@
 {
     'name': 'AI Agent',
-    'version': '20.0.1.10.0',
+    'version': '20.0.1.13.0',
     'category': 'Productivity',
     'summary': 'Work with supervised Hermes assistants using permitted business context',
     'description': 'Configure supervised Hermes assistants, choose permitted knowledge and '
@@ -14,7 +14,7 @@
              'data/cron.xml', 'data/approval_type.xml', 'views/agent_views.xml', 'views/configuration_views.xml',
              'views/conversation_views.xml', 'views/wizard_views.xml', 'views/model_picker_views.xml', 'views/approval_views.xml', 'views/department_views.xml', 'views/profile_views.xml', 'views/proposal_views.xml', 'views/menus.xml'],
     'demo': ['demo/ai_agent_demo.xml'],
-    'assets': {'web.assets_backend': ['ai_agent/static/src/model_picker.js', 'ai_agent/static/src/model_picker.xml', 'ai_agent/static/src/model_picker.scss']},
+    'assets': {'web.assets_backend': ['ai_agent/static/src/hermes_errors.js', 'ai_agent/static/src/default_model.js', 'ai_agent/static/src/default_model.xml', 'ai_agent/static/src/default_model.scss', 'ai_agent/static/src/model_picker.js', 'ai_agent/static/src/model_picker.xml', 'ai_agent/static/src/model_picker.scss']},
     'icon': '/ai_agent/static/description/icon.svg',
     'application': True,
     'installable': True,

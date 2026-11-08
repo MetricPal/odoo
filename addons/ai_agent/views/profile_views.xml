@@ -45,7 +45,7 @@
               <field name="kind" string="For" readonly="not can_manage or state != 'draft'"/>
               <field name="department_id" invisible="kind == 'company'" required="kind == 'department'"
                      readonly="not can_manage or state != 'draft'" options="{'no_create': True}"/>
-              <field name="hermes_name" readonly="not can_manage or state != 'draft'"/>
+              <field name="hermes_name"/>
             </group>
             <group>
               <field name="engine_id" readonly="not can_manage or state != 'draft'" options="{'no_create': True}"/>
@@ -63,7 +63,79 @@
             <page string="Persona" name="persona">
               <p class="text-muted">Shared by every agent on this profile. Each agent adds its own instructions.</p>
               <field name="persona" nolabel="1" readonly="not can_configure"
-                     placeholder="You are the Human Resources assistant of metric.io. You only use data the Odoo tools return. You never change records: you prepare drafts and proposals for a person to approve."/>
+                     placeholder="You are the Human Resources assistant of metric.io. You only use data the tools return. You never change records: you prepare drafts and proposals for a person to approve."/>
+            </page>
+            <page string="Tools and services" name="tools">
+              <!-- Approved mock 2026-11-08, board 8. -->
+              <div class="alert alert-info" role="status">Tool changes take effect in Hermes at the next
+                <strong>Sync to Hermes</strong>.</div>
+              <separator string="ERP tools"/>
+              <p class="text-muted mb-2">Always on. Each agent's Data access decides which records and fields it may use;
+                proposals wait for approval.</p>
+              <div class="d-flex flex-wrap gap-2 mb-4">
+                <span class="badge rounded-pill text-bg-light border">Find records</span>
+                <span class="badge rounded-pill text-bg-light border">Read a record</span>
+                <span class="badge rounded-pill text-bg-light border">A record's activities</span>
+                <span class="badge rounded-pill text-bg-light border">A record's messages</span>
+                <span class="badge rounded-pill text-bg-light border">Propose a note</span>
+                <span class="badge rounded-pill text-bg-light border">Propose a to-do</span>
+                <span class="badge rounded-pill text-bg-light border">Propose a field change</span>
+              </div>
+              <separator string="Hermes tools"/>
+              <field name="tool_ids" nolabel="1" readonly="not can_configure">
+                <list editable="bottom" create="0" delete="0">
+                  <field name="toolset" readonly="1"/>
+                  <field name="description" readonly="1"/>
+                  <field name="status" widget="badge" readonly="1" decoration-success="status == 'ready'"
+                         decoration-warning="status == 'needs_key'"/>
+                  <button name="action_add_key" type="object" string="Add key in Hermes" class="btn-link"
+                          invisible="status != 'needs_key'"/>
+                  <field name="enabled" widget="boolean_toggle"/>
+                </list>
+              </field>
+              <p class="text-muted small">Terminal, files, browser control, running code, memory, past-conversation
+                search and messaging apps are never offered.</p>
+              <separator string="Tool servers"/>
+              <field name="server_ids" nolabel="1" readonly="not can_configure">
+                <list editable="bottom" create="0" delete="0">
+                  <field name="kind" column_invisible="1"/>
+                  <field name="name" readonly="1"/>
+                  <field name="address" readonly="1"/>
+                  <field name="status" widget="badge" readonly="1" decoration-success="status == 'ready'"
+                         decoration-warning="status in ('sign_in', 'unreachable')"/>
+                  <button name="action_sign_in" type="object" string="Sign in in Hermes" class="btn-link"
+                          invisible="status != 'sign_in'"/>
+                  <field name="enabled" widget="boolean_toggle" readonly="kind == 'erp'"/>
+                  <button name="action_remove" type="object" string="Remove" class="btn-link"
+                          invisible="kind == 'erp' or not parent.can_manage"
+                          confirm="Remove this tool server from the profile and from Hermes?"/>
+                </list>
+              </field>
+              <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+                <button name="action_add_tool_server" type="object" string="Add a tool server" class="btn-secondary"
+                        invisible="not can_manage"/>
+                <span class="text-muted small">Only AI Agent managers add or remove tool servers. Department managers and
+                  AI admins turn them on or off.</span>
+              </div>
+              <separator string="Scheduled jobs in Hermes"/>
+              <p class="text-muted mb-2">Jobs made in Hermes for this profile. Scheduled work for the ERP is set up in
+                Workflows.</p>
+              <field name="job_ids" nolabel="1" readonly="1">
+                <list create="0" delete="0" no_open="1">
+                  <field name="name"/>
+                  <field name="schedule"/>
+                  <field name="next_run"/>
+                  <field name="last_run"/>
+                  <field name="last_result" nolabel="1" widget="badge" decoration-success="last_result == 'done'"
+                         decoration-danger="last_result == 'failed'"/>
+                  <field name="state" widget="badge" decoration-success="state == 'active'"/>
+                  <button name="action_pause" type="object" string="Pause" class="btn-link"
+                          invisible="state != 'active' or not parent.can_configure"/>
+                  <button name="action_resume" type="object" string="Resume" class="btn-link"
+                          invisible="state != 'paused' or not parent.can_configure"/>
+                </list>
+              </field>
+              <p class="text-muted small">Pause and Resume act in Hermes at once.</p>
             </page>
             <page string="Agents" name="agents">
               <field name="agent_ids" readonly="1">
@@ -75,9 +147,37 @@
               </field>
             </page>
           </notebook>
-          <p class="text-muted">Memory and Hermes tools stay off on this profile. Changes take effect at the next sync.</p>
+          <p class="text-muted">Memory stays off on this profile. Changes take effect at the next sync.</p>
         </sheet>
         <chatter/>
+      </form>
+    </field>
+  </record>
+
+  <record id="tool_server_add_form" model="ir.ui.view">
+    <field name="name">ai.agent.tool.server.add.form</field>
+    <field name="model">ai.agent.tool.server.add</field>
+    <field name="arch" type="xml">
+      <!-- Approved mock 2026-11-08, board 9. -->
+      <form string="Add a tool server">
+        <p class="text-muted">A tool server gives this profile's agents tools from another service. They act with the
+          server's own access, not the ERP's, so add only services you trust with this department's questions.</p>
+        <group>
+          <field name="profile_id" invisible="1"/>
+          <field name="name" placeholder="HR documents (Google Drive)"/>
+          <field name="url" placeholder="https://"/>
+          <field name="auth" widget="radio" options="{'horizontal': true}"/>
+          <field name="key" password="True" invisible="auth != 'key'" required="auth == 'key'"/>
+        </group>
+        <p class="text-muted small">The key is saved only in Hermes, for this profile; the ERP never stores it. With
+          "Sign in in Hermes", the server is added and its sign-in page opens in Hermes.</p>
+        <div class="alert alert-info mb-0" role="status">Hermes checks the address now. The tools reach agents at the
+          next Sync to Hermes.</div>
+        <footer>
+          <button name="action_add" type="object" string="Add server" class="btn-primary"
+                  context="{'tool_server_key': key}"/>
+          <button string="Cancel" special="cancel" class="btn-secondary"/>
+        </footer>
       </form>
     </field>
   </record>
@@ -89,7 +189,7 @@
     <field name="help" type="html">
       <p class="o_view_nocontent_smiling_face">Create the company's Hermes profile</p>
       <p>Each department gets its own profile with its persona and default model; agents run in their department's
-        profile. Odoo creates and updates the profiles in Hermes.</p>
+        profile. Profiles are created and updated in Hermes for you.</p>
     </field>
   </record>
 </odoo>

@@ -1,0 +1,5 @@
+// Ask agent is an action: same colour as the other actions on the canvas.
+.wf_editor_view .wf_node.agent {
+    --wf-group: var(--wf-actions);
+    --wf-group-text: var(--wf-actions-text);
+}

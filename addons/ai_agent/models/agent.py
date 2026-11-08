@@ -84,9 +84,20 @@ class Agent(models.Model):
     activation_hash = fields.Char(readonly=True, groups='ai_agent.group_manager')
     run_ids = fields.One2many('ai.agent.run', 'agent_id', readonly=True)
 
+    def _assistant_user(self):
+        """The AI assistant user this agent acts as: its profile's, else its department's, else its company's."""
+        self.ensure_one()
+        agent = self.sudo()
+        return (agent.profile_id.assistant_user_id or agent.department_id.ai_assistant_user_id
+                or agent.company_id.ai_assistant_user_id)
+
     def _audience_domain(self, user):
         if not user.active or user.share or not user.has_group('ai_agent.group_user'):
             return Domain.FALSE
+        if user.ai_assistant:
+            # An AI assistant is asked by workflows (ADR 0012): only the agents that act as it.
+            agents = self.sudo().with_context(active_test=False).search([('company_id', 'in', user.company_ids.ids)])
+            return Domain('id', 'in', agents.filtered(lambda agent: agent._assistant_user() == user).ids)
         # Privileged identity lookup only; no employee data enters AI context.
         employees = self.env['hr.employee'].sudo().search([
             ('user_id', '=', user.id), ('active', '=', True), ('company_id', 'in', user.company_ids.ids),
@@ -240,6 +251,8 @@ class Agent(models.Model):
             for agent in self.filtered(lambda a: a.state == 'active'):
                 internal(agent.sudo()).write({'activation_hash': agent.sudo()._configuration_hash()})
             return result
+        if not trusted(self) and vals.keys() == {'active'}:
+            return self._set_archived(not vals['active'])
         if not trusted(self):
             if {'state', 'revision', 'activation_hash'} & vals.keys():
                 raise AccessError(_('Use the activation and pause buttons.'))
@@ -254,6 +267,25 @@ class Agent(models.Model):
                 self._assign_profiles()
             return True
         return super().write(vals)
+
+    def _set_archived(self, archived):
+        """Archive in one step: the agent is paused (questions in progress stop), hidden, and its history kept.
+        Restored agents stay paused until someone activates them again."""
+        self._configurator()
+        if archived:
+            self.filtered(lambda a: a.state == 'active').action_pause()
+        internal(self.sudo()).write({'active': not archived})
+        return True
+
+    def unlink(self):
+        Conversation = self.env['ai.agent.conversation'].sudo().with_context(active_test=False)
+        for agent in self:
+            count = Conversation.search_count([('agent_id', '=', agent.id)])
+            if count:
+                raise UserError(_('%(agent)s has %(count)s conversations kept as history, so it cannot be deleted. '
+                                  'Archive it instead: it stops answering and is hidden, and its history stays.',
+                                  agent=agent.name, count=count))
+        return super().unlink()
 
     def _assign_profiles(self):
         """Point each agent at its Hermes profile: its own one, else its department's, else the company's, on the
@@ -291,8 +323,7 @@ class Agent(models.Model):
             raise UserError(_('Pause the agent before changing its profile.'))
         profile = self.env['ai.agent.profile'].create({
             'name': self.name, 'kind': 'agent', 'engine_id': self.engine_id.id, 'company_id': self.company_id.id,
-            'department_id': self.department_id.id,
-            'hermes_name': f"odoo-agent-{self.id}"})
+            'department_id': self.department_id.id})
         internal(self.sudo()).write({'profile_mode': 'own', 'profile_id': profile.id})
         return {'type': 'ir.actions.act_window', 'res_model': profile._name, 'res_id': profile.id,
                 'view_mode': 'form', 'target': 'current'}

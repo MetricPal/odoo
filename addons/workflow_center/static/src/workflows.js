@@ -51,7 +51,7 @@ export class Workflows extends Component {
                     _t("Add an activity with a due date for a person. Example: “Call the customer” due in 2 days, for the salesperson.")],
                 ["action", "followers", _t("Add followers"), "group", _t("Subscribe people to the record"),
                     _t("Followers receive the record's messages and updates. Example: add the customer to a new project.")],
-                ["action", "mail_post", _t("Email or Odoo message"), "mail", _t("Send an email or post a note"),
+                ["action", "mail_post", _t("Email or message"), "mail", _t("Send an email or post a note"),
                     _t("Send an email from a template, or post a message or internal note on the record. Example: email the customer a payment reminder.")],
                 ["action", "chat", _t("Provider chat"), "chat_bubble", _t("Message on a chat channel"),
                     _t("Send a message through a connected chat provider. Needs a provider integration before the workflow can be activated.")],
@@ -96,7 +96,7 @@ export class Workflows extends Component {
             if (!start || found.has(start.id)) return found;
             found.add(start.id);
             reachable(next(start), found);
-            if (start.kind === "branch") reachable(byId.get(start.false_id?.[0]), found);
+            if (start.splits) reachable(byId.get(start.false_id?.[0]), found);
             return found;
         };
         const build = (start, stop = null, depth = 0) => {
@@ -106,7 +106,7 @@ export class Workflows extends Component {
                 seen.add(step.id);
                 const node = { step, yes: [], no: [] };
                 nodes.push(node);
-                if (step.kind === "branch") {
+                if (step.splits) {
                     const yes = next(step), no = byId.get(step.false_id?.[0]);
                     const yesIds = reachable(yes), noIds = reachable(no);
                     const common = steps.find(s => yesIds.has(s.id) && noIds.has(s.id) && !seen.has(s.id));
@@ -172,7 +172,7 @@ export class Workflows extends Component {
         }
         const main = this.canvas.nodes;
         const last = main[main.length - 1];
-        if (last && last.step.kind !== "branch") {
+        if (last && !last.step.splits) {
             return { id: last.step.id, label: _t("Adds at the end, after “%s”.", last.step.name) };
         }
         return null;

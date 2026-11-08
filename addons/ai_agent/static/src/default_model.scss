@@ -1,0 +1,14 @@
+// Choose the default model (approved mock 2026-11-07, boards 5 and 6).
+.o_ai_default_model {
+    .o_ai_model_card {
+        flex: 1 1 420px;
+        border: 1px solid $border-color;
+        border-radius: 6px;
+        padding: 16px;
+        &.o_ai_model_card_main { border: 2px solid $o-brand-primary; }
+    }
+    .o_ai_default_line { border: 1px solid $border-color; border-radius: 6px; padding: 14px 16px; }
+    .o_ai_badge_good, .o_ai_status_ready { background: #e1f5ee; color: #085041; font-weight: 500; }
+    .o_ai_badge_try { background: #faeeda; color: #633806; font-weight: 500; }
+    .o_ai_status_key { background: #eef0f3; color: #3b3f45; font-weight: 500; }
+}

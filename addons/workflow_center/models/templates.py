@@ -43,7 +43,7 @@ RECIPES = [
      'Remind HR before an employment document expires.',
      [('next_activity', 'Remind HR'), ('mail_post', 'Notify the employee')]),
     ('purchase', 'Purchase order approval above a limit', 'Purchase', 'Approvals', 'purchase.order', 'manual',
-     'Review purchases above your limit, then confirm the order through its Odoo action.',
+     'Review purchases above your limit, then confirm the order through its own action.',
      [('condition', 'Above the approval limit'), ('approval', 'Purchase manager approves'),
       ('code', 'Confirm the purchase order'), ('mail_post', 'Notify the buyer')]),
     ('expenses', 'Expense report approval', 'Expenses', 'Approvals', 'hr.expense', 'manual',

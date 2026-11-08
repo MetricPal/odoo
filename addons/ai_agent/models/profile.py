@@ -1,9 +1,9 @@
 """Hermes profiles managed from Odoo (ADR 0012, phase 2).
 
 One profile per department, one company profile, and optionally one for a single agent. Odoo creates the profile
-through the Hermes management API, keeps memory and toolsets off, writes its persona and default model, gives it its
-own run key, and checks that the multiplexing gateway serves it at ``/p/<name>``. Agents send their own instructions
-and model with each run, so several agents share a profile.
+through the Hermes management API, keeps memory off and only the tools switched on here (phase 6), writes its persona
+and default model, gives it its own run key, and checks that the multiplexing gateway serves it at ``/p/<name>``.
+Agents send their own instructions and model with each run, so several agents share a profile.
 """
 
 import json
@@ -11,29 +11,39 @@ import re
 import secrets as token_generator
 import unicodedata
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 from ..services import hermes, secrets
 from .common import internal, manager, trusted
+from .profile_tools import TOOLSETS, hermes_time
 
 PROFILE_NAME = re.compile(r'[a-z0-9][a-z0-9_-]{0,63}')
 DEFAULT_PERSONA = ('You are an assistant of {company}. You help people at work, you state uncertainty, and you never '
                    'claim to have changed anything: you prepare drafts and proposals for a person to approve.')
-# Memory and every Hermes toolset stay off on Odoo profiles; Odoo's own tools come in phase 3.
-# Runs through the API server get Odoo's tools only (the MCP server named "odoo"); nothing else anywhere.
-MCP_SERVER = 'odoo'
+# Memory stays off on these profiles. Runs through the API server get the ERP's own tools (the MCP server named "erp")
+# plus the Hermes tools and outside tool servers switched on in the profile's Tools and services tab; the command
+# line and dashboard get nothing. Profiles synced before were given the server "odoo": the next sync replaces it.
+MCP_SERVER = 'erp'
+LEGACY_MCP_SERVERS = ('odoo',)
+# Names Hermes keeps for itself or refuses (Hermes v0.21.3, hermes_cli/profiles.py); never used here.
+RESERVED_NAMES = {'default', 'hermes', 'test', 'tmp', 'root', 'sudo'}
 SAFE_CONFIG = {'memory': {'memory_enabled': False, 'user_profile_enabled': False, 'provider': ''},
                'platform_toolsets': {'api_server': [MCP_SERVER], 'cli': [], 'dashboard': []}}
 # What department managers and AI admins may change on their department's profile.
 DEPARTMENT_PROFILE_FIELDS = {'persona', 'engine_model_id'}
 
 
-def profile_name(text):
-    """``odoo-`` plus a Hermes-safe version of *text* (lowercase letters, digits, '-')."""
+def profile_name(text, taken=()):
+    """A Hermes-safe version of *text* (lowercase letters, digits, '-'), with a number added when it is *taken*."""
     ascii_text = unicodedata.normalize('NFKD', text or '').encode('ascii', 'ignore').decode()
-    slug = re.sub(r'[^a-z0-9]+', '-', ascii_text.lower()).strip('-') or 'profile'
-    return f'odoo-{slug}'[:64].rstrip('-_')
+    slug = re.sub(r'[^a-z0-9]+', '-', ascii_text.lower()).strip('-')[:60].rstrip('-') or 'profile'
+    taken = set(taken) | RESERVED_NAMES
+    name, number = slug, 1
+    while name in taken:
+        number += 1
+        name = f'{slug}-{number}'
+    return name
 
 
 class Profile(models.Model):
@@ -43,8 +53,8 @@ class Profile(models.Model):
     _order = 'kind, name'
 
     name = fields.Char(required=True, tracking=True)
-    hermes_name = fields.Char(string='Name in Hermes', required=True, copy=False, tracking=True,
-                              help='Lowercase letters, digits, "-" or "_". Fixed once the profile exists in Hermes.')
+    hermes_name = fields.Char(string='Name in Hermes', required=True, copy=False, readonly=True,
+                              help='Made from the name. Fixed once the profile exists in Hermes.')
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', required=True, default=lambda s: s.env.company, index=True)
     engine_id = fields.Many2one('ai.agent.engine', string='Hermes connection', required=True, ondelete='restrict',
@@ -59,11 +69,15 @@ class Profile(models.Model):
     state = fields.Selection([('draft', 'Not created'), ('needs_sync', 'Needs sync'), ('in_sync', 'In sync'),
                               ('failed', 'Failed')], default='draft', required=True, readonly=True, tracking=True)
     synced_at = fields.Datetime(string='Last synced', readonly=True)
+    in_hermes = fields.Boolean(readonly=True, copy=False, help='The profile was created in Hermes from here.')
     sync_message = fields.Char(readonly=True)
     secret_reference = fields.Char(default='AI_AGENT_SECRET_UNSET', groups=fields.NO_ACCESS, copy=False)
     mcp_token_hash = fields.Char(groups=fields.NO_ACCESS, copy=False, index='btree_not_null',
-                                 help='Hash of the bearer token Hermes uses for this profile on Odoo\'s MCP endpoint.')
+                                 help='Hash of the bearer token Hermes uses for this profile on the tools endpoint.')
     agent_ids = fields.One2many('ai.agent', 'profile_id', string='Agents')
+    tool_ids = fields.One2many('ai.agent.profile.tool', 'profile_id', string='Hermes tools')
+    server_ids = fields.One2many('ai.agent.tool.server', 'profile_id', string='Tool servers')
+    job_ids = fields.One2many('ai.agent.profile.job', 'profile_id', string='Scheduled jobs in Hermes')
     assistant_user_id = fields.Many2one('res.users', string='Acts as', compute='_compute_assistant_user_id')
     can_configure = fields.Boolean(compute='_compute_can_configure', search='_search_can_configure')
     can_manage = fields.Boolean(compute='_compute_can_configure')
@@ -74,9 +88,9 @@ class Profile(models.Model):
     @api.constrains('hermes_name', 'kind', 'department_id')
     def _check_profile(self):
         for profile in self:
-            if not PROFILE_NAME.fullmatch(profile.hermes_name or '') or not profile.hermes_name.startswith('odoo-'):
-                raise ValidationError(_('The name in Hermes starts with "odoo-" and uses lowercase letters, digits, '
-                                        '"-" or "_" (at most 64).'))
+            if not PROFILE_NAME.fullmatch(profile.hermes_name or ''):
+                # Names are always made here (profile_name); this only guards against a programming error.
+                raise ValidationError(_('This profile has no valid name in Hermes.'))
             if profile.kind == 'department' and not profile.department_id:
                 raise ValidationError(_('Choose the department of this profile.'))
 
@@ -117,11 +131,35 @@ class Profile(models.Model):
         if not trusted(self):
             manager(self)
         for vals in vals_list:
-            if not vals.get('hermes_name'):
-                vals['hermes_name'] = profile_name(vals.get('name'))
+            # The name in Hermes is always made from the name; nobody types it.
+            engine_id = vals.get('engine_id')
+            vals['hermes_name'] = profile_name(vals.get('name'), self._names_taken(engine_id) | {
+                v.get('hermes_name') for v in vals_list if v is not vals and v.get('engine_id') == engine_id})
         profiles = super().create(vals_list)
+        profiles._ensure_tools()
         profiles._reassign_agents()
         return profiles
+
+    def _ensure_tools(self):
+        """Every offered Hermes tool (off until switched on) and the ERP's own tool server on each profile."""
+        for profile in self.sudo():
+            have = set(profile.tool_ids.mapped('toolset'))
+            internal(self.env['ai.agent.profile.tool'].sudo()).create([
+                {'profile_id': profile.id, 'toolset': key, 'sequence': index}
+                for index, key in enumerate(TOOLSETS) if key not in have])
+            if not profile.server_ids.filtered(lambda s: s.kind == 'erp'):
+                internal(self.env['ai.agent.tool.server'].sudo()).create({
+                    'profile_id': profile.id, 'kind': 'erp', 'name': 'ERP', 'hermes_name': MCP_SERVER})
+
+    def _needs_sync(self):
+        """A change waits for the next sync; the profile in Hermes keeps working meanwhile."""
+        internal(self.sudo().filtered(lambda p: p.state == 'in_sync')).write({'state': 'needs_sync'})
+
+    def _names_taken(self, engine_id, hermes=()):
+        """Names in Hermes already used on this connection: by other profiles here, and in Hermes itself."""
+        others = self.sudo().with_context(active_test=False).search(
+            [('engine_id', '=', engine_id), ('id', 'not in', self.ids)])
+        return set(others.mapped('hermes_name')) | set(hermes)
 
     def _reassign_agents(self):
         agents = self.env['ai.agent'].sudo().with_context(active_test=False).search(
@@ -131,10 +169,13 @@ class Profile(models.Model):
     def write(self, vals):
         if trusted(self):
             return super().write(vals)
+        vals = self._write_switches(vals)
+        if not vals:
+            return True
         if {'state', 'synced_at', 'sync_message', 'secret_reference'} & vals.keys():
             raise AccessError(_('Use Sync to Hermes.'))
-        if 'hermes_name' in vals and any(p.state != 'draft' for p in self):
-            raise UserError(_('The name in Hermes is fixed once the profile exists there.'))
+        if 'hermes_name' in vals:
+            raise AccessError(_('The name in Hermes is made from the name.'))
         if not self._is_manager():
             if vals.keys() - DEPARTMENT_PROFILE_FIELDS or not all(p.can_configure for p in self):
                 raise AccessError(_('Department managers and AI admins change the persona and default model of '
@@ -144,12 +185,32 @@ class Profile(models.Model):
         else:
             manager(self)
             super().write(vals)
+        if 'name' in vals:
+            # Until the profile exists in Hermes, its name there follows the name.
+            for profile in self.sudo().filtered(lambda p: not p.in_hermes):
+                internal(profile).write({'hermes_name': profile_name(
+                    profile.name, profile._names_taken(profile.engine_id.id))})
         if 'active' in vals:
             self._reassign_agents()
-        # A change waits for the next sync; the profile in Hermes keeps working meanwhile.
         if vals.keys() & {'persona', 'engine_model_id', 'name'}:
-            internal(self.sudo().filtered(lambda p: p.state == 'in_sync')).write({'state': 'needs_sync'})
+            self._needs_sync()
         return True
+
+    def _write_switches(self, vals):
+        """The Tools and services tab saves its switches through the profile: apply them on the tools and tool
+        servers themselves (which check who may change them). Nothing else is changed there."""
+        vals = dict(vals)
+        for field, model in (('tool_ids', 'ai.agent.profile.tool'), ('server_ids', 'ai.agent.tool.server')):
+            for command in vals.pop(field, None) or ():
+                if command[0] == Command.UPDATE and set(command[2]) <= {'enabled'}:
+                    line = self.env[model].browse(command[1])
+                    if line.profile_id not in self:
+                        raise AccessError(_('This line belongs to another profile.'))
+                    line.write(command[2])
+                elif command[0] != Command.LINK:
+                    raise AccessError(_('Only the switches of the tools and tool servers are changed here.'))
+        vals.pop('job_ids', None)
+        return vals
 
     def unlink(self):
         manager(self)
@@ -183,16 +244,28 @@ class Profile(models.Model):
         """Create or update the profile in Hermes and check that the gateway serves it."""
         self.ensure_one()
         engine = self.engine_id.sudo()
-        name = self.hermes_name
         listing = engine._management('GET', '/api/profiles')
         existing = {p.get('name') for p in (listing or {}).get('profiles', []) if isinstance(p, dict)}
+        if not self.in_hermes and self.hermes_name in existing:
+            # A profile of that name was made in Hermes by someone else: never take it over, use the next free name.
+            internal(self.sudo()).write({'hermes_name': profile_name(
+                self.name, self._names_taken(self.engine_id.id, existing))})
+        name = self.hermes_name
         if name not in existing:
             engine._management('POST', '/api/profiles', {'name': name, 'description': self.name, 'no_skills': True})
-        engine._management('PUT', '/api/config', {'config': SAFE_CONFIG}, query={'profile': name})
+        if not self.in_hermes:
+            internal(self.sudo()).write({'in_hermes': True})
+        engine._management('PUT', '/api/config', {'config': self._safe_config()}, query={'profile': name})
         engine._management('PUT', f'/api/profiles/{name}/soul', {'content': self._persona_text()})
         option = self.sudo().engine_model_id
         if option:
             engine._management('PUT', f'/api/profiles/{name}/model', {'provider': option.provider, 'model': option.model})
+        else:
+            # No model of its own: the connection's default model.
+            _providers, default = engine._provider_options()
+            if default['provider'] and default['model']:
+                engine._management('PUT', f'/api/profiles/{name}/model',
+                                   {'provider': default['provider'], 'model': default['model']})
         reference = self.sudo().secret_reference
         if not (reference or '').startswith(secrets.PREFIX):
             key = token_generator.token_hex(32)
@@ -204,7 +277,7 @@ class Profile(models.Model):
                                   'check private credential storage.')) from None
             internal(self.sudo()).write({'secret_reference': reference})
         self._sync_mcp()
-        # Read back: memory off, toolsets off, and the gateway serves the profile with its own key.
+        # Read back: memory off, the tools' and tool servers' state, and the gateway serves the profile with its key.
         config = engine._management('GET', '/api/config', query={'profile': name})
         memory = config.get('memory', {}) if isinstance(config, dict) else {}
         if memory.get('memory_enabled') is not False or memory.get('user_profile_enabled') is not False:
@@ -217,6 +290,60 @@ class Profile(models.Model):
         features = capabilities.get('features', {}) if isinstance(capabilities, dict) else {}
         if not features.get('run_submission') or not features.get('run_status'):
             raise UserError(_('This Hermes version does not support durable runs.'))
+        self._refresh_tools()
+        self._refresh_jobs()
+
+    def _safe_config(self):
+        """Memory off; on the run platform the ERP tools plus what is switched on in Tools and services."""
+        self.ensure_one()
+        profile = self.sudo()
+        api_server = [MCP_SERVER] + profile.tool_ids.filtered('enabled').mapped('toolset') + profile.server_ids.filtered(
+            lambda s: s.kind == 'external' and s.enabled).mapped('hermes_name')
+        return {**SAFE_CONFIG, 'platform_toolsets': {**SAFE_CONFIG['platform_toolsets'], 'api_server': api_server}}
+
+    def _refresh_tools(self):
+        """Read back from Hermes whether each tool has what it needs, and whether each tool server answers."""
+        self.ensure_one()
+        profile = self.sudo()
+        engine = profile.engine_id
+        listing = engine._management('GET', '/api/tools/toolsets', query={'profile': profile.hermes_name})
+        configured = {row.get('name'): row.get('configured') for row in (listing if isinstance(listing, list) else [])
+                      if isinstance(row, dict)}
+        for tool in profile.tool_ids:
+            internal(tool).write({'status': 'ready' if configured.get(tool.toolset) else 'needs_key'})
+        for server in profile.server_ids:
+            if server.kind == 'erp':
+                internal(server).write({'status': 'ready', 'status_message': False})
+            elif not server.enabled:
+                internal(server).write({'status': 'off', 'status_message': False})
+            else:
+                internal(server).write(server._probe())
+
+    def _refresh_jobs(self):
+        """The profile's scheduled jobs as Hermes lists them now."""
+        self.ensure_one()
+        profile = self.sudo()
+        listing = profile.engine_id._management('GET', '/api/cron/jobs', query={'profile': profile.hermes_name})
+        rows = listing if isinstance(listing, list) else (listing or {}).get('jobs', [])
+        values = {}
+        for row in rows:
+            if not isinstance(row, dict) or not row.get('id'):
+                continue
+            last = row.get('last_status')
+            values[str(row['id'])] = {
+                'name': row.get('name') or str(row['id']),
+                'schedule': row.get('schedule_display') or '',
+                'next_run': hermes_time(row.get('next_run_at')),
+                'last_run': hermes_time(row.get('last_run_at')),
+                'last_result': 'failed' if last == 'error' else ('done' if last else False),
+                'state': 'paused' if row.get('state') == 'paused' or row.get('enabled') is False else 'active'}
+        for job in profile.job_ids:
+            if job.hermes_id in values:
+                internal(job).write(values.pop(job.hermes_id))
+            else:
+                internal(job).unlink()
+        internal(self.env['ai.agent.profile.job'].sudo()).create([
+            {'profile_id': profile.id, 'hermes_id': hermes_id, **job} for hermes_id, job in values.items()])
 
     def _odoo_url(self):
         """The Odoo address Hermes uses to call the tools: ``ai_agent.odoo_url``, else ``web.base.url``."""
@@ -230,6 +357,8 @@ class Profile(models.Model):
         listing = engine._management('GET', '/api/mcp/servers', query={'profile': self.hermes_name})
         servers = listing if isinstance(listing, list) else (listing or {}).get('servers', [])
         names = {s.get('name') for s in servers if isinstance(s, dict)}
+        for legacy in names & set(LEGACY_MCP_SERVERS):
+            engine._management('DELETE', f'/api/mcp/servers/{legacy}', query={'profile': self.hermes_name})
         if MCP_SERVER in names and self.sudo().mcp_token_hash:
             return
         if MCP_SERVER in names:
@@ -245,15 +374,23 @@ class Profile(models.Model):
         for profile in self:
             if not profile.can_configure:
                 raise AccessError(_('Only AI Agent managers and the department\'s managers and AI admins sync it.'))
-            if profile.engine_id.sudo().state != 'ready':
+            if profile.engine_id.sudo().state not in ('ready', 'needs_model'):
                 raise UserError(_('Check the Hermes connection first.'))
             try:
                 profile._sync()
                 values = {'state': 'in_sync', 'sync_message': _('In sync with Hermes.')}
             except UserError as error:
                 values = {'state': 'failed', 'sync_message': str(error)}
+                profile.engine_id._unreachable(error)
             internal(profile.sudo()).write({**values, 'synced_at': fields.Datetime.now()})
         return True
+
+    def action_add_tool_server(self):
+        """Add a tool server dialog (approved mock 2026-11-08, board 9): AI Agent managers only."""
+        self.ensure_one()
+        manager(self)
+        return {'type': 'ir.actions.act_window', 'res_model': 'ai.agent.tool.server.add', 'view_mode': 'form',
+                'target': 'new', 'name': _('Add a tool server'), 'context': {'default_profile_id': self.id}}
 
     def action_create_company_assistant(self):
         self.ensure_one()
@@ -270,12 +407,16 @@ class Profile(models.Model):
         for profile in self:
             if profile.agent_ids.filtered(lambda a: a.state == 'active'):
                 raise UserError(_('Pause the agents that use this profile first.'))
-            if profile.state != 'draft':
-                profile.engine_id.sudo()._management('DELETE', f'/api/profiles/{profile.hermes_name}')
+            if profile.in_hermes:
+                try:
+                    profile.engine_id.sudo()._management('DELETE', f'/api/profiles/{profile.hermes_name}')
+                except hermes.HermesRejected as error:
+                    if error.status != 404:  # 404: already gone from Hermes, nothing to remove.
+                        raise
             reference = profile.sudo().secret_reference
             if (reference or '').startswith(secrets.PREFIX):
                 secrets.remove(reference, self.env.cr.dbname)
-            internal(profile.sudo()).write({'state': 'draft', 'secret_reference': 'AI_AGENT_SECRET_UNSET',
+            internal(profile.sudo()).write({'state': 'draft', 'in_hermes': False, 'secret_reference': 'AI_AGENT_SECRET_UNSET',
                                             'sync_message': _('Removed from Hermes.'), 'active': False})
         self._reassign_agents()
         return True

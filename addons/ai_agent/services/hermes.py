@@ -21,6 +21,8 @@ class HermesUncertain(UserError):
 class HermesRejected(UserError):
     """Hermes definitively refused the request (4xx); nothing was accepted."""
 
+    status = None  # The HTTP status, when Hermes answered.
+
 
 class HermesUnavailable(UserError):
     """A read-only request failed. Safe to retry later."""
@@ -87,8 +89,20 @@ def credential(reference):
 
 # Writes Odoo makes: runs (POST) and, on the management API, profile configuration (PUT/PATCH/DELETE).
 WRITE_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
-# Query values Odoo sends: Hermes profile names only.
-QUERY_VALUE = re.compile(r'[a-z0-9][a-z0-9_-]{0,63}')
+# Query parameters Odoo sends, and the values each may take.
+QUERY_VALUES = {'profile': re.compile(r'[a-z0-9][a-z0-9_-]{0,63}'),
+                'provider': re.compile(r'[a-z0-9][a-z0-9_.:-]{0,99}'),
+                'include_unconfigured': re.compile(r'true')}
+
+
+def _problem(status, path, where):
+    """A plain explanation of a Hermes error status, or None."""
+    if status in (401, 403):
+        return _('Hermes at %(where)s refused the key (HTTP %(status)s). Check the credential.', where=where, status=status)
+    if status == 404:
+        return _('Hermes at %(where)s has no %(path)s (HTTP 404). Check the address and the Hermes version.',
+                 where=where, path=path.split('?')[0])
+    return None
 
 
 def request(url, secret_reference, method, path, payload=None, headers=None, *, credential_value=None, demo=False,
@@ -96,7 +110,7 @@ def request(url, secret_reference, method, path, payload=None, headers=None, *, 
     if method not in WRITE_METHODS | {'GET'} or not re.fullmatch(r'/[a-zA-Z0-9_./-]+', path) or '..' in path:
         raise UserError(_('Unsupported Hermes operation.'))
     if query:
-        if any(k not in ('profile',) or not isinstance(v, str) or not QUERY_VALUE.fullmatch(v)
+        if any(k not in QUERY_VALUES or not isinstance(v, str) or not QUERY_VALUES[k].fullmatch(v)
                for k, v in query.items()):
             raise UserError(_('Unsupported Hermes operation.'))
         path = f'{path}?{urlencode(query)}'
@@ -113,24 +127,43 @@ def request(url, secret_reference, method, path, payload=None, headers=None, *, 
             raise UserError(_('Local HTTP must resolve exclusively to loopback addresses.'))
         pool = urllib3.HTTPConnectionPool(addresses[0], **options)
     response = None
+    where = f'{parsed.hostname}:{port}'
     try:
         response = pool.request(method, path, body=json.dumps(payload).encode() if payload is not None else None,
                                 headers={'Host': parsed.netloc, 'Authorization': f'Bearer {key}',
                                          'Content-Type': 'application/json', **(headers or {})},
                                 redirect=False, preload_content=False, retries=False)
+    except urllib3.exceptions.ConnectTimeoutError:
+        # Includes "connection refused": nothing reached Hermes, so nothing was submitted.
+        pool.close()
+        message = _('Hermes is not running or cannot be reached at %s. Start it, or check the address.', where)
+        error = (HermesRejected if method in WRITE_METHODS else HermesUnavailable)(message)
+        error.unreachable = True
+        raise error from None
+    except (OSError, urllib3.exceptions.HTTPError):
+        pool.close()
+        if method == 'POST':
+            raise HermesUncertain(_('Hermes acceptance is uncertain. The operation will not be repeated automatically.')) from None
+        raise HermesUnavailable(_('Hermes at %s did not answer in time. Check that it is running.', where)) from None
+    try:
         status = response.status
         if method in WRITE_METHODS and status in DEFINITIVE_REJECTIONS:
-            raise HermesRejected(_('Hermes refused the request (HTTP %s). Nothing was submitted; check the agent configuration and credentials.', status))
+            rejection = HermesRejected(_problem(status, path, where) or _('Hermes refused the request (HTTP %s). Nothing was submitted; check the agent configuration and credentials.', status))
+            rejection.status = status
+            raise rejection
         raw = response.read(MAX_RESPONSE + 1)
         if len(raw) > MAX_RESPONSE:
             raise ValueError('response too large')
         if not 200 <= status < 300:
-            raise ValueError('remote status')
+            if method == 'POST':
+                raise ValueError('remote status')
+            raise HermesUnavailable(_problem(status, path, where)
+                                    or _('Hermes at %(where)s answered with an error (HTTP %(status)s).', where=where, status=status))
         return json.loads(raw)
     except (OSError, ValueError, urllib3.exceptions.HTTPError):
         if method == 'POST':
             raise HermesUncertain(_('Hermes acceptance is uncertain. The operation will not be repeated automatically.')) from None
-        raise HermesUnavailable(_('Hermes could not return a valid response. Check its readiness and credentials.')) from None
+        raise HermesUnavailable(_('Hermes at %s answered with something that is not valid data. Check the address and the Hermes version.', where)) from None
     finally:
         if response is not None:
             response.release_conn()

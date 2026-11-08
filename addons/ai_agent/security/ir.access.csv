@@ -35,3 +35,13 @@ proposal_requester,Proposals I asked for,model_ai_agent_proposal,group_user,r,"[
 proposal_manager,Proposal supervisors,model_ai_agent_proposal,group_manager,r,
 proposal_approvals,Proposals for approval managers,model_ai_agent_proposal,approval_center.group_approval_center_manager,r,
 proposal_company,Proposal company boundary,model_ai_agent_proposal,,crud,"[('company_id', 'in', company_ids)]"
+profile_tool_manager,Hermes tools of profiles: managers,model_ai_agent_profile_tool,group_manager,crud,
+profile_tool_department,Hermes tools of profiles I configure,model_ai_agent_profile_tool,group_user,r,"[('profile_id.can_configure', '=', True)]"
+profile_tool_company,Hermes tools company boundary,model_ai_agent_profile_tool,,crud,"[('company_id', 'in', company_ids)]"
+tool_server_manager,Tool servers of profiles: managers,model_ai_agent_tool_server,group_manager,crud,
+tool_server_department,Tool servers of profiles I configure,model_ai_agent_tool_server,group_user,r,"[('profile_id.can_configure', '=', True)]"
+tool_server_company,Tool servers company boundary,model_ai_agent_tool_server,,crud,"[('company_id', 'in', company_ids)]"
+profile_job_manager,Hermes scheduled jobs: managers,model_ai_agent_profile_job,group_manager,crud,
+profile_job_department,Hermes scheduled jobs of profiles I configure,model_ai_agent_profile_job,group_user,r,"[('profile_id.can_configure', '=', True)]"
+profile_job_company,Hermes scheduled jobs company boundary,model_ai_agent_profile_job,,crud,"[('company_id', 'in', company_ids)]"
+tool_server_add_manager,Add a tool server,model_ai_agent_tool_server_add,group_manager,crud,

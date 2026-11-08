@@ -1,0 +1,26 @@
+<odoo>
+  <record id="step_form_ai" model="ir.ui.view">
+    <field name="name">workflow.step.form.ai</field>
+    <field name="model">workflow.step</field>
+    <field name="inherit_id" ref="workflow_center.step_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='policy_id']" position="after">
+        <field name="ai_agent_id" invisible="kind != 'agent'" required="kind == 'agent'" options="{'no_create': True, 'no_open': True}"/>
+        <field name="ai_question" invisible="kind != 'agent'" required="kind == 'agent'" rows="5"
+               placeholder="Does this request follow the policy? {name} … Answer yes or no, then one sentence why."/>
+        <span class="text-muted" colspan="2" invisible="kind != 'agent'">Fields in braces are filled from the record.</span>
+        <field name="ai_answer_use" widget="radio" invisible="kind != 'agent'"/>
+        <field name="ai_answer_field_id" invisible="kind != 'agent' or ai_answer_use != 'field'"
+               required="kind == 'agent' and ai_answer_use == 'field'" options="{'no_create': True, 'no_open': True}"/>
+        <div colspan="2" class="alert alert-light wf_ai_runs_as" role="status" invisible="kind != 'agent' or not ai_agent_id">
+          <span invisible="not ai_runs_as">Runs as <strong><field name="ai_runs_as" class="d-inline"/></strong>.</span>
+          <span invisible="ai_runs_as">This agent has no AI assistant user yet. An AI Agent manager creates it on the department.</span>
+          The workflow waits for the answer. If the agent fails or does not answer, the step's error setting applies.
+        </div>
+      </xpath>
+      <xpath expr="//group[@name='on_error']" position="attributes">
+        <attribute name="invisible">kind not in ('action', 'foreach', 'agent')</attribute>
+      </xpath>
+    </field>
+  </record>
+</odoo>

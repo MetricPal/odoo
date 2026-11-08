@@ -8,6 +8,15 @@ from ..services import hermes, secrets
 from .common import FILE_MAX_BYTES, TEXT_MAX_CHARS, extract_text, internal, loading_demo, manager, trusted
 
 
+# Providers suggested for company data (your own key), in this order; key names Hermes does not report; the
+# keyless provider offered for trying it out (data goes to an outside service).
+KEY_PROVIDERS = ('openrouter', 'openai-api', 'anthropic', 'gemini')
+KEY_ENV_FALLBACK = {'openrouter': 'OPENROUTER_API_KEY'}
+FREE_PROVIDER = 'opencode-free'
+ENV_NAME = re.compile(r'[A-Z][A-Z0-9_]{1,80}')
+# Models page of the ERP's local Hermes (its dashboard; deployment/erp_hermes.py).
+LOCAL_MODELS_URL = 'http://127.0.0.1:9120/models'
+
 class CompanyConfiguration(models.AbstractModel):
     _name = 'ai.agent.configuration.mixin'
     _description = 'AI company configuration'
@@ -56,7 +65,8 @@ class Engine(models.Model):
     management_api_key = fields.Char(string='Management API key', compute='_compute_keys', inverse='_inverse_keys', groups='ai_agent.group_manager', copy=False)
     api_key_saved = fields.Boolean(compute='_compute_keys', groups='ai_agent.group_manager')
     management_key_saved = fields.Boolean(compute='_compute_keys', groups='ai_agent.group_manager')
-    state = fields.Selection([('unchecked', 'Not checked'), ('ready', 'Ready'), ('blocked', 'Needs attention')],
+    state = fields.Selection([('unchecked', 'Not checked'), ('needs_model', 'Needs a model'), ('ready', 'Ready'),
+                              ('blocked', 'Needs attention')],
                              default='unchecked', readonly=True)
     revision = fields.Integer(default=1, readonly=True)
     checked_at = fields.Datetime(readonly=True)
@@ -76,7 +86,7 @@ class Engine(models.Model):
     def _compute_model_settings_url(self):
         for engine in self:
             if engine.connection_mode == 'local':
-                engine.model_settings_url = 'http://127.0.0.1:9119/models?profile=odoo-internal'
+                engine.model_settings_url = LOCAL_MODELS_URL
             else:
                 base = engine.url if engine.management_same_connection else (engine.management_url or engine.url)
                 engine.model_settings_url = base.rstrip('/') + '/models' if base else False
@@ -220,15 +230,15 @@ class Engine(models.Model):
         self.invalidate_recordset(['api_key', 'management_api_key', 'api_key_saved', 'management_key_saved'])
         return result
 
-    def _request(self, method, path, payload=None, headers=None, profile=None):
+    def _request(self, method, path, payload=None, headers=None, profile=None, query=None):
         """A run API call. With ``profile`` (an Odoo-managed Hermes profile) it goes to that profile on the
         multiplexing gateway, ``/p/<name>``, with the profile's own key (ADR 0012)."""
         self.ensure_one()
         if profile:
             return hermes.request(self.url, None, method, f'/p/{profile.hermes_name}{path}', payload, headers,
-                                  credential_value=profile._run_key(), demo=self._demo_loopback())
+                                  credential_value=profile._run_key(), demo=self._demo_loopback(), query=query)
         return hermes.request(self.url, None, method, path, payload, headers, credential_value=self._credential('run'),
-                              demo=self._demo_loopback())
+                              demo=self._demo_loopback(), query=query)
 
     def _management(self, method, path, payload=None, query=None):
         """A Hermes management API call (profiles, config, keys)."""
@@ -257,8 +267,7 @@ class Engine(models.Model):
         if (memory.get('memory_enabled') is not False or memory.get('user_profile_enabled') is not False
                 or memory.get('provider') not in (None, '', 'none')):
             raise UserError(_('Disable persistent memory, user profiles and external memory providers on this dedicated profile.'))
-        if not isinstance(health, dict) or health.get('status') != 'ok':
-            raise UserError(_('Hermes is not ready.'))
+        self._check_health(health)
         features = capabilities.get('features', {}) if isinstance(capabilities, dict) else {}
         if not features.get('run_submission') or not features.get('run_status'):
             raise UserError(_('This Hermes version does not support durable runs.'))
@@ -270,10 +279,26 @@ class Engine(models.Model):
             raise UserError(_('Use a dedicated profile with all agent-callable toolsets disabled for this release.'))
         return capabilities, tools
 
+    @api.model
+    def _check_health(self, health):
+        """Hermes must report ok; otherwise say which of its checks is not."""
+        if isinstance(health, dict) and health.get('status') == 'ok':
+            return
+        checks = ((health or {}).get('readiness') or {}).get('checks') or {} if isinstance(health, dict) else {}
+        failing = sorted(name for name, check in checks.items()
+                         if isinstance(check, dict) and check.get('status') not in ('ok', None))
+        if failing == ['model']:
+            error = UserError(_('Hermes is connected but has no AI model yet. Choose one below; agents can answer as '
+                                'soon as it is set.'))
+            error.needs_model = True
+            raise error
+        if failing:
+            raise UserError(_('Hermes is not ready: %s. Check Hermes.', ', '.join(failing)))
+        raise UserError(_('Hermes is not ready.'))
+
     def _inspect_profile(self, profile, health):
         from .profile import MCP_SERVER
-        if not isinstance(health, dict) or health.get('status') != 'ok':
-            raise UserError(_('Hermes is not ready.'))
+        self._check_health(health)
         capabilities = self._request('GET', '/v1/capabilities', profile=profile)
         tools = self._request('GET', '/v1/toolsets', profile=profile)
         if isinstance(tools, dict) and tools.get('object') == 'list':
@@ -289,12 +314,14 @@ class Engine(models.Model):
             raise UserError(_('Hermes tool discovery is invalid.'))
         allowed = {MCP_SERVER, f'mcp-{MCP_SERVER}', f'mcp_{MCP_SERVER}', f'mcp:{MCP_SERVER}'}
         if any(t.get('enabled') and t.get('tools') and t.get('name') not in allowed for t in tools):
-            raise UserError(_('The Hermes profile "%s" has tools other than Odoo\'s. Sync it again.', profile.name))
+            raise UserError(_('The Hermes profile "%s" has tools other than the ERP\'s. Sync it again.', profile.name))
         return capabilities, tools
 
     def _model_catalog(self):
         self.ensure_one()
-        return self._normalize_model_catalog(self._request('GET', '/api/model/options'))
+        # Every provider, set up or not, so Add model can offer to set one up (approved mock 2026-11-07, board 7).
+        return self._normalize_model_catalog(self._request('GET', '/api/model/options',
+                                                           query={'include_unconfigured': 'true'}))
 
     def _normalize_model_catalog(self, raw):
         if not isinstance(raw, dict) or not isinstance(raw.get('providers'), list) or len(raw['providers']) > 200:
@@ -306,9 +333,11 @@ class Engine(models.Model):
             models = item.get('models') or []
             if not isinstance(models, list) or any(not isinstance(m, str) or len(m) > 300 for m in models):
                 raise UserError(_('Hermes returned an invalid model catalog.'))
+            key_env = item.get('key_env') or KEY_ENV_FALLBACK.get(item['slug'], '')
             providers.append({'slug': item['slug'], 'name': str(item.get('name') or item['slug'])[:150],
                 'models': list(dict.fromkeys(models)), 'authenticated': item.get('authenticated') is True,
-                'total_models': len(models)})
+                'total_models': len(models),
+                'key_env': key_env if isinstance(key_env, str) and ENV_NAME.fullmatch(key_env) else ''})
         return {'providers': providers, 'provider': raw.get('provider') if isinstance(raw.get('provider'), str) else '',
                 'model': raw.get('model') if isinstance(raw.get('model'), str) else ''}
 
@@ -316,7 +345,7 @@ class Engine(models.Model):
         catalog = self._model_catalog()
         entry = next((p for p in catalog['providers'] if p['slug'] == provider), None)
         if not entry or not entry['authenticated']:
-            raise UserError(_('Authenticate this provider in Hermes, then refresh the catalog.'))
+            raise UserError(_('Set up this provider first: add its key on the Hermes connection, or sign in in Hermes.'))
         if model not in entry['models']:
             raise UserError(_('Select a model returned by this provider in the current Hermes catalog.'))
         return catalog
@@ -356,14 +385,24 @@ class Engine(models.Model):
     def action_provider_setup(self):
         manager(self)
         self.ensure_one()
+        return self._dashboard_action('/models')
+
+    def _dashboard_action(self, page, close=False):
+        """Open a page of this connection's Hermes dashboard (its Models, Keys or tool servers page)."""
+        self.ensure_one()
         if self.connection_mode == 'local':
-            # hermes serve on 9120 is headless; the browser dashboard on 9119
-            # multiplexes profiles. Keep the approved profile explicit.
-            return {'type': 'ir.actions.act_url',
-                    'url': 'http://127.0.0.1:9119/models?profile=odoo-internal', 'target': 'new'}
-        url = self.url if self.management_same_connection else (self.management_url or self.url)
-        hermes.target(url, resolve=False, demo=self._demo_loopback())
-        return {'type': 'ir.actions.act_url', 'url': url.rstrip('/') + '/models', 'target': 'new'}
+            # The ERP's own Hermes home serves its dashboard on 9120 (deployment/erp_hermes.py).
+            url = LOCAL_MODELS_URL.removesuffix('/models')
+        else:
+            url = self.url if self.management_same_connection else (self.management_url or self.url)
+            hermes.target(url, resolve=False, demo=self._demo_loopback())
+        return {'type': 'ir.actions.act_url', 'url': url.rstrip('/') + page, 'target': 'new', 'close': close}
+
+    def _unreachable(self, error):
+        """Hermes could not be reached at all: the connection needs attention until it is checked again."""
+        if getattr(error, 'unreachable', False):
+            internal(self.sudo()).write({'state': 'blocked', 'status_message': str(error),
+                                         'checked_at': fields.Datetime.now()})
 
     def action_check(self):
         manager(self)
@@ -380,10 +419,121 @@ class Engine(models.Model):
                 values = {'state': 'ready', 'status_message': _('Connection verified.'),
                           'capabilities': capabilities, 'toolsets': tools, 'models_catalog': catalog}
             except UserError as error:
-                values = {'state': 'blocked', 'status_message': str(error), 'capabilities': False,
+                state = 'needs_model' if getattr(error, 'needs_model', False) else 'blocked'
+                values = {'state': state, 'status_message': str(error), 'capabilities': False,
                           'toolsets': False, 'models_catalog': False}
             internal(engine).write({**values, 'checked_at': fields.Datetime.now()})
         return True
+
+    # -- the default model (approved mock 2026-11-07, boards 5 and 6) ------------------------------------------
+    def _provider_options(self):
+        """Every provider Hermes offers, ready or not, with its models and the name of its key."""
+        raw = self._management('GET', '/api/model/options', query={'include_unconfigured': 'true'})
+        if not isinstance(raw, dict) or not isinstance(raw.get('providers'), list) or len(raw['providers']) > 300:
+            raise UserError(_('Hermes returned an invalid provider list.'))
+        providers = []
+        for item in raw['providers']:
+            if not isinstance(item, dict) or not isinstance(item.get('slug'), str) \
+                    or not re.fullmatch(r'[a-z0-9][a-z0-9_.:-]{0,99}', item['slug']) or item.get('source') == 'virtual':
+                continue
+            models = [m for m in (item.get('models') or []) if isinstance(m, str) and len(m) <= 300]
+            key_env = item.get('key_env') or KEY_ENV_FALLBACK.get(item['slug'], '')
+            providers.append({
+                'slug': item['slug'], 'name': str(item.get('name') or item['slug'])[:150],
+                'ready': item.get('authenticated') is True, 'models': list(dict.fromkeys(models))[:500],
+                'key_env': key_env if isinstance(key_env, str) and ENV_NAME.fullmatch(key_env) else '',
+            })
+        current = {'provider': raw.get('provider') if isinstance(raw.get('provider'), str) else '',
+                   'model': raw.get('model') if isinstance(raw.get('model'), str) else ''}
+        return providers, current
+
+    def default_model_data(self):
+        """What the Choose the default model section shows."""
+        manager(self)
+        self.ensure_one()
+        providers, current = self._provider_options()
+        by_slug = {p['slug']: p for p in providers}
+        current['name'] = by_slug.get(current['provider'], {}).get('name', current['provider'])
+        return {'state': self.state, 'current': current,
+                'key_providers': [by_slug[s] for s in KEY_PROVIDERS if s in by_slug],
+                'free': by_slug.get(FREE_PROVIDER) or False,
+                'providers': sorted(providers, key=lambda p: (not p['ready'], p['name'].lower())),
+                'setup_url': self.action_provider_setup()['url']}
+
+    def provider_models(self, slug):
+        """The models of a ready provider and the one Hermes recommends."""
+        manager(self)
+        self.ensure_one()
+        entry = self._provider_entry(slug)
+        recommended = self._management('GET', '/api/model/recommended-default', query={'provider': slug})
+        model = recommended.get('model') if isinstance(recommended, dict) else ''
+        return {'models': entry['models'], 'recommended': model if model in entry['models'] else
+                (entry['models'][0] if entry['models'] else '')}
+
+    def _provider_entry(self, slug):
+        providers, _current = self._provider_options()
+        entry = next((p for p in providers if p['slug'] == slug), None)
+        if not entry:
+            raise UserError(_('Hermes does not offer this provider.'))
+        return entry
+
+    def set_default_model(self, slug, model=False, key=False):
+        """Use a provider's model as Hermes's default: with a key the provider needs (saved only in Hermes), or a
+        provider that is ready. Profiles without a model of their own follow it."""
+        manager(self)
+        self.ensure_one()
+        self.env.cr.execute('SELECT id FROM ai_agent_engine WHERE id = %s FOR UPDATE', [self.id])
+        entry = self._provider_entry(slug)
+        if key:
+            self._save_provider_key(entry, key)
+            entry = self._provider_entry(slug)
+        if not entry['ready']:
+            raise UserError(_('Add the key of %s first.', entry['name']))
+        if not model:
+            model = self.provider_models(slug)['recommended']
+        if not model or model not in entry['models']:
+            raise UserError(_('Choose a model that %s offers.', entry['name']))
+        result = self._management('POST', '/api/model/set', {'scope': 'main', 'provider': slug, 'model': model,
+                                                              'confirm_expensive_model': True})
+        if isinstance(result, dict) and result.get('ok') is False:
+            raise UserError(str(result.get('error') or result.get('detail') or _('Hermes did not accept this model.'))[:300])
+        self.action_check()
+        if self.state == 'ready':
+            self.set_model_enabled(slug, model, True)
+            self._follow_default_model(slug, model)
+        return self.default_model_data()
+
+    def _save_provider_key(self, entry, key):
+        """Check a provider's key with Hermes and save it there only; the ERP never stores it."""
+        key = key.strip() if isinstance(key, str) else ''
+        if not key or len(key) > 4096 or any(c in key for c in '\r\n\0'):
+            raise UserError(_('Enter a valid API key.'))
+        if not entry['key_env']:
+            raise UserError(_('%s is set up with a sign-in in Hermes, not with a key.', entry['name']))
+        check = self._management('POST', '/api/providers/validate', {'key': entry['key_env'], 'value': key})
+        if isinstance(check, dict) and not check.get('ok') and check.get('reachable'):
+            raise UserError(str(check.get('message') or _('%s refused this key.', entry['name']))[:300])
+        self._management('PUT', '/api/env', {'key': entry['key_env'], 'value': key})
+
+    def save_provider_key(self, slug, key):
+        """Set up a provider with its key from Add model; its models can then be enabled."""
+        manager(self)
+        self.ensure_one()
+        self.env.cr.execute('SELECT id FROM ai_agent_engine WHERE id = %s FOR UPDATE', [self.id])
+        self._save_provider_key(self._provider_entry(slug), key)
+        internal(self).write({'models_catalog': self._model_catalog()})
+        return self.provider_catalog
+
+    def _follow_default_model(self, provider, model):
+        """Profiles in Hermes without a model of their own use the default model."""
+        profiles = self.env['ai.agent.profile'].sudo().search([('engine_id', '=', self.id), ('in_hermes', '=', True),
+                                                               ('engine_model_id', '=', False)])
+        for profile in profiles:
+            try:
+                self._management('PUT', f'/api/profiles/{profile.hermes_name}/model',
+                                 {'provider': provider, 'model': model})
+            except UserError:
+                internal(profile).write({'state': 'needs_sync'})
 
 
 class Skill(models.Model):

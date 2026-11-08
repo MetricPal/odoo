@@ -143,6 +143,7 @@
         &.wf_group_optional { --wf-group: var(--wf-optional); }
         border: 1px solid var(--wf-group);
         .oi { color: var(--wf-group); }
+        .wf_palette_badge { background: #e6f1fb; color: #0c447c; font-weight: 500; }
     }
 
     .wf_node {

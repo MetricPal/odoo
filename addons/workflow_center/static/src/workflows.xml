@@ -35,7 +35,7 @@
                   t-att-data-tooltip="item[5]" data-tooltip-position="right"
                   t-att-draggable="this.state.workflow.state !== 'active' &amp;&amp; !this.state.busy ? 'true' : 'false'"
                   t-on-dragstart="(ev) => this.startStepDrag(ev, item)" t-on-dragend="() => { this.draggedStep = null; this.clearDropTarget(); }">
-            <span class="d-flex align-items-center"><i class="oi me-2" t-att-data-icon="item[3]"/><span class="fw-semibold" t-out="item[2]"/></span>
+            <span class="d-flex align-items-center"><i class="oi me-2" t-att-data-icon="item[3]"/><span class="fw-semibold" t-out="item[2]"/><span t-if="item[6]" class="badge rounded-pill ms-2 wf_palette_badge" t-out="item[6]"/></span>
             <span class="d-block text-muted small wf_palette_help" t-out="item[4]"/>
           </button>
         </t>
@@ -132,14 +132,15 @@
     <div t-on-dragover="this.allowStepDrop" t-on-dragenter="this.markDropTarget" t-on-drop="(ev) => this.dropStep(ev, node.step.id)" t-att-class="'wf_node position-relative ' + (this.state.selected === node.step.id ? 'is_selected ' : '') + node.step.kind">
       <button t-if="this.state.workflow.state !== 'active' &amp;&amp; this.state.workflow.can_edit" class="btn btn-link text-danger bg-transparent border-0 text-decoration-none btn-sm position-absolute top-0 end-0 m-1 wf_remove_step" t-att-aria-label="'Remove ' + node.step.name" title="Remove step" t-on-click.stop="() => this.removeStep(node.step)">×</button>
       <button class="wf_node_select pe-4" t-on-click="() => this.configureStep(node.step)">
-        <small t-out="node.step.kind === 'approval' ? 'APPROVAL · OPTIONAL' : node.step.kind.toUpperCase()"/>
+        <small t-out="node.step.card_label"/>
         <strong t-out="node.step.name"/>
+        <span t-if="node.step.card_hint" class="wf_card_hint" t-out="node.step.card_hint"/>
         <span t-if="node.step.kind === 'action'" t-out="node.step.action_id ? node.step.action_id[1] : 'Choose this step to configure its action'"/>
         <span t-if="node.step.kind === 'wait'"><t t-if="node.step.wait_date_id">Until <t t-out="node.step.wait_date_id[1]"/></t><t t-else=""><t t-out="node.step.wait_hours"/> hours</t></span>
       </button>
       <small t-if="node.step.end" class="wf_end">End of this path</small>
     </div>
-    <div t-if="node.step.kind === 'branch'" class="wf_branch_paths">
+    <div t-if="node.step.splits" class="wf_branch_paths">
       <section class="wf_branch_yes">
         <span class="wf_split" aria-hidden="true"/>
         <span class="wf_path_label yes">Yes</span>

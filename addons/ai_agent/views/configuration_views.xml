@@ -7,7 +7,7 @@
     <field name="name">ai.agent.engine.form</field><field name="model">ai.agent.engine</field>
     <field name="arch" type="xml">
       <form string="Hermes connection">
-        <header><button name="action_check" string="Connect" type="object" class="btn-primary" invisible="state == 'ready'"/><button name="action_check" string="Check connection" type="object" invisible="state != 'ready'"/><field name="state" invisible="1"/></header>
+        <header><button name="action_check" string="Connect" type="object" class="btn-primary" invisible="state not in ('unchecked', 'blocked')"/><button name="action_check" string="Check connection" type="object" invisible="state not in ('needs_model', 'ready')"/><field name="state" widget="statusbar" statusbar_visible="unchecked,needs_model,ready,blocked"/></header>
         <sheet>
           <div class="oe_title"><label for="name" string="Connection name"/><h1><field name="name" placeholder="e.g. Local Hermes"/></h1></div>
           <group><field name="company_id" groups="base.group_multi_company" readonly="id"/><field name="connection_mode" string="Connection" widget="radio" options="{'horizontal': true}"/></group>
@@ -33,20 +33,17 @@
           </group>
           <p class="text-muted">The Agent API runs requests. The Management API checks this profile's configuration. Hermes tools and shared memory must be disabled for this release.</p>
           <div class="alert alert-warning" role="alert" invisible="state != 'blocked'"><field name="status_message" nolabel="1"/></div>
+          <div class="alert alert-info" role="status" invisible="state != 'needs_model'">Hermes is connected but has no AI model yet. Choose one below; agents can answer as soon as it is set.</div>
           <group invisible="not checked_at"><field name="checked_at" string="Last checked"/></group>
           <notebook>
             <page string="Providers &amp; models">
-              <div class="d-flex align-items-center gap-3 mb-3">
+              <widget name="ai_agent_default_model" invisible="not id or state in ('unchecked', 'blocked')"/>
+              <div class="d-flex align-items-center gap-3 mb-3" invisible="state != 'ready'">
                 <button name="action_models" string="Add model" type="object" class="btn-primary" invisible="not id"/>
+                <span class="text-muted">Add more models for agents that need a different one.</span>
               </div>
-              <div class="d-flex flex-wrap align-items-baseline gap-1 mb-3">
-                <span>You may configure the models in</span>
-                <field name="model_settings_url" widget="url" text="Model Settings" readonly="1" nolabel="1" class="w-auto"/>
-                <span>; changes apply to new sessions.</span>
-              </div>
-              <p class="text-muted">Add models for your agents. Hermes's default model stays unchanged.</p>
-              <separator string="Enabled models"/>
-              <field name="enabled_model_ids" nolabel="1" readonly="1">
+              <separator string="Enabled models" invisible="state != 'ready'"/>
+              <field name="enabled_model_ids" nolabel="1" readonly="1" invisible="state != 'ready'">
                 <list create="0" delete="0"><field name="provider"/><field name="model"/><field name="create_uid" string="Enabled by" optional="hide"/><field name="write_date" string="Last changed" optional="hide"/><button name="action_disable" string="Remove" type="object" confirm="Disable this model for agents on this connection? Agents using it will be blocked until another model is selected."/></list>
               </field>
             </page>

@@ -5,7 +5,7 @@
     'summary': 'Review, approve, and audit supervised business actions',
     'description': """
 Approval Center gives teams one governed place to review business actions,
-approve or reject them, and execute approved work through Odoo actions with an
+approve or reject them, and execute approved work through their own actions with an
 audit trail.
 """,
     'author': 'metric.io',

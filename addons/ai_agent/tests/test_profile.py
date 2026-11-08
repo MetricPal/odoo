@@ -7,6 +7,7 @@ from odoo.addons.mail.tests.common import mail_new_test_user
 
 from ..models.common import internal
 from ..models.profile import profile_name
+from ..services import hermes
 
 
 class FakeHermes:
@@ -16,6 +17,10 @@ class FakeHermes:
         self.profiles = {}
         self.calls = []
         self.serves_profiles = serves_profiles
+        self.default = ('', '')  # The connection's default provider and model.
+        self.configured = {'vision', 'todo'}  # Hermes tools that have what they need.
+        self.probes = {}  # Tool server name: what Hermes's test answers.
+        self.jobs = {}  # Profile name: its scheduled jobs.
 
     def management(self, engine, method, path, payload=None, query=None):
         self.calls.append((method, path, payload, query))
@@ -28,6 +33,8 @@ class FakeHermes:
         if (method, path) == ('PUT', '/api/config'):
             self.profiles[profile]['config'].update(payload['config'])
             return {'ok': True}
+        if (method, path) == ('GET', '/api/model/options'):
+            return {'providers': [], 'provider': self.default[0], 'model': self.default[1]}
         if (method, path) == ('GET', '/api/config'):
             return self.profiles[profile]['config']
         if method == 'PUT' and path.endswith('/soul'):
@@ -44,6 +51,19 @@ class FakeHermes:
         if (method, path) == ('POST', '/api/mcp/servers'):
             self.profiles[profile].setdefault('mcp', {})[payload['name']] = payload
             return {'name': payload['name']}
+        if (method, path) == ('GET', '/api/tools/toolsets'):
+            return [{'name': name, 'configured': name in self.configured}
+                    for name in ('web', 'browser', 'terminal', 'vision', 'image_gen', 'todo')]
+        if method == 'POST' and path.startswith('/api/mcp/servers/') and path.endswith('/test'):
+            return self.probes.get(path.split('/')[4], {'ok': True, 'tools': []})
+        if (method, path) == ('GET', '/api/cron/jobs'):
+            return self.jobs.get(profile, [])
+        if method == 'POST' and path.startswith('/api/cron/jobs/'):
+            job_id, verb = path.split('/')[4:6]
+            for job in self.jobs.get(profile, []):
+                if job['id'] == job_id:
+                    job['state'] = 'paused' if verb == 'pause' else 'scheduled'
+            return {'ok': True}
         if method == 'DELETE' and path.startswith('/api/mcp/servers/'):
             self.profiles[profile].get('mcp', {}).pop(path.rsplit('/', 1)[1], None)
             return {'ok': True}
@@ -100,24 +120,59 @@ class TestHermesProfiles(TransactionCase):
             profile.action_sync()
 
     def test_profile_names_are_hermes_safe(self):
-        self.assertEqual(profile_name('Human Resources'), 'odoo-human-resources')
-        self.assertEqual(profile_name('Ventes & Marketing — Été'), 'odoo-ventes-marketing-ete')
+        self.assertEqual(profile_name('Human Resources'), 'human-resources')
+        self.assertEqual(profile_name('Ventes & Marketing — Été'), 'ventes-marketing-ete')
         self.assertTrue(len(profile_name('x' * 200)) <= 64)
+        self.assertEqual(profile_name('Sales', taken={'sales', 'sales-2'}), 'sales-3')
+        self.assertEqual(profile_name('Default'), 'default-2', "Hermes's own profile is never used")
+        self.assertEqual(profile_name('Test'), 'test-2', 'Names Hermes refuses are never used')
+        self.assertEqual(profile_name('***'), 'profile')
+
+    def test_names_are_made_here_and_never_typed(self):
+        first = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
+                                                     'department_id': self.hr.id, 'hermes_name': 'typed-name'})
+        self.assertEqual(first.hermes_name, 'human-resources', 'A typed name is ignored')
+        second = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
+                                                      'department_id': self.finance.id})
+        self.assertEqual(second.hermes_name, 'human-resources-2')
+        second.name = 'Finance'
+        self.assertEqual(second.hermes_name, 'finance', 'Follows the name until it exists in Hermes')
+        with self.assertRaises(AccessError):
+            second.write({'hermes_name': 'other'})
+        # A profile of that name made in Hermes by someone else is never taken over.
+        fake = FakeHermes()
+        fake.profiles['finance'] = {'config': {'memory': {}}, 'soul': 'Not ours'}
+        self._sync(second, fake)
+        self.assertEqual(second.state, 'in_sync', second.sync_message)
+        self.assertEqual(second.hermes_name, 'finance-2')
+        self.assertEqual(fake.profiles['finance']['soul'], 'Not ours')
+        second.name = 'Accounting'
+        self.assertEqual(second.hermes_name, 'finance-2', 'Fixed once it exists in Hermes')
+
+    def test_old_tool_server_is_replaced(self):
+        profile = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
+                                                       'department_id': self.hr.id})
+        fake = FakeHermes()
+        self._sync(profile, fake)
+        remote = fake.profiles['human-resources']
+        remote['mcp']['odoo'] = {'name': 'odoo'}
+        self._sync(profile, fake)
+        self.assertEqual(set(remote['mcp']), {'erp'})
 
     def test_sync_creates_the_profile_safely_and_runs_go_to_it(self):
         profile = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
                                                        'department_id': self.hr.id, 'persona': 'You help HR.'})
-        self.assertEqual(profile.hermes_name, 'odoo-human-resources')
+        self.assertEqual(profile.hermes_name, 'human-resources')
         self.assertEqual(self.agent.profile_id, profile, 'The department agent moves to its department profile')
         self.assertIsNone(self.agent._run_profile(), 'Until synced, runs use the connection default')
         fake = FakeHermes()
         self._sync(profile, fake)
         self.assertEqual(profile.state, 'in_sync', profile.sync_message)
-        remote = fake.profiles['odoo-human-resources']
+        remote = fake.profiles['human-resources']
         self.assertEqual(remote['soul'], 'You help HR.')
         self.assertIs(remote['config']['memory']['memory_enabled'], False)
-        self.assertEqual(remote['config']['platform_toolsets'], {'api_server': ['odoo'], 'cli': [], 'dashboard': []})
-        odoo_server = remote['mcp']['odoo']
+        self.assertEqual(remote['config']['platform_toolsets'], {'api_server': ['erp'], 'cli': [], 'dashboard': []})
+        odoo_server = remote['mcp']['erp']
         self.assertTrue(odoo_server['url'].endswith('/ai_agent/mcp'))
         self.assertEqual(odoo_server['auth'], 'header')
         self.assertEqual(self.env['ai.agent.tools']._profile_for_token(odoo_server['bearer_token']), profile)
@@ -137,7 +192,7 @@ class TestHermesProfiles(TransactionCase):
                 patch.object(type(self.env['ir.cron']), '_commit_progress', return_value=60):
             run._submit()
         self.assertEqual(run.profile_id, profile)
-        self.assertIn(('POST', '/v1/runs', 'odoo-human-resources'), fake.calls)
+        self.assertIn(('POST', '/v1/runs', 'human-resources'), fake.calls)
 
     def test_sync_fails_clearly_when_the_gateway_does_not_serve_profiles(self):
         profile = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
@@ -157,7 +212,7 @@ class TestHermesProfiles(TransactionCase):
         self.assertEqual(hr_profile.persona, 'Friendly and short.')
         self.assertEqual(hr_profile.state, 'needs_sync', 'The change waits for the next sync')
         self.assertEqual(self.agent._run_profile(), hr_profile, 'The profile keeps working meanwhile')
-        for values in ({'hermes_name': 'odoo-other'}, {'engine_id': self.engine.id}, {'state': 'in_sync'}):
+        for values in ({'hermes_name': 'other'}, {'engine_id': self.engine.id}, {'state': 'in_sync'}):
             with self.assertRaises((AccessError, UserError)):
                 hr_profile.with_user(self.ai_admin).write(values)
         with self.assertRaises(AccessError):
@@ -175,7 +230,7 @@ class TestHermesProfiles(TransactionCase):
         self.assertEqual(self.agent.profile_id, hr_profile)
         self.agent.action_own_profile()
         own = self.agent.profile_id
-        self.assertEqual((own.kind, own.hermes_name), ('agent', f'odoo-agent-{self.agent.id}'))
+        self.assertEqual((own.kind, own.hermes_name), ('agent', 'hr-policy-helper'))
         hr_profile.action_archive()
         self.assertEqual(self.agent.profile_id, own, 'An own profile is kept')
 
@@ -189,3 +244,45 @@ class TestHermesProfiles(TransactionCase):
         assistant = self.env.company.ai_assistant_user_id
         self.assertTrue(assistant.ai_assistant)
         self.assertEqual(company_profile.assistant_user_id, assistant)
+
+    def _unreachable(self):
+        error = hermes.HermesUnavailable('Hermes is not running or cannot be reached at hermes.example.com:443.')
+        error.unreachable = True
+        return error
+
+    def test_unreachable_hermes_fails_clearly_and_flags_the_connection(self):
+        profile = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
+                                                       'department_id': self.hr.id})
+        with patch.object(type(self.engine), '_management', side_effect=self._unreachable()):
+            profile.action_sync()
+        self.assertEqual(profile.state, 'failed')
+        self.assertIn('not running', profile.sync_message)
+        self.assertFalse(profile.in_hermes)
+        self.assertEqual(self.engine.state, 'blocked', 'The connection needs attention until checked again')
+
+    def test_remove_a_profile_that_never_reached_hermes(self):
+        profile = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
+                                                       'department_id': self.hr.id})
+        internal(profile).write({'state': 'failed'})
+        with patch.object(type(self.engine), '_management', side_effect=AssertionError('Hermes must not be called')):
+            profile.action_remove_from_hermes()
+        self.assertEqual((profile.state, profile.active), ('draft', False))
+
+    def test_remove_a_profile_already_gone_from_hermes(self):
+        profile = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
+                                                       'department_id': self.hr.id})
+        self._sync(profile, FakeHermes())
+        self.assertTrue(profile.in_hermes)
+        gone = hermes.HermesRejected('404')
+        gone.status = 404
+        with patch.object(type(self.engine), '_management', side_effect=gone):
+            profile.action_remove_from_hermes()
+        self.assertEqual(profile.state, 'draft')
+        self.assertFalse(profile.in_hermes)
+        # Any other refusal is shown, and nothing changes.
+        profile.action_unarchive()
+        internal(profile).write({'state': 'in_sync', 'in_hermes': True})
+        refused = hermes.HermesRejected('401')
+        refused.status = 401
+        with patch.object(type(self.engine), '_management', side_effect=refused), self.assertRaises(UserError):
+            profile.action_remove_from_hermes()

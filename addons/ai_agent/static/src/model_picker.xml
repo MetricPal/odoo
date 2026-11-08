@@ -9,7 +9,7 @@
           <t t-foreach="this.providers" t-as="p" t-key="p.slug">
             <button type="button" class="o_ai_picker_row" t-att-class="{'o_ai_selected': this.selected &amp;&amp; this.selected.slug === p.slug}" t-att-aria-pressed="this.selected &amp;&amp; this.selected.slug === p.slug ? 'true' : 'false'" t-on-click="() =&gt; this.selectProvider(p)">
               <div><t t-out="p.name"/><span class="badge text-bg-secondary ms-2" t-if="p.slug === this.catalog.provider">Current</span></div>
-              <small class="text-muted"><t t-out="p.models.length"/> models &#183; <t t-out="p.authenticated ? 'Connected' : 'Setup required'"/></small>
+              <small class="text-muted" t-out="this.status(p)"/>
             </button>
           </t>
           <p t-if="!this.providers.length" class="p-3 text-muted">No matching providers or models.</p>
@@ -17,7 +17,21 @@
         <div class="o_ai_picker_models" aria-label="Models">
           <t t-if="this.selected">
             <div class="text-muted px-3 py-2"><t t-out="this.selected.name"/></div>
-            <div class="alert alert-warning m-2" t-if="!this.selected.authenticated">Authenticate this provider in Hermes, then refresh the catalog.</div>
+            <div t-if="!this.selected.authenticated and this.isEngine and this.selected.key_env" class="d-flex flex-column gap-2 px-3 pb-3 o_ai_picker_key">
+              <p class="mb-0">Enter the API key of <t t-out="this.selected.name"/> to see its models.</p>
+              <label class="d-flex flex-column gap-1 small"><span class="fw-semibold">API key</span>
+                <input type="password" class="form-control" autocomplete="new-password" t-att-value="this.state.key" t-att-disabled="this.state.busy"
+                       t-on-input="(event) =&gt; { this.state.key = event.target.value; }" t-on-keydown="(event) =&gt; { if (event.key === 'Enter') { event.preventDefault(); this.saveKey(); } }"/>
+              </label>
+              <div><button type="button" class="btn btn-primary" t-att-disabled="this.state.busy || !this.state.key.trim()" t-on-click="() =&gt; this.saveKey()">Save key</button></div>
+              <span class="text-muted small">The key is checked by Hermes, saved only in Hermes, and never stored here. Its models then appear here to tick.</span>
+            </div>
+            <div t-elif="!this.selected.authenticated and this.isEngine" class="d-flex flex-column gap-2 px-3 pb-3">
+              <p class="mb-0"><t t-out="this.selected.name"/> is set up with a sign-in in Hermes, not with a key.</p>
+              <div><a t-att-href="this.props.record.data.model_settings_url" target="_blank" rel="noopener">Sign in in Hermes</a></div>
+              <span class="text-muted small">After signing in, close and open Add model again to see its models.</span>
+            </div>
+            <div class="alert alert-warning m-2" t-elif="!this.selected.authenticated">Set up this provider first: add its key on the Hermes connection, or sign in in Hermes.</div>
             <t t-foreach="this.models" t-as="m" t-key="m">
               <label t-if="this.isEngine" class="o_ai_picker_row d-flex align-items-center gap-2">
                 <input type="checkbox" class="form-check-input flex-shrink-0" t-att-checked="this.isEnabled(m)" t-att-disabled="this.state.busy || (!this.selected.authenticated &amp;&amp; !this.isEnabled(m))" t-on-change="() =&gt; this.toggleModel(m)"/>
@@ -25,7 +39,7 @@
               </label>
               <button t-else="" type="button" class="o_ai_picker_row" t-att-class="{'o_ai_selected': this.props.record.data.provider === this.selected.slug &amp;&amp; this.props.record.data.model === m &amp;&amp; !this.props.record.data.use_default}" t-att-disabled="!this.selected.authenticated || !this.props.record.data.agent_id" t-on-click="() =&gt; this.selectModel(m)"><t t-out="m"/></button>
             </t>
-            <p t-if="!this.models.length" class="p-3 text-muted">Hermes returned no models for this selection. Check provider setup or change your search.</p>
+            <p t-if="!this.models.length and this.selected.authenticated" class="p-3 text-muted">Hermes returned no models for this selection. Check provider setup or change your search.</p>
           </t>
         </div>
       </div>

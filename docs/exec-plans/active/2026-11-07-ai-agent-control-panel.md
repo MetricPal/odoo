@@ -1,8 +1,9 @@
 # 2026-11-07 AI Agent as the Hermes control panel
 
-Status: phase 0 done (owner review of mocks pending). ADR: `docs/design-decisions/0012-ai-agent-department-assistants.md`.
-Mocks for review: https://claude.ai/artifact/9Uw7Mzz6KG8FXCZ3m6mqtd (department AI tab, Hermes profile, agent,
-workflow Ask agent step). No code yet; UI is built only from approved mocks.
+Status: phases 0 to 6 done (`ai_agent` 20.0.1.13.0, `workflow_ai` 20.0.1.1.0); live checks against a Hermes with an
+AI provider still open. ADR: `docs/design-decisions/0012-ai-agent-department-assistants.md`.
+Mocks: https://claude.ai/artifact/9Uw7Mzz6KG8FXCZ3m6mqtd (department AI tab, Hermes profile, agent, workflow Ask
+agent step; phase 6: boards 8 and 9, approved 2026-11-08). UI is built only from approved mocks.
 
 ## Objective
 
@@ -170,7 +171,16 @@ department managers of ADR 0009. Department changes take effect without approval
    **Done 2026-11-07** (`ai_agent` 20.0.1.10.0): propose note, to-do and field change; approval type "AI agent
    proposal"; applied once after approval as the assistant, after re-checking the person who asked.
 5. Ask agent step in Workflows.
-6. Tools and services view.
+   **Done 2026-11-07** (`workflow_ai` 20.0.1.1.0, hooks in `workflow_center`): Ask agent step (agent, question with
+   `{field}` placeholders, answer to a field, as a note, or Yes/No path); asked as the agent's AI assistant user (an
+   assistant may use only the agents that act as it, and its runs get no propose tools); the run waits and continues
+   when the agent run finishes (hourly fallback check); unclear or missing answers follow the step's error setting.
+   Not yet seen live with a model answering (the throwaway Hermes has no AI provider).
+6. Tools and services view. **Done 2026-11-08** (`ai_agent` 20.0.1.13.0): Tools and services tab (ERP tools, Hermes
+   tools, tool servers, Hermes scheduled jobs) and Add a tool server, from the approved mock (boards 8 and 9).
+   Not yet seen live against Hermes. Hermes v0.21.3 note:
+   `PUT /api/tools/toolsets/{name}` switches a toolset on its configuration platform (`cli` for most), not on
+   `api_server`, which ERP runs use; the profile's `platform_toolsets.api_server` must be written by the sync instead.
 
 ## Verification
 
@@ -188,3 +198,6 @@ department managers of ADR 0009. Department changes take effect without approval
 - Department profiles share Hermes sessions; memory stays off.
 - Assistant users with broad groups are powerful: the permission intersection protects chats, but workflow runs
   use the assistant's full rights. Administrators must give them only what the department's agents need.
+- Local Hermes (2026-11-07): the ERP runs its own Hermes home (`~/hermes-erp`, `deployment/erp_hermes.py`) with a
+  multiplexing gateway; the personal Hermes in `/mnt/agent` is not used. It still needs a model provider before
+  agents can answer.

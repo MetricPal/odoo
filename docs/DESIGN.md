@@ -285,6 +285,13 @@ Branch, Wait, For each record) amber, **Optional** (Approval) teal; the trigger 
 step has a full border and icon in its group colour; on the canvas each step card has a left stripe and its small
 label in that colour. The panel keeps a gap between the step cards and its scrollbar.
 
+**Ask agent** (`workflow_ai`, approved mock 2026-11-07) is an action (blue) with a **New** badge in the panel. Its
+card reads ASK AGENT, the step name, and "agent · what the answer does" (answer goes to a field, answer posted as a
+note, answer chooses the path). Its settings: Agent, Question ("Fields in braces are filled from the record."), **Use
+the answer to** (Write it to a field, Post it as a note, Choose the Yes or No path), the answer field when needed,
+and a note "Runs as <assistant>. The workflow waits for the answer. If the agent fails or does not answer, the
+step's error setting applies." The Yes or No path draws like a Branch.
+
 ## Marketing control panel (`marketing_intel_plan`)
 
 The top of the page is Odoo's control panel (approved mock, 2026-11-06): the page name and a one-line summary on the
@@ -303,10 +310,32 @@ shows the department's profile, its status (Needs sync, In sync, Failed), connec
 profile** (or **Create Hermes profile** for AI Agent managers).
 
 A **Hermes profile** form (approved mock, phase 2 part): **Sync to Hermes** and a status bar; For, Department, Name
-in Hermes, Hermes connection, Default model, Acts as (the assistant user), Last synced; tabs **Persona** (shared by
-the profile's agents) and **Agents**. Skills and Tools and services tabs come with later phases. On an agent, **Department** sets the owner; department managers and AI admins see Activate,
+in Hermes (read-only, made from the name), Hermes connection, Default model, Acts as (the assistant user), Last synced; tabs **Persona** (shared by
+the profile's agents), **Tools and services** (phase 6, below) and **Agents**. A Skills tab comes later. On an agent, **Department** sets the owner; department managers and AI admins see Activate,
 Pause and the Instructions and Skills tabs, and edit an active agent directly; the Knowledge, Data access and
 Engine & limits parts stay with AI Agent managers.
+
+### Hermes profile: Tools and services tab
+
+Approved mock 2026-11-08 (boards 8 and 9). An info line: "Tool changes take effect in Hermes at the next **Sync to
+Hermes**." Then four sections with standard separators: **ERP tools** (always on; the seven tools as light pills),
+**Hermes tools** (Tool, What it does, Status: Ready or Needs a key with "Add key in Hermes", Enabled toggle; then the
+"never offered" line), **Tool servers** (Name, Address, Status: Ready, Sign in in Hermes, Not reachable or Off; Enabled
+toggle, Remove; the ERP row first and always on; **Add a tool server** button with the "Only AI Agent managers…" line)
+and **Scheduled jobs in Hermes** (Job, Runs, Next run, Last run with its Done or Failed badge, State: Active or Paused;
+Pause or Resume). **Add a tool server** is a dialog: a trust warning, Name, Address, Sign-in (None, Key, Sign in in
+Hermes), Key (only with Key), the note that the key is saved only in Hermes, the info line that Hermes checks the
+address now, and **Add server** / Cancel.
+
+## Hermes connection: default model (`ai_agent`)
+
+Approved mock 2026-11-07 (boards 5 and 6). Status bar: Not checked, **Needs a model**, Ready, Needs attention. With
+Needs a model, an info line ("Hermes is connected but has no AI model yet…") and, at the top of Providers & models,
+**Choose the default model**: a highlighted **Use your own key** card (badge "Recommended for company data"; Provider,
+API key, Model with the recommended one marked; **Use this model**) and an **OpenCode Free** card (badge "For trying it
+out", warning that data goes to an outside service; Model; **Use free model**); then **All providers Hermes offers**
+with Ready, Needs a key or Sign in in Hermes, and Choose, Add key or Sign in in Hermes. When Ready: a **Default model**
+line with **Change model**, then Add model and Enabled models.
 
 ## AI agent proposals (`ai_agent`)
 
@@ -316,3 +345,5 @@ a description of exactly what would change; approvers see it in Approvals like a
 menu) lists them with their status: Waiting for approval, Applied, Refused, Failed, Cancelled. A proposal is applied
 right after the last approval; a failure (missing rights) shows on the request.
 
+
+User-facing text never says "Odoo" (owner rule, 2026-11-07): say "the ERP", "message", or name the thing itself.

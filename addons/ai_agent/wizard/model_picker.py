@@ -40,6 +40,13 @@ class ModelPicker(models.TransientModel):
         self.write({'catalog': engine.provider_catalog})
         return True
 
+    def save_provider_key(self, provider, key):
+        engine = self._engine()
+        if self.agent_id:
+            raise UserError(_('Set up providers from the connection, not from an agent selection.'))
+        self.write({'catalog': engine.save_provider_key(provider, key)})
+        return True
+
     def action_setup(self):
         engine = self._engine()
         return engine.action_provider_setup()
@@ -54,7 +61,8 @@ class ModelPicker(models.TransientModel):
             catalog = engine._model_catalog()
             provider = next((p for p in catalog['providers'] if p['slug'] == self.provider), None)
             if not provider or provider['authenticated'] is not True:
-                raise UserError(_('Authenticate this provider in Hermes, then refresh the catalog.'))
+                raise UserError(_('Set up this provider first: add its key on the Hermes connection, or sign in '
+                                  'in Hermes.'))
             if self.model not in provider['models']:
                 raise UserError(_('Select a model returned by this provider in the current Hermes catalog.'))
             self.agent_id.write({'provider': self.provider, 'model': self.model})

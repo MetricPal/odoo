@@ -24,7 +24,7 @@ LIVE_STATES = ('submitting', 'running', 'stop_requested')
 
 TOOLS = [
     {'name': 'search_records',
-     'description': 'Search Odoo records the agent may read. Returns id, display name and the allowed fields.',
+     'description': 'Search records the agent may read. Returns id, display name and the allowed fields.',
      'inputSchema': {'type': 'object', 'required': ['run_key', 'model'], 'properties': {
          'run_key': {'type': 'string', 'description': 'The run key from your instructions.'},
          'model': {'type': 'string', 'description': 'Technical model name, for example res.partner.'},
@@ -34,16 +34,16 @@ TOOLS = [
          'fields': {'type': 'array', 'items': {'type': 'string'}},
          'limit': {'type': 'integer', 'minimum': 1, 'maximum': SEARCH_MAX}}}},
     {'name': 'read_record',
-     'description': 'Read one Odoo record the agent may read.',
+     'description': 'Read one record the agent may read.',
      'inputSchema': {'type': 'object', 'required': ['run_key', 'model', 'id'], 'properties': {
          'run_key': {'type': 'string'}, 'model': {'type': 'string'}, 'id': {'type': 'integer'},
          'fields': {'type': 'array', 'items': {'type': 'string'}}}}},
     {'name': 'record_activities',
-     'description': 'Open activities (to-dos) on one Odoo record the agent may read.',
+     'description': 'Open activities (to-dos) on one record the agent may read.',
      'inputSchema': {'type': 'object', 'required': ['run_key', 'model', 'id'], 'properties': {
          'run_key': {'type': 'string'}, 'model': {'type': 'string'}, 'id': {'type': 'integer'}}}},
     {'name': 'record_messages',
-     'description': 'Recent messages and notes on one Odoo record the agent may read.',
+     'description': 'Recent messages and notes on one record the agent may read.',
      'inputSchema': {'type': 'object', 'required': ['run_key', 'model', 'id'], 'properties': {
          'run_key': {'type': 'string'}, 'model': {'type': 'string'}, 'id': {'type': 'integer'},
          'limit': {'type': 'integer', 'minimum': 1, 'maximum': 20}}}},
@@ -78,7 +78,7 @@ class ToolCallError(Exception):
 
 class AgentTools(models.AbstractModel):
     _name = 'ai.agent.tools'
-    _description = 'Odoo tools for agents'
+    _description = 'Agent tools'
 
     # -- who is calling --------------------------------------------------------------------------------------
     @api.model
@@ -104,9 +104,7 @@ class AgentTools(models.AbstractModel):
     @api.model
     def _acting_users(self, run):
         """The assistant user (if the agent's department or company has one), then the person who asked."""
-        agent = run.agent_id.sudo()
-        assistant = (agent.profile_id.assistant_user_id or agent.department_id.ai_assistant_user_id
-                     or agent.company_id.ai_assistant_user_id)
+        assistant = run.agent_id._assistant_user()
         users = []
         if assistant and assistant.active:
             users.append(assistant)
@@ -270,6 +268,9 @@ class AgentTools(models.AbstractModel):
         access, users, field_names, record = self._single(run, arguments)
         if not access.can_propose:
             raise ToolCallError(_('This agent may only read %s; it may not propose changes.', access.model_name))
+        if run.user_id.ai_assistant:
+            # A workflow asked (no person): the workflow's own steps make the changes.
+            raise ToolCallError(_('Nobody asked in person, so there is nobody to approve a proposal. Answer only.'))
         return access, users, field_names, record
 
     def _sent(self, proposal, request):

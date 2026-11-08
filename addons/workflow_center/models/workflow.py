@@ -15,7 +15,7 @@ KINDS = [('action', 'Action'), ('condition', 'Condition'), ('branch', 'Branch'),
          ('wait', 'Wait'), ('foreach', 'For each record'), ('approval', 'Approval (optional)')]
 ACTIONS = [('object_write', 'Update record'), ('object_create', 'Create record'),
            ('next_activity', 'Schedule activity'), ('followers', 'Add followers'),
-           ('mail_post', 'Email or Odoo message'), ('webhook', 'Outgoing webhook'),
+           ('mail_post', 'Email or message'), ('webhook', 'Outgoing webhook'),
            ('code', 'Python code'), ('chat', 'Provider chat')]
 
 
@@ -360,7 +360,7 @@ class Workflow(models.Model):
                 raise ValidationError(_('Steps contain a cycle. Use a For each record step for a bounded loop.'))
             visiting.add(step.id)
             visit(step._next())
-            if step.kind == 'branch':
+            if step._splits():
                 visit(step.false_id)
             visiting.remove(step.id)
             visited.add(step.id)
@@ -528,9 +528,12 @@ class Workflow(models.Model):
                           'revision', 'tested_revision', 'webhook_url', 'is_template'])[0]
         data['ai'] = self._builder_ai_info()
         data['can_edit'] = self._can_edit()
-        data['steps'] = self.step_ids.sorted('sequence').read([
-            'name', 'kind', 'action_type', 'sequence', 'on_error', 'next_id', 'false_id', 'end',
+        steps = self.step_ids.sorted('sequence')
+        data['steps'] = steps.read([
+            'name', 'kind', 'action_type', 'sequence', 'on_error', 'next_id', 'false_id', 'end', 'splits',
             'action_id', 'wait_hours', 'wait_date_id', 'policy_id', 'domain'])
+        for values, step in zip(data['steps'], steps):
+            values.update(step._card())
         checked = self if self._can_edit() else self.sudo()
         data['issues'] = checked._validate()
         data['preview_current'] = self.tested_revision == self.revision and self.tested_digest == checked._fingerprint()
@@ -544,7 +547,8 @@ class Workflow(models.Model):
         position = after.sequence + 1 if after else 0
         for step in self.step_ids.filtered(lambda s: s.sequence >= position):
             step.sequence += 1
-        label = dict(ACTIONS).get(action_type) if kind == 'action' else dict(KINDS).get(kind)
+        kinds = dict(self.env['workflow.step']._fields['kind']._description_selection(self.env))
+        label = dict(ACTIONS).get(action_type) if kind == 'action' else kinds.get(kind)
         step = self.env['workflow.step'].create({
             'workflow_id': self.id, 'name': label or _('New step'),
             'kind': kind, 'action_type': action_type, 'sequence': position,
@@ -592,6 +596,7 @@ class Step(models.Model):
     next_id = fields.Many2one('workflow.step', string='Next / if yes', ondelete='restrict')
     false_id = fields.Many2one('workflow.step', string='If no', ondelete='restrict')
     end = fields.Boolean(string='End this path after this step')
+    splits = fields.Boolean(compute='_compute_splits', help='The step follows a Yes path or a No path.')
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -627,13 +632,34 @@ class Step(models.Model):
             return self.next_id
         return self.workflow_id.step_ids.filtered(lambda s: s.sequence > self.sequence).sorted('sequence')[:1]
 
+    @api.depends('kind')
+    def _compute_splits(self):
+        for step in self:
+            step.splits = step._splits()
+
+    def _splits(self):
+        """True when this step follows a Yes path (next) or a No path (false_id)."""
+        self.ensure_one()
+        return self.kind == 'branch'
+
+    def _card(self):
+        """The canvas card's small label and an optional line under the step name."""
+        self.ensure_one()
+        label = _('APPROVAL · OPTIONAL') if self.kind == 'approval' else self.kind.upper()
+        return {'card_label': label, 'card_hint': False}
+
+    def _follows_error_rule(self):
+        """True when the step's error setting (stop, retry, continue) applies and a failed run may skip it."""
+        self.ensure_one()
+        return self.kind in ('action', 'foreach')
+
     def _issues(self):
         self.ensure_one()
         problems = []
         for edge in (self.next_id, self.false_id):
             if edge and edge.workflow_id != self.workflow_id:
                 problems.append(_('Choose the next step from this workflow.'))
-        if self.kind == 'branch' and not self.false_id:
+        if self._splits() and not self.false_id:
             problems.append(_('%s: choose the “If no” step.', self.name))
         if self.kind in ('condition', 'branch'):
             if not self.domain or self.domain.strip() == '[]':
@@ -670,7 +696,7 @@ class Step(models.Model):
                 ):
                     problems.append(_('%s: choose a source field that links to the new document.', self.name))
             elif self.action_type == 'chat':
-                problems.append(_('%s: provider chat needs an installed workflow provider integration. Use email or an Odoo message for now.', self.name))
+                problems.append(_('%s: provider chat needs an installed workflow provider integration. Use an email or a message for now.', self.name))
             elif not self.action_id:
                 problems.append(_('%s: configure what this action will do.', self.name))
             elif self.action_id.state != self.action_type:
@@ -740,7 +766,7 @@ class Step(models.Model):
         self.workflow_id._manager()
         self.workflow_id._editable()
         if self.action_type == 'chat':
-            raise UserError(_('Provider chat integration is not installed. Choose email or an Odoo message, or leave this draft for later.'))
+            raise UserError(_('Provider chat integration is not installed. Choose an email or a message, or leave this draft for later.'))
         if not self.action_id:
             model = self.model_id
             if self.kind == 'foreach':

@@ -53,7 +53,7 @@ class WorkflowDefinition(models.Model):
         })
         triggers = dict(self._fields['trigger']._description_selection(self.env))
         prompt = '\n'.join([
-            'Propose an automated workflow for Odoo.',
+            'Propose an automated workflow for this ERP.',
             f'Document it watches: {model.name} ({model.model}).',
             f'What the administrator wants: {description.strip()}',
             'Reply with one JSON object only, no other text:',

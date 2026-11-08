@@ -128,8 +128,11 @@ class WorkflowRun(models.Model):
                     self._log(_('Approval received.'))
                 elif self.wake_at and self.wake_at > fields.Datetime.now():
                     return
-                if self.step_id.kind in ('wait', 'approval'):
-                    self._set(step_id=self.step_id._next().id, attempts=0)
+                resumed = self._resume_step(self.step_id, record)
+                if resumed is None:
+                    return
+                if resumed != self.step_id:
+                    self._set(step_id=resumed.id, attempts=0)
                 self._set(state='running', wake_at=False, approval_id=False)
             for _index in range(100):
                 step = self.step_id
@@ -169,6 +172,14 @@ class WorkflowRun(models.Model):
                     self._set(state='waiting', approval_id=request.id, approval_record_digest=self._record_digest(record))
                     self._log(_('Waiting for the approvers configured on %s.', step.policy_id.name), 'waiting')
                     return
+                elif step.kind not in ('action', 'foreach'):
+                    # Step kinds added by other modules (for example Ask agent in workflow_ai).
+                    executing_action = True
+                    with self.env.cr.savepoint():
+                        waiting = self._start_step(step, record)
+                    executing_action = False
+                    if waiting:
+                        return
                 else:
                     executing_action = True
                     with self.env.cr.savepoint():
@@ -183,7 +194,7 @@ class WorkflowRun(models.Model):
                                 raise AccessError(_('A related record belongs to another company.'))
                             self._execute(step, target)
                     executing_action = False
-                    self._log(_('Message handed to Odoo for processing. Check Email delivery in Technical settings.') if step.action_type == 'mail_post' else _('Action completed.'))
+                    self._log(_('Message handed over for sending. Check Email delivery in Technical settings.') if step.action_type == 'mail_post' else _('Action completed.'))
                 self._set(step_id=next_step.id, attempts=0, delivery_unknown=False)
             raise UserError(_('This run exceeded the step limit.'))
         except Exception as exc:
@@ -193,12 +204,25 @@ class WorkflowRun(models.Model):
             step = self.step_id
             self._set(state='failed', error=message, delivery_unknown=isinstance(exc, DeliveryUncertain) or bool(executing_action and self.step_id and self.step_id.action_type == 'code'))
             self._log(message, 'failed')
-            if executing_action and step and step.kind in ('action', 'foreach') and not self.delivery_unknown and isinstance(exc, UserError):
+            if executing_action and step and step._follows_error_rule() and not self.delivery_unknown and isinstance(exc, UserError):
                 if step.on_error == 'retry' and self.attempts < step.max_attempts:
                     self._set(state='waiting', wake_at=fields.Datetime.now() + timedelta(minutes=5))
                 elif step.on_error == 'continue':
                     self._log(_('Configured failure rule: skipped this action.'), 'skipped')
                     self._set(step_id=step._next().id, state='running', attempts=0)
+
+    def _resume_step(self, step, record):
+        """The step a waiting run continues with once its wait is over, or None to keep waiting.
+
+        Waits and approvals continue with their next step; a failed action waiting to be retried runs again.
+        """
+        if step.kind in ('wait', 'approval'):
+            return step._next()
+        return step
+
+    def _start_step(self, step, record):
+        """Run a step of a kind added by another module. Return True when the run now waits."""
+        raise UserError(_('%s: this kind of step is not available. Install its module or remove the step.', step.name))
 
     def _record_digest(self, record):
         readable = record.fields_get()
@@ -306,7 +330,7 @@ class WorkflowRun(models.Model):
     def action_skip(self):
         self._operate()
         self._require_active()
-        if self.state != 'failed' or self.step_id.kind not in ('action', 'foreach'):
+        if self.state != 'failed' or not self.step_id._follows_error_rule():
             raise UserError(_('Only a failed action may be skipped. Approval and logic cannot be bypassed.'))
         self._log(_('Administrator skipped the failed action.'), 'skipped')
         self._set(state='running', step_id=self.step_id._next().id, attempts=0, delivery_unknown=False)

@@ -34,6 +34,27 @@ class TestAgent(TransactionCase):
     def _queue(self, prompt='Summarize available knowledge'):
         return self.env['ai.agent.run'].with_user(self.user)._queue(self.agent.with_user(self.user), prompt)
 
+    def test_archive_in_one_step_and_delete_only_without_history(self):
+        run = self._queue().sudo()
+        self.assertEqual(run.state, 'queued')
+        self.agent.action_archive()
+        self.assertEqual((self.agent.active, self.agent.state), (False, 'paused'), 'Archiving pauses the agent')
+        self.assertEqual(run.state, 'cancelled', 'Questions waiting are stopped')
+        self.assertTrue(run.conversation_id.exists(), 'History stays')
+        with self.assertRaises(UserError):
+            self._queue()
+        self.agent.action_unarchive()
+        self.assertEqual((self.agent.active, self.agent.state), (True, 'paused'), 'Restored agents stay paused')
+        with self.assertRaises(UserError) as error:
+            self.agent.unlink()
+        self.assertIn('1 conversations kept as history', str(error.exception))
+        unused = self.env['ai.agent'].create({'name': 'Never used', 'engine_id': self.engine.id,
+                                              'access_scope': 'company'})
+        unused.unlink()
+        self.assertFalse(unused.exists())
+        with self.assertRaises(AccessError):
+            self.agent.with_user(self.user).action_archive()
+
     def test_demo_agent_is_usable_by_everyone_in_the_company(self):
         from odoo.tools import convert_file
         if not self.env.ref('base.user_demo', raise_if_not_found=False):  # databases without demo data
@@ -241,7 +262,7 @@ class TestAgent(TransactionCase):
         self.assertNotIn('previous_response_id', payload)
 
     def test_engine_refuses_enabled_toolsets(self):
-        def remote(engine, method, path, *args):
+        def remote(engine, method, path, *args, **kwargs):
             return {'/health/detailed': {'status': 'ok'}, '/v1/capabilities': {
                 'features': {'run_submission': True, 'run_status': True}},
                 '/v1/toolsets': [{'enabled': True, 'tools': ['terminal']}]}[path]
@@ -256,7 +277,7 @@ class TestAgent(TransactionCase):
                 self.engine._inspect()
 
     def test_verified_profile_discovery(self):
-        def remote(engine, method, path, *args):
+        def remote(engine, method, path, *args, **kwargs):
             return {'/health/detailed': {'status': 'ok'}, '/v1/capabilities': {
                 'features': {'run_submission': True, 'run_status': True}}, '/v1/toolsets': [],
                 '/api/model/options': {'providers': []}}[path]
@@ -431,7 +452,7 @@ class TestAgent(TransactionCase):
                 hermes.request('http://127.0.0.1:8643', self.engine.secret_reference, 'GET', '/health')
 
     def test_actual_hermes_discovery_list_envelope(self):
-        def remote(engine, method, path, *args):
+        def remote(engine, method, path, *args, **kwargs):
             return {'/health/detailed': {'status': 'ok'}, '/v1/capabilities': {
                 'features': {'run_submission': True, 'run_status': True}},
                 '/v1/toolsets': {'object': 'list', 'platform': 'api_server',
@@ -646,7 +667,7 @@ class TestAgent(TransactionCase):
         with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': '127.0.0.1:8643,127.0.0.1:9120'}):
             engine = self.env['ai.agent.engine'].create({'name': 'Local setup', 'connection_mode': 'local'})
             action = engine.action_provider_setup()
-            self.assertEqual(action['url'], 'http://127.0.0.1:9119/models?profile=odoo-internal')
+            self.assertEqual(action['url'], 'http://127.0.0.1:9120/models')
             self.assertEqual(engine.management_url, 'http://127.0.0.1:9120')
             picker = self.env['ai.agent.model.picker'].create({'engine_id': engine.id})
             self.assertEqual(picker.action_setup(), action)
@@ -740,6 +761,33 @@ class TestAgentReliability(TransactionCase):
              patch.object(hermes.urllib3, 'HTTPSConnectionPool', return_value=pool):
             with self.assertRaises(hermes.HermesUnavailable):
                 hermes.request(self.engine.url, self.engine.secret_reference, 'GET', '/v1/runs/x')
+
+    def test_transport_explains_what_went_wrong(self):
+        import urllib3
+        def call(method, status=None, side_effect=None, path='/api/profiles'):
+            pool = MagicMock()
+            if side_effect:
+                pool.request.side_effect = side_effect
+            else:
+                pool.request.return_value.status = status
+                pool.request.return_value.read.return_value = b'{}'
+            with patch.object(hermes.socket, 'getaddrinfo', return_value=[(None, None, None, None, ('10.0.0.5', 443))]), \
+                 patch.object(hermes.urllib3, 'HTTPSConnectionPool', return_value=pool):
+                return hermes.request(self.engine.url, self.engine.secret_reference, method, path, {})
+        refused = urllib3.exceptions.NewConnectionError(None, 'Connection refused')
+        with self.assertRaises(hermes.HermesUnavailable) as error:
+            call('GET', side_effect=refused)
+        self.assertIn('not running', str(error.exception))
+        self.assertTrue(error.exception.unreachable)
+        with self.assertRaises(hermes.HermesRejected, msg='Nothing reached Hermes: nothing was submitted'):
+            call('POST', side_effect=refused, path='/v1/runs')
+        with self.assertRaises(hermes.HermesUnavailable) as error:
+            call('GET', 401)
+        self.assertIn('refused the key', str(error.exception))
+        with self.assertRaises(hermes.HermesRejected) as error:
+            call('DELETE', 404, path='/api/profiles/sales')
+        self.assertEqual(error.exception.status, 404)
+        self.assertIn('/api/profiles/sales', str(error.exception))
 
     def test_per_user_daily_quota(self):
         self.agent.action_pause()

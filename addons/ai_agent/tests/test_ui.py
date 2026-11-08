@@ -193,7 +193,8 @@ class TestAgentUI(HttpCase):
     def test_persistent_catalog_enables_multiple_models(self):
         catalog = {'provider': 'nous', 'model': 'example/current', 'providers': [
             {'slug': 'nous', 'name': 'Nous Portal', 'authenticated': True, 'models': ['example/current', 'example/other']},
-            {'slug': 'anthropic', 'name': 'Anthropic', 'authenticated': False, 'models': []}]}
+            {'slug': 'anthropic', 'name': 'Anthropic', 'authenticated': False, 'models': [],
+             'key_env': 'ANTHROPIC_API_KEY'}]}
         internal(self.engine).write({'models_catalog': catalog})
         self._capture()
         with patch.object(type(self.engine), '_request', return_value=catalog):
@@ -201,7 +202,7 @@ class TestAgentUI(HttpCase):
                 (async()=>{
                     const wait=async p=>{for(let i=0;i<150;i++){if(p())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Catalog flow missing: '+document.body.innerText);};
                     await wait(()=>document.querySelector('.o_notebook'));
-                    if(document.querySelector('.o_form_statusbar .o_ai_connection_status, .o_form_statusbar .o_statusbar_status'))throw new Error('Connection status decoration still present');
+                    if(!document.querySelector('.o_form_statusbar .o_statusbar_status'))throw new Error('Connection status bar missing (approved mock 2026-11-07, board 5)');
                     if(document.querySelector('.o_form_sheet .alert-info'))throw new Error('Success banner still present');
                     console.log('ai_agent_capture_engine_status');
                     if(!document.querySelector('button[name="action_models"]'))throw new Error('Add model missing');
@@ -218,11 +219,11 @@ class TestAgentUI(HttpCase):
                     document.querySelector('.o_ai_model_picker').scrollIntoView({block:'start'});
                     console.log('ai_agent_capture_persistent_models');
                     [...document.querySelectorAll('.o_ai_picker_providers button')].find(b=>b.textContent.includes('Anthropic')).click();
-                    await wait(()=>document.body.innerText.includes('Authenticate this provider'));
+                    await wait(()=>document.body.innerText.includes('Enter the API key of Anthropic'));
+                    if(!document.querySelector('.modal .o_ai_picker_key input[type="password"]'))throw new Error('Key field missing (approved mock 2026-11-07, board 7)');
                     [...document.querySelectorAll('.modal footer button')].find(b=>b.textContent.trim()==='Close').click();
                     await wait(()=>!document.querySelector('.modal .o_ai_model_picker'));
                     await wait(()=>document.querySelectorAll('[name="enabled_model_ids"] .o_data_row').length===2);
-                    if(![...document.querySelectorAll('a')].some(a=>a.textContent.trim()==='Model Settings'))throw new Error('Settings hyperlink missing');
                     console.log('test successful');
                 })();
             """.replace('&amp;', '&'), login='admin', timeout=90)

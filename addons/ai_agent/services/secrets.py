@@ -95,7 +95,10 @@ def remove(reference, database, data_dir=None):
 def local_keys():
     """Read only the deployment-selected local profile, never a UI-supplied path."""
     import shlex
-    path = Path(os.environ.get('AI_AGENT_LOCAL_ENV_FILE', '/mnt/agent/profiles/odoo-internal/.env'))
+    # The ERP's own Hermes home (deployment/erp_hermes.py), else the older single odoo-internal profile.
+    erp_home = Path(os.environ.get('HERMES_ERP_HOME', Path.home() / 'hermes-erp')) / '.env'
+    default = erp_home if erp_home.exists() else Path('/mnt/agent/profiles/odoo-internal/.env')
+    path = Path(os.environ.get('AI_AGENT_LOCAL_ENV_FILE', default))
     values = {}
     for line in _read(path).decode().splitlines():
         name, separator, value = line.partition('=')
