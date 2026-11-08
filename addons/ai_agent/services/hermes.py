@@ -4,6 +4,7 @@ import json
 import os
 import re
 import socket
+import time
 from urllib.parse import urlencode, urlsplit
 
 import urllib3
@@ -103,6 +104,66 @@ def _problem(status, path, where):
         return _('Hermes at %(where)s has no %(path)s (HTTP 404). Check the address and the Hermes version.',
                  where=where, path=path.split('?')[0])
     return None
+
+
+# The live event stream of a run (Hermes ``GET /v1/runs/{id}/events``, server-sent events).
+TERMINAL_RUN_EVENTS = frozenset({'run.completed', 'run.failed', 'run.cancelled', 'run.interrupted', 'done'})
+STREAM_LINE_MAX = 1024 * 1024
+
+
+def run_events(url, path, *, credential_value, demo=False, deadline_seconds=900):
+    """Yield the event names Hermes streams for one run, until it ends or ``deadline_seconds`` pass.
+
+    Same address checks and key handling as :func:`request`. Any network trouble just ends the stream: the caller
+    falls back to asking for the run's status.
+    """
+    if not re.fullmatch(r'/[a-zA-Z0-9_./-]+', path) or '..' in path:
+        raise UserError(_('Unsupported Hermes operation.'))
+    parsed, addresses, port = target(url, demo=demo)
+    key = credential_value
+    if not isinstance(key, str) or not key or len(key) > 4096 or '\n' in key or '\r' in key:
+        raise UserError(_('Configure a valid API key.'))
+    options = {'port': port, 'timeout': urllib3.Timeout(connect=5, read=120), 'retries': False}
+    if parsed.scheme == 'https':
+        options.update(assert_hostname=parsed.hostname, server_hostname=parsed.hostname)
+        pool = urllib3.HTTPSConnectionPool(addresses[0], **options)
+    else:
+        if any(not ipaddress.ip_address(ip).is_loopback for ip in addresses):
+            raise UserError(_('Local HTTP must resolve exclusively to loopback addresses.'))
+        pool = urllib3.HTTPConnectionPool(addresses[0], **options)
+    deadline = time.monotonic() + deadline_seconds
+    response = None
+    try:
+        response = pool.request('GET', path, headers={'Host': parsed.netloc, 'Authorization': f'Bearer {key}',
+                                                     'Accept': 'text/event-stream'},
+                                redirect=False, preload_content=False, retries=False)
+        if response.status != 200:
+            return
+        for raw in response:
+            if time.monotonic() > deadline or len(raw) > STREAM_LINE_MAX:
+                return
+            line = raw.decode('utf-8', 'replace').strip()
+            if line.startswith('event:'):
+                name = line[len('event:'):].strip()
+                yield name
+                if name in TERMINAL_RUN_EVENTS:
+                    return
+            elif line.startswith('data:'):
+                try:
+                    data = json.loads(line[len('data:'):].strip())
+                except ValueError:
+                    continue
+                name = data.get('event') or data.get('type') if isinstance(data, dict) else None
+                if isinstance(name, str):
+                    yield name
+                    if name in TERMINAL_RUN_EVENTS:
+                        return
+    except (OSError, urllib3.exceptions.HTTPError):
+        return
+    finally:
+        if response is not None:
+            response.release_conn()
+        pool.close()
 
 
 def request(url, secret_reference, method, path, payload=None, headers=None, *, credential_value=None, demo=False,

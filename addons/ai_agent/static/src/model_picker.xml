@@ -21,7 +21,7 @@
               <p class="mb-0">Enter the API key of <t t-out="this.selected.name"/> to see its models.</p>
               <label class="d-flex flex-column gap-1 small"><span class="fw-semibold">API key</span>
                 <input type="password" class="form-control" autocomplete="new-password" t-att-value="this.state.key" t-att-disabled="this.state.busy"
-                       t-on-input="(event) =&gt; { this.state.key = event.target.value; }" t-on-keydown="(event) =&gt; { if (event.key === 'Enter') { event.preventDefault(); this.saveKey(); } }"/>
+                       t-on-input="(event) =&gt; { this.state.key = event.target.value; }" t-on-keydown="this.onKeyKeydown"/>
               </label>
               <div><button type="button" class="btn btn-primary" t-att-disabled="this.state.busy || !this.state.key.trim()" t-on-click="() =&gt; this.saveKey()">Save key</button></div>
               <span class="text-muted small">The key is checked by Hermes, saved only in Hermes, and never stored here. Its models then appear here to tick.</span>

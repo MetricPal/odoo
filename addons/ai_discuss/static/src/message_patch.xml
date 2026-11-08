@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.Message" t-inherit-mode="extension">
+        <xpath expr="//span[hasclass('o-mail-Message-author')]" position="inside">
+            <span t-if="this.message.author_id?.ai_agent_partner" class="o_ai_discuss_label me-1">AI</span>
+        </xpath>
+    </t>
+</templates>

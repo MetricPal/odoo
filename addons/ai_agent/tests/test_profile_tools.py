@@ -65,6 +65,11 @@ class TestProfileTools(TransactionCase):
         self.profile.action_sync()
         self.assertEqual(self.profile.state, 'in_sync', self.profile.sync_message)
         self.assertEqual(self._api_server(), ['erp'], 'Only the ERP tools while nothing is switched on')
+        secrets = self.fake.profiles['human-resources']['config']['secrets']['command']
+        self.assertTrue(secrets['enabled'])
+        self.assertEqual(secrets['command'], "grep -E '^[A-Z0-9_]+_API_KEY=' '/srv/hermes erp/.env' | "
+                                             "grep -v '^API_SERVER_KEY='",
+                         "Provider keys are read from the main profile's .env (quoted path), never copied")
         self.assertEqual(self._tool('vision').status, 'ready')
         self.assertEqual(self._tool('web').status, 'needs_key')
         self.assertEqual(erp.status, 'ready')

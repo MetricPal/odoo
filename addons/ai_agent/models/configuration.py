@@ -1,5 +1,9 @@
 import json
 import re
+import subprocess
+import sys
+import time
+from pathlib import Path
 
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -16,6 +20,9 @@ FREE_PROVIDER = 'opencode-free'
 ENV_NAME = re.compile(r'[A-Z][A-Z0-9_]{1,80}')
 # Models page of the ERP's local Hermes (its dashboard; deployment/erp_hermes.py).
 LOCAL_MODELS_URL = 'http://127.0.0.1:9120/models'
+# The fixed command that starts the ERP's local Hermes (approved mock 2026-11-08, board 13).
+ERP_HERMES_SCRIPT = Path(__file__).resolve().parent.parent / 'deployment' / 'erp_hermes.py'
+START_WAIT_SECONDS = 20
 
 class CompanyConfiguration(models.AbstractModel):
     _name = 'ai.agent.configuration.mixin'
@@ -28,7 +35,7 @@ class CompanyConfiguration(models.AbstractModel):
         if not trusted(self):
             manager(self)
         protected = {'state', 'revision', 'activation_hash', 'extracted_text', 'checked_at',
-                     'capabilities', 'toolsets', 'models_catalog', 'status_message'}
+                     'capabilities', 'toolsets', 'models_catalog', 'status_message', 'hermes_runtime'}
         if not trusted(self) and not loading_demo(self) and any(protected & vals.keys() for vals in vals_list):
             raise AccessError(_('Create a draft, then use the review and verification buttons.'))
         if any(v.get('company_id', self.env.company.id) not in self.env.companies.ids for v in vals_list):
@@ -74,6 +81,12 @@ class Engine(models.Model):
     toolsets = fields.Json(readonly=True, groups='ai_agent.group_manager')
     models_catalog = fields.Json(readonly=True, groups='ai_agent.group_manager')
     status_message = fields.Char(readonly=True)
+    hermes_runtime = fields.Selection([('running', 'Running'), ('stopped', 'Stopped'),
+                                       ('gateway_stopped', 'Gateway stopped'), ('unreachable', 'Cannot be reached')],
+                                      string='Hermes', readonly=True,
+                                      help='What the last check found: whether Hermes itself is running.')
+    runs_on = fields.Char(compute='_compute_runs_on')
+    can_start_hermes = fields.Boolean(compute='_compute_can_start_hermes')
     demo = fields.Boolean(readonly=True, copy=False,
                           help='Created by demo data: a local loopback connection allowed without the deployment allowlist.')
 
@@ -214,12 +227,13 @@ class Engine(models.Model):
         vals = dict(vals)
         keys = (vals.pop('api_key', False), vals.pop('management_api_key', False))
         if not trusted(self) and not loading_demo(self) and \
-                {'state', 'revision', 'checked_at', 'capabilities', 'toolsets', 'models_catalog', 'status_message'} & vals.keys():
+                {'state', 'revision', 'checked_at', 'capabilities', 'toolsets', 'models_catalog', 'status_message',
+                 'hermes_runtime'} & vals.keys():
             raise AccessError(_('Use Check connection to update readiness.'))
         if not loading_demo(self) and \
                 {'url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection'} & vals.keys():
             for engine in self:
-                super(Engine, engine).write({**vals, 'state': 'unchecked', 'checked_at': False,
+                super(Engine, engine).write({**vals, 'state': 'unchecked', 'checked_at': False, 'hermes_runtime': False,
                     'capabilities': False, 'toolsets': False, 'models_catalog': False, 'status_message': False,
                     'revision': engine.revision + 1})
                 engine._save_keys(*keys)
@@ -402,10 +416,81 @@ class Engine(models.Model):
         """Hermes could not be reached at all: the connection needs attention until it is checked again."""
         if getattr(error, 'unreachable', False):
             internal(self.sudo()).write({'state': 'blocked', 'status_message': str(error),
-                                         'checked_at': fields.Datetime.now()})
+                                         'checked_at': fields.Datetime.now(),
+                                         'hermes_runtime': self.sudo()._probe_runtime()})
+
+    # -- starting Hermes (approved mocks 2026-11-08, boards 13 and 14) -----------------------------------------
+    @api.depends('connection_mode', 'url')
+    def _compute_runs_on(self):
+        for engine in self:
+            engine.runs_on = _('This server') if engine.connection_mode == 'local' else \
+                _('Another machine · %s', engine.url or '')
+
+    @api.depends_context('uid')
+    @api.depends('state', 'connection_mode', 'hermes_runtime')
+    def _compute_can_start_hermes(self):
+        is_admin = self.env.user.has_group('base.group_system')
+        for engine in self:
+            startable = ('stopped', 'gateway_stopped') if engine.connection_mode == 'local' else ('gateway_stopped',)
+            engine.can_start_hermes = is_admin and engine.state == 'blocked' and engine.hermes_runtime in startable
+
+    def _answers(self, call):
+        """True when Hermes answered the call at all (any HTTP answer counts; only "not reachable" does not)."""
+        try:
+            call()
+        except (hermes.HermesRejected, hermes.HermesUnavailable, hermes.HermesUncertain) as error:
+            return not getattr(error, 'unreachable', False)
+        except UserError:
+            return False  # For example no saved key yet: not known to be running.
+        return True
+
+    def _probe_runtime(self):
+        """Is Hermes running? Its dashboard (management API) and its gateway (run API) are asked separately."""
+        self.ensure_one()
+        dashboard = self._answers(lambda: self._management('GET', '/api/status'))
+        gateway = self._answers(lambda: self._request('GET', '/health'))
+        if dashboard and gateway:
+            return 'running'
+        if dashboard:
+            return 'gateway_stopped'
+        if self.connection_mode == 'remote':
+            return 'unreachable'
+        return 'stopped'
+
+    def action_start_hermes(self):
+        """Start Hermes: on this server with the fixed deployment command, on another machine through its own
+        management API (its gateway). Settings administrators only."""
+        self.ensure_one()
+        if not self.env.user.has_group('base.group_system'):
+            raise AccessError(_('Only Settings administrators start Hermes.'))
+        engine = self.sudo()
+        if engine.connection_mode == 'local':
+            engine._start_local_hermes()
+        else:
+            engine._management('POST', '/api/gateway/start')
+        deadline = time.monotonic() + START_WAIT_SECONDS
+        while time.monotonic() < deadline and engine._probe_runtime() != 'running':
+            time.sleep(1)
+        engine._check_connection()
+        return True
+
+    def _start_local_hermes(self):
+        # A fixed command: this Python, the deployment script shipped with the module, the "start" action.
+        try:
+            result = subprocess.run([sys.executable, str(ERP_HERMES_SCRIPT), 'start'], capture_output=True,
+                                    text=True, timeout=30, stdin=subprocess.DEVNULL, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            raise UserError(_('Hermes could not be started on this server. Ask your system administrator to start '
+                              'it with ai_agent/deployment/erp_hermes.py.')) from None
+        if result.returncode:
+            detail = (result.stderr or result.stdout or '').strip().splitlines()[-1:] or ['']
+            raise UserError(_('Hermes could not be started on this server: %s', detail[0][:300]))
 
     def action_check(self):
         manager(self)
+        return self._check_connection()
+
+    def _check_connection(self):
         for engine in self:
             try:
                 if engine.connection_mode == 'local':
@@ -416,12 +501,13 @@ class Engine(models.Model):
                     engine._save_keys(keys['API_SERVER_KEY'], keys['HERMES_DASHBOARD_SESSION_TOKEN'])
                 capabilities, tools = engine._inspect()
                 catalog = engine._model_catalog()
-                values = {'state': 'ready', 'status_message': _('Connection verified.'),
+                values = {'state': 'ready', 'status_message': _('Connection verified.'), 'hermes_runtime': 'running',
                           'capabilities': capabilities, 'toolsets': tools, 'models_catalog': catalog}
             except UserError as error:
                 state = 'needs_model' if getattr(error, 'needs_model', False) else 'blocked'
                 values = {'state': state, 'status_message': str(error), 'capabilities': False,
-                          'toolsets': False, 'models_catalog': False}
+                          'toolsets': False, 'models_catalog': False,
+                          'hermes_runtime': engine._probe_runtime() if state == 'blocked' else 'running'}
             internal(engine).write({**values, 'checked_at': fields.Datetime.now()})
         return True
 

@@ -1,0 +1,36 @@
+// Sync to Hermes progress (approved mock 2026-11-08, board 15).
+.o_ai_sync_progress {
+    border: 1px solid #c4e6ec;
+    background: #f2fafc;
+    border-radius: 6px;
+    padding: 14px 16px;
+}
+
+.o_ai_sync_bar {
+    height: 6px;
+    border-radius: 3px;
+    background: #dceef2;
+    overflow: hidden;
+
+    > div {
+        height: 100%;
+        background: #017e84;
+        transition: width 0.3s ease;
+    }
+}
+
+.o_ai_sync_done {
+    width: 1rem;
+    color: #1e7a3c;
+    font-weight: 700;
+}
+
+.o_ai_sync_spinner {
+    width: 0.85rem;
+    height: 0.85rem;
+    color: #017e84;
+}
+
+.o_ai_sync_todo {
+    width: 1rem;
+}

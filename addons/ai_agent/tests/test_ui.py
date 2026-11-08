@@ -256,3 +256,37 @@ class TestAgentUI(HttpCase):
         """, login='admin', timeout=90)
         self.agent.invalidate_recordset(['engine_model_id', 'model'])
         self.assertEqual(self.agent.model, 'example/other')
+
+
+@tagged('post_install', '-at_install')
+class TestProfileSyncUI(HttpCase):
+    """Approved mock 2026-11-08, board 15: Sync to Hermes reads "Syncing…" while it runs."""
+
+    def test_sync_button_shows_syncing_while_it_runs(self):
+        with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443'}):
+            engine = self.env['ai.agent.engine'].create({'name': 'Sync UI engine', 'url': 'https://hermes.example.com',
+                'secret_reference': 'AI_AGENT_SECRET_TEST', 'management_url': 'https://hermes.example.com',
+                'management_secret_reference': 'AI_AGENT_SECRET_TEST'})
+        internal(engine).write({'state': 'ready'})
+        profile = self.env['ai.agent.profile'].create({'name': 'Company', 'kind': 'company', 'engine_id': engine.id})
+
+        def slow_sync(records):
+            import time  # noqa: PLC0415 - only this fake needs it
+            time.sleep(2)
+            return True
+
+        with patch.object(type(profile), 'action_sync', slow_sync):
+            self.browser_js(f'/odoo/action-ai_agent.action_profiles/{profile.id}', """
+                (async () => {
+                    const wait = async (p, what) => {
+                        for (let i = 0; i < 150; i++) { if (p()) return; await new Promise(r => setTimeout(r, 50)); }
+                        throw new Error(what + ': ' + (document.querySelector('.o_ai_profile_sync')?.outerHTML || 'no button'));
+                    };
+                    const button = () => document.querySelector('.o_ai_profile_sync');
+                    await wait(() => button() && button().textContent.trim() === 'Sync to Hermes', 'Sync button');
+                    button().click();
+                    await wait(() => button().textContent.includes('Syncing') && button().disabled, 'Syncing state');
+                    await wait(() => button().textContent.trim() === 'Sync to Hermes' && !button().disabled, 'Back to Sync');
+                    console.log('test successful');
+                })();
+            """, login='admin', timeout=120)

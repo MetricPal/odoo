@@ -10,6 +10,7 @@ Store durable decisions here as ADR-style markdown files.
 - [ADR 0010: Discord receives through a signed gateway relay](0010-discord-gateway-relay.md)
 - [ADR 0011: Messaging Marketing reuses Omnichannel sending](0011-messaging-marketing.md)
 - [ADR 0012: Department AI assistants, Hermes profiles managed from Odoo, Odoo tools](0012-ai-agent-department-assistants.md)
+- [ADR 0013: Assistants in Discuss and the chatter; OdooBot stays the system voice](0013-assistants-in-discuss-and-chatter.md)
 
 Two records share the number 0005 (`0005-slack-teams-private-text.md` and
 `0005-workflow-automation.md`); use 0013 or later for new records.

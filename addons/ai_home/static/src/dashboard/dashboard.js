@@ -5,6 +5,8 @@ import { registry } from "@web/core/registry";
 import { user } from "@web/core/user";
 import { useService } from "@web/core/utils/hooks";
 
+import { AssistantsDialog } from "./assistants_dialog";
+
 import { Component, onMounted, onWillStart, onWillUnmount, proxy, signal, useProps } from "@odoo/owl";
 
 export const ATTACHMENT_LIMIT = 5;
@@ -94,6 +96,7 @@ export class WorkDashboard extends Component {
         this.notification = useService("notification");
         this.orm = useService("orm");
         this.action = useService("action");
+        this.dialog = useService("dialog");
         this.state = proxy({
             today: { done: 0, late: 0, todo: 0, total: 0, label: "" },
             week: [],
@@ -107,6 +110,7 @@ export class WorkDashboard extends Component {
             feed: [],
             recent: [],
             agents: [],
+            pausedAgents: [],
             prompts: [],
             canManageAgents: false,
             planApp: "all",
@@ -420,6 +424,30 @@ export class WorkDashboard extends Component {
     openAgents() {
         this.state.showAgentMenu = false;
         return this.action.doAction("ai_agent.action_agents");
+    }
+
+    /** Every assistant in the picker: the ones that answer, then the paused ones (greyed out). */
+    get pickerAgents() {
+        return [...this.state.agents, ...this.state.pausedAgents.map((agent) => ({ ...agent, paused: true }))];
+    }
+
+    /** What each assistant can do (approved mock 2026-11-08): Ask chooses it in the assistant box. */
+    async openAssistants() {
+        this.state.showAgentMenu = false;
+        const assistants = await this.orm.call("ai.home.item", "get_assistant_details", []);
+        this.dialog.add(AssistantsDialog, {
+            assistants,
+            selectedId: this.state.agentId,
+            canManage: this.state.canManageAgents,
+            onAsk: (assistant) => {
+                const agent = this.state.agents.find((item) => item.id === assistant.id);
+                if (agent) {
+                    this.selectAgent(agent);
+                    this.promptRef()?.focus();
+                }
+            },
+            onManage: () => this.openAgents(),
+        });
     }
 
     chooseFiles() {

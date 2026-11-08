@@ -1,16 +1,23 @@
 import json
+import logging
 import re
+import threading
 import uuid
 from datetime import timedelta
 from secrets import token_urlsafe
 
-from odoo import api, fields, models, _
+from odoo import SUPERUSER_ID, _, api, fields, models
 from odoo.exceptions import AccessError, UserError
+from odoo.modules import module as odoo_module
+from odoo.modules.registry import Registry
 
-from ..services.hermes import HermesRejected, HermesUncertain, HermesUnavailable
+from ..services import hermes
+from ..services.hermes import HermesRejected, HermesUnavailable, HermesUncertain
 from .agent import CONTEXT_BUDGET
 from .common import digest, extract_text, internal, trusted
 from .tools import key_hash
+
+_logger = logging.getLogger(__name__)
 
 STATES = [('queued', 'Queued'), ('submitting', 'Submitting'), ('running', 'Running'),
           ('completed', 'Completed'), ('failed', 'Failed'), ('uncertain', 'Needs manager check'),
@@ -278,6 +285,31 @@ class Run(models.Model):
         internal(self).write({'remote_id': result['run_id'], 'state': state,
                               'next_poll_at': fields.Datetime.now() + timedelta(seconds=10)})
         self._event('submitted', _('Hermes accepted the request.'))
+        self._listen_for_end()
+
+    # -- the answer as soon as Hermes has it -------------------------------------------------------------------
+    def _listen_for_end(self):
+        """Once this submission is committed, follow the run's live event stream in a background thread; when
+        Hermes reports the end, the run is checked at once instead of at its next scheduled check (about 30
+        seconds). The scheduled checks stay: if the thread stops, nothing is lost, the answer only comes later."""
+        self.ensure_one()
+        engine = self.agent_id.engine_id.sudo()
+        features = (engine.capabilities or {}).get('features', {}) if isinstance(engine.capabilities, dict) else {}
+        if odoo_module.current_test or features.get('run_events_sse') is False:
+            return
+        profile = self.sudo().profile_id
+        path = f'/v1/runs/{self.remote_id}/events'
+        try:
+            if profile:
+                path, key = f'/p/{profile.hermes_name}{path}', profile._run_key()
+            else:
+                key = engine._credential('run')
+        except UserError:
+            return
+        listener = threading.Thread(target=_listen_for_end, name=f'ai-agent-run-{self.id}', daemon=True,
+                                    args=(self.env.cr.dbname, self.id, engine.url, path, key,
+                                          engine._demo_loopback()))
+        self.env.cr.postcommit.add(listener.start)
 
     def _poll(self):
         self.ensure_one()
@@ -328,8 +360,14 @@ class Run(models.Model):
                            'runtime_model': str(runtime.get('model', ''))[:200],
                            'runtime_provider': str(runtime.get('provider', ''))[:200]})
         elif status in ('failed', 'cancelled', 'interrupted'):
+            # Hermes records why a run failed (provider errors, already redacted by Hermes): show it.
+            reason = result.get('error')
+            reason = reason.get('message') if isinstance(reason, dict) else reason
+            message = _('Hermes stopped without a completed answer.')
+            if isinstance(reason, str) and reason.strip():
+                message = _('Hermes stopped without a completed answer: %s', reason.strip()[:300])
             values.update({'state': 'failed' if status == 'failed' else 'cancelled',
-                           'finished_at': fields.Datetime.now(), 'error_message': _('Hermes stopped without a completed answer.')})
+                           'finished_at': fields.Datetime.now(), 'error_message': message})
         elif status not in ('queued', 'running', 'started', 'stopping'):
             raise UserError(_('Unknown Hermes run state.'))
         else:
@@ -465,3 +503,19 @@ class Event(models.Model):
 
     def unlink(self):
         raise AccessError(_('Run evidence is append-only.'))
+
+
+def _listen_for_end(dbname, run_id, url, path, key, demo):
+    """Background thread: wait for the end of one run on Hermes's event stream, then make it due now."""
+    try:
+        for name in hermes.run_events(url, path, credential_value=key, demo=demo):
+            if name in hermes.TERMINAL_RUN_EVENTS:
+                break
+        with Registry(dbname).cursor() as cr:
+            env = api.Environment(cr, SUPERUSER_ID, {})
+            run = env['ai.agent.run'].browse(run_id).exists()
+            if run and run.state in ('running', 'stop_requested'):
+                internal(run).write({'next_poll_at': fields.Datetime.now()})
+                env.ref('ai_agent.cron_runs')._trigger()
+    except Exception:  # noqa: BLE001 - a listener never breaks anything: the scheduled checks still run
+        _logger.warning('AI Agent: live answer listener for run %s stopped early.', run_id, exc_info=True)

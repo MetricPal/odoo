@@ -25,14 +25,14 @@
       <form string="Hermes profile">
         <header>
           <field name="can_configure" invisible="1"/><field name="can_manage" invisible="1"/>
-          <button name="action_sync" type="object" string="Sync to Hermes" class="btn-primary"
-                  invisible="not can_configure or not id"/>
+          <widget name="ai_agent_profile_sync" invisible="not can_configure or not id"/>
           <button name="action_remove_from_hermes" type="object" string="Remove from Hermes"
                   invisible="not can_manage or state == 'draft'"
                   confirm="Delete this profile in Hermes? Agents that use it fall back to the next profile."/>
           <field name="state" widget="statusbar" statusbar_visible="needs_sync,in_sync,failed"/>
         </header>
         <sheet>
+          <widget name="ai_agent_profile_sync_progress"/>
           <div class="alert alert-danger" role="alert" invisible="state != 'failed'">
             <field name="sync_message" nolabel="1" class="d-inline"/>
           </div>

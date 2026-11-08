@@ -26,7 +26,7 @@ Read `docs/PRODUCT.md`, `docs/ARCHITECTURE.md` and `docs/ODOO20.md` before large
 | Area | Modules |
 |---|---|
 | Home | `ai_home` (Home page, insights, System overview, reports), `metric_mention` (mention notifications) |
-| AI agent | `ai_agent` (control panel for Hermes Agent profiles, tools, services), `omni_ai`, `social_ai`, `workflow_ai` |
+| AI agent | `ai_agent` (control panel for Hermes Agent profiles, tools, services), `ai_discuss` (assistants in Discuss and the chatter), `omni_ai`, `social_ai`, `workflow_ai` |
 | Governance | `approval_center`, `workflow_center` (department admins manage workflows) |
 | Omnichannel | `omni_channel`, `omni_contacts`, `omni_template`, `omni_social`, channel connectors `omni_whatsapp`, `omni_telegram`, `omni_slack`, `omni_teams`, `omni_discord`, `omni_facebook`, `omni_instagram`, `omni_messenger`, `omni_linkedin`, `omni_x`, `omni_threads`, `omni_tiktok`, `omni_youtube`, `omni_pinterest` |
 | Marketing | `marketing_intel*` (to be renamed `metric_*`), `messaging_marketing`, `social_home`, `social_utm` |

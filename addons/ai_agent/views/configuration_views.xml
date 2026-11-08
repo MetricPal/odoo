@@ -7,7 +7,7 @@
     <field name="name">ai.agent.engine.form</field><field name="model">ai.agent.engine</field>
     <field name="arch" type="xml">
       <form string="Hermes connection">
-        <header><button name="action_check" string="Connect" type="object" class="btn-primary" invisible="state not in ('unchecked', 'blocked')"/><button name="action_check" string="Check connection" type="object" invisible="state not in ('needs_model', 'ready')"/><field name="state" widget="statusbar" statusbar_visible="unchecked,needs_model,ready,blocked"/></header>
+        <header><field name="can_start_hermes" invisible="1"/><button name="action_start_hermes" string="Start Hermes" type="object" class="btn-primary" groups="base.group_system" invisible="not can_start_hermes"/><button name="action_check" string="Connect" type="object" class="btn-primary" invisible="state not in ('unchecked', 'blocked') or can_start_hermes"/><button name="action_check" string="Check connection" type="object" invisible="not can_start_hermes"/><button name="action_check" string="Check connection" type="object" invisible="state not in ('needs_model', 'ready')"/><field name="state" widget="statusbar" statusbar_visible="unchecked,needs_model,ready,blocked"/></header>
         <sheet>
           <div class="oe_title"><label for="name" string="Connection name"/><h1><field name="name" placeholder="e.g. Local Hermes"/></h1></div>
           <group><field name="company_id" groups="base.group_multi_company" readonly="id"/><field name="connection_mode" string="Connection" widget="radio" options="{'horizontal': true}"/></group>
@@ -32,9 +32,31 @@
 
           </group>
           <p class="text-muted">The Agent API runs requests. The Management API checks this profile's configuration. Hermes tools and shared memory must be disabled for this release.</p>
-          <div class="alert alert-warning" role="alert" invisible="state != 'blocked'"><field name="status_message" nolabel="1"/></div>
+          <!-- Approved mocks 2026-11-08, boards 13 (local) and 14 (remote). -->
+          <div class="alert alert-warning" role="alert" invisible="state != 'blocked' or hermes_runtime != 'stopped'">
+            <strong>Hermes is not running on this server.</strong>
+            <div>Start Hermes to bring agents back. It takes a few seconds; the connection is checked again once it answers.</div>
+          </div>
+          <div class="alert alert-warning" role="alert" invisible="state != 'blocked' or hermes_runtime != 'gateway_stopped'">
+            <strong>Hermes is not serving agents.</strong>
+            <div>Its dashboard answers, but its gateway is stopped. Start Hermes asks it to start; the connection is checked again once it answers.</div>
+          </div>
+          <div class="alert alert-warning" role="alert" invisible="state != 'blocked' or hermes_runtime != 'unreachable'">
+            <strong>Hermes on the other machine cannot be reached.</strong>
+            <div>Start it on that machine, then check the connection.</div>
+          </div>
+          <div class="alert alert-warning" role="alert" invisible="state != 'blocked' or hermes_runtime in ('stopped', 'gateway_stopped', 'unreachable')"><field name="status_message" nolabel="1"/></div>
+          <group invisible="not hermes_runtime">
+            <group>
+              <field name="runs_on" string="Runs on"/>
+              <field name="hermes_runtime" widget="badge" decoration-success="hermes_runtime == 'running'"
+                     decoration-warning="hermes_runtime in ('stopped', 'gateway_stopped')"
+                     decoration-danger="hermes_runtime == 'unreachable'"/>
+            </group>
+          </group>
           <div class="alert alert-info" role="status" invisible="state != 'needs_model'">Hermes is connected but has no AI model yet. Choose one below; agents can answer as soon as it is set.</div>
-          <group invisible="not checked_at"><field name="checked_at" string="Last checked"/></group>
+          <group invisible="not checked_at"><field name="checked_at" string="Last checked"/>
+            <field name="status_message" string="Result" invisible="state != 'blocked' or hermes_runtime not in ('stopped', 'gateway_stopped', 'unreachable')"/></group>
           <notebook>
             <page string="Providers &amp; models">
               <widget name="ai_agent_default_model" invisible="not id or state in ('unchecked', 'blocked')"/>

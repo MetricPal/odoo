@@ -210,6 +210,16 @@ user's department), **Everything**. Newest first, up to 20 per tab. Direct notif
   The answer shows on Home above the box, with "Open conversation"; follow-ups
   continue the same conversation. A question is one inference request, never a
   record change.
+- **Your assistants** (approved mock 2026-11-08, "Assistants A"; no cards and no round badges): the agent picker
+  opens with "Your assistants (N)", then each assistant the user may chat with: name, its department (or Company)
+  on the right, and its description; the one in use highlighted. Paused assistants stay listed, greyed out and not
+  selectable, with "· Paused" after the department. Under a divider: **What each assistant can do** and, for AI
+  Agent managers, **Manage agents**. **What each assistant can do** is a dialog, "Assistants available to you"
+  ("They answer with what you are allowed to see, and never change anything without your approval."): per
+  assistant its department, a Chosen or Paused badge, description, **Knows:** (knowledge sources), **Can look at:**
+  (the apps in its data access) and **Can propose:** (notes, to-dos and changes on the apps where it may propose,
+  "you approve"), and **Ask**, which chooses it in the box; footer "Missing one? Your department's manager or AI
+  admin can give you access." and Manage agents for managers.
 
 Removed from Home: the greeting, the live figure tiles (approvals pending, AI
 agents active, sales today…) and My day (replaced by Today and My plan). Not built:
@@ -327,6 +337,25 @@ Pause or Resume). **Add a tool server** is a dialog: a trust warning, Name, Addr
 Hermes), Key (only with Key), the note that the key is saved only in Hermes, the info line that Hermes checks the
 address now, and **Add server** / Cancel.
 
+### Assistants in Discuss and the chatter (approved 2026-11-08, boards 10 to 12)
+
+Standard Odoo 20 Discuss layout. Assistants are direct chats: an **Assistants** filter after All, Unread and Group
+(Discuss page and messaging menu), an **AI** label by the name in the list and on its messages, paused assistants
+greyed out ("Finance · Paused"), and an assistant not yet used shows its department and description instead of a
+last message. The chat starts with "This is the start of your direct chat with <agent>, the <department>
+assistant. It answers with what you may see, and changes need your approval."; the header has **What it can do**;
+answers end with "Used: …"; a proposal shows as a box with Waiting for approval and **Open request**; "is
+answering…" with **Stop**; "Uses your access rights" under the box. The chat window (messaging menu) is the same
+conversation. In a record's chatter, **Assistants** sits after Log note; its composer is laid out like Send message:
+**To:** with the assistant chip and its picker, the box ("Ask <agent> about this application…") with the emoji
+icon, **Send**, the hint "Answers in an internal note · uses your access rights", paperclip and expand. Question and
+answer are internal notes; the answer reads "<agent> · AI · on behalf of <person>". An assistant is not a person: no
+voice or video call buttons and no profile card on its avatar or name (owner, 2026-11-08).
+
+**Sync to Hermes progress** (approved mock 2026-11-08, board 15): the button reads "Syncing…" with a spinner while it
+runs; at the top of the profile form a "Syncing to Hermes" panel shows "Step N of 6", a bar and the six steps (done ✓,
+current with a spinner, next greyed), the model test with its seconds "(up to 30 s)". It closes when the sync ends.
+
 ## Hermes connection: default model (`ai_agent`)
 
 Approved mock 2026-11-07 (boards 5 and 6). Status bar: Not checked, **Needs a model**, Ready, Needs attention. With
@@ -336,6 +365,12 @@ API key, Model with the recommended one marked; **Use this model**) and an **Ope
 out", warning that data goes to an outside service; Model; **Use free model**); then **All providers Hermes offers**
 with Ready, Needs a key or Sign in in Hermes, and Choose, Add key or Sign in in Hermes. When Ready: a **Default model**
 line with **Change model**, then Add model and Enabled models.
+
+**Hermes not running** (approved mocks 2026-11-08, boards 13 and 14): with Needs attention, the form shows "Runs on"
+(This server, or Another machine · address) and "Hermes" (Running, Stopped, Gateway stopped, Cannot be reached) and a
+warning: "Hermes is not running on this server." / "Hermes is not serving agents. Its dashboard answers, but its
+gateway is stopped." / "Hermes on the other machine cannot be reached. Start it on that machine…". Settings
+administrators see **Start Hermes** (primary) next to Check connection when it can be started from the ERP.
 
 ## AI agent proposals (`ai_agent`)
 

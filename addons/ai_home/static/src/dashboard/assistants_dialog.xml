@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+    <t t-name="ai_home.AssistantsDialog">
+        <Dialog title.translate="Assistants available to you" size="'lg'" contentClass="'o_ai_home_assistants'">
+            <p class="o_ai_home_muted">They answer with what you are allowed to see, and never change anything without your approval.</p>
+            <ul class="list-unstyled mb-0 o_ai_home_assistant_list">
+                <li t-foreach="this.props.assistants" t-as="assistant" t-key="assistant.id"
+                    class="o_ai_home_assistant_row" t-att-class="{ o_is_paused: assistant.paused }">
+                    <div class="o_ai_home_assistant_info">
+                        <div class="o_ai_home_assistant_title">
+                            <strong t-esc="assistant.name"/>
+                            <span class="o_ai_home_muted" t-esc="assistant.department"/>
+                            <span t-if="this.isChosen(assistant)" class="o_ai_home_assistant_badge">Chosen</span>
+                            <span t-if="assistant.paused" class="o_ai_home_assistant_badge">Paused</span>
+                        </div>
+                        <span t-if="assistant.description" class="o_ai_home_assistant_description" t-esc="assistant.description"/>
+                        <t t-if="assistant.paused">
+                            <span class="o_ai_home_muted">Paused by its department. It answers again once it is turned back on.</span>
+                        </t>
+                        <t t-else="">
+                            <span t-if="assistant.knows.length" class="o_ai_home_assistant_fact"><strong>Knows:</strong> <t t-esc="assistant.knows.join(', ')"/></span>
+                            <span t-if="assistant.models.length" class="o_ai_home_assistant_fact"><strong>Can look at:</strong> <t t-esc="assistant.models.join(', ')"/></span>
+                            <span t-if="assistant.proposes.length" class="o_ai_home_assistant_fact"><strong>Can propose:</strong> notes, to-dos and changes on <t t-esc="assistant.proposes.join(', ')"/> (you approve)</span>
+                        </t>
+                    </div>
+                    <button type="button" class="btn o_ai_home_assistant_ask"
+                            t-att-class="this.isChosen(assistant) ? 'btn-primary' : 'btn-secondary'"
+                            t-att-disabled="assistant.paused" t-on-click="() => this.ask(assistant)">Ask</button>
+                </li>
+            </ul>
+            <t t-set-slot="footer">
+                <span class="o_ai_home_muted me-auto">Missing one? Your department's manager or AI admin can give you access.</span>
+                <button t-if="this.props.canManage" type="button" class="btn btn-link o_ai_home_assistants_manage" t-on-click="this.manage">Manage agents</button>
+            </t>
+        </Dialog>
+    </t>
+</templates>

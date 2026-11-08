@@ -120,6 +120,7 @@ function homeData() {
         recent: [{ key: "r1", name: "PO/2026/0142", app: "Approvals", model: "approval.center.request", resId: 1,
                    occurred: now() }],
         agents: [],
+        pausedAgents: [],
         prompts: [],
         canManageAgents: false,
     };
@@ -143,6 +144,16 @@ beforeEach(() => {
             }
             if (method === "ask_ai") {
                 return { runId: 5, conversationId: 11 };
+            }
+            if (method === "get_assistant_details") {
+                return [
+                    { id: 7, name: "Ops Assistant", department: "Company", description: "Operations questions",
+                      paused: false, knows: ["Ops handbook"], models: ["Contact"], proposes: [] },
+                    { id: 8, name: "HR policy helper", department: "Human Resources", description: "Leave",
+                      paused: false, knows: [], models: ["Contact"], proposes: ["Contact"] },
+                    { id: 9, name: "Finance helper", department: "Finance", description: "", paused: true,
+                      knows: [], models: [], proposes: [] },
+                ];
             }
             if (method === "get_ai_answer") {
                 return { state: "completed", answer: "You have 3 approvals waiting.", error: "", conversationId: 11 };
@@ -334,4 +345,32 @@ test("Home refreshes by itself", async () => {
     const before = calls.filter(([method]) => method === "get_home_data").length;
     await advanceTime(60000);
     expect(calls.filter(([method]) => method === "get_home_data").length).toBe(before + 1);
+});
+
+test("the assistant picker lists your assistants and what each can do", async () => {
+    data.agents = [
+        { id: 7, name: "Ops Assistant", department: "Company", description: "Operations questions" },
+        { id: 8, name: "HR policy helper", department: "Human Resources", description: "Leave" },
+    ];
+    data.pausedAgents = [{ id: 9, name: "Finance helper", department: "Finance", description: "" }];
+    data.canManageAgents = true;
+    browser.localStorage.removeItem("ai_home.agent");
+    await mountWithCleanup(WorkDashboard);
+    await contains(".o_ai_home_agent_toggle").click();
+    expect(".o_ai_home_agent_heading").toHaveText("Your assistants (3)");
+    expect(".o_ai_home_agent_option").toHaveCount(3);
+    expect(".o_ai_home_agent_option.active .o_ai_home_agent_line").toHaveText("Ops Assistant\nCompany");
+    expect(".o_ai_home_agent_option.o_is_paused").toHaveAttribute("disabled");
+    expect(".o_ai_home_agent_option.o_is_paused .o_ai_home_agent_department").toHaveText("Finance · Paused");
+    expect(".o_ai_home_agent_manage").toHaveCount(1);
+    await contains(".o_ai_home_agent_details").click();
+    expect(".o_ai_home_assistant_row").toHaveCount(3);
+    expect(".o_ai_home_assistant_row:eq(0) .o_ai_home_assistant_fact:eq(0)").toHaveText("Knows: Ops handbook");
+    expect(".o_ai_home_assistant_row:eq(1) .o_ai_home_assistant_fact:eq(1)").toHaveText(
+        "Can propose: notes, to-dos and changes on Contact (you approve)"
+    );
+    expect(".o_ai_home_assistant_row:eq(2) .o_ai_home_assistant_ask").toHaveAttribute("disabled");
+    await contains(".o_ai_home_assistant_row:eq(1) .o_ai_home_assistant_ask").click();
+    expect(".o_ai_home_assistant_row").toHaveCount(0);
+    expect(".o_ai_home_agent_toggle").toHaveText("HR policy helper ▾");
 });

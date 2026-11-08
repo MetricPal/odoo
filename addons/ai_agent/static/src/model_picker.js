@@ -31,6 +31,14 @@ export class HermesModelPicker extends Component {
         if (p.authenticated) { return _t("%s models · Ready", p.models.length); }
         return p.key_env ? _t("Needs a key") : _t("Sign in in Hermes");
     }
+    /** Enter in the key field saves it (OWL templates cannot hold an if statement). */
+    onKeyKeydown(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            this.saveKey();
+        }
+    }
+
     async saveKey() {
         const key = this.state.key.trim();
         if (this.state.busy || !key) { return; }

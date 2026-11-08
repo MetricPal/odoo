@@ -9,9 +9,12 @@ Agents send their own instructions and model with each run, so several agents sh
 import json
 import re
 import secrets as token_generator
+import shlex
+import time
 import unicodedata
 
 from odoo import Command, _, api, fields, models
+from odoo.modules import module as odoo_module
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 from ..services import hermes, secrets
@@ -30,6 +33,15 @@ LEGACY_MCP_SERVERS = ('odoo',)
 RESERVED_NAMES = {'default', 'hermes', 'test', 'tmp', 'root', 'sudo'}
 SAFE_CONFIG = {'memory': {'memory_enabled': False, 'user_profile_enabled': False, 'provider': ''},
                'platform_toolsets': {'api_server': [MCP_SERVER], 'cli': [], 'dashboard': []}}
+# Provider keys (``*_API_KEY``) live once, in the main Hermes profile's .env. Each ERP profile reads them from there
+# through a Hermes command secret source, never as copies; the gateway key and the dashboard token are not shared,
+# and a profile's own .env value still wins (Hermes: website/docs/user-guide/secrets/command.md).
+SHARED_KEYS_COMMAND = "grep -E '^[A-Z0-9_]+_API_KEY=' {env} | grep -v '^API_SERVER_KEY='"
+
+# Sync asks the profile's model one tiny question and waits this long for the answer (owner, 2026-11-09).
+MODEL_TEST_PROMPT = 'Reply with the single word: OK'
+MODEL_TEST_SECONDS = 30
+
 # What department managers and AI admins may change on their department's profile.
 DEPARTMENT_PROFILE_FIELDS = {'persona', 'engine_model_id'}
 
@@ -240,12 +252,33 @@ class Profile(models.Model):
     def _persona_text(self):
         return (self.persona or '').strip() or DEFAULT_PERSONA.format(company=self.company_id.name)
 
+    # Steps shown while Sync to Hermes runs (approved mock 2026-11-08, board 15).
+    def _sync_steps(self):
+        return [_('Profile created in Hermes'), _('Persona and model written'), _('Keys and ERP tools set up'),
+                _('Gateway serves the profile'), _('Tools and scheduled jobs read back'),
+                _('Testing the model %s', self._model_label()) if self.sudo().engine_model_id
+                else _("Testing the connection's default model")]
+
+    def _sync_progress(self, step, state='running'):
+        """Tell the person syncing which step is running, at once: the sync is one transaction, so the
+        notification is sent from its own short transaction (in tests, the test transaction)."""
+        steps = self._sync_steps()
+        payload = {'profile_id': self.id, 'step': step, 'total': len(steps), 'steps': steps, 'state': state}
+        if odoo_module.current_test:
+            self.env.user._bus_send('ai_agent/sync_progress', payload)
+            return
+        with self.env.registry.cursor() as cr:
+            api.Environment(cr, self.env.uid, {}).user._bus_send('ai_agent/sync_progress', payload)
+
     def _sync(self):
         """Create or update the profile in Hermes and check that the gateway serves it."""
         self.ensure_one()
+        self._sync_progress(1)
         engine = self.engine_id.sudo()
         listing = engine._management('GET', '/api/profiles')
-        existing = {p.get('name') for p in (listing or {}).get('profiles', []) if isinstance(p, dict)}
+        rows = [p for p in (listing or {}).get('profiles', []) if isinstance(p, dict)]
+        existing = {p.get('name') for p in rows}
+        main_home = next((p.get('path') for p in rows if p.get('is_default') and p.get('path')), None)
         if not self.in_hermes and self.hermes_name in existing:
             # A profile of that name was made in Hermes by someone else: never take it over, use the next free name.
             internal(self.sudo()).write({'hermes_name': profile_name(
@@ -255,7 +288,8 @@ class Profile(models.Model):
             engine._management('POST', '/api/profiles', {'name': name, 'description': self.name, 'no_skills': True})
         if not self.in_hermes:
             internal(self.sudo()).write({'in_hermes': True})
-        engine._management('PUT', '/api/config', {'config': self._safe_config()}, query={'profile': name})
+        self._sync_progress(2)
+        engine._management('PUT', '/api/config', {'config': self._safe_config(main_home)}, query={'profile': name})
         engine._management('PUT', f'/api/profiles/{name}/soul', {'content': self._persona_text()})
         option = self.sudo().engine_model_id
         if option:
@@ -266,6 +300,7 @@ class Profile(models.Model):
             if default['provider'] and default['model']:
                 engine._management('PUT', f'/api/profiles/{name}/model',
                                    {'provider': default['provider'], 'model': default['model']})
+        self._sync_progress(3)
         reference = self.sudo().secret_reference
         if not (reference or '').startswith(secrets.PREFIX):
             key = token_generator.token_hex(32)
@@ -282,6 +317,7 @@ class Profile(models.Model):
         memory = config.get('memory', {}) if isinstance(config, dict) else {}
         if memory.get('memory_enabled') is not False or memory.get('user_profile_enabled') is not False:
             raise UserError(_('Hermes did not keep memory off on this profile.'))
+        self._sync_progress(4)
         try:
             capabilities = engine._request('GET', '/v1/capabilities', profile=self)
         except UserError:
@@ -290,16 +326,66 @@ class Profile(models.Model):
         features = capabilities.get('features', {}) if isinstance(capabilities, dict) else {}
         if not features.get('run_submission') or not features.get('run_status'):
             raise UserError(_('This Hermes version does not support durable runs.'))
+        self._sync_progress(5)
         self._refresh_tools()
         self._refresh_jobs()
+        self._sync_progress(6)
+        self._test_model()
 
-    def _safe_config(self):
-        """Memory off; on the run platform the ERP tools plus what is switched on in Tools and services."""
+    def _model_label(self):
+        option = self.sudo().engine_model_id
+        if option:
+            return f'{option.provider} / {option.model}'
+        return _('the connection default model')
+
+    def _test_model(self):
+        """Ask the profile's model one tiny question through the gateway, as an agent run would: a model that does
+        not answer (retired, no quota, key refused) fails the sync with the provider's reason."""
+        self.ensure_one()
+        engine = self.engine_id.sudo()
+        label = self._model_label()
+        try:
+            started = engine._request('POST', '/v1/runs', {'input': MODEL_TEST_PROMPT}, profile=self)
+        except hermes.HermesRejected as error:
+            if error.status == 429:
+                return  # Hermes is busy with other questions: the model is not tested this time.
+            raise
+        run_id = (started or {}).get('run_id') if isinstance(started, dict) else None
+        if not run_id:
+            raise UserError(_('Hermes did not start a test question for %s.', label))
+        deadline = time.monotonic() + MODEL_TEST_SECONDS
+        while True:
+            result = engine._request('GET', f'/v1/runs/{run_id}', profile=self)
+            status = result.get('status') if isinstance(result, dict) else None
+            if status == 'completed':
+                return
+            if status in ('failed', 'cancelled', 'interrupted'):
+                reason = result.get('error')
+                reason = reason.get('message') if isinstance(reason, dict) else reason
+                raise UserError(_('The model %(model)s does not answer: %(reason)s', model=label,
+                                  reason=(reason or _('no reason given')).strip()[:500]))
+            if time.monotonic() >= deadline:
+                try:
+                    engine._request('POST', f'/v1/runs/{run_id}/stop', {}, profile=self)
+                except UserError:
+                    pass
+                raise UserError(_('The model %(model)s did not answer within %(seconds)s seconds. It may be out of '
+                                  'quota or rate limited; Hermes keeps retrying in that case. Choose another model or '
+                                  'check the provider account.', model=label, seconds=MODEL_TEST_SECONDS))
+            time.sleep(2)
+
+    def _safe_config(self, main_home=None):
+        """Memory off; on the run platform the ERP tools plus what is switched on in Tools and services; provider
+        keys read from the main Hermes profile (``main_home``, as Hermes reports it) instead of copied."""
         self.ensure_one()
         profile = self.sudo()
         api_server = [MCP_SERVER] + profile.tool_ids.filtered('enabled').mapped('toolset') + profile.server_ids.filtered(
             lambda s: s.kind == 'external' and s.enabled).mapped('hermes_name')
-        return {**SAFE_CONFIG, 'platform_toolsets': {**SAFE_CONFIG['platform_toolsets'], 'api_server': api_server}}
+        config = {**SAFE_CONFIG, 'platform_toolsets': {**SAFE_CONFIG['platform_toolsets'], 'api_server': api_server}}
+        if main_home:
+            env_file = shlex.quote(f"{main_home.rstrip('/')}/.env")
+            config['secrets'] = {'command': {'enabled': True, 'command': SHARED_KEYS_COMMAND.format(env=env_file)}}
+        return config
 
     def _refresh_tools(self):
         """Read back from Hermes whether each tool has what it needs, and whether each tool server answers."""
@@ -383,6 +469,7 @@ class Profile(models.Model):
                 values = {'state': 'failed', 'sync_message': str(error)}
                 profile.engine_id._unreachable(error)
             internal(profile.sudo()).write({**values, 'synced_at': fields.Datetime.now()})
+            profile._sync_progress(len(profile._sync_steps()), state='done')
         return True
 
     def action_add_tool_server(self):

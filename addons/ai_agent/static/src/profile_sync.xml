@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="ai_agent.ProfileSyncButton">
+        <button type="button" class="btn btn-primary o_ai_profile_sync" t-att-disabled="this.state.busy" t-on-click="this.sync">
+            <t t-if="this.state.busy"><span class="spinner-border spinner-border-sm me-1" aria-hidden="true"/>Syncing…</t>
+            <t t-else="">Sync to Hermes</t>
+        </button>
+    </t>
+
+    <t t-name="ai_agent.ProfileSyncProgress">
+        <section t-if="this.state.running" class="o_ai_sync_progress mb-3" role="status" aria-live="polite" aria-label="Sync to Hermes progress">
+            <div class="d-flex justify-content-between flex-wrap gap-2">
+                <strong>Syncing to Hermes</strong>
+                <span class="text-muted small">Step <t t-esc="this.state.step"/> of <t t-esc="this.state.total"/></span>
+            </div>
+            <div class="o_ai_sync_bar my-2" aria-hidden="true"><div t-attf-style="width: {{ this.percent }}%"/></div>
+            <ol class="list-unstyled mb-0 small d-flex flex-column gap-1">
+                <li t-foreach="this.state.steps" t-as="label" t-key="label_index" class="d-flex align-items-center gap-2"
+                    t-att-class="{ 'fw-semibold': label_index + 1 === this.state.step, 'text-muted': label_index + 1 &gt; this.state.step }">
+                    <span t-if="label_index + 1 &lt; this.state.step" class="o_ai_sync_done" aria-hidden="true">✓</span>
+                    <span t-elif="label_index + 1 === this.state.step" class="spinner-border spinner-border-sm o_ai_sync_spinner" aria-hidden="true"/>
+                    <span t-else="" class="o_ai_sync_todo" aria-hidden="true"/>
+                    <span>
+                        <t t-esc="label"/><t t-if="label_index + 1 === this.state.step">…</t>
+                        <span t-if="label_index + 1 === this.state.step and this.state.step === this.state.total" class="fw-normal text-muted ms-1">
+                            <t t-esc="this.state.seconds"/> s (up to 30 s)
+                        </span>
+                    </span>
+                </li>
+            </ol>
+        </section>
+    </t>
+</templates>

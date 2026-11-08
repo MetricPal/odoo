@@ -21,12 +21,14 @@ class FakeHermes:
         self.configured = {'vision', 'todo'}  # Hermes tools that have what they need.
         self.probes = {}  # Tool server name: what Hermes's test answers.
         self.jobs = {}  # Profile name: its scheduled jobs.
+        self.model_run = {'status': 'completed', 'output': 'OK'}  # What the sync's model test run ends with.
 
     def management(self, engine, method, path, payload=None, query=None):
         self.calls.append((method, path, payload, query))
         profile = (query or {}).get('profile')
         if (method, path) == ('GET', '/api/profiles'):
-            return {'profiles': [{'name': name} for name in self.profiles]}
+            return {'profiles': [{'name': 'default', 'is_default': True, 'path': '/srv/hermes erp'}]
+                    + [{'name': name} for name in self.profiles]}
         if (method, path) == ('POST', '/api/profiles'):
             self.profiles[payload['name']] = {'config': {'memory': {'memory_enabled': True}}}
             return {'ok': True}
@@ -82,6 +84,8 @@ class FakeHermes:
             return {'features': {'run_submission': True, 'run_status': True}}
         if path == '/v1/runs':
             return {'run_id': 'run_profile_1'}
+        if path.startswith('/v1/runs/') and method == 'GET':
+            return self.model_run
         return {}
 
 
@@ -193,6 +197,41 @@ class TestHermesProfiles(TransactionCase):
             run._submit()
         self.assertEqual(run.profile_id, profile)
         self.assertIn(('POST', '/v1/runs', 'human-resources'), fake.calls)
+
+    def test_sync_reports_each_step_to_the_person_syncing(self):
+        profile = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
+                                                       'department_id': self.hr.id})
+        sent = []
+        Users = type(self.env['res.users'])
+        with patch.object(Users, '_bus_send', lambda user, kind, payload, **kw: sent.append((user, kind, payload))):
+            self._sync(profile, FakeHermes())
+        self.assertEqual(profile.state, 'in_sync', profile.sync_message)
+        self.assertTrue(all(user == self.env.user and kind == 'ai_agent/sync_progress' for user, kind, _p in sent))
+        self.assertEqual([(p['step'], p['state']) for _u, _k, p in sent],
+                         [(1, 'running'), (2, 'running'), (3, 'running'), (4, 'running'), (5, 'running'),
+                          (6, 'running'), (6, 'done')])
+        steps = sent[0][2]['steps']
+        self.assertEqual(steps[0], 'Profile created in Hermes')
+        self.assertEqual(steps[-1], "Testing the connection's default model")
+        self.assertEqual({p['profile_id'] for _u, _k, p in sent}, {profile.id})
+
+    def test_sync_tests_the_profile_model(self):
+        profile = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,
+                                                       'department_id': self.hr.id})
+        fake = FakeHermes()
+        self._sync(profile, fake)
+        self.assertEqual(profile.state, 'in_sync', profile.sync_message)
+        self.assertIn(('POST', '/v1/runs', 'human-resources'), fake.calls, 'A tiny question goes through the profile')
+        fake.model_run = {'status': 'failed', 'error': 'Gemini HTTP 404 (NOT_FOUND): This model is no longer available.'}
+        self._sync(profile, fake)
+        self.assertEqual(profile.state, 'failed')
+        self.assertIn('does not answer: Gemini HTTP 404', profile.sync_message)
+        fake.model_run = {'status': 'running'}
+        with patch('odoo.addons.ai_agent.models.profile.MODEL_TEST_SECONDS', 0):
+            self._sync(profile, fake)
+        self.assertIn('did not answer within 0 seconds', profile.sync_message)
+        self.assertIn(('POST', '/v1/runs/run_profile_1/stop', 'human-resources'), fake.calls,
+                      'A test question that does not finish is stopped')
 
     def test_sync_fails_clearly_when_the_gateway_does_not_serve_profiles(self):
         profile = self.env['ai.agent.profile'].create({'name': 'Human Resources', 'engine_id': self.engine.id,

@@ -1323,6 +1323,117 @@
     bottom: 100%;
     top: auto;
     min-width: 240px;
+    width: 340px;
+    max-width: calc(100vw - 32px);
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 6px;
+    border-radius: 12px;
+
+    .dropdown-item {
+        border-radius: 8px;
+        white-space: normal;
+    }
+
+    .dropdown-item.active {
+        background: #F5F0F4;
+        color: var(--home-ink);
+    }
+
+    .dropdown-item.o_is_paused,
+    .dropdown-item.o_is_paused .o_ai_home_muted {
+        color: #8A8A93;
+    }
+}
+
+.o_ai_home_agent_heading {
+    padding: 6px 10px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--home-muted);
+}
+
+.o_ai_home_agent_line {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.o_ai_home_agent_department {
+    flex: none;
+    font-size: 12px;
+    color: var(--home-muted);
+}
+
+.o_ai_home_agent_link {
+    font-size: 13px;
+    color: var(--home-brand);
+}
+
+// What each assistant can do (opened from the picker; a dialog, outside the Home page's own variables).
+.o_ai_home_assistants {
+    .o_ai_home_muted {
+        color: #5C5C66;
+    }
+
+    .o_ai_home_assistant_row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 4px;
+        border-bottom: 1px solid #EEEEF2;
+
+        &:last-child {
+            border-bottom: 0;
+        }
+    }
+
+    .o_ai_home_assistant_info {
+        flex: 1;
+        min-width: 240px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .o_ai_home_assistant_title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+
+        strong {
+            font-size: 15px;
+        }
+    }
+
+    .o_ai_home_assistant_badge {
+        padding: 1px 8px;
+        border-radius: 10px;
+        background: #EFE7ED;
+        color: #4F3348;
+    }
+
+    .o_is_paused .o_ai_home_assistant_badge {
+        background: #EEEEF2;
+        color: #3B3B44;
+    }
+
+    .o_ai_home_assistant_description {
+        color: #3B3B44;
+    }
+
+    .o_ai_home_assistant_fact {
+        font-size: 13px;
+        color: #5C5C66;
+
+        strong {
+            font-weight: 600;
+            color: #3B3B44;
+        }
+    }
 }
 
 .o_ai_home_rights {

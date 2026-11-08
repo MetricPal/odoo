@@ -430,6 +430,20 @@ class TestAgent(TransactionCase):
         self.assertEqual(run.state, 'cancelled')
         self.assertFalse(run.answer)
 
+    def test_a_failed_run_says_why_hermes_stopped(self):
+        run = self._queue().sudo()
+        internal(run).write({'remote_id': 'run_failed', 'state': 'running'})
+        reason = 'Gemini HTTP 404 (NOT_FOUND): This model models/gemini-2.5-pro is no longer available to new users.'
+        with patch.object(type(self.engine), '_request', return_value={'status': 'failed', 'error': reason}):
+            run._poll()
+        self.assertEqual(run.state, 'failed')
+        self.assertIn('no longer available to new users', run.error_message)
+        other = self._queue('Another question').sudo()
+        internal(other).write({'remote_id': 'run_failed_2', 'state': 'running'})
+        with patch.object(type(self.engine), '_request', return_value={'status': 'failed'}):
+            other._poll()
+        self.assertEqual(other.error_message, 'Hermes stopped without a completed answer.')
+
     def test_numeric_localhost_http_is_explicit_and_pinned(self):
         pool = MagicMock()
         pool.request.return_value.status = 200

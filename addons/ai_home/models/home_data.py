@@ -75,6 +75,7 @@ class AiHomeItem(models.Model):
             'feed': self._home_feed(),
             'recent': self._home_recent(),
             'agents': agents,
+            'pausedAgents': self._paused_agents(),
             'prompts': self._home_prompts(self._home_role()) if agents else [],
             'canManageAgents': self.env.user.has_group('ai_agent.group_manager') if 'ai.agent' in self.env else False,
         }
@@ -160,8 +161,43 @@ class AiHomeItem(models.Model):
                 agent._usable()
             except (AccessError, UserError):
                 continue
-            agents.append({'id': agent.id, 'name': agent.name, 'description': agent.description or ''})
+            agents.append(self._agent_row(agent))
         return agents
+
+    @api.model
+    def _agent_row(self, agent):
+        """What the assistant picker shows of an agent: its name, owner (department or Company) and description."""
+        return {'id': agent.id, 'name': agent.name, 'description': agent.description or '',
+                'department': agent.sudo().department_id.name or _('Company')}
+
+    @api.model
+    def _paused_agents(self):
+        """Paused agents the user would chat with: listed greyed out, so people know they exist (approved mock
+        2026-11-08)."""
+        if 'ai.agent' not in self.env or not self.env.user.has_group('ai_agent.group_user'):
+            return []
+        return [self._agent_row(agent) for agent in
+                self.env['ai.agent'].search([('state', '=', 'paused'), ('can_chat', '=', True)])]
+
+    @api.model
+    def get_assistant_details(self):
+        """What each assistant can do (approved mock 2026-11-08): for every agent the user may chat with (paused
+        ones too), what it knows (knowledge sources), the data it can look at and what it can propose."""
+        if 'ai.agent' not in self.env or not self.env.user.has_group('ai_agent.group_user'):
+            return []
+        usable = {row['id'] for row in self._usable_agents()}
+        details = []
+        for agent in self.env['ai.agent'].search([('state', 'in', ('active', 'paused')), ('can_chat', '=', True)]):
+            if agent.state == 'active' and agent.id not in usable:
+                continue  # Not ready (connection or review): not offered anywhere on Home.
+            source = agent.sudo()  # Names only: the agent's own setup, which the user cannot open.
+            models = [self.env[name]._description for name in dict.fromkeys(source.access_ids.mapped('model_name'))
+                      if name in self.env]
+            proposing = [self.env[name]._description for name in dict.fromkeys(
+                source.access_ids.filtered('can_propose').mapped('model_name')) if name in self.env]
+            details.append({**self._agent_row(agent), 'paused': agent.state == 'paused', 'knows': source.source_ids.mapped('name'),
+                            'models': models, 'proposes': proposing})
+        return sorted(details, key=lambda row: (row['paused'], row['name'].lower()))
 
     def _can_read(self, model):
         """The model is installed and the user may read it at all."""

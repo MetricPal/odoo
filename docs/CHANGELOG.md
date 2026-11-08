@@ -12,6 +12,77 @@ Format:
 
 
 
+## 2026-11-09 — AI Agent: answers arrive as soon as Hermes has them
+
+- Change: after a question is handed to Hermes, a light background thread follows the run's live event stream (Hermes `GET /v1/runs/{id}/events`). When Hermes reports the end, the run is made due and the runs job is woken, so the answer is checked and posted at once (Discuss, Home, workflows) instead of at the next scheduled check, about 30 to 60 seconds later. Measured on the local Hermes with gemini-3.5-flash: the end arrives 2.0 s after the question. The scheduled checks are unchanged and remain the safety net if a listener stops.
+- Reason: owner request ("a is typing…" for about a minute).
+- Affected areas: ai_agent (services/hermes.py `run_events`, models/conversation.py `_listen_for_end`, tests/test_live_answer.py).
+- Compatibility: needs the runs job (cron) to be running; one open connection to Hermes per question in progress (at most the agents' concurrency limits). Hermes without event streams falls back to the scheduled checks.
+
+## 2026-11-09 — AI Agent: Sync to Hermes shows its progress
+
+- Change: approved mock 2026-11-08, board 15. While Sync to Hermes runs, its button reads "Syncing…" (disabled) and the profile form shows "Syncing to Hermes": step N of 6, a bar, and the steps as they finish (Profile created in Hermes; Persona and model written; Keys and ERP tools set up; Gateway serves the profile; Tools and scheduled jobs read back; Testing the model …), with the seconds of the model test ("8 s (up to 30 s)"). The panel closes when the sync ends; the status shows In sync or Failed. Each step is sent at once to the person syncing over Odoo's bus, from its own short transaction.
+- Reason: owner request.
+- Affected areas: ai_agent (models/profile.py `_sync_progress`, static/src/profile_sync.*, views/profile_views.xml, tests).
+- Compatibility: version 20.0.1.15.0 (view change: update the module).
+
+## 2026-11-09 — AI Agent: Sync to Hermes tests the profile's model
+
+- Change: after a profile is set up in Hermes, Sync to Hermes asks its model one tiny question through the profile ("Reply with the single word: OK") and waits up to 30 seconds. An answer keeps the profile In sync. A failure (retired model, refused key) marks the profile Failed with the provider's reason ("The model gemini / … does not answer: Gemini HTTP 404 …"). No answer in 30 seconds stops the question and marks it Failed ("did not answer within 30 seconds… out of quota or rate limited"), since Hermes keeps retrying quota errors. When Hermes is busy (all its question slots taken), the model is not tested this time.
+- Reason: owner request; the chosen model must be proven on the profile.
+- Affected areas: ai_agent (models/profile.py `_test_model`, tests/test_profile.py).
+- Compatibility: a sync can take up to 30 seconds longer; each sync costs one tiny request to the provider.
+
+## 2026-11-09 — AI Agent: failed answers say why
+
+- Change: when Hermes ends a run as failed, the ERP now shows the reason Hermes recorded (for example "Gemini HTTP 404 (NOT_FOUND): This model models/gemini-2.5-pro is no longer available to new users…") after "Hermes stopped without a completed answer:", on Home, in Discuss and in the run. Without a reason the message is unchanged.
+- Reason: owner report; the generic message hid a retired model.
+- Affected areas: ai_agent (models/conversation.py `_poll`, tests/test_agent.py).
+- Compatibility: none.
+
+## 2026-11-09 — AI Agent: profiles use the connection's provider keys
+
+- Change: Hermes keeps provider keys per profile, so a profile synced from the ERP could not use a model whose key was added on the connection (Sync to Hermes failed with HTTP 400, "Google is not connected"). Each sync now writes a Hermes command secret source into the profile's config: it reads the `*_API_KEY` lines of the main Hermes profile's `.env` (its path as Hermes reports it), without the gateway key or the dashboard token. Keys stay in one place; a profile's own `.env` value still wins.
+- Reason: owner report (profile "a" with Gemini); owner chose a reference over copies.
+- Affected areas: ai_agent (models/profile.py `_safe_config`, tests).
+- Compatibility: takes effect at each profile's next Sync to Hermes. Hermes reads a profile's secret source once per gateway start, so keys added later reach profiles after a gateway restart. Linux/macOS Hermes only (the helper runs with /bin/sh). Provider credentials that are not `*_API_KEY` (sign-ins, tokens) are not shared.
+
+## 2026-11-08 — AI Agent: fix the Add model window
+
+- Change: the Add model window failed to open ("Failed to compile template ai_agent.ModelPicker") because its key field handled Enter with an inline `if` statement, which Owl templates cannot compile; the handler is now a component method (Enter still saves the key). The browser test of the window, which had not run before for lack of `websocket-client`, passes again.
+- Reason: owner report.
+- Affected areas: ai_agent (static/src/model_picker.js, model_picker.xml).
+- Compatibility: none.
+
+## 2026-11-08 — AI Agent: start Hermes from the ERP
+
+- Change: when a Hermes connection needs attention, the check now tells whether Hermes itself runs: **Running**, **Stopped**, **Gateway stopped** or **Cannot be reached** (the form shows "Runs on" — This server, or Another machine · its address — and "Hermes"). Settings administrators get **Start Hermes** (approved mocks 2026-11-08, boards 13 and 14): on Local Hermes it runs the fixed deployment command (`ai_agent/deployment/erp_hermes.py start`, gateway and dashboard); on a Remote Hermes whose dashboard answers but whose gateway is stopped, it asks that Hermes to start its gateway (`POST /api/gateway/start`). The ERP then waits up to 20 seconds and checks the connection again. A remote Hermes that does not answer at all cannot be started from the ERP: the form says to start it on that machine.
+- Reason: owner request; Hermes was not running after a restart and only a terminal could start it.
+- Affected areas: ai_agent (models/configuration.py `hermes_runtime`, `action_start_hermes`, views/configuration_views.xml, tests/test_start_hermes.py).
+- Compatibility: version 20.0.1.14.0 (new field; update the module). Hermes does not start by itself when the machine restarts: that needs a system service (not part of this change).
+
+## 2026-11-08 — Discuss: chat with AI assistants (ADR 0013, phase 2)
+
+- Change: every assistant a person may use appears in Discuss as a direct chat (Discuss page and messaging menu), made once when they sign in; paused assistants stay listed, greyed out. Chats has an **Assistants** filter after All, Unread and Group; assistants carry an **AI** label in the list and on their messages; an assistant not used yet shows "department · description". The chat starts with "This is the start of your direct chat with <agent>, the <department> assistant. It answers with what you may see, and changes need your approval." Each message is one question, asked as the person (their rights and the assistant's); follow-ups continue the same conversation; Odoo's "is typing…" shows while the agent works; the answer, or why there is none (paused, limits, access, failure), is posted by the assistant, with its proposals and an Open request link. People outside an agent's audience who open a chat with it get only that reason.
+- Reason: ADR 0013; approved mocks 2026-11-08, boards 10 and 12.
+- Affected areas: ai_discuss (models/discuss_channel.py, res_users.py, run.py, res_partner.py, controllers/messaging_menu.py, static/src, tests).
+- An assistant is not a person: its chats offer no voice or video call (as for OdooBot), and its avatar and name open no profile card (no View Profile, presence or contact details), in the chat start, the Discuss header, its messages and the member list. Owner request, 2026-11-08.
+- Compatibility: `discuss.channel` gains `ai_agent_id` and `ai_conversation_id`. Not yet: the "What it can do" link, Stop, and "Used: …" from board 10.
+
+## 2026-11-08 — AI Agent: each agent has its own chat partner (ADR 0013, phase 1)
+
+- Change: new module `ai_discuss` (auto-installed with AI Agent and Discuss). Every agent gets its own chat partner, the identity it will use in Discuss and the chatter: same name and company as the agent, marked `ai_agent_partner`, archived like OdooBot's partner so it never appears in Contacts, pickers or @ suggestions, and never a user. Agents that existed before get one at install. Deleting an agent that was never used removes its partner too. AI assistant users (for example "HR Assistant") are no longer suggested when typing @: they are identities agents act as and never answered a mention. OdooBot is unchanged.
+- Reason: ADR 0013 (proposed); approved mocks 2026-11-08, boards 10 to 12.
+- Affected areas: ai_discuss (new: models/agent.py, res_partner.py, post-install hook, tests); CLAUDE.md module table.
+- Compatibility: new module, version 20.0.1.0.0. Nothing visible yet beyond the @ suggestions; the Discuss chat and the chatter Assistants button come in phases 2 and 3.
+
+## 2026-11-08 — Home: the assistants available to you
+
+- Change: the assistant picker on Home lists every assistant the user may chat with, with a "Your assistants (N)" heading, each one's department (or Company) and description, and paused assistants greyed out ("· Paused") so people know they exist. A new **What each assistant can do** dialog (from the picker) shows per assistant what it knows (knowledge sources), the apps it can look at, what it can propose (you approve), and an Ask button that chooses it in the box. Approved mock 2026-11-08 ("Assistants A": the picker only, no cards, no round badges).
+- Reason: owner request; users did not know which AI assistants they have.
+- Affected areas: ai_home (models/home_data.py `pausedAgents`, `get_assistant_details`; static/src/dashboard picker, assistants_dialog.*; tests).
+- Compatibility: none. Names of knowledge sources and apps are read for the user from the agent's setup (names only). Agents that are active but cannot answer now (connection or review) are still not offered.
+
 ## 2026-11-08 — AI Agent: a profile's Tools and services (phase 6 of the control panel plan)
 
 - Change: Hermes profiles get a **Tools and services** tab (approved mock 2026-11-08, boards 8 and 9). **ERP tools** are listed and always on. **Hermes tools** are a fixed short list: Web search and reading, Image analysis, Image generation, Task planning, each with Ready or Needs a key (Add key in Hermes opens Hermes's Keys page) and an on/off switch; they start off. Terminal, files, browser control, running code, memory, past-conversation search and messaging apps are never offered. **Tool servers**: the ERP's own server (always on) and outside MCP servers, with Ready, Sign in in Hermes, Not reachable or Off, a switch, and Remove. **Add a tool server** (name, address, sign-in: none, key, or sign in in Hermes) adds the server in Hermes at once and checks it; the key goes to Hermes only and is never stored in the ERP (not even on the dialog's record). **Scheduled jobs in Hermes** are read back at each sync, with Pause and Resume acting in Hermes at once; new scheduled work for the ERP stays in Workflows. Switches take effect at the next Sync to Hermes, which now writes the profile's run platform list (`platform_toolsets.api_server`: `erp`, the switched-on tools and servers) and reads back each tool's and server's status. Department managers and AI admins switch tools and servers on their department's profile and pause or resume its jobs; only AI Agent managers add or remove tool servers.

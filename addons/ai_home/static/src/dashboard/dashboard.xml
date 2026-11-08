@@ -331,26 +331,34 @@
                                 <button
                                     type="button"
                                     class="btn o_ai_home_agent_toggle"
-                                    t-att-disabled="!this.aiAvailable and !this.state.canManageAgents"
+                                    t-att-disabled="!this.pickerAgents.length and !this.state.canManageAgents"
                                     aria-haspopup="menu"
                                     t-att-aria-expanded="this.state.showAgentMenu ? 'true' : 'false'"
                                     t-on-click="() => this.state.showAgentMenu = !this.state.showAgentMenu"
                                 ><t t-esc="this.aiName"/> ▾</button>
-                                <div t-if="this.state.showAgentMenu" class="dropdown-menu show o_ai_home_agent_menu" role="menu">
+                                <div t-if="this.state.showAgentMenu" class="dropdown-menu show o_ai_home_agent_menu" role="menu" aria-label="Assistants available to you">
+                                    <div t-if="this.pickerAgents.length" class="dropdown-header o_ai_home_agent_heading">Your assistants (<t t-esc="this.pickerAgents.length"/>)</div>
                                     <button
-                                        t-foreach="this.state.agents"
+                                        t-foreach="this.pickerAgents"
                                         t-as="agent"
                                         t-key="agent.id"
                                         type="button"
                                         role="menuitemradio"
                                         class="dropdown-item o_ai_home_agent_option"
-                                        t-att-aria-checked="this.isSelected(agent) ? 'true' : 'false'"
+                                        t-att-class="{ active: this.isSelected(agent) and !agent.paused, o_is_paused: agent.paused }"
+                                        t-att-aria-checked="this.isSelected(agent) and !agent.paused ? 'true' : 'false'"
+                                        t-att-disabled="agent.paused"
                                         t-on-click="() => this.selectAgent(agent)"
                                     >
-                                        <strong t-esc="agent.name"/>
+                                        <span class="o_ai_home_agent_line">
+                                            <strong t-esc="agent.name"/>
+                                            <span class="o_ai_home_agent_department"><t t-esc="agent.department"/><t t-if="agent.paused"> · Paused</t></span>
+                                        </span>
                                         <span t-if="agent.description" class="d-block o_ai_home_muted" t-esc="agent.description"/>
                                     </button>
-                                    <button t-if="this.state.canManageAgents" type="button" class="dropdown-item o_ai_home_agent_manage" t-on-click="this.openAgents">Manage agents</button>
+                                    <div t-if="this.pickerAgents.length or this.state.canManageAgents" class="dropdown-divider"/>
+                                    <button t-if="this.pickerAgents.length" type="button" class="dropdown-item o_ai_home_agent_link o_ai_home_agent_details" t-on-click="this.openAssistants">What each assistant can do</button>
+                                    <button t-if="this.state.canManageAgents" type="button" class="dropdown-item o_ai_home_agent_link o_ai_home_agent_manage" t-on-click="this.openAgents">Manage agents</button>
                                 </div>
                             </div>
                             <span class="o_ai_home_rights">Uses your access rights</span>

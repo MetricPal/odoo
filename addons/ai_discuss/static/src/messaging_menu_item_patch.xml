@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.MessagingMenuItem" t-inherit-mode="extension">
+        <xpath expr="//t[@name='itemName']" position="after">
+            <span t-if="this.channel?.ai_agent_id" class="o_ai_discuss_label ms-1 align-self-center">AI</span>
+        </xpath>
+    </t>
+</templates>

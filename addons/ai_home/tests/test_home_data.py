@@ -1,6 +1,7 @@
 from datetime import timedelta
+from unittest.mock import patch
 
-from odoo import fields
+from odoo import Command, fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
@@ -255,9 +256,57 @@ class TestHomeData(TransactionCase):
         notice = next(e for e in self._data()['feed'] if 'You were assigned a follow-up' in e['text'])
         self.assertTrue(notice['forMe'], 'direct notifications are For me')
 
+    def test_the_picker_and_what_each_assistant_can_do(self):
+        if 'ai.agent' not in self.env:
+            self.skipTest('AI Agent is not installed')
+        from odoo.addons.ai_agent.models.common import internal  # noqa: PLC0415 (ai_home does not depend on it)
+        env_patch = patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443',
+                                              'AI_AGENT_SECRET_TEST': 'synthetic-not-a-live-key'})
+        env_patch.start()
+        self.addCleanup(env_patch.stop)
+        self.user.write({'group_ids': [Command.link(self.env.ref('ai_agent.group_user').id)]})
+        engine = self.env['ai.agent.engine'].create({'name': 'Test engine', 'url': 'https://hermes.example.com',
+            'secret_reference': 'AI_AGENT_SECRET_TEST', 'management_url': 'https://hermes.example.com',
+            'management_secret_reference': 'AI_AGENT_SECRET_TEST'})
+        internal(engine).write({'state': 'ready'})
+        hr = self.env['hr.department'].create({'name': 'Human Resources'}) if 'hr.department' in self.env else False
+        policy = self.env['ai.agent.source'].create({'name': 'Leave policy', 'text': 'Ten days a year.'})
+        Agent = self.env['ai.agent']
+        helper = Agent.create({'name': 'HR policy helper', 'description': 'Leave and onboarding',
+                               'engine_id': engine.id, 'user_ids': [Command.set(self.user.ids)],
+                               'department_id': hr and hr.id, 'source_ids': [Command.set(policy.ids)],
+                               'access_ids': [Command.create({'model_name': 'res.partner', 'field_names': 'name',
+                                                              'can_propose': True})]})
+        company = Agent.create({'name': 'Company Assistant', 'engine_id': engine.id,
+                                'user_ids': [Command.set(self.user.ids)]})
+        finance = Agent.create({'name': 'Finance helper', 'engine_id': engine.id,
+                                'user_ids': [Command.set(self.user.ids)]})
+        Agent.create({'name': 'Not for me', 'engine_id': engine.id})
+        (helper | company | finance).action_activate()
+        finance.action_pause()
+        mine = {'Company Assistant', 'HR policy helper', 'Finance helper', 'Not for me'}  # Demo agents aside.
+        data = self._data()
+        self.assertEqual(sorted((a['name'], a['department']) for a in data['agents'] if a['name'] in mine),
+                         [('Company Assistant', 'Company'), ('HR policy helper', hr.name if hr else 'Company')])
+        self.assertEqual([a['name'] for a in data['pausedAgents'] if a['name'] in mine], ['Finance helper'],
+                         'Paused ones are listed')
+        details = {row['name']: row for row in self.Home.get_assistant_details() if row['name'] in mine}
+        self.assertEqual(list(details), ['Company Assistant', 'HR policy helper', 'Finance helper'],
+                         'Answering assistants first, then paused; never one outside the audience')
+        row = details['HR policy helper']
+        self.assertEqual((row['knows'], row['models'], row['proposes'], row['paused']),
+                         (['Leave policy'], ['Contact'], ['Contact'], False))
+        self.assertTrue(details['Finance helper']['paused'])
+        self.assertEqual((details['Company Assistant']['models'], details['Company Assistant']['proposes']), ([], []))
+        internal(engine).write({'state': 'blocked'})
+        self.assertEqual([row['name'] for row in self.Home.get_assistant_details() if row['name'] in mine],
+                         ['Finance helper'], 'Assistants that cannot answer now are not offered, paused ones stay')
+
     def test_without_an_assistant(self):
         data = self._data()
         self.assertEqual(data['agents'], [], 'Users outside AI Agent see no agents')
+        self.assertEqual(data['pausedAgents'], [])
+        self.assertEqual(self.Home.get_assistant_details(), [])
         self.assertEqual(data['prompts'], [])
 
     def test_failed_workflow_runs_need_attention_of_administrators(self):
