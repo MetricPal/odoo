@@ -367,6 +367,9 @@ current with a spinner, next greyed), the model test with its seconds "(up to 30
 
 ## Hermes connection: default model (`ai_agent`)
 
+A connection that checks out sets up the company by itself (owner, 2026-11-09): the company's Hermes profile, synced,
+the company's AI assistant user and the company agent ("<company> Assistant", for everyone), active. Nothing to click.
+
 Approved mock 2026-11-07 (boards 5 and 6). Status bar: Not checked, **Needs a model**, Ready, Needs attention. With
 Needs a model, an info line ("Hermes is connected but has no AI model yet…") and, at the top of Providers & models,
 **Choose the default model**: a highlighted **Use your own key** card (badge "Recommended for company data"; Provider,

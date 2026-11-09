@@ -470,6 +470,12 @@ class Profile(models.Model):
                 raise AccessError(_('Only AI Agent managers and the department\'s manager sync it.'))
             if profile.engine_id.sudo().state not in ('ready', 'needs_model'):
                 raise UserError(_('Check the Hermes connection first.'))
+        return self._sync_to_hermes()
+
+    def _sync_to_hermes(self):
+        """Sync each profile and record how it went (the caller checked who may). The company profile, once in
+        Hermes, brings the company agent."""
+        for profile in self:
             try:
                 profile._sync()
                 values = {'state': 'in_sync', 'sync_message': _('In sync with Hermes.')}
@@ -478,7 +484,25 @@ class Profile(models.Model):
                 profile.engine_id._unreachable(error)
             internal(profile.sudo()).write({**values, 'synced_at': fields.Datetime.now()})
             profile._sync_progress(len(profile._sync_steps()), state='done')
+            if profile.kind == 'company' and profile.state == 'in_sync':
+                profile._ensure_company_agent()
         return True
+
+    def _ensure_company_agent(self):
+        """The company agent: for everyone in the company, on the company profile, acting as the company's AI
+        assistant (owner, 2026-11-09: made automatically). An agent the company already has for everyone counts."""
+        self.ensure_one()
+        Agent = internal(self.env['ai.agent'].sudo().with_context(active_test=False))
+        if Agent.search_count([('company_id', '=', self.company_id.id), ('engine_id', '=', self.engine_id.id),
+                               ('access_scope', '=', 'company'), ('department_id', '=', False)]):
+            return Agent.browse()
+        agent = Agent.create({'name': _('%s Assistant', self.company_id.name), 'engine_id': self.engine_id.id,
+                              'company_id': self.company_id.id, 'access_scope': 'company',
+                              'description': _('Made with the company\'s Hermes profile, for everyone in the '
+                                               'company.')})
+        if self.engine_id.state == 'ready':
+            internal(agent).write({'state': 'active', 'activation_hash': agent._configuration_hash()})
+        return agent
 
     def action_add_tool_server(self):
         """Add a tool server dialog (approved mock 2026-11-08, board 9): AI Agent managers only."""

@@ -12,6 +12,18 @@ Format:
 
 
 
+## 2026-11-09 — AI Agent: the company profile and agent come with the connection
+
+- Change (owner): when a Hermes connection checks out (Check connection, Start Hermes, choosing the default model), it
+  makes the company's Hermes profile if there is none on that connection, syncs it, and so gets the company's AI
+  assistant user; once the profile is in Hermes it adds the company agent ("<company> Assistant", for everyone in the
+  company, on the company profile) and activates it. Syncing the company profile by hand does the same. Each is made
+  once; a company profile someone archived is not made again, and an agent the company already has for everyone
+  counts as the company agent.
+- Affected areas: ai_agent (configuration.py `_ensure_company_setup`, profile.py `_sync_to_hermes`,
+  `_ensure_company_agent`, tests).
+- Compatibility: nothing changes for a connection until it is checked again.
+
 ## 2026-11-09 — Marketing: a shorter menu, pages titled like their menu item
 
 - Change (owner, approved board 7 of the Marketing mocks): the Marketing menu goes from 25 to 16 pages. Leaving the

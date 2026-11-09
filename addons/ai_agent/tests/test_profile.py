@@ -123,6 +123,39 @@ class TestHermesProfiles(TransactionCase):
         with management, run_api:
             profile.action_sync()
 
+    def test_a_checked_connection_sets_up_the_company_profile_assistant_and_agent(self):
+        """Owner, 2026-11-09: a connection that checks out gets the company profile, synced, the company's AI
+        assistant user and the company agent, all made automatically, once."""
+        fake = FakeHermes()
+        Engine = type(self.engine)
+        management, run_api = self._patched(fake)
+        with management, run_api, patch.object(Engine, '_inspect', return_value=({}, [])), \
+                patch.object(Engine, '_model_catalog', return_value=[]):
+            self.engine.action_check()
+            self.engine.action_check()
+        Profile = self.env['ai.agent.profile'].with_context(active_test=False)
+        profile = Profile.search([('kind', '=', 'company'), ('engine_id', '=', self.engine.id)])
+        self.assertEqual(len(profile), 1, 'one company profile, however often the connection is checked')
+        self.assertEqual((profile.name, profile.state), (self.env.company.name, 'in_sync'))
+        self.assertTrue(self.env.company.ai_assistant_user_id, 'the company profile brings the company assistant')
+        agent = self.env['ai.agent'].with_context(active_test=False).search(
+            [('engine_id', '=', self.engine.id), ('access_scope', '=', 'company'), ('department_id', '=', False)])
+        self.assertEqual(len(agent), 1, 'one company agent')
+        self.assertEqual((agent.state, agent.profile_id), ('active', profile))
+        self.assertEqual(profile.assistant_user_id, self.env.company.ai_assistant_user_id)
+
+    def test_an_archived_company_profile_is_not_made_again(self):
+        profile = self.env['ai.agent.profile'].create({'name': 'Company', 'kind': 'company',
+                                                       'engine_id': self.engine.id})
+        profile.active = False
+        management, run_api = self._patched(FakeHermes())
+        with management, run_api:
+            self.engine._ensure_company_setup()
+        self.assertEqual(self.env['ai.agent.profile'].with_context(active_test=False).search_count(
+            [('kind', '=', 'company'), ('engine_id', '=', self.engine.id)]), 1)
+        self.assertFalse(self.env['ai.agent'].search_count([('engine_id', '=', self.engine.id),
+                                                            ('department_id', '=', False)]))
+
     def test_profile_names_are_hermes_safe(self):
         self.assertEqual(profile_name('Human Resources'), 'human-resources')
         self.assertEqual(profile_name('Ventes & Marketing — Été'), 'ventes-marketing-ete')

@@ -522,7 +522,8 @@ class TestAgent(TransactionCase):
              patch('odoo.addons.ai_agent.services.secrets.local_keys', return_value={
                  'API_SERVER_KEY': 'synthetic-local-run', 'HERMES_DASHBOARD_SESSION_TOKEN': 'synthetic-local-management'}), \
              patch.object(type(engine), '_inspect', return_value=({}, [])), \
-             patch.object(type(engine), '_request', return_value={'providers': []}):
+             patch.object(type(engine), '_request', return_value={'providers': []}), \
+             patch.object(type(engine), '_ensure_company_setup'):  # covered in test_profile
             engine.action_check()
         self.assertEqual(engine.state, 'ready')
         self.assertEqual(engine._credential('run'), 'synthetic-local-run')

@@ -547,7 +547,27 @@ class Engine(models.Model):
                           'toolsets': False, 'models_catalog': False,
                           'hermes_runtime': engine._probe_runtime() if state == 'blocked' else 'running'}
             internal(engine).write({**values, 'checked_at': fields.Datetime.now()})
+            if values['state'] == 'ready':
+                engine._ensure_company_setup()
         return True
+
+    def _ensure_company_setup(self):
+        """A connection that checks out gets the company's Hermes profile, synced, and with it the company's AI
+        assistant user and the company agent (owner, 2026-11-09: nobody sets these up by hand). A company profile
+        someone archived stays archived."""
+        self.ensure_one()
+        Profile = self.env['ai.agent.profile'].sudo().with_context(active_test=False)
+        profile = Profile.search([('kind', '=', 'company'), ('company_id', '=', self.company_id.id),
+                                  ('engine_id', '=', self.id)], limit=1)
+        if not profile:
+            profile = internal(Profile).create({'name': self.company_id.name, 'kind': 'company',
+                                                'engine_id': self.id, 'company_id': self.company_id.id})
+        if not profile.active:
+            return
+        if profile.state in ('draft', 'failed'):
+            profile._sync_to_hermes()
+        else:
+            profile._ensure_company_agent()
 
     # -- the default model (approved mock 2026-11-07, boards 5 and 6) ------------------------------------------
     def _provider_options(self):
