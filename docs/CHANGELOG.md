@@ -12,6 +12,18 @@ Format:
 
 
 
+## 2026-11-09 — Marketing: Ask the assistant opens the marketing agent's chat; Portfolio in Odoo's layout
+
+- Change (owner): on the Marketing control panel (and the role panels), Ask the assistant shows only while a
+  marketing agent is active for the person: an agent of the marketing department or one set on a brand, that they may
+  chat with (AI Agent user right). It opens their chat with that agent in Discuss's chat window (the department's agent
+  first), instead of the instruction form. The Portfolio page uses Odoo's control panel (breadcrumb, summary, period
+  buttons on the right).
+- Affected areas: marketing_intel_ai (`assistant_chat.py`, now depends on `ai_discuss`), marketing_intel_assistant (its
+  always-on button removed), marketing_intel_team (department agents, role panel button), marketing_intel_plan
+  (panel.js/xml, portfolio.js/xml).
+- Known limitation: the instruction form (mi.assistant.request) is no longer opened from the panel.
+
 ## 2026-11-09 — AI Agent: the company profile and agent come with the connection
 
 - Change (owner): when a Hermes connection checks out (Check connection, Start Hermes, choosing the default model), it

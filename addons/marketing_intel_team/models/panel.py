@@ -11,6 +11,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.orm.domains import Domain
 from odoo.tools import format_date, formatLang
 
 from .team import ROLES as ROLE_LABELS, user_role
@@ -218,12 +219,26 @@ class Panel(models.AbstractModel):
             {'label': _('Leads'), 'value': str(sum(mine.mapped('result_leads')))},
         ]}
 
+    @api.model
+    def _mi_assistant_agent_domain(self):
+        """The marketing department's agents are the marketing assistant too."""
+        domain = super()._mi_assistant_agent_domain()
+        department = self.env['hr.department']._mi_department()
+        return domain | Domain('department_id', '=', department.id) if department else domain
+
+    @api.model
+    def _mi_assistant_agents(self):
+        """The marketing department's agent opens first."""
+        agents = super()._mi_assistant_agents()
+        department = self.env['hr.department']._mi_department()
+        return agents.sorted(lambda agent: (agent.sudo().department_id != department, agent.id))
+
     def _block_make(self, brands, plans):
         buttons = [{'label': _('New campaign'), 'action': 'marketing_intel_plan.action_plans'}]
         if self.env.ref('omni_social.campaigns', raise_if_not_found=False):
             buttons.append({'label': _('New post'), 'action': 'omni_social.campaigns'})
-        if self.env.ref('marketing_intel_assistant.action_assistant_new', raise_if_not_found=False):
-            buttons.append({'label': _('Ask the assistant'), 'action': 'marketing_intel_assistant.action_assistant_new'})
+        if self._mi_assistant_agents():
+            buttons.append({'label': _('Ask the assistant'), 'chat': True})
         if self.env.ref('marketing_intel.action_findings', raise_if_not_found=False):
             buttons.append({'label': _('Market changes'), 'action': 'marketing_intel.action_findings'})
         return {'title': _('Make something'), 'icon': 'add_circle', 'buttons': buttons,

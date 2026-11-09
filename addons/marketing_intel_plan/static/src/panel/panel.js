@@ -281,6 +281,13 @@ export class MarketingPanel extends Component {
         }
     }
 
+    /** Ask the assistant: the person's chat with the marketing agent, in a chat window as in Discuss. */
+    async askAssistant() {
+        const channelId = await this.orm.call("mi.panel", "open_assistant_chat", []);
+        const channel = await this.env.services["mail.store"]["discuss.channel"].getOrFetch(channelId);
+        channel?.open({ focus: true });
+    }
+
     async go(xmlid, context = {}) {
         try {
             return await this.action.doAction(xmlid, {

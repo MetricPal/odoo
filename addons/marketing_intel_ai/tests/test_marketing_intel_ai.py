@@ -280,3 +280,21 @@ class TestCampaignAutopilot(TransactionCase):
         self.assertEqual(plan.objectives_met, 'partly')
         self.assertEqual(plan.advice_ids.name, 'Start conversion earlier')
         self.assertFalse(plan.report_error)
+
+    def test_ask_the_assistant_opens_the_chat_with_the_marketing_agent(self):
+        """Owner, 2026-11-09: the button shows while a marketing agent is active for the person and opens their chat
+        with it (the Discuss chat window)."""
+        Panel = self.env['mi.panel'].with_user(self.user)
+        self.assertEqual(Panel._mi_assistant_agents(), self.agent, "the brand's agent is the marketing assistant")
+        channel = self.env['discuss.channel'].browse(Panel.open_assistant_chat())
+        self.assertEqual(channel.ai_agent_id, self.agent)
+        self.assertEqual(channel.channel_type, 'chat')
+        self.assertIn(self.user.partner_id, channel.channel_member_ids.partner_id)
+        self.assertEqual(Panel.open_assistant_chat(), channel.id, 'the same chat every time')
+        # Without the AI Agent user right, or once the agent is paused, there is no button and no chat.
+        marketer = new_test_user(self.env, 'miai_marketer', groups='marketing_intel.group_mi_user')
+        self.assertFalse(self.env['mi.panel'].with_user(marketer)._mi_assistant_agents())
+        self.agent.action_pause()
+        self.assertFalse(Panel._mi_assistant_agents())
+        with self.assertRaises(UserError):
+            Panel.open_assistant_chat()

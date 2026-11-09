@@ -5,7 +5,7 @@
     'summary': 'AI suggests campaigns, writes every channel and sends them for review; you approve',
     'description': 'An AI agent suggests campaigns, an analysis and risks, and can run a campaign: it fills the brief, writes each channel and sends it for review. Answers are validated; nothing goes out before a person approves.',
     'author': 'metric.io',
-    'depends': ['marketing_intel', 'marketing_intel_plan', 'ai_agent'],
+    'depends': ['marketing_intel', 'marketing_intel_plan', 'ai_agent', 'ai_discuss'],
     'data': [
         'views/brief_views.xml',
         'views/autopilot_views.xml',

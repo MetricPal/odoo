@@ -1,24 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="marketing_intel_plan.Portfolio">
-        <div class="o_mi_panel o_mi_portfolio h-100 overflow-auto">
+        <!-- Odoo's control panel: the page name and its period on the left, the period buttons on the right. -->
+        <div class="o_mi_panel_root h-100">
+          <Layout display="{ controlPanel: {} }">
+            <t t-set-slot="control-panel-additional-actions">
+                <span t-if="this.state.data" class="text-muted small ms-2 text-nowrap">Every brand side by side · <t t-esc="this.state.data.label"/></span>
+            </t>
+            <t t-set-slot="control-panel-navigation-additional">
+                <div class="btn-group" role="group" aria-label="Period">
+                    <button t-foreach="[['month', 'This month'], ['quarter', 'This quarter'], ['year', 'This year']]"
+                            t-as="p" t-key="p[0]" type="button" class="btn btn-secondary"
+                            t-att-class="{ active: this.state.period === p[0] }"
+                            t-att-aria-pressed="this.state.period === p[0] ? 'true' : 'false'"
+                            t-on-click="() => this.setPeriod(p[0])" t-esc="p[1]"/>
+                </div>
+            </t>
+        <div class="o_mi_panel o_mi_portfolio">
             <div t-if="!this.state.data" class="p-5 text-center text-muted">Loading…</div>
             <t t-else="">
                 <t t-set="data" t-value="this.state.data"/>
-                <header class="o_mi_panel_head">
-                    <div>
-                        <h1>Portfolio</h1>
-                        <p class="text-muted mb-0">Every brand side by side · <t t-esc="data.label"/></p>
-                    </div>
-                    <div class="o_mi_panel_tools">
-                        <div class="btn-group" role="group" aria-label="Period">
-                            <button t-foreach="[['month', 'This month'], ['quarter', 'This quarter'], ['year', 'This year']]"
-                                    t-as="p" t-key="p[0]" class="btn"
-                                    t-att-class="this.state.period === p[0] ? 'btn-primary' : 'btn-light'"
-                                    t-on-click="() => this.setPeriod(p[0])" t-esc="p[1]"/>
-                        </div>
-                    </div>
-                </header>
 
                 <section class="o_mi_kpis">
                     <div class="o_mi_kpi"><span class="o_mi_kpi_label">Budget</span>
@@ -120,6 +121,8 @@
                 </section>
 
             </t>
+        </div>
+          </Layout>
         </div>
     </t>
 </templates>

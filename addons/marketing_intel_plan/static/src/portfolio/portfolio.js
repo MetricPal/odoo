@@ -1,6 +1,7 @@
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { Layout } from "@web/search/layout";
 import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 
 export const HEALTH = {
@@ -11,6 +12,7 @@ export const HEALTH = {
 
 export class MarketingPortfolio extends Component {
     static template = "marketing_intel_plan.Portfolio";
+    static components = { Layout };
     props = useProps();
 
     setup() {

@@ -231,3 +231,24 @@ class TestMarketingTeam(TransactionCase):
         department = self.env['hr.department'].create({'name': 'No manager'})
         self.assertFalse(department.mi_hod_user_id)
         self.assertEqual(department.mi_hod_label, "Nobody: set the department's manager")
+
+    def test_the_marketing_departments_agent_is_the_assistant(self):
+        """Owner, 2026-11-09: an active agent of the marketing department makes Ask the assistant appear, and opens
+        first."""
+        from odoo.addons.ai_agent.models.common import internal
+        department = self.env['hr.department']._mi_department()
+        self.assertTrue(department)
+        with patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443',
+                                       'AI_AGENT_SECRET_TEST': 'synthetic-not-a-live-key'}):
+            engine = self.env['ai.agent.engine'].create({
+                'name': 'Team engine', 'url': 'https://hermes.example.com', 'secret_reference': 'AI_AGENT_SECRET_TEST',
+                'management_url': 'https://hermes.example.com', 'management_secret_reference': 'AI_AGENT_SECRET_TEST'})
+        internal(engine).write({'state': 'ready'})
+        self.junior.group_ids = [Command.link(self.env.ref('ai_agent.group_user').id)]
+        Panel = self.env['mi.panel'].with_user(self.junior)
+        self.assertFalse(Panel._mi_assistant_agents())
+        agent = self.env['ai.agent'].create({'name': 'Marketing agent', 'engine_id': engine.id,
+                                             'department_id': department.id, 'access_scope': 'company'})
+        agent.action_activate()
+        self.assertEqual(Panel._mi_assistant_agents()[:1], agent)
+        self.assertIn('Ask the assistant', [b['label'] for b in Panel._block_make(self.env['mi.brand'], self.env['mi.plan'])['buttons']])

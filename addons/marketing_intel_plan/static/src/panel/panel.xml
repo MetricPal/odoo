@@ -39,7 +39,7 @@
                         <i class="oi me-1" data-icon="add"/>New campaign</button>
                     <button class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_plan.action_portfolio')">
                         <i class="oi me-1" data-icon="show_chart"/>Portfolio</button>
-                    <button t-if="this.state.data.assistant" class="btn btn-secondary" t-on-click="() => this.go('marketing_intel_assistant.action_assistant_new')">
+                    <button t-if="this.state.data.assistant" class="btn btn-secondary" t-on-click="() => this.askAssistant()">
                         <i class="oi me-1" data-icon="forum"/>Ask the assistant</button>
                     <button t-if="!this.state.editing" class="btn btn-secondary" title="Customise" aria-label="Customise" t-on-click="() => this.startEdit()">
                         <i class="oi" data-icon="settings"/></button>
@@ -374,7 +374,7 @@
                                 </button>
                                 <div t-if="extra.buttons and extra.buttons.length" class="o_mi_extra_buttons">
                                     <button t-foreach="extra.buttons" t-as="b" t-key="b_index" type="button" class="btn btn-secondary btn-sm"
-                                            t-on-click="() => this.go(b.action)" t-esc="b.label"/>
+                                            t-on-click="() => b.chat ? this.askAssistant() : this.go(b.action)" t-esc="b.label"/>
                                 </div>
                                 <p t-if="extra.note" class="o_mi_extra_note text-muted small mb-0" t-esc="extra.note"/>
                                 <t t-set="explained" t-value="this.state.explain[block.key]"/>

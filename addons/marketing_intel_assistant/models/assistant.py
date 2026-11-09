@@ -584,13 +584,3 @@ class AssistantRequest(models.Model):
             plan.name, plan.brand_id.name, status, format_date(self.env, plan.date_start),
             format_date(self.env, plan.date_end), plan.channels_out, plan.channel_count, Markup('').join(rows),
             _('Next step:'), plan.next_step or '-')
-
-
-class Panel(models.AbstractModel):
-    _inherit = 'mi.panel'
-
-    @api.model
-    def get_panel(self, brand_id=False):
-        data = super().get_panel(brand_id=brand_id)
-        data['assistant'] = True
-        return data

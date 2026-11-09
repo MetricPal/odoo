@@ -310,6 +310,12 @@ panel shows that brand; removing the tag shows all brands), with Favorites and a
 view per role) in its dropdown; **New campaign**,
 **Portfolio**, **Ask the assistant** and **Customise** (gear) on the right.
 
+**Ask the assistant** shows only while a marketing agent is active for the person (an agent of the marketing
+department, or one set on a brand, that they may chat with); it opens their chat with that agent in Discuss's chat
+window, the department's agent first (owner, 2026-11-09). The role panels' "Ask the assistant" does the same. The
+**Portfolio** uses the same Odoo control panel: its name, "Every brand side by side · <dates>", and the period buttons
+(This month, This quarter, This year) on the right.
+
 ## Marketing menu (board 7, 2026-11-09)
 
 Control panel · Campaigns (Campaigns, Requests, Tasks, Templates) · Workflows (opens the workflows) · Insights
