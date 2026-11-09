@@ -110,7 +110,7 @@ class Department(models.Model):
 
     @api.model
     def action_open_mi_department(self):
-        """Marketing › Configuration › Department: the marketing department's Marketing tab."""
+        """The marketing department's Marketing tab (opened from the Department dashboard's links)."""
         department = self._mi_department()
         view = self.env.ref('hr.view_department_form').id
         if department:

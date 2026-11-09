@@ -65,6 +65,4 @@
     <field name="state">code</field>
     <field name="code">action = model.action_open_mi_department()</field>
   </record>
-  <menuitem id="menu_mi_department" name="Department" parent="marketing_intel.menu_setup" action="action_mi_department"
-            groups="marketing_intel.group_mi_user" sequence="1"/>
 </odoo>

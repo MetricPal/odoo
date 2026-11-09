@@ -396,7 +396,7 @@ Submitting, Running, Stopping, Completed, Failed; "Queued · Hermes busy" when H
 
 Approved mocks 2026-11-09 (Marketing canvas boards 5.1 to 6.3, ADR 0016).
 
-- **Department › Marketing tab** (approved board 5.1b; Marketing › Configuration › Department): "This is the
+- **Department › Marketing tab** (approved board 5.1b; Employees › Departments; no Marketing menu item, owner 2026-11-09): "This is the
   marketing department"; the team = the department's employees (Employee, Marketing role editable, Manager (reviews
   their work), Reviews whose work); "What a senior may release alone" (budget, audience, channels); Proposal approvers.
   Replaces the earlier Team and roles page.
