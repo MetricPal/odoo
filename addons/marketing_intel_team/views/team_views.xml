@@ -11,17 +11,13 @@
       <xpath expr="//page[@name='ai']" position="attributes">
         <attribute name="groups">ai_agent.group_user</attribute>
       </xpath>
+      <xpath expr="//notebook" position="before">
+        <field name="mi_is_marketing" invisible="1"/>
+      </xpath>
       <xpath expr="//page[@name='ai']" position="after">
-        <page string="Marketing" name="marketing" groups="marketing_intel.group_mi_user,hr.group_hr_user">
-          <field name="mi_is_marketing" invisible="1"/>
-          <div class="alert alert-info mb-3" role="status" invisible="not mi_is_marketing">
-            This is the marketing department: most people with Marketing access work here. Its manager is the head of
-            department; its employees are the marketing team.
-          </div>
-          <div class="text-muted mb-3" invisible="mi_is_marketing">
-            The marketing department is the department where most people with Marketing access work; this is not it.
-          </div>
-          <div invisible="not mi_is_marketing">
+        <page string="Marketing" name="marketing" groups="marketing_intel.group_mi_user,hr.group_hr_user"
+              invisible="not mi_is_marketing">
+          <div>
             <separator string="The team: this department's employees"/>
             <field name="mi_member_ids" nolabel="1">
               <list editable="bottom" create="0" delete="0">

@@ -14,7 +14,7 @@ Format:
 
 ## 2026-11-09 — Marketing: the marketing department is found, not ticked
 
-- Change (owner: "Marketing users' dept"): the "This is the marketing department" checkbox is removed. The marketing department is the department where most people with Marketing access work (administrators count only when nobody else has access); the department's Marketing tab says whether it is the one.
+- Change (owner: "Marketing users' dept"): the "This is the marketing department" checkbox is removed. The marketing department is the department where most people with Marketing access work (administrators count only when nobody else has access); the Marketing tab shows only on that department (no extra line).
 - Reason: owner request; the checkbox was an extra setting nobody asked for.
 - Affected areas: marketing_intel_team (`hr.department.mi_is_marketing` is computed and searchable; tab; tests).
 - Compatibility: `marketing_intel_team` 20.0.1.2.0. On a database where the Marketing people have no department in Employees, no marketing department is found and Marketing works as before until they get one.

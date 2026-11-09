@@ -396,8 +396,8 @@ Submitting, Running, Stopping, Completed, Failed; "Queued · Hermes busy" when H
 
 Approved mocks 2026-11-09 (Marketing canvas boards 5.1 to 6.3, ADR 0016).
 
-- **Department › Marketing tab** (approved board 5.1b; Employees › Departments; no Marketing menu item, owner 2026-11-09): a line
-  saying whether this is the marketing department (found: where most people with Marketing access work; no checkbox); the team = the department's employees (Employee, Marketing role editable, Manager (reviews
+- **Department › Marketing tab** (approved board 5.1b; Employees › Departments; no Marketing menu item, owner 2026-11-09): shown only on
+  the marketing department (found: where most people with Marketing access work; no checkbox, no extra line); the team = the department's employees (Employee, Marketing role editable, Manager (reviews
   their work), Reviews whose work); "What a senior may release alone" (budget, audience, channels); Proposal approvers.
   Replaces the earlier Team and roles page.
 - **Campaign**: a junior sees **Send to senior review** instead of Send for review; the senior sees **Accept and
