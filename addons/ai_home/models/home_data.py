@@ -113,7 +113,8 @@ class AiHomeItem(models.Model):
         if conversation and conversation.user_id != self.env.user:
             conversation = self.env['ai.agent.conversation']
         attachments = self.env['ir.attachment'].browse([int(i) for i in attachment_ids or []]).exists()
-        run = self.env['ai.agent.run']._queue(agent, prompt, conversation or None, attachments=attachments)
+        run = self.env['ai.agent.run']._ask(agent, prompt, caller='home', conversation=conversation or None,
+                                            attachments=attachments)
         return {'runId': run.id, 'conversationId': run.conversation_id.id}
 
     @api.model

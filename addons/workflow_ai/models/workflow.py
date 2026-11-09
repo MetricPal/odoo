@@ -62,7 +62,7 @@ class WorkflowDefinition(models.Model):
             'Trigger keys: ' + '; '.join(f'{key} = {label}' for key, label in triggers.items()),
             f'At most {STEP_LIMIT} steps. Do not claim anything was created or run.',
         ])
-        run = self.env['ai.agent.run']._queue(agent, prompt, origin=workflow)
+        run = self.env['ai.agent.run']._ask(agent, prompt, caller='workflow', origin=workflow)
         workflow.ai_run_id = run.sudo().id
         workflow.message_post(body=_('Asked %s to draft this workflow.', agent.name))
         return workflow.action_open_builder()

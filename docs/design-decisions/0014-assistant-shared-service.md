@@ -1,6 +1,7 @@
 # ADR 0014: The assistant is the shared service of the ERP
 
-Date: 2026-11-09. Status: phase 1 accepted and built (owner, 2026-11-09); phase 2 **proposed, for owner review**.
+Date: 2026-11-09. Status: phases 1 and 2 built 2026-11-09 (owner: "do next"); the per-caller limits and the load
+view wait for an approved mock.
 Plan: `docs/exec-plans/active/2026-11-09-assistant-shared-service.md`. Builds on ADR 0012 and 0013.
 
 ## Context
@@ -37,19 +38,29 @@ cap to 2.
    already redacted it). Setup errors keep up to 2,000.
 7. **ERP Hermes** is provisioned with `max_concurrent_runs: 10`.
 
-### Phase 2 (proposed)
+### Phase 2 (built)
 
-1. **One entry point.** `ai.agent.run._ask(agent, prompt, *, origin=None, conversation=None, attachments=None,
-   on_behalf_of=None, caller)`. With a person: their rights and the assistant's (ADR 0012), interactive. Without:
-   the agent's assistant user, automation. `_queue` and `_queue_for_record` remain as wrappers; every caller moves.
-2. **Caller.** `ai.agent.run.caller` (chat, home, chatter, ask, workflow, omnichannel, social, marketing, …) for
-   reporting, and optional per-caller daily limits per agent, so one automation cannot use an agent's whole day.
-   Automation runs no longer count against a person's daily limit.
-3. **Provider health.** When Hermes reports a provider quota or "model not found" failure, Odoo stops sending to
-   that model for a few minutes and fails waiting runs on it at once with the full reason, instead of using slots on
-   requests that will fail. A fallback model per agent only if Hermes v0.21 has no fallback of its own (to check).
-4. **A load view** (needs an approved mock): in flight and waiting per connection, profile and agent; oldest wait;
-   failures by reason; Stop on waiting runs.
+1. **One entry point.** `ai.agent.run._ask(agent, prompt, *, caller, origin=None, conversation=None,
+   attachments=None, automation=False, as_assistant=False)`. A person asking: their rights and the assistant's (ADR
+   0012), interactive. `automation=True`: for a person but in the background, same rights, after people's runs.
+   `as_assistant=True`: no person, the agent's assistant user alone. `_queue` (low level) and `_queue_for_record`
+   (wrapper) remain; every module now calls `_ask`: Ask AI, Home, Discuss, workflows (draft and the Ask agent step),
+   Omnichannel, Social, marketing (brief, research, report, autopilot, assistant, flow AI split).
+2. **Caller.** `ai.agent.run.caller` (ask, home, chat, workflow, omnichannel, social, marketing, other).
+   Automation runs no longer count against a person's daily limit. Background marketing work (automatic analysis
+   after research, the learning note, the flow AI split) is automation.
+3. **Paused models.** When a run fails with a reason that will repeat for every question to the same model, the
+   model (`provider/model` of the agent, else of its profile) is paused on the Hermes connection
+   (`ai.agent.engine.model_pauses`): 60 minutes for "limit: 0" (no quota at all) or "model not found", 10 minutes
+   for other quota or rate limits. Waiting runs for it fail at once with Hermes's reason; the pause ends by itself.
+   Only Odoo writes pauses. Hermes has its own `fallback_providers` (verified in v0.21 `config_defaults.py`), so
+   Odoo does not add a fallback model; it is configured in Hermes.
+
+### Still to do (need an approved mock)
+
+- Optional per-caller daily limits per agent, so one automation cannot use an agent's whole day (a setting).
+- A load view: in flight and waiting per connection, profile and agent; oldest wait; failures by reason; paused
+  models with Resume; Stop on waiting runs; the connection's "Runs at the same time".
 
 ## Alternatives considered
 

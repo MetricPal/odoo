@@ -89,6 +89,9 @@ class Engine(models.Model):
     can_start_hermes = fields.Boolean(compute='_compute_can_start_hermes')
     demo = fields.Boolean(readonly=True, copy=False,
                           help='Created by demo data: a local loopback connection allowed without the deployment allowlist.')
+    model_pauses = fields.Json(readonly=True, groups='ai_agent.group_manager', copy=False,
+                               help='Models paused after a provider failure that would repeat (quota used up, model '
+                                    'not found): {"provider/model": {"until", "reason", "run"}}.')
     max_concurrent = fields.Integer(string='Runs at the same time', default=10, required=True,
                                     help='Runs sent to this Hermes at once, all agents and profiles together (Hermes '
                                          'caps runs per gateway: keep this at or below its max_concurrent_runs). '
@@ -237,7 +240,7 @@ class Engine(models.Model):
         keys = (vals.pop('api_key', False), vals.pop('management_api_key', False))
         if not trusted(self) and not loading_demo(self) and \
                 {'state', 'revision', 'checked_at', 'capabilities', 'toolsets', 'models_catalog', 'status_message',
-                 'hermes_runtime'} & vals.keys():
+                 'hermes_runtime', 'model_pauses'} & vals.keys():
             raise AccessError(_('Use Check connection to update readiness.'))
         if not loading_demo(self) and \
                 {'url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection'} & vals.keys():

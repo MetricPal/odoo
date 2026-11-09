@@ -135,7 +135,7 @@ class WorkflowRun(models.Model):
             raise UserError(_('%s has no AI assistant user. An AI Agent manager creates it on the department.',
                               agent.name))
         prompt = self._ai_prompt(step, record.with_user(assistant))
-        run = self.env['ai.agent.run']._queue_for_record(agent, prompt, self)
+        run = self.env['ai.agent.run']._ask(agent, prompt, caller='workflow', origin=self, as_assistant=True)
         self._set(state='waiting', ai_run_id=run.id, wake_at=fields.Datetime.now() + CHECK_AGAIN)
         self._log(_('Asked %(agent)s, as %(assistant)s. Waiting for the answer.', agent=agent.name,
                     assistant=assistant.name), 'waiting')

@@ -13,7 +13,7 @@ class Ask(models.TransientModel):
 
     def action_send(self):
         self.ensure_one()
-        run = self.env['ai.agent.run']._queue(self.agent_id, self.prompt, self.conversation_id,
-                                              attachments=self.attachment_ids)
+        run = self.env['ai.agent.run']._ask(self.agent_id, self.prompt, caller='ask', conversation=self.conversation_id,
+                                            attachments=self.attachment_ids)
         return {'type': 'ir.actions.act_window', 'res_model': 'ai.agent.conversation', 'res_id': run.conversation_id.id,
                 'view_mode': 'form', 'target': 'current', 'name': _('Conversation')}

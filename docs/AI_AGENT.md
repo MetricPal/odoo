@@ -69,6 +69,12 @@ What needs my approval?
   Hermes (HTTP 429) puts the run back in the queue; a run still waiting after 30 minutes
   fails with a reason; a stop Hermes does not confirm within 5 minutes ends the run here.
   At most 50 questions wait per agent. Hermes's failure reason is kept whole.
+- Every module asks through `ai.agent.run._ask(agent, prompt, caller=..., origin=...)`
+  (ADR 0014); `automation=True` for background work done for a person (it does not use
+  up their daily questions), `as_assistant=True` when no person asks. A model that fails
+  with "quota used up" or "model not found" is paused on its Hermes connection (10 or 60
+  minutes) and questions waiting for it fail at once with Hermes's reason. Fallback
+  models are configured in Hermes (`fallback_providers`).
 - Status checks that fail are retried automatically with backoff. Only an
   unconfirmed submission needs a manager check. A definite rejection (HTTP 4xx
   other than 408/429) fails without retry.

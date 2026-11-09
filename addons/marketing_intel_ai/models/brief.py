@@ -60,7 +60,7 @@ class Brand(models.Model):
             try:
                 with self.env.cr.savepoint():
                     run.with_user(requester).with_context(allowed_company_ids=[self.company_id.id])._ai_ask(
-                        self.ai_agent_id.with_user(requester))
+                        self.ai_agent_id.with_user(requester), automation=True)
             except Exception as error:  # noqa: BLE001 - research evidence must be kept even if AI is unavailable
                 _logger.info('Automatic AI analysis skipped for run %s: %s', run.id, error)
                 run.sudo().ai_error = _('Automatic AI analysis was not started: %s', str(error)[:300])
@@ -164,11 +164,12 @@ class Run(models.Model):
             raise UserError(_('No AI agent is available to you. Ask an AI manager to activate one.'))
         raise UserError(_('Choose the AI agent on the brand (%s) first.', self.brand_id.name))
 
-    def _ai_ask(self, agent):
+    def _ai_ask(self, agent, automation=False):
         self.ensure_one()
         if self.ai_run_id and self.ai_run_id.sudo().state in RUNNING:
             raise UserError(_('AI is already analysing this run.'))
-        run = self.env['ai.agent.run']._queue(agent, self._ai_prompt(), origin=self)
+        run = self.env['ai.agent.run']._ask(agent, self._ai_prompt(), caller='marketing', origin=self,
+                                            automation=automation)
         self.write({'ai_run_id': run.sudo().id, 'ai_error': False})
         return run
 

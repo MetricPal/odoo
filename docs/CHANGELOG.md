@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-11-09 — AI Agent: one entry point for every caller; used-up models are paused
+
+- Change (ADR 0014, phase 2): `ai.agent.run._ask(agent, prompt, *, caller, origin, conversation, attachments, automation, as_assistant)` is the one way modules ask an agent; all 14 call sites moved (Ask AI, Home, Discuss, workflows, Omnichannel, Social, marketing). Runs record their `caller`. Background work done for a person (`automation=True`: automatic analysis after research, campaign learning note, flow AI split) no longer counts against that person's daily limit. When Hermes reports a failure that will repeat (quota used up, "limit: 0", model not found, rate limit), the model is paused on the connection (`ai.agent.engine.model_pauses`, 10 or 60 minutes) and questions waiting for it fail at once with Hermes's full reason instead of using slots. Fallback models stay in Hermes (`fallback_providers`).
+- Reason: owner: the assistant serves every automation and every person; plan phase 2 ("do next").
+- Affected areas: ai_agent (models/conversation.py, models/configuration.py, wizard/ask.py, tests/test_capacity.py), ai_home, ai_discuss, workflow_ai, omni_ai, social_ai, marketing_intel_ai, marketing_intel_assistant, marketing_intel_flow.
+- Compatibility: version 20.0.1.17.0 (new fields: update `ai_agent`). `_queue` and `_queue_for_record` still work. Per-caller limits and a load view are not built (need a mock). No new screen.
+
 ## 2026-11-09 — AI Agent: questions wait for a free slot instead of failing; full Hermes reasons
 
 - Change (ADR 0014, phase 1): the assistant serves every automation and every person at once. Past an agent's concurrency limit a question now waits in the queue (only the daily limits or 50 waiting questions refuse it). The runs job sends waiting runs within the agent's limit and a new connection-wide limit (`ai.agent.engine.max_concurrent`, default 10: Hermes caps runs per gateway, across every profile), people first (`ai.agent.run.priority`: interactive or automation). A Hermes HTTP 429 ("all slots taken") now puts the run back in the queue with backoff (`HermesBusy`) instead of "Needs manager check". `uncertain` runs no longer hold a slot; a stop Hermes does not confirm within 5 minutes ends the run here; a question waiting more than 30 minutes fails with a reason. `error_message` is now a Text and Hermes's failure reason is kept up to 8,000 characters (it was cut at 300, which hid "limit: 0 … Free Tier"); setup errors keep up to 2,000. The ERP Hermes template sets `max_concurrent_runs: 10` (was 2).

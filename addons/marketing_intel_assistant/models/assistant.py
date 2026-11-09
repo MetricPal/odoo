@@ -136,7 +136,7 @@ class AssistantRequest(models.Model):
                          '“report Open day”, “create campaign Black Friday with email and social from 20 Nov to '
                          '30 Nov”, “pause workflow Comment INFO”.'))
             return
-        run = self.env['ai.agent.run']._queue(agent, self._ai_prompt(), origin=self)
+        run = self.env['ai.agent.run']._ask(agent, self._ai_prompt(), caller='marketing', origin=self)
         self.write({'state': 'thinking', 'run_id': run.id, 'understood_by': 'ai'})
 
     def _agent(self):

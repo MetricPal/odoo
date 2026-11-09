@@ -35,6 +35,17 @@ STOP_CONFIRM_MAX = timedelta(minutes=5)  # a stop Hermes has not confirmed by th
 BUSY_BACKOFF = (5, 10, 20, 30, 60)  # seconds before submitting again after Hermes said it was full
 REASON_MAX = 8000  # Hermes's failure reason is kept whole up to this safety length
 PRIORITIES = [('interactive', 'A person is waiting'), ('automation', 'Automation')]
+# Who asked (ADR 0014): every module asks through ``ai.agent.run._ask`` and names itself.
+CALLERS = [('ask', 'Ask AI'), ('home', 'Home'), ('chat', 'Discuss'), ('workflow', 'Workflows'),
+           ('omnichannel', 'Omnichannel'), ('social', 'Social'), ('marketing', 'Marketing'), ('other', 'Other')]
+# Provider failures that will repeat for every question sent to the same model: the model is paused for a while and
+# questions waiting for it fail at once with the reason, instead of using slots on requests that will fail.
+MODEL_FAILURES = (
+    # (pattern, minutes paused); "limit: 0" means the plan has no quota at all for this model.
+    (re.compile(r'limit:\s*0\b', re.I), 60),
+    (re.compile(r'HTTP 404|NOT_FOUND|model\b.{0,80}\b(not found|does not exist|no longer available)', re.I), 60),
+    (re.compile(r'RESOURCE_EXHAUSTED|insufficient_quota|quota|HTTP 429|rate.?limit', re.I), 10),
+)
 
 
 class Conversation(models.Model):
@@ -104,6 +115,8 @@ class Run(models.Model):
                                 help='Runs a person is waiting for are sent to Hermes before automation runs.')
     busy_retries = fields.Integer(readonly=True, help='Times Hermes was full when this run was submitted.')
     stop_sent_at = fields.Datetime(readonly=True, help='When the stop was sent to Hermes.')
+    caller = fields.Selection(CALLERS, default='other', required=True, readonly=True, index=True,
+                              help='The part of the ERP that asked.')
     input_tokens = fields.Integer(readonly=True)
     output_tokens = fields.Integer(readonly=True)
     runtime_model = fields.Char(readonly=True)
@@ -133,10 +146,42 @@ class Run(models.Model):
         internal(self.env['ai.agent.event'].sudo()).create({'run_id': self.id, 'kind': kind, 'detail': detail})
 
     @api.model
-    def _queue(self, agent, prompt, conversation=None, attachments=None, origin=None, priority='interactive'):
+    def _ask(self, agent, prompt, *, caller, origin=None, conversation=None, attachments=None, automation=False,
+             as_assistant=False):
+        """The one way any module asks an agent (ADR 0014). Returns the queued run; ``origin`` (a record with
+        ``_ai_agent_finished(run)``) is told when it finishes.
+
+        - A person asking (default): the run reads what both the person and the agent's assistant user may read
+          (ADR 0012), counts against the person's daily limit and goes before automation runs.
+        - ``automation=True``: asked for a person but in the background (scheduled or chained work); same rights,
+          outside the person's daily limit, after the runs people are waiting for.
+        - ``as_assistant=True``: no person (a workflow step, a scheduled job): the agent's assistant user asks alone.
+          The caller has decided that asking is allowed; ``origin`` need not be writable by the assistant.
+        """
+        if caller not in dict(CALLERS):
+            raise UserError(_('Unknown caller of the AI agent.'))
+        if not as_assistant:
+            return self._queue(agent, prompt, conversation, attachments, origin,
+                               priority='automation' if automation else 'interactive', caller=caller)
+        assistant = agent._assistant_user()
+        if not assistant or not assistant.active:
+            raise UserError(_('%s has no AI assistant user. An AI Agent manager creates it on the department.',
+                              agent.sudo().name))
+        if origin is not None and not callable(getattr(type(origin), '_ai_agent_finished', None)):
+            raise UserError(_('This record cannot receive an AI answer.'))
+        run = self.with_user(assistant)._queue(agent.with_user(assistant), prompt, priority='automation',
+                                               caller=caller).sudo()
+        if origin is not None:
+            internal(run).write({'origin_model': origin._name, 'origin_res_id': origin.id})
+        return run
+
+    @api.model
+    def _queue(self, agent, prompt, conversation=None, attachments=None, origin=None, priority='interactive',
+               caller='other'):
+        """Low-level admission; modules call :meth:`_ask`."""
         agent._usable()
-        if priority not in dict(PRIORITIES):
-            raise UserError(_('Unknown request priority.'))
+        if priority not in dict(PRIORITIES) or caller not in dict(CALLERS):
+            raise UserError(_('Unknown request priority or caller.'))
         if origin is not None:
             # Only a record the requester may change can receive the answer.
             origin.ensure_one()
@@ -157,9 +202,10 @@ class Run(models.Model):
         daily = self.sudo().search_count([('agent_id', '=', agent.id), ('create_date', '>=', today)])
         if daily >= agent.max_requests_per_day:
             raise UserError(_('This agent has reached its request limit. Wait or ask a manager to review it.'))
-        if agent.max_requests_per_user_day:
+        if agent.max_requests_per_user_day and priority == 'interactive':
+            # Background work done for a person does not use up their own questions (ADR 0014).
             mine = self.sudo().search_count([('agent_id', '=', agent.id), ('user_id', '=', self.env.uid),
-                                             ('create_date', '>=', today)])
+                                             ('priority', '=', 'interactive'), ('create_date', '>=', today)])
             if mine >= agent.max_requests_per_user_day:
                 raise UserError(_('You reached your daily limit of %s questions for this agent. Try again tomorrow.',
                                   agent.max_requests_per_user_day))
@@ -177,7 +223,7 @@ class Run(models.Model):
                                            'attachment_ids': [fields.Command.set(attachments.ids)],
                                            'origin_model': origin._name if origin is not None else False,
                                            'origin_res_id': origin.id if origin is not None else 0,
-                                           'priority': priority})
+                                           'priority': priority, 'caller': caller})
         if attachments:
             # The files now belong to the run: whoever may read the run may read them.
             attachments.sudo().write({'res_model': self._name, 'res_id': run.id})
@@ -389,6 +435,8 @@ class Run(models.Model):
                 message = _('Hermes stopped without a completed answer: %s', reason.strip()[:REASON_MAX])
             values.update({'state': 'failed' if status == 'failed' else 'cancelled',
                            'finished_at': fields.Datetime.now(), 'error_message': message})
+            if status == 'failed' and isinstance(reason, str):
+                self._pause_model_after(reason.strip()[:REASON_MAX])
         elif status not in ('queued', 'running', 'started', 'stopping'):
             raise UserError(_('Unknown Hermes run state.'))
         else:
@@ -398,22 +446,43 @@ class Run(models.Model):
             self._event(self.state, _('Run reconciled from Hermes.'))
             self._notify_origin()
 
-    @api.model
-    def _queue_for_record(self, agent, prompt, origin):
-        """Ask an agent with no person, for a record such as a workflow run (ADR 0012, phase 5).
+    def _model_key(self):
+        """Which model a run is sent to, as Odoo knows it: the agent's model, else its profile's default model."""
+        agent = self.agent_id.sudo()
+        if agent.model:
+            return '%s/%s' % (agent.provider or '', agent.model)
+        profile = agent._run_profile()
+        if profile and profile.engine_model_id:
+            return '%s/%s' % (profile.engine_model_id.provider, profile.engine_model_id.model)
+        return 'default/%s' % (profile.hermes_name if profile else '')
 
-        The run is asked by the agent's AI assistant user, so it reads only what the assistant may read, and it counts
-        against the agent's limits. The caller decides that asking is allowed; ``origin`` is told when it finishes.
-        """
-        assistant = agent._assistant_user()
-        if not assistant or not assistant.active:
-            raise UserError(_('%s has no AI assistant user. An AI Agent manager creates it on the department.',
-                              agent.sudo().name))
+    def _pause_model_after(self, reason):
+        """A failure that will repeat for every question to this model pauses it on the connection."""
+        minutes = next((m for pattern, m in MODEL_FAILURES if pattern.search(reason)), 0)
+        if not minutes:
+            return
+        engine = self.agent_id.engine_id.sudo()
+        until = fields.Datetime.now() + timedelta(minutes=minutes)
+        pauses = dict(engine.model_pauses or {})
+        pauses[self._model_key()] = {'until': fields.Datetime.to_string(until), 'reason': reason, 'run': self.id}
+        internal(engine).write({'model_pauses': pauses})
+        self._event('model_paused', _('%(model)s paused on this Hermes connection until %(until)s UTC: questions '
+                                      'waiting for it fail at once.', model=self._model_key(),
+                                      until=fields.Datetime.to_string(until)))
+
+    def _model_pause(self):
+        """The current pause of this run's model, or None."""
+        pause = (self.agent_id.engine_id.sudo().model_pauses or {}).get(self._model_key())
+        if pause and fields.Datetime.to_datetime(pause['until']) > fields.Datetime.now():
+            return pause
+        return None
+
+    @api.model
+    def _queue_for_record(self, agent, prompt, origin, caller='other'):
+        """Ask an agent with no person, for a record such as a workflow run (ADR 0012, phase 5): see :meth:`_ask`."""
         if not callable(getattr(type(origin), '_ai_agent_finished', None)):
             raise UserError(_('This record cannot receive an AI answer.'))
-        run = self.with_user(assistant)._queue(agent.with_user(assistant), prompt, priority='automation').sudo()
-        internal(run).write({'origin_model': origin._name, 'origin_res_id': origin.id})
-        return run
+        return self._ask(agent, prompt, caller=caller, origin=origin, as_assistant=True)
 
     def _notify_origin(self):
         """Tell the asking record that the run finished, with the requester's permissions.
@@ -512,7 +581,15 @@ class Run(models.Model):
             return True
         run.invalidate_recordset()
         try:
-            if run.state == 'queued':
+            if run.state == 'queued' and (pause := run._model_pause()):
+                internal(run).write({'state': 'failed', 'finished_at': fields.Datetime.now(),
+                                     'error_message': _('Not sent: %(model)s is paused until %(until)s UTC after it '
+                                                        'failed for another question. Hermes said: %(reason)s',
+                                                        model=run._model_key(), until=pause['until'],
+                                                        reason=pause['reason'])})
+                run._event('failed', _('Not sent: the model is paused after a provider failure.'))
+                run._notify_origin()
+            elif run.state == 'queued':
                 run._submit()
             elif run.state == 'submitting':
                 # A prior worker lost its response. Never resubmit even with idempotency support.

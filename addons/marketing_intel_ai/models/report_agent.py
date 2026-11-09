@@ -95,7 +95,7 @@ class Plan(models.Model):
         if self.report_busy:
             raise UserError(_('The report agent is already writing.'))
         self.action_refresh_results()
-        run = self.env['ai.agent.run']._queue(self._ai_agent(), self._report_prompt(), origin=self)
+        run = self.env['ai.agent.run']._ask(self._ai_agent(), self._report_prompt(), caller='marketing', origin=self)
         self.sudo().write({'report_run_id': run.sudo().id, 'report_error': False})
         self.message_post(body=_('The report agent is drafting the takeaway and the evaluation.'))
         return True

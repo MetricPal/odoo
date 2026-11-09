@@ -160,7 +160,8 @@ class Plan(models.Model):
             raise UserError(_('The research agent works on proposals that are not in approval.'))
         if self.research_run_id and self.research_run_id.sudo().state in RUNNING:
             raise UserError(_('The research agent is already working on this proposal.'))
-        run = self.env['ai.agent.run']._queue(self._research_agent(), self._research_prompt(), origin=self)
+        run = self.env['ai.agent.run']._ask(self._research_agent(), self._research_prompt(), caller='marketing',
+                                            origin=self)
         self.sudo().write({'research_run_id': run.sudo().id, 'research_error': False})
         self.message_post(body=_('Market research started by the agent %s.', run.sudo().agent_id.name))
         return True

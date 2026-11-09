@@ -2,7 +2,7 @@ from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 from odoo import Command, fields
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.addons.mail.tests.common import mail_new_test_user
 
@@ -11,9 +11,8 @@ from ..models.common import internal
 from ..services import hermes
 
 
-@tagged('post_install', '-at_install')
-class TestCapacity(TransactionCase):
-    """The assistant serves many automations and people at once: questions wait for a free slot, never block."""
+class AgentCase(TransactionCase):
+    """One Hermes connection with two active agents."""
 
     @classmethod
     def setUpClass(cls):
@@ -50,6 +49,12 @@ class TestCapacity(TransactionCase):
     def _accept(self):
         counter = iter(range(1000))
         return lambda *args, **kwargs: {'run_id': 'run_%s' % next(counter)}
+
+
+
+@tagged('post_install', '-at_install')
+class TestCapacity(AgentCase):
+    """The assistant serves many automations and people at once: questions wait for a free slot, never block."""
 
     def test_questions_past_the_limit_wait_instead_of_being_refused(self):
         runs = [self._queue(prompt='Question %s' % i) for i in range(4)]
@@ -164,3 +169,71 @@ class TestCapacity(TransactionCase):
             run._poll()
         self.assertEqual(run.state, 'failed')
         self.assertIn('limit: 0, model: gemini-2.5-pro', run.error_message)
+
+
+@tagged('post_install', '-at_install')
+class TestSharedService(AgentCase):
+    """ADR 0014 phase 2: one entry point for every caller, automation outside personal limits, paused models."""
+
+    def _ask(self, prompt='What changed today?', **kwargs):
+        kwargs.setdefault('caller', 'home')
+        return self.env['ai.agent.run'].with_user(self.user)._ask(self.agent.with_user(self.user), prompt,
+                                                                  **kwargs).sudo()
+
+    def test_every_run_says_who_asked(self):
+        run = self._ask(caller='omnichannel')
+        self.assertEqual((run.caller, run.priority, run.user_id), ('omnichannel', 'interactive', self.user))
+        background = self._ask(caller='marketing', automation=True)
+        self.assertEqual((background.caller, background.priority), ('marketing', 'automation'))
+        with self.assertRaises(UserError):
+            self._ask(caller='somewhere')
+
+    def test_background_work_does_not_use_up_a_persons_questions(self):
+        self.agent.action_pause()
+        self.agent.write({'max_requests_per_day': 20, 'max_requests_per_user_day': 2})
+        self.agent.action_activate()
+        for i in range(3):
+            self._ask('Background %s' % i, automation=True)
+        self._ask('Mine 1')
+        self._ask('Mine 2')
+        with self.assertRaises(UserError) as error:
+            self._ask('Mine 3')
+        self.assertIn('daily limit of 2', str(error.exception))
+
+    def test_a_used_up_model_is_paused_and_waiting_questions_fail_at_once(self):
+        failed = self._ask('First')
+        key = failed._model_key()  # the agent's model, else its profile's default model
+        internal(failed).write({'remote_id': 'run_quota', 'state': 'running'})
+        waiting = self._ask('Second')
+        reason = ('Gemini HTTP 429 (RESOURCE_EXHAUSTED): Quota exceeded for metric: '
+                  'generate_content_free_tier_requests, limit: 0, model: gemini-2.5-pro')
+        with patch.object(type(self.engine), '_request', return_value={'status': 'failed', 'error': reason}):
+            failed._poll()
+        pause = self.engine.model_pauses[key]
+        self.assertIn('limit: 0', pause['reason'])
+        self.assertIn('model_paused', failed.event_ids.mapped('kind'))
+        remote = self._dispatch(self._accept())
+        remote.assert_not_called()
+        self.assertEqual(waiting.state, 'failed')
+        self.assertIn('is paused until', waiting.error_message)
+        self.assertIn('limit: 0', waiting.error_message, 'The reason travels with it')
+        # The pause ends by itself.
+        later = self._ask('Third')
+        internal(self.engine).write({'model_pauses': {key: {
+            **pause, 'until': fields.Datetime.to_string(fields.Datetime.now() - timedelta(minutes=1))}}})
+        self._dispatch(self._accept())
+        self.assertEqual(later.state, 'running')
+
+    def test_a_one_off_failure_does_not_pause_the_model(self):
+        run = self._ask()
+        internal(run).write({'remote_id': 'run_odd', 'state': 'running'})
+        with patch.object(type(self.engine), '_request',
+                          return_value={'status': 'failed', 'error': 'The tool call returned invalid JSON.'}):
+            run._poll()
+        self.assertFalse(self.engine.model_pauses)
+
+    def test_managers_cannot_write_pauses_by_hand(self):
+        manager = mail_new_test_user(self.env, login='ai_capacity_manager', groups='ai_agent.group_manager',
+                                     company_ids=[Command.set(self.env.company.ids)])
+        with self.assertRaises(AccessError):
+            self.engine.with_user(manager).write({'model_pauses': {}})

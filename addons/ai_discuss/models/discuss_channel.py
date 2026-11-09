@@ -85,7 +85,8 @@ class DiscussChannel(models.Model):
         agent = self.env['ai.agent'].browse(self.sudo().ai_agent_id.id)
         conversation = self.sudo().ai_conversation_id.with_env(self.env)
         try:
-            run = self.env['ai.agent.run']._queue(agent, prompt, conversation=conversation or None, origin=self)
+            run = self.env['ai.agent.run']._ask(agent, prompt, caller='chat', conversation=conversation or None,
+                                                origin=self)
         except (AccessError, UserError) as error:
             self._ai_reply(Markup('<p>%s</p>') % str(error))
             return
