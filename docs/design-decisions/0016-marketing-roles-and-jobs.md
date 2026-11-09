@@ -21,7 +21,7 @@ workflows and automations doing part of the daily work, followed by people.
    audience size, channels); above them, HOD approves. All through Approval Center, so every decision is recorded.
 3. **Perspective**: the control panel's role view follows the group (Junior: My day, Senior: My team, HOD:
    Department); people can still adjust their own view.
-4. **The department is the team** (owner, 2026-11-09): the department marked as the marketing department; its manager
+4. **The department is the team** (owner, 2026-11-09): the department where most people with Marketing access work; its manager
    is the head of department, its employees the team, each employee's manager reviews their work; limits live on the
    department. The department's AI assistant user (ADR 0012) is the Marketing assistant that runs jobs.
 5. **Assistant jobs**: recurring work is a `workflow_center` workflow with an Ask agent step, run as the Marketing

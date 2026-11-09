@@ -1,6 +1,6 @@
 {
     'name': 'Marketing: team, roles and dashboards',
-    'version': '20.0.1.1.0',
+    'version': '20.0.1.2.0',
     'category': 'Marketing',
     'summary': 'Head of department, Senior and Junior roles, the senior review, and a control panel per role',
     'description': 'Marketing roles (ADR 0016): juniors send their work to a senior review, seniors release within '

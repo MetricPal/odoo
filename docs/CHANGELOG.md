@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-11-09 — Marketing: the marketing department is found, not ticked
+
+- Change (owner: "Marketing users' dept"): the "This is the marketing department" checkbox is removed. The marketing department is the department where most people with Marketing access work (administrators count only when nobody else has access); the department's Marketing tab says whether it is the one.
+- Reason: owner request; the checkbox was an extra setting nobody asked for.
+- Affected areas: marketing_intel_team (`hr.department.mi_is_marketing` is computed and searchable; tab; tests).
+- Compatibility: `marketing_intel_team` 20.0.1.2.0. On a database where the Marketing people have no department in Employees, no marketing department is found and Marketing works as before until they get one.
+
 ## 2026-11-09 — Marketing: the department is the team (no Team record)
 
 - Change (owner: "no Team, remove it, everything under the department"; approved board 5.1b): the marketing team record and its "Team and roles" page are removed. The department marked **This is the marketing department** is the team: its manager is the head of department, its employees are the team, each employee's manager in Employees reviews their work. A **Marketing** tab on the department form shows the team with each person's Marketing role (Junior / Senior, set there), what a senior may release alone and the proposal approvers. It is reached from Employees › Departments (no Marketing menu item, owner's decision) and from the Department dashboard's links. The head of department may read the marketing department's employees and change the Marketing tab without HR rights. With no department manager, the configured HOD proposal approver stands in.

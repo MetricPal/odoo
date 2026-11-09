@@ -25,7 +25,8 @@ class TestMarketingTeam(TransactionCase):
         cls.junior = person('mt_junior', 'marketing_intel.group_mi_user')
         elsewhere = cls.env['res.company'].create({'name': 'Elsewhere'})
         cls.env.cr.execute('UPDATE mi_brand SET company_id = %s WHERE company_id = %s', (elsewhere.id, cls.env.company.id))
-        cls.env.cr.execute('UPDATE hr_department SET mi_is_marketing = FALSE')
+        # The marketing department: where most people with Marketing access work (this test's three people).
+        cls.env['hr.employee'].sudo().search([('user_id.all_group_ids', 'in', cls.env.ref('marketing_intel.group_mi_user').ids)]).department_id = False
         cls.env.invalidate_all()
         cls.brand = cls.env['mi.brand'].sudo().create({'name': 'metric.io'})
         if 'mailing.list' in cls.env:
@@ -33,7 +34,7 @@ class TestMarketingTeam(TransactionCase):
             cls.brand.account_ids = [Command.create({'account': f'mailing.list,{lists.id}'})]
         cls.channels = cls.env['mi.channel'].search([('code', 'in', ('email', 'sms'))])
         Employee = cls.env['hr.employee'].sudo()
-        cls.department = cls.env['hr.department'].sudo().create({'name': 'Marketing', 'mi_is_marketing': True,
+        cls.department = cls.env['hr.department'].sudo().create({'name': 'Marketing',
                                                                  'mi_senior_budget_limit': 20000})
         cls.e_hod = Employee.create({'name': 'Head', 'user_id': cls.hod.id, 'department_id': cls.department.id})
         cls.department.manager_id = cls.e_hod
@@ -63,6 +64,8 @@ class TestMarketingTeam(TransactionCase):
         with self.assertRaises(AccessError):
             self.e_junior.with_user(self.hod).mi_role = 'hod'
         self.assertEqual(self.department.mi_hod_user_id, self.hod)
+        self.assertTrue(self.department.mi_is_marketing, 'found from where the Marketing people work')
+        self.assertEqual(self.env['hr.department'].search([('mi_is_marketing', '=', True)]), self.department)
         self.assertEqual(self.department._senior_for(self.junior), self.senior)
         self.assertEqual(self.department._senior_for(self.senior), self.hod)
         self.assertEqual(self.e_senior.mi_reviews_label, 'Junior')
@@ -133,7 +136,7 @@ class TestMarketingTeam(TransactionCase):
         self.assertEqual((big.state, big.review_request_id.approver_ids.user_id), ('review', self.hod))
 
     def test_without_a_marketing_department_nothing_changes(self):
-        self.department.mi_is_marketing = False
+        (self.e_hod | self.e_senior | self.e_junior).department_id = False
         plan = self._campaign(self.junior)
         self.assertFalse(plan.needs_senior_review)
         self.assertTrue(plan.within_limits)

@@ -13,10 +13,13 @@
       </xpath>
       <xpath expr="//page[@name='ai']" position="after">
         <page string="Marketing" name="marketing" groups="marketing_intel.group_mi_user,hr.group_hr_user">
-          <div class="d-flex align-items-baseline gap-2 mb-3">
-            <field name="mi_is_marketing" nolabel="1"/>
-            <label for="mi_is_marketing" class="fw-bold"/>
-            <span class="text-muted">its manager is the head of department; its employees are the marketing team.</span>
+          <field name="mi_is_marketing" invisible="1"/>
+          <div class="alert alert-info mb-3" role="status" invisible="not mi_is_marketing">
+            This is the marketing department: most people with Marketing access work here. Its manager is the head of
+            department; its employees are the marketing team.
+          </div>
+          <div class="text-muted mb-3" invisible="mi_is_marketing">
+            The marketing department is the department where most people with Marketing access work; this is not it.
           </div>
           <div invisible="not mi_is_marketing">
             <separator string="The team: this department's employees"/>

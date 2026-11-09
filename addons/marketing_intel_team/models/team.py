@@ -1,8 +1,9 @@
 """The marketing department is the team (ADR 0016, approved board 5.1b, owner 2026-11-09: "everything under the
 department").
 
-- The department marked "This is the marketing department" is the team; its **manager** is the head of department,
-  its **employees** are the team, and each employee's **manager** in Employees reviews their work.
+- The marketing department is the department where most people with Marketing access work (owner, 2026-11-09: no
+  setting); its **manager** is the head of department, its **employees** are the team, and each employee's
+  **manager** in Employees reviews their work.
 - The **Marketing role** (Junior, Senior, Head of department) is the person's Marketing access right; the Marketing
   tab of the department sets it.
 - What a senior may release alone (budget, audience, channels) is set on the department.
@@ -16,8 +17,7 @@ ROLES = [('junior', 'Junior'), ('senior', 'Senior'), ('hod', 'Head of department
 GROUPS = {'junior': 'marketing_intel.group_mi_user', 'senior': 'marketing_intel_team.group_mi_senior',
           'hod': 'marketing_intel_team.group_mi_hod'}
 LIMITED_CHANNELS = ('email', 'sms', 'messaging', 'social')
-MI_DEPARTMENT_FIELDS = {'mi_is_marketing', 'mi_senior_budget_limit', 'mi_senior_audience_limit',
-                        'mi_senior_channel_ids', 'mi_member_ids'}
+MI_DEPARTMENT_FIELDS = {'mi_senior_budget_limit', 'mi_senior_audience_limit', 'mi_senior_channel_ids', 'mi_member_ids'}
 
 
 def user_role(user):
@@ -41,8 +41,9 @@ def can_manage_marketing(env):
 class Department(models.Model):
     _inherit = 'hr.department'
 
-    mi_is_marketing = fields.Boolean(string='This is the marketing department', tracking=True,
-                                     help='Its manager is the head of department; its employees are the marketing team.')
+    mi_is_marketing = fields.Boolean(compute='_compute_mi_is_marketing', search='_search_mi_is_marketing',
+                                     string='Marketing department',
+                                     help='The department where most people with Marketing access work.')
     mi_member_ids = fields.One2many('hr.employee', 'department_id', string='The team')
     mi_currency_id = fields.Many2one(related='company_id.currency_id', string='Marketing currency')
     mi_senior_budget_limit = fields.Monetary(string='Campaign budget up to', currency_field='mi_currency_id',
@@ -79,13 +80,26 @@ class Department(models.Model):
             department.mi_approver_ids = self.env['mi.approver'].sudo().search(
                 [('company_id', '=', department.company_id.id)])
 
-    @api.constrains('mi_is_marketing', 'company_id')
-    def _check_one_marketing_department(self):
-        for department in self.filtered('mi_is_marketing'):
-            others = self.sudo().search_count([('mi_is_marketing', '=', True), ('id', '!=', department.id),
-                                               ('company_id', '=', department.company_id.id)])
-            if others:
-                raise ValidationError(_('A company has one marketing department.'))
+    def _compute_mi_is_marketing(self):
+        found = {}
+        for department in self:
+            company = department.company_id or self.env.company
+            if company.id not in found:
+                found[company.id] = self._mi_department(company)
+            department.mi_is_marketing = department == found[company.id]
+
+    def _search_mi_is_marketing(self, operator, value):
+        if operator not in ('in', 'not in', '=', '!='):
+            raise UserError(_('Unsupported search.'))
+        if operator in ('=', '!='):
+            wanted = bool(value) == (operator == '=')
+        else:
+            values = {bool(v) for v in value}
+            if values == {True, False}:
+                return [] if operator == 'in' else [('id', '=', False)]
+            wanted = (True in values) == (operator == 'in')
+        ids = [i for i in (self._mi_department(company).id for company in self.env.companies) if i]
+        return [('id', 'in' if wanted else 'not in', ids)]
 
     @api.constrains('mi_senior_budget_limit', 'mi_senior_audience_limit')
     def _check_mi_limits(self):
@@ -97,16 +111,24 @@ class Department(models.Model):
         if vals and set(vals) <= MI_DEPARTMENT_FIELDS and not self.env.su \
                 and self.env.user.has_group('marketing_intel_team.group_mi_hod') \
                 and not self.env.user.has_group('hr.group_hr_user'):
-            if 'mi_is_marketing' in vals and not self.env.user.has_group('marketing_intel.group_mi_manager'):
-                raise AccessError(_('Only a Marketing administrator or HR chooses the marketing department.'))
             return super(Department, self.sudo()).write(vals)
         return super().write(vals)
 
     @api.model
     def _mi_department(self, company=None):
+        """Where most people with Marketing access work (administrators count only when nobody else has access)."""
         company = company or self.env.company
-        return self.sudo().search([('mi_is_marketing', '=', True), ('company_id', 'in', (company.id, False))],
-                                  limit=1)
+        group = self.env.ref('marketing_intel.group_mi_user')
+        Employee = self.env['hr.employee'].sudo()
+        employees = Employee.search([('company_id', '=', company.id), ('department_id', '!=', False),
+                                     ('user_id.all_group_ids', 'in', group.ids), ('user_id.share', '=', False)])
+        people = employees.filtered(lambda e: not e.user_id.has_group('base.group_system')) or employees
+        if not people:
+            return self.browse()
+        counts = {}
+        for employee in people:
+            counts[employee.department_id] = counts.get(employee.department_id, 0) + 1
+        return max(counts, key=lambda d: (counts[d], -d.id)).with_env(self.env)
 
     @api.model
     def action_open_mi_department(self):
