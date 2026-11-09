@@ -410,6 +410,8 @@ Approved mocks 2026-11-09 (AI Agent canvas boards 19 to 22, ADR 0015).
   AI Agent managers while the agent is paused.
 - **Run form** (board 22): "Asked by <agent> for <person> · answered with what this person may see in this agent's
   department"; Asked from; **Linked requests** (Asked from, Asked <agent>, Follow-up answer, Chose the assistant).
+- **Assistant chat menu** (owner, 2026-11-09): the ⋯ / right-click menu of an assistant chat in the chat list only
+  offers Add to Favorites (or Remove from Favorites once it is one); people's chats keep the full menu.
 - **Agent avatar** (owner, 2026-11-09): the AI Agent app icon (frame and sparkles) with the agent's initial in place
   of "AI", wherever the agent's partner appears.
 

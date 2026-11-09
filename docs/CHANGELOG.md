@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-11-09 — Discuss: an assistant chat's menu only adds it to Favorites
+
+- Change: the ⋯ / right-click menu of an assistant chat in the chat list shows only Add to Favorites (Remove from Favorites once it is a favourite); Invite People, Mute Conversation, View Recordings and Hide Until New Message are not offered for assistants. People's chats are unchanged.
+- Reason: owner request.
+- Affected areas: ai_discuss (static/src/messaging_menu_item_patch.js).
+- Compatibility: assets only; reload the page (restart the server if the old menu still shows).
+
 ## 2026-11-09 — AI Agent: Choose for me, agents asking other agents; agent avatars
 
 - Change (ADR 0015; approved mocks 2026-11-09, boards 19 to 22): **Choose for me** in Home's assistant picker (default when the person has several assistants and one is a company assistant) and **Ask an assistant** in Discuss's Assistants list: a short *route* run asks the company agent to pick one of the person's own assistants (no tools, no business data), Odoo checks the pick, and the question goes to the chosen agent (Home: "Answered by X · chosen for: …", **Change ▾**; Discuss: the question is posted in the chosen chat under "Chosen for you: X, for … · Change"). **Other agents it may ask** (agent, Data access tab): the new `ask_agent` Odoo tool queues a child run on such an agent as the same person (`caller` Another agent); when the asking run and its children end, one follow-up run merges the answers and only that answer is shown (Discuss shows "<agent> is asking <other> about …" meanwhile, then "Asked <other>: … · View" under the answer). One level, at most 3 per answer. The run form shows "Asked by <agent> for <person>" and **Linked requests**. Agent avatars (Discuss, chatter) are now the AI Agent app icon with the agent's initial in place of "AI" (owner request).
