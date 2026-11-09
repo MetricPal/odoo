@@ -29,7 +29,9 @@ class TestDepartmentAI(TransactionCase):
         cls.finance = cls.env['hr.department'].create({'name': 'Finance'})
         head = cls.env['hr.employee'].create({'name': 'HR head', 'user_id': cls.hr_head.id})
         cls.hr.manager_id = head
-        cls.hr.with_user(cls.ai_manager).write({'ai_admin_ids': [Command.set(cls.ai_admin.ids)]})
+        # Owner, 2026-11-09: only managers configure a department's agents (no AI admins list): this person
+        # manages Recruiting (under Human Resources).
+        cls.recruiting.manager_id = cls.env['hr.employee'].create({'name': 'Recruiting head', 'user_id': cls.ai_admin.id})
         cls.engine = cls.env['ai.agent.engine'].create({'name': 'Test engine', 'url': 'https://hermes.example.com',
             'secret_reference': 'AI_AGENT_SECRET_TEST', 'management_url': 'https://hermes.example.com',
             'management_secret_reference': 'AI_AGENT_SECRET_TEST'})
@@ -67,11 +69,17 @@ class TestDepartmentAI(TransactionCase):
         self.assertTrue(assistant.active)
         self.assertEqual(self.hr.ai_assistant_user_id, assistant)
 
-    def test_only_ai_managers_choose_department_ai_admins(self):
-        with self.assertRaises(AccessError):
-            self.hr.with_user(self.hr_head).write({'ai_admin_ids': [Command.link(self.staff.id)]})
-        self.hr.with_user(self.ai_manager).write({'ai_admin_ids': [Command.link(self.staff.id)]})
-        self.assertIn(self.staff, self.hr.ai_admin_ids)
+    def test_a_hermes_profile_brings_the_departments_assistant_user(self):
+        self.assertFalse(self.finance.ai_assistant_user_id)
+        profile = self.env['ai.agent.profile'].with_user(self.ai_manager).create(
+            {'name': 'Finance', 'engine_id': self.engine.id, 'department_id': self.finance.id})
+        assistant = self.finance.ai_assistant_user_id
+        self.assertTrue(assistant.ai_assistant)
+        self.assertEqual(assistant.ai_assistant_department_id, self.finance)
+        self.assertEqual(profile.assistant_user_id, assistant)
+        self.env['ai.agent.profile'].with_user(self.ai_manager).create(
+            {'name': 'Finance 2', 'engine_id': self.engine.id, 'kind': 'agent', 'department_id': self.finance.id})
+        self.assertEqual(self.finance.ai_assistant_user_id, assistant, 'made once')
 
     def test_department_manager_and_ai_admin_configure_sub_department_agents(self):
         for person in (self.hr_head, self.ai_admin):
@@ -105,9 +113,9 @@ class TestDepartmentAI(TransactionCase):
 
     def test_department_admin_adds_activates_and_pauses_their_agents(self):
         agent = self.env['ai.agent'].with_user(self.ai_admin).create({
-            'name': 'Onboarding helper', 'engine_id': self.engine.id, 'department_id': self.hr.id,
+            'name': 'Onboarding helper', 'engine_id': self.engine.id, 'department_id': self.recruiting.id,
             'access_scope': 'company', 'system_prompt': 'Help new hires.'})
-        self.assertEqual(agent.department_id, self.hr)
+        self.assertEqual(agent.department_id, self.recruiting)
         agent.action_activate()
         self.assertEqual(agent.state, 'active')
         agent.action_pause()
@@ -123,3 +131,14 @@ class TestDepartmentAI(TransactionCase):
     def test_ai_managers_keep_the_review_flow(self):
         with self.assertRaises(UserError):
             self.agent.with_user(self.ai_manager).write({'system_prompt': 'Changed by a manager'})
+
+    def test_add_an_agent_from_the_department_sets_department_and_profile(self):
+        with self.assertRaises(UserError):
+            self.finance.with_user(self.ai_manager).action_add_ai_agent()
+        profile = self.env['ai.agent.profile'].with_user(self.ai_manager).create(
+            {'name': 'Finance', 'engine_id': self.engine.id, 'department_id': self.finance.id})
+        action = self.finance.with_user(self.ai_manager).action_add_ai_agent()
+        agent = self.env['ai.agent'].with_user(self.ai_manager).with_context(**action['context']).create(
+            {'name': 'Invoice helper'})
+        self.assertEqual((agent.department_id, agent.profile_id, agent.engine_id),
+                         (self.finance, profile, profile.engine_id))

@@ -1,9 +1,9 @@
-"""Department AI assistants and department AI admins (ADR 0012).
+"""Department AI assistants (ADR 0012).
 
 Each department may have an AI assistant user: an internal user nobody signs in as, that the department's agents
-act as, so an agent keeps working when a person leaves. Its groups are its role and are managed by administrators.
-The department's managers in Employees (with their sub-departments) and the AI admins an AI Agent manager chooses
-on the department configure the department's agents without approval.
+act as, so an agent keeps working when a person leaves; it is made with the department's Hermes profile. Its groups
+are its role and are managed by administrators. The department's manager in Employees (with the sub-departments)
+configures the department's agents without approval.
 """
 
 from odoo import _, api, fields, models
@@ -53,10 +53,10 @@ class ResUsers(models.Model):
 
     def _ai_admin_department_ids(self):
         """Departments, with their sub-departments, whose agents this user configures: those they manage in
-        Employees and those an AI Agent manager made them AI admin of."""
+        Employees (owner, 2026-11-09: the manager only, no AI admins list)."""
         self.ensure_one()
         Department = self.env['hr.department'].sudo()
-        roots = Department.search(['|', ('manager_id.user_id', '=', self.id), ('ai_admin_ids', 'in', self.id)])
+        roots = Department.search([('manager_id.user_id', '=', self.id)])
         return Department.search([('id', 'child_of', roots.ids)]).ids if roots else []
 
 
@@ -65,10 +65,6 @@ class HrDepartment(models.Model):
 
     ai_assistant_user_id = fields.Many2one('res.users', string='AI assistant', readonly=True, copy=False)
     ai_assistant_access = fields.Char(string='Its access', compute='_compute_ai_assistant_access')
-    ai_admin_ids = fields.Many2many('res.users', 'hr_department_ai_admin_rel', 'department_id', 'user_id',
-                                    string='AI admins', domain="[('share', '=', False), ('ai_assistant', '=', False)]",
-                                    help='Besides the department manager, these people configure the department\'s '
-                                         'agents. No approval is needed.')
     ai_agent_ids = fields.One2many('ai.agent', 'department_id', string='Agents')
     ai_agent_count = fields.Integer(string='Agents', compute='_compute_ai_agent_count')
     ai_can_manage = fields.Boolean(compute='_compute_ai_can_manage')
@@ -124,13 +120,16 @@ class HrDepartment(models.Model):
     def write(self, vals):
         if 'ai_assistant_user_id' in vals and not self.env.su:
             raise AccessError(_('Use Create AI assistant.'))
-        if 'ai_admin_ids' in vals:
-            if not self.env.user.has_group('ai_agent.group_manager'):
-                raise AccessError(_('Only AI Agent managers choose department AI admins.'))
-            if not vals.keys() - {'ai_admin_ids'}:
-                # AI Agent managers may not have Employees write access: they only set this field.
-                return super(HrDepartment, self.sudo()).write(vals)
         return super().write(vals)
+
+    def _ai_ensure_assistant(self):
+        """The department's AI assistant user, made when the department gets a Hermes profile (owner, 2026-11-09)."""
+        for department in self.sudo().filtered(lambda d: not d.ai_assistant_user_id):
+            company = department.company_id or self.env.company
+            user = self.env['res.users']._ai_create_assistant(_('%s Assistant', department.name),
+                                                               f'ai-assistant-{department.id}', company, department)
+            department.ai_assistant_user_id = user
+        return True
 
     def action_create_ai_assistant(self):
         """Create the department's AI assistant user (internal, cannot sign in, no access beyond Internal User
@@ -151,6 +150,19 @@ class HrDepartment(models.Model):
         return {'type': 'ir.actions.act_window', 'res_model': 'res.users', 'res_id': self.ai_assistant_user_id.id,
                 'view_mode': 'form', 'target': 'current'}
 
+    def action_add_ai_agent(self):
+        """Add an agent from the department (owner, 2026-11-09): a new agent of this department, on its Hermes
+        profile's connection, so the department and the profile are set when it is saved."""
+        self.ensure_one()
+        profile = self.ai_profile_id
+        if not profile:
+            raise UserError(_('Create the department\'s Hermes profile first.'))
+        return {'type': 'ir.actions.act_window', 'res_model': 'ai.agent', 'view_mode': 'form', 'target': 'current',
+                'name': _('New agent'),
+                'context': {'default_department_id': self.id, 'default_engine_id': profile.engine_id.id,
+                            'default_profile_mode': 'department', 'default_access_scope': 'users',
+                            'default_department_ids': [(6, 0, self.ids)], 'default_company_id': profile.company_id.id}}
+
     def action_open_ai_agents(self):
         self.ensure_one()
         action = self.env['ir.actions.act_window']._for_xml_id('ai_agent.action_agents')
@@ -170,6 +182,13 @@ class ResCompany(models.Model):
         if 'ai_assistant_user_id' in vals and not self.env.su:
             raise AccessError(_('Use Create company assistant.'))
         return super().write(vals)
+
+    def _ai_ensure_company_assistant(self):
+        """The company AI assistant user, made when the company gets its Hermes profile."""
+        for company in self.sudo().filtered(lambda c: not c.ai_assistant_user_id):
+            company.ai_assistant_user_id = self.env['res.users']._ai_create_assistant(
+                _('%s Assistant', company.name), f'ai-assistant-company-{company.id}', company)
+        return True
 
     def _ai_create_company_assistant(self):
         if not self.env.user.has_group('ai_agent.group_manager'):

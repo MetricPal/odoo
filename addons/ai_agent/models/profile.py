@@ -42,7 +42,7 @@ SHARED_KEYS_COMMAND = "grep -E '^[A-Z0-9_]+_API_KEY=' {env} | grep -v '^API_SERV
 MODEL_TEST_PROMPT = 'Reply with the single word: OK'
 MODEL_TEST_SECONDS = 30
 
-# What department managers and AI admins may change on their department's profile.
+# What department managers may change on their department's profile.
 DEPARTMENT_PROFILE_FIELDS = {'persona', 'engine_model_id'}
 
 
@@ -148,9 +148,15 @@ class Profile(models.Model):
             vals['hermes_name'] = profile_name(vals.get('name'), self._names_taken(engine_id) | {
                 v.get('hermes_name') for v in vals_list if v is not vals and v.get('engine_id') == engine_id})
         profiles = super().create(vals_list)
+        profiles._ensure_assistant_users()
         profiles._ensure_tools()
         profiles._reassign_agents()
         return profiles
+
+    def _ensure_assistant_users(self):
+        """A department's (or the company's) Hermes profile comes with its AI assistant user (owner, 2026-11-09)."""
+        self.filtered(lambda p: p.kind == 'company').company_id._ai_ensure_company_assistant()
+        self.filtered(lambda p: p.kind in ('department', 'agent')).department_id._ai_ensure_assistant()
 
     def _ensure_tools(self):
         """Every offered Hermes tool (off until switched on) and the ERP's own tool server on each profile."""
@@ -190,7 +196,7 @@ class Profile(models.Model):
             raise AccessError(_('The name in Hermes is made from the name.'))
         if not self._is_manager():
             if vals.keys() - DEPARTMENT_PROFILE_FIELDS or not all(p.can_configure for p in self):
-                raise AccessError(_('Department managers and AI admins change the persona and default model of '
+                raise AccessError(_('Department managers change the persona and default model of '
                                     'their department\'s profile. Ask an AI Agent manager for anything else.'))
             self.check_access('read')
             internal(self.sudo()).write(vals)
@@ -204,6 +210,8 @@ class Profile(models.Model):
                     profile.name, profile._names_taken(profile.engine_id.id))})
         if 'active' in vals:
             self._reassign_agents()
+        if vals.keys() & {'kind', 'department_id', 'company_id'}:
+            self._ensure_assistant_users()
         if vals.keys() & {'persona', 'engine_model_id', 'name'}:
             self._needs_sync()
         return True
@@ -456,10 +464,10 @@ class Profile(models.Model):
         internal(self.sudo()).write({'mcp_token_hash': key_hash(token)})
 
     def action_sync(self):
-        """Sync to Hermes: managers, and department managers and AI admins for their department's profile."""
+        """Sync to Hermes: managers, and department managers for their department's profile."""
         for profile in self:
             if not profile.can_configure:
-                raise AccessError(_('Only AI Agent managers and the department\'s managers and AI admins sync it.'))
+                raise AccessError(_('Only AI Agent managers and the department\'s manager sync it.'))
             if profile.engine_id.sudo().state not in ('ready', 'needs_model'):
                 raise UserError(_('Check the Hermes connection first.'))
             try:

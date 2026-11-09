@@ -52,10 +52,6 @@
               <field name="engine_model_id" placeholder="Connection default" options="{'no_create': True, 'no_open': True}"
                      readonly="not can_configure"/>
               <field name="assistant_user_id" options="{'no_open': True}" placeholder="No AI assistant yet"/>
-              <button name="action_create_company_assistant" type="object" string="Create company assistant"
-                      class="btn-link p-0" colspan="2" invisible="not can_manage or kind != 'company' or assistant_user_id"/>
-              <button name="action_create_department_assistant" type="object" string="Create department assistant"
-                      class="btn-link p-0" colspan="2" invisible="not can_manage or kind != 'department' or assistant_user_id"/>
               <field name="synced_at"/>
             </group>
           </group>
@@ -114,8 +110,8 @@
               <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
                 <button name="action_add_tool_server" type="object" string="Add a tool server" class="btn-secondary"
                         invisible="not can_manage"/>
-                <span class="text-muted small">Only AI Agent managers add or remove tool servers. Department managers and
-                  AI admins turn them on or off.</span>
+                <span class="text-muted small">Only AI Agent managers add or remove tool servers. Department managers turn
+                  them on or off.</span>
               </div>
               <separator string="Scheduled jobs in Hermes"/>
               <p class="text-muted mb-2">Jobs made in Hermes for this profile. Scheduled work for the ERP is set up in

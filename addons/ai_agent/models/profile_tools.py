@@ -231,10 +231,10 @@ class ProfileJob(models.Model):
 
 
 def _check_configure(profiles):
-    """Department managers and AI admins switch tools on their department's profile; managers on every profile."""
+    """Department managers switch tools on their department's profile; managers on every profile."""
     profiles.check_access('read')
     if not all(p.can_configure for p in profiles):
-        raise AccessError(_('Only AI Agent managers and the department\'s managers and AI admins change the tools '
+        raise AccessError(_('Only AI Agent managers and the department\'s manager change the tools '
                             'of this profile.'))
 
 

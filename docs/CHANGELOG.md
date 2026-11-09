@@ -12,6 +12,14 @@ Format:
 
 
 
+## 2026-11-09 — AI Agent: the assistant user comes with the profile; only the manager configures
+
+- Change (owner): a department's AI assistant user is created automatically when the department gets a Hermes profile (department or own-agent profile; the company's with the company profile); existing profiles get theirs on update. "Who configures the agents" is the department's manager only: the AI admins list is removed, with the Create AI assistant / company / department assistant buttons.
+- Affected areas: ai_agent (department.py, profile.py, agent.py and profile_tools.py wording, department and profile views, demo, tests; migration 20.0.1.20.0).
+- Compatibility: `ai_agent` 20.0.1.20.0. People who were only AI admins no longer configure a department's agents: make them the department's manager, or AI Agent managers.
+- Also (owner): the department's Agents button, its Agents table and "Add an agent" show only once the department has a Hermes profile; "Add an agent" opens a new agent of that department on its profile's connection, so the department and the profile are set when it is saved.
+- Also (owner): without a Hermes profile the department's AI tab shows only **Create Hermes profile** at the top (people who cannot create one see "No Hermes profile yet."); the assistant, who configures, the profile and the agents appear once the profile exists.
+
 ## 2026-11-09 — Marketing: no Marketing tab on the department
 
 - Change (owner: "remove it"): the department's Marketing tab is removed. Roles stay the people's Marketing access rights (Users), reviewers stay each employee's manager (Employees), the head of department the department's manager. The senior release limits have no screen now and stay at 0 (no limit) until a place is chosen.

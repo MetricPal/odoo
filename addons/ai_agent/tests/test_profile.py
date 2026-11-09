@@ -105,7 +105,7 @@ class TestHermesProfiles(TransactionCase):
                                           company_ids=company)
         cls.hr = cls.env['hr.department'].create({'name': 'Human Resources'})
         cls.finance = cls.env['hr.department'].create({'name': 'Finance'})
-        cls.hr.write({'ai_admin_ids': [Command.set(cls.ai_admin.ids)]})
+        cls.hr.manager_id = cls.env['hr.employee'].create({'name': 'HR head', 'user_id': cls.ai_admin.id})
         cls.engine = cls.env['ai.agent.engine'].create({'name': 'Test engine', 'url': 'https://hermes.example.com',
             'secret_reference': 'AI_AGENT_SECRET_TEST', 'management_url': 'https://hermes.example.com',
             'management_secret_reference': 'AI_AGENT_SECRET_TEST'})

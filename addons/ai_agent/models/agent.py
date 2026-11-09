@@ -11,7 +11,7 @@ SAFE_MODELS = {'res.partner', 'crm.lead', 'sale.order', 'product.product', 'prod
 SCALAR_TYPES = {'char', 'text', 'integer', 'float', 'monetary', 'boolean', 'date', 'datetime', 'selection'}
 CONTEXT_BUDGET = 60000  # characters of JSON context sent with one question
 SOURCE_EXCERPT_MAX = 8000
-# What department managers and department AI admins may change on their department's agents (ADR 0012). The
+# What department managers may change on their department's agents (ADR 0012). The
 # connection, model, data scopes and limits stay with AI Agent managers.
 # Changing these points the agent at another Hermes profile.
 PROFILE_KEYS = {'department_id', 'profile_mode', 'engine_id', 'company_id'}
@@ -51,7 +51,7 @@ class Agent(models.Model):
     engine_model_id = fields.Many2one('ai.agent.engine.model', string='AI model', ondelete='restrict', check_company=True)
     department_id = fields.Many2one('hr.department', string='Department', check_company=True, tracking=True,
                                     index='btree_not_null',
-                                    help='The department that owns this agent. Its managers and AI admins configure it.')
+                                    help='The department that owns this agent. Its manager configures it.')
     profile_mode = fields.Selection([('department', 'Department profile'), ('own', 'Own profile')],
                                     string='Hermes profile', default='department', required=True, tracking=True)
     profile_id = fields.Many2one('ai.agent.profile', string='Profile', readonly=True, index='btree_not_null',
@@ -60,7 +60,7 @@ class Agent(models.Model):
                                       'connection\'s default profile.')
     can_configure = fields.Boolean(compute='_compute_can_configure', search='_search_can_configure')
     edit_live = fields.Boolean(compute='_compute_can_configure',
-                               help='Department managers and AI admins change an active agent directly.')
+                               help='Department managers change an active agent directly.')
     access_scope = fields.Selection([('company', 'Company'), ('users', 'Departments & users')], default='users', required=True, string='Access scope', tracking=True)
     department_ids = fields.Many2many('hr.department', string='Departments', check_company=True)
     user_ids = fields.Many2many('res.users', string='Users')
@@ -180,12 +180,12 @@ class Agent(models.Model):
         return ['|', ('department_id', '=', False), ('department_id', 'not in', managed)]
 
     def _configurator(self):
-        """AI Agent managers configure every agent; department managers and AI admins their department's."""
+        """AI Agent managers configure every agent; department managers their department's."""
         if self._is_manager():
             manager(self)
             return
         if not self.env.user.has_group('ai_agent.group_user') or not self or not all(a.can_configure for a in self):
-            raise AccessError(_('Only AI Agent managers, and the managers and AI admins of the agent\'s department, '
+            raise AccessError(_('Only AI Agent managers, and the manager of the agent\'s department, '
                                 'can configure it.'))
         self.check_access('write')
         if any(a.company_id not in self.env.companies for a in self):
@@ -208,7 +208,7 @@ class Agent(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         if not trusted(self) and not loading_demo(self) and not self._is_manager():
-            # Department managers and AI admins add agents to their department, on a connection a manager set up.
+            # Department managers add agents to their department, on a connection a manager set up.
             if not self.env.user.has_group('ai_agent.group_user'):
                 raise AccessError(_('Only AI Agent users can add agents.'))
             for values in vals_list:
@@ -361,7 +361,7 @@ class Agent(models.Model):
                 'view_mode': 'form', 'target': 'current'}
 
     def _department_write(self, vals):
-        """A department manager or AI admin changes their department's agents. No approval: an active agent stays
+        """A department manager changes their department's agents. No approval: an active agent stays
         active with the new configuration, which is recorded (revision and chatter)."""
         self._configurator()
         self._check_department_values(vals)

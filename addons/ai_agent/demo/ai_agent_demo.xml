@@ -39,7 +39,6 @@
     </record>
     <record id="hr.dep_sales" model="hr.department">
         <field name="ai_assistant_user_id" ref="demo_sales_assistant"/>
-        <field name="ai_admin_ids" eval="[(4, ref('base.user_demo'))]"/>
     </record>
     <record id="demo_agent_sales" model="ai.agent">
         <field name="name">Sales helper</field>
