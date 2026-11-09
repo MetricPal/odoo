@@ -43,7 +43,7 @@ gateway:
     enabled: true
     host: 127.0.0.1
     port: {GATEWAY_PORT}
-    max_concurrent_runs: 2
+    max_concurrent_runs: 10
 platforms:
   api_server:
     enabled: true

@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-11-09 — AI Agent: questions wait for a free slot instead of failing; full Hermes reasons
+
+- Change (ADR 0014, phase 1): the assistant serves every automation and every person at once. Past an agent's concurrency limit a question now waits in the queue (only the daily limits or 50 waiting questions refuse it). The runs job sends waiting runs within the agent's limit and a new connection-wide limit (`ai.agent.engine.max_concurrent`, default 10: Hermes caps runs per gateway, across every profile), people first (`ai.agent.run.priority`: interactive or automation). A Hermes HTTP 429 ("all slots taken") now puts the run back in the queue with backoff (`HermesBusy`) instead of "Needs manager check". `uncertain` runs no longer hold a slot; a stop Hermes does not confirm within 5 minutes ends the run here; a question waiting more than 30 minutes fails with a reason. `error_message` is now a Text and Hermes's failure reason is kept up to 8,000 characters (it was cut at 300, which hid "limit: 0 … Free Tier"); setup errors keep up to 2,000. The ERP Hermes template sets `max_concurrent_runs: 10` (was 2).
+- Reason: owner request: the assistant is the primary part of the system; two stuck runs on an exhausted free model blocked every other question for 15 minutes on 2026-11-08.
+- Affected areas: ai_agent (models/conversation.py, services/hermes.py, models/configuration.py, deployment/erp_hermes.py, deployment/local-profile.yaml, tests/test_capacity.py); marketing_intel_flow and marketing_intel_ai mark their background runs as automation.
+- Compatibility: version 20.0.1.16.0; update `ai_agent` (new fields; `error_message` column becomes text). The live `~/hermes-erp/config.yaml` needs `max_concurrent_runs: 10` (set on the owner's machine 2026-11-09) and a Hermes restart if it is running. No new screen; the connection limit has no field on the form yet (default 10).
+
 ## 2026-11-09 — AI Agent: answers arrive as soon as Hermes has them
 
 - Change: after a question is handed to Hermes, a light background thread follows the run's live event stream (Hermes `GET /v1/runs/{id}/events`). When Hermes reports the end, the run is made due and the runs job is woken, so the answer is checked and posted at once (Discuss, Home, workflows) instead of at the next scheduled check, about 30 to 60 seconds later. Measured on the local Hermes with gemini-3.5-flash: the end arrives 2.0 s after the question. The scheduled checks are unchanged and remain the safety net if a listener stops.

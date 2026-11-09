@@ -17,6 +17,6 @@ gateway:
     enabled: true
     host: 127.0.0.1
     port: 8643
-    max_concurrent_runs: 2
+    max_concurrent_runs: 10
 agent:
   max_turns: 20

@@ -62,6 +62,13 @@ What needs my approval?
 
 - Each agent has a daily request limit and a per-person daily limit (default 20;
   0 disables the per-person limit). Days are UTC.
+- Capacity (ADR 0014): past an agent's "Requests at the same time" a question waits in
+  the queue instead of being refused; the Hermes connection also limits runs for all its
+  agents and profiles together (`max_concurrent`, default 10, matching Hermes's per-gateway
+  `max_concurrent_runs`). Runs a person is waiting for go before automation runs. A full
+  Hermes (HTTP 429) puts the run back in the queue; a run still waiting after 30 minutes
+  fails with a reason; a stop Hermes does not confirm within 5 minutes ends the run here.
+  At most 50 questions wait per agent. Hermes's failure reason is kept whole.
 - Status checks that fail are retried automatically with backoff. Only an
   unconfirmed submission needs a manager check. A definite rejection (HTTP 4xx
   other than 408/429) fails without retry.

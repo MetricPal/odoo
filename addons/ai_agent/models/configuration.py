@@ -89,6 +89,10 @@ class Engine(models.Model):
     can_start_hermes = fields.Boolean(compute='_compute_can_start_hermes')
     demo = fields.Boolean(readonly=True, copy=False,
                           help='Created by demo data: a local loopback connection allowed without the deployment allowlist.')
+    max_concurrent = fields.Integer(string='Runs at the same time', default=10, required=True,
+                                    help='Runs sent to this Hermes at once, all agents and profiles together (Hermes '
+                                         'caps runs per gateway: keep this at or below its max_concurrent_runs). '
+                                         'More questions wait in the queue.')
 
     enabled_model_ids = fields.One2many('ai.agent.engine.model', 'engine_id', domain=[('enabled', '=', True)])
     provider_catalog = fields.Json(compute='_compute_provider_catalog', groups='ai_agent.group_manager')
@@ -205,6 +209,11 @@ class Engine(models.Model):
             except Exception:
                 raise UserError(_('Saved credentials do not match this connection. Enter the API key again.')) from None
         return hermes.credential(reference)
+
+    @api.constrains('max_concurrent')
+    def _check_max_concurrent(self):
+        if any(not 1 <= engine.max_concurrent <= 100 for engine in self):
+            raise ValidationError(_('Use 1–100 runs at the same time for a Hermes connection.'))
 
     @api.constrains('url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection')
     def _validate_connection(self):
@@ -484,7 +493,7 @@ class Engine(models.Model):
                               'it with ai_agent/deployment/erp_hermes.py.')) from None
         if result.returncode:
             detail = (result.stderr or result.stdout or '').strip().splitlines()[-1:] or ['']
-            raise UserError(_('Hermes could not be started on this server: %s', detail[0][:300]))
+            raise UserError(_('Hermes could not be started on this server: %s', detail[0][:2000]))
 
     def action_check(self):
         manager(self)
@@ -582,7 +591,7 @@ class Engine(models.Model):
         result = self._management('POST', '/api/model/set', {'scope': 'main', 'provider': slug, 'model': model,
                                                               'confirm_expensive_model': True})
         if isinstance(result, dict) and result.get('ok') is False:
-            raise UserError(str(result.get('error') or result.get('detail') or _('Hermes did not accept this model.'))[:300])
+            raise UserError(str(result.get('error') or result.get('detail') or _('Hermes did not accept this model.'))[:2000])
         self.action_check()
         if self.state == 'ready':
             self.set_model_enabled(slug, model, True)
@@ -598,7 +607,7 @@ class Engine(models.Model):
             raise UserError(_('%s is set up with a sign-in in Hermes, not with a key.', entry['name']))
         check = self._management('POST', '/api/providers/validate', {'key': entry['key_env'], 'value': key})
         if isinstance(check, dict) and not check.get('ok') and check.get('reachable'):
-            raise UserError(str(check.get('message') or _('%s refused this key.', entry['name']))[:300])
+            raise UserError(str(check.get('message') or _('%s refused this key.', entry['name']))[:2000])
         self._management('PUT', '/api/env', {'key': entry['key_env'], 'value': key})
 
     def save_provider_key(self, slug, key):

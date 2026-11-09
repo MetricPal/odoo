@@ -243,8 +243,8 @@ class TestAgent(TransactionCase):
     def test_request_quota(self):
         self._queue('First request')
         self._queue('Second request')
-        with self.assertRaises(UserError):
-            self._queue('Third request')
+        third = self._queue('Third request')
+        self.assertEqual(third.sudo().state, 'queued', 'Past the concurrency limit a question waits (ADR 0014)')
 
     def test_permissions_rechecked_before_submission(self):
         run = self._queue()
@@ -358,7 +358,7 @@ class TestAgent(TransactionCase):
         remote.assert_not_called()
         self.assertEqual(run.state, 'uncertain')
 
-    def test_worker_uncertain_post_keeps_admission_slot(self):
+    def test_worker_uncertain_post_is_not_retried(self):
         run = self._queue().sudo()
         with patch.object(type(self.engine), '_inspect', return_value=({}, [])), \
              patch.object(type(self.engine), '_request', side_effect=hermes.HermesUncertain('synthetic secret')), \
@@ -761,7 +761,7 @@ class TestAgentReliability(TransactionCase):
 
     def test_transport_classifies_post_status(self):
         for status, expected in ((401, hermes.HermesRejected), (422, hermes.HermesRejected),
-                                 (429, hermes.HermesUncertain), (503, hermes.HermesUncertain)):
+                                 (429, hermes.HermesBusy), (503, hermes.HermesUncertain)):
             pool = MagicMock()
             pool.request.return_value.status = status
             pool.request.return_value.read.return_value = b'{}'

@@ -7,3 +7,4 @@ from . import test_ui
 from . import test_profile_tools
 from . import test_start_hermes
 from . import test_live_answer
+from . import test_capacity

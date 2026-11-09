@@ -752,7 +752,7 @@ class FlowStep(models.Model):
             with self.env.cr.savepoint():
                 ai_run = self.env['ai.agent.run'].with_user(flow.requester_id or flow.user_id)._queue(
                     agent.with_user(flow.requester_id or flow.user_id), prompt,
-                    origin=flow.with_user(flow.requester_id or flow.user_id))
+                    origin=flow.with_user(flow.requester_id or flow.user_id), priority='automation')
         except (AccessError, UserError) as error:
             return 'b', _('the AI could not be asked (%s): Path B', str(error).splitlines()[0][:120])
         run.ai_run_id = ai_run.id

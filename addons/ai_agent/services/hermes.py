@@ -29,6 +29,14 @@ class HermesUnavailable(UserError):
     """A read-only request failed. Safe to retry later."""
 
 
+class HermesBusy(UserError):
+    """Hermes is at its concurrent-run cap (HTTP 429) and accepted nothing: try again after ``retry_after`` seconds."""
+
+    def __init__(self, message, retry_after=0):
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
 # 408 Request Timeout and 429 Too Many Requests do not prove the POST was refused.
 DEFINITIVE_REJECTIONS = frozenset(range(400, 500)) - {408, 429}
 
@@ -212,6 +220,15 @@ def request(url, secret_reference, method, path, payload=None, headers=None, *, 
             rejection = HermesRejected(_problem(status, path, where) or _('Hermes refused the request (HTTP %s). Nothing was submitted; check the agent configuration and credentials.', status))
             rejection.status = status
             raise rejection
+        if status == 429 and method == 'POST':
+            # Hermes checks its run cap before it reserves anything (verified on Hermes v0.21: the idempotency
+            # reservation comes after the cap), so nothing was accepted and the same request may be sent again.
+            try:
+                retry_after = max(0, min(300, int(response.headers.get('Retry-After') or 0)))
+            except ValueError:
+                retry_after = 0
+            raise HermesBusy(_('Hermes at %s is busy (all its run slots are taken). Try again shortly.', where),
+                             retry_after)
         raw = response.read(MAX_RESPONSE + 1)
         if len(raw) > MAX_RESPONSE:
             raise ValueError('response too large')
