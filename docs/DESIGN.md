@@ -319,7 +319,7 @@ and the department's agents with **Add an agent**; an **Agents** button counts t
 shows the department's profile, its status (Needs sync, In sync, Failed), connection and last sync, with **Open
 profile** (or **Create Hermes profile** for AI Agent managers).
 
-A **Hermes profile** form (approved mock, phase 2 part): **Sync to Hermes** and a status bar; For, Department, Name
+Profiles are under **Configuration**, below Hermes engines (owner, 2026-11-09). A **Hermes profile** form (approved mock, phase 2 part): **Sync to Hermes** and a status bar; For, Department, Name
 in Hermes (read-only, made from the name), Hermes connection, Default model, Acts as (the assistant user), Last synced; tabs **Persona** (shared by
 the profile's agents), **Tools and services** (phase 6, below) and **Agents**. A Skills tab comes later. On an agent, **Department** sets the owner; department managers and AI admins see Activate,
 Pause and the Instructions and Skills tabs, and edit an active agent directly; the Knowledge, Data access and
@@ -371,6 +371,26 @@ line with **Change model**, then Add model and Enabled models.
 warning: "Hermes is not running on this server." / "Hermes is not serving agents. Its dashboard answers, but its
 gateway is stopped." / "Hermes on the other machine cannot be reached. Start it on that machine…". Settings
 administrators see **Start Hermes** (primary) next to Check connection when it can be started from the ERP.
+
+## AI Agent capacity: Activity, connection, limits by source (`ai_agent`)
+
+Approved mock 2026-11-09 (AI Agent canvas boards 16 to 18, ADR 0014). Status words are the run's own: Queued,
+Submitting, Running, Stopping, Completed, Failed; "Queued · Hermes busy" when Hermes was full.
+
+- **Activity** (board 16): Odoo's standard list and search bar. Opens on Queued + Running, grouped by Agent; each
+  group line reads "<agent> · N of M at the same time". Columns: Question, Asked by, Asked from, Priority (A person
+  is waiting / Automation), Status, Waiting since ("0:15" while queued, "started 0:42 ago" while running), and
+  **Stop**. Filters: Queued, Running | Needs attention, Completed | Automation. Group by: Agent, Status, Hermes
+  connection, Asked from. (The former "In progress" filter is split into Queued and Running.)
+- **Hermes connection** (board 17): a **Capacity** group with **Runs at the same time** (default 10, help text
+  names Hermes's max_concurrent_runs) and **Now** ("3 running · 5 queued · oldest waiting 2:05", **See activity**).
+  **Paused models**, only while a model is paused: a warning, then Model, Paused until ("14:32 (in 48 min)"), What
+  Hermes said (the full reason), **Run** and **Resume**. Resume is recorded on the run that caused the pause (the
+  connection has no chatter).
+- **Agent, Engine & limits** (board 18): under Requests at the same time, the link "N more questions wait in the
+  queue" opens Activity on that agent's queued questions (hidden when none wait); "background work does not count"
+  beside Requests per person per day; **Daily limits by source**: Asked from, Requests per day, Used today (with a
+  "reached" badge), Add a line. Like the other limits, they are changed while the agent is paused.
 
 ## AI agent proposals (`ai_agent`)
 

@@ -89,13 +89,13 @@ class Engine(models.Model):
     can_start_hermes = fields.Boolean(compute='_compute_can_start_hermes')
     demo = fields.Boolean(readonly=True, copy=False,
                           help='Created by demo data: a local loopback connection allowed without the deployment allowlist.')
-    model_pauses = fields.Json(readonly=True, groups='ai_agent.group_manager', copy=False,
-                               help='Models paused after a provider failure that would repeat (quota used up, model '
-                                    'not found): {"provider/model": {"until", "reason", "run"}}.')
     max_concurrent = fields.Integer(string='Runs at the same time', default=10, required=True,
                                     help='Runs sent to this Hermes at once, all agents and profiles together (Hermes '
                                          'caps runs per gateway: keep this at or below its max_concurrent_runs). '
                                          'More questions wait in the queue.')
+    load_summary = fields.Char(string='Now', compute='_compute_load', groups='ai_agent.group_manager')
+    paused_model_ids = fields.Many2many('ai.agent.model.pause', string='Paused models', compute='_compute_load',
+                                        groups='ai_agent.group_manager')
 
     enabled_model_ids = fields.One2many('ai.agent.engine.model', 'engine_id', domain=[('enabled', '=', True)])
     provider_catalog = fields.Json(compute='_compute_provider_catalog', groups='ai_agent.group_manager')
@@ -213,6 +213,32 @@ class Engine(models.Model):
                 raise UserError(_('Saved credentials do not match this connection. Enter the API key again.')) from None
         return hermes.credential(reference)
 
+    def _compute_load(self):
+        Run = self.env['ai.agent.run'].sudo()
+        now = fields.Datetime.now()
+        for engine in self:
+            if not engine.id:
+                engine.load_summary, engine.paused_model_ids = False, False
+                continue
+            mine = [('agent_id.engine_id', '=', engine.id)]
+            running = Run.search_count(mine + [('state', 'in', ['submitting', 'running', 'stop_requested'])])
+            waiting = Run.search(mine + [('state', '=', 'queued')], order='create_date')
+            summary = _('%(running)s running · %(queued)s queued', running=running, queued=len(waiting))
+            if waiting:
+                minutes, seconds = divmod(max(0, int((now - waiting[0].create_date).total_seconds())), 60)
+                summary += ' · ' + _('oldest waiting %s', '%d:%02d' % (minutes, seconds))
+            engine.load_summary = summary
+            engine.paused_model_ids = self.env['ai.agent.model.pause'].sudo().search(
+                [('engine_id', '=', engine.id), ('until', '>', now)])
+
+    def action_view_activity(self):
+        """Activity (questions queued and running) on this Hermes connection."""
+        self.ensure_one()
+        action = self.env['ir.actions.actions']._for_xml_id('ai_agent.action_activity')
+        action['domain'] = [('agent_id.engine_id', '=', self.id)]
+        action['display_name'] = _('Activity: %s', self.name)
+        return action
+
     @api.constrains('max_concurrent')
     def _check_max_concurrent(self):
         if any(not 1 <= engine.max_concurrent <= 100 for engine in self):
@@ -240,7 +266,7 @@ class Engine(models.Model):
         keys = (vals.pop('api_key', False), vals.pop('management_api_key', False))
         if not trusted(self) and not loading_demo(self) and \
                 {'state', 'revision', 'checked_at', 'capabilities', 'toolsets', 'models_catalog', 'status_message',
-                 'hermes_runtime', 'model_pauses'} & vals.keys():
+                 'hermes_runtime'} & vals.keys():
             raise AccessError(_('Use Check connection to update readiness.'))
         if not loading_demo(self) and \
                 {'url', 'secret_reference', 'management_url', 'management_secret_reference', 'connection_mode', 'management_same_connection'} & vals.keys():

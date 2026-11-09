@@ -57,6 +57,35 @@
           <div class="alert alert-info" role="status" invisible="state != 'needs_model'">Hermes is connected but has no AI model yet. Choose one below; agents can answer as soon as it is set.</div>
           <group invisible="not checked_at"><field name="checked_at" string="Last checked"/>
             <field name="status_message" string="Result" invisible="state != 'blocked' or hermes_runtime not in ('stopped', 'gateway_stopped', 'unreachable')"/></group>
+          <group string="Capacity" invisible="not id" groups="ai_agent.group_manager">
+            <group colspan="2">
+              <label for="max_concurrent" string="Runs at the same time"/>
+              <div class="d-flex align-items-baseline gap-3 flex-wrap">
+                <field name="max_concurrent" class="oe_inline" style="width: 5rem"/>
+                <span class="text-muted">All agents and profiles on this connection together. Keep it at or below max_concurrent_runs in Hermes (10). More questions wait in the queue.</span>
+              </div>
+              <label for="load_summary" string="Now"/>
+              <div class="d-flex align-items-baseline gap-2 flex-wrap">
+                <field name="load_summary" nolabel="1" class="oe_inline"/>
+                <button name="action_view_activity" type="object" string="See activity" class="btn-link p-0"/>
+              </div>
+            </group>
+          </group>
+          <div invisible="not paused_model_ids" class="mb-3" groups="ai_agent.group_manager">
+            <separator string="Paused models"/>
+            <div class="alert alert-warning" role="alert">A model failed in a way that will repeat, so questions for it are not sent until the pause ends. Fix the cause in Hermes (key, plan or model), then Resume.</div>
+            <field name="paused_model_ids" nolabel="1" readonly="1">
+              <list create="0" delete="0">
+                <field name="name" width="210px"/>
+                <field name="until_label" width="150px"/>
+                <field name="reason"/>
+                <field name="run_id" column_invisible="True"/>
+                <button name="action_open_run" type="object" string="Run" class="btn-link" invisible="not run_id"/>
+                <button name="action_resume" type="object" string="Resume" class="btn-secondary"/>
+              </list>
+            </field>
+            <div class="text-muted small">Paused for 60 minutes after "limit: 0" or "model not found", 10 minutes after other quota or rate limits. Resume is recorded on the run that caused the pause.</div>
+          </div>
           <notebook>
             <page string="Providers &amp; models">
               <widget name="ai_agent_default_model" invisible="not id or state in ('unchecked', 'blocked')"/>

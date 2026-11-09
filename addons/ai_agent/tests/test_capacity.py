@@ -209,8 +209,10 @@ class TestSharedService(AgentCase):
                   'generate_content_free_tier_requests, limit: 0, model: gemini-2.5-pro')
         with patch.object(type(self.engine), '_request', return_value={'status': 'failed', 'error': reason}):
             failed._poll()
-        pause = self.engine.model_pauses[key]
-        self.assertIn('limit: 0', pause['reason'])
+        pause = self.env['ai.agent.model.pause'].search([('engine_id', '=', self.engine.id)])
+        self.assertEqual(pause.model_key, key)
+        self.assertIn('limit: 0', pause.reason)
+        self.assertEqual(self.engine.paused_model_ids, pause, 'Shown on the connection while paused')
         self.assertIn('model_paused', failed.event_ids.mapped('kind'))
         remote = self._dispatch(self._accept())
         remote.assert_not_called()
@@ -219,8 +221,9 @@ class TestSharedService(AgentCase):
         self.assertIn('limit: 0', waiting.error_message, 'The reason travels with it')
         # The pause ends by itself.
         later = self._ask('Third')
-        internal(self.engine).write({'model_pauses': {key: {
-            **pause, 'until': fields.Datetime.to_string(fields.Datetime.now() - timedelta(minutes=1))}}})
+        internal(pause).write({'until': fields.Datetime.now() - timedelta(minutes=1)})
+        self.engine.invalidate_recordset(['paused_model_ids'])
+        self.assertFalse(self.engine.paused_model_ids)
         self._dispatch(self._accept())
         self.assertEqual(later.state, 'running')
 
@@ -230,10 +233,64 @@ class TestSharedService(AgentCase):
         with patch.object(type(self.engine), '_request',
                           return_value={'status': 'failed', 'error': 'The tool call returned invalid JSON.'}):
             run._poll()
-        self.assertFalse(self.engine.model_pauses)
+        self.assertFalse(self.env['ai.agent.model.pause'].search([('engine_id', '=', self.engine.id)]))
 
-    def test_managers_cannot_write_pauses_by_hand(self):
-        manager = mail_new_test_user(self.env, login='ai_capacity_manager', groups='ai_agent.group_manager',
-                                     company_ids=[Command.set(self.env.company.ids)])
+    def _manager(self):
+        return mail_new_test_user(self.env, login='ai_capacity_manager', groups='ai_agent.group_manager',
+                                  company_ids=[Command.set(self.env.company.ids)])
+
+    def test_managers_resume_a_paused_model_but_never_pause_by_hand(self):
+        run = self._ask()
+        pause = self.env['ai.agent.model.pause']._pause(self.engine, run._model_key(), 60, 'limit: 0', run)
+        manager = self._manager()
         with self.assertRaises(AccessError):
-            self.engine.with_user(manager).write({'model_pauses': {}})
+            self.env['ai.agent.model.pause'].with_user(manager).create({
+                'engine_id': self.engine.id, 'model_key': 'x/y', 'until': fields.Datetime.now()})
+        with self.assertRaises(AccessError):
+            pause.with_user(manager).write({'until': fields.Datetime.now()})
+        with self.assertRaises(AccessError):
+            pause.with_user(self.user).action_resume()
+        pause.with_user(manager).action_resume()
+        self.assertFalse(run._model_pause())
+        self.assertIn('model_resumed', run.event_ids.mapped('kind'), 'Resume is recorded on the run')
+
+    def test_a_source_past_its_daily_limit_is_refused(self):
+        self.agent.action_pause()
+        self.env['ai.agent.caller.limit'].create({'agent_id': self.agent.id, 'caller': 'workflow', 'daily_limit': 2})
+        self.agent.action_activate()
+        self._ask(caller='workflow')
+        self._ask(caller='workflow', automation=True)
+        self._ask(caller='home')  # other sources are not limited by it
+        limit = self.agent.caller_limit_ids
+        self.assertEqual((limit.used_today, limit.reached, limit.reached_label), (2, True, 'reached'))
+        with self.assertRaises(UserError) as error:
+            self._ask(caller='workflow')
+        self.assertIn("reached today's limit for Workflows (2)", str(error.exception))
+        with self.assertRaises(UserError):
+            limit.write({'daily_limit': 10})  # same rule as the other limits: pause first
+        with self.assertRaises(AccessError):
+            limit.with_user(self.user).write({'daily_limit': 10})
+
+    def test_activity_shows_who_asked_how_long_and_how_full(self):
+        busy = self._ask('Busy', caller='marketing', automation=True)
+        internal(busy).write({'busy_retries': 1})
+        running = self._ask('Running')
+        internal(running).write({'state': 'running', 'started_at': fields.Datetime.now() - timedelta(seconds=42)})
+        self.assertEqual(busy.status_label, 'Queued · Hermes busy')
+        self.assertRegex(busy.waiting_label, r'^\d+:\d{2}$')
+        self.assertEqual(running.status_label, 'Running')
+        self.assertRegex(running.waiting_label, r'^started 0:4\d ago$')
+        self.assertEqual(running.engine_id, self.engine)
+        agent = self.agent.with_context(ai_agent_show_load=1)
+        self.assertEqual(agent.display_name, 'Busy assistant · 1 of 2 at the same time')
+        self.assertEqual(self.agent.display_name, 'Busy assistant', 'Only Activity shows the load')
+        self.assertEqual((self.agent.queued_count, self.agent.queued_label), (1, '1 more question waits in the queue'))
+        action = self.agent.action_view_queued()
+        self.assertEqual(action['context']['search_default_agent_id'], self.agent.id)
+        self.assertTrue(action['context']['search_default_queued'])
+        self.assertIn('1 running · 1 queued · oldest waiting', self.engine.load_summary)
+        self.assertEqual(self.engine.action_view_activity()['domain'], [('agent_id.engine_id', '=', self.engine.id)])
+        manager = self._manager()
+        self.assertTrue(self.env['ai.agent.run'].with_user(manager).search([('id', '=', busy.id)]))
+        running.with_user(self.user).action_stop()
+        self.assertEqual(running.state, 'stop_requested', 'Stop from the list line')

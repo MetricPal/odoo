@@ -1,7 +1,7 @@
 # 2026-11-09 The assistant as the shared service of the ERP
 
-Status: phase 1 done 2026-11-09 (`ai_agent` 20.0.1.16.0); phase 2 done 2026-11-09 (20.0.1.17.0) except
-per-caller limits, which need a setting (mock). ADR 0014. Phases 3 and 4 need an approved mock / ADR first.
+Status: phases 1 to 3 done 2026-11-09 (`ai_agent` 20.0.1.16.0, 20.0.1.17.0, 20.0.1.18.0; boards 16 to 18 approved).
+ADR 0014. Phase 4 (many agents working together) needs an ADR first.
 
 ## What the owner asked (2026-11-09)
 

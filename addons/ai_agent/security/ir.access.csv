@@ -45,3 +45,7 @@ profile_job_manager,Hermes scheduled jobs: managers,model_ai_agent_profile_job,g
 profile_job_department,Hermes scheduled jobs of profiles I configure,model_ai_agent_profile_job,group_user,r,"[('profile_id.can_configure', '=', True)]"
 profile_job_company,Hermes scheduled jobs company boundary,model_ai_agent_profile_job,,crud,"[('company_id', 'in', company_ids)]"
 tool_server_add_manager,Add a tool server,model_ai_agent_tool_server_add,group_manager,crud,
+caller_limit_manager,Daily limits by source,model_ai_agent_caller_limit,group_manager,crud,
+caller_limit_company,Daily limits by source company boundary,model_ai_agent_caller_limit,,crud,"[('company_id', 'in', company_ids)]"
+model_pause_manager,Paused models,model_ai_agent_model_pause,group_manager,r,
+model_pause_company,Paused models company boundary,model_ai_agent_model_pause,,crud,"[('company_id', 'in', company_ids)]"

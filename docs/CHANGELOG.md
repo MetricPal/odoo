@@ -12,6 +12,20 @@ Format:
 
 
 
+## 2026-11-09 — AI Agent: Profiles moved under Configuration
+
+- Change: the Profiles menu is now under Configuration, below Hermes engines (same menu ID, AI Agent managers only).
+- Reason: owner request.
+- Affected areas: ai_agent (views/menus.xml).
+- Compatibility: update `ai_agent`.
+
+## 2026-11-09 — AI Agent: Activity shows the queue; connection capacity and paused models; limits by source
+
+- Change (approved mock 2026-11-09, boards 16 to 18; ADR 0014): Activity opens on queued and running questions grouped by agent ("N of M at the same time"), with Asked from, Priority, Status ("Queued · Hermes busy"), Waiting since and Stop; filters Queued, Running, Needs attention, Completed, Automation; group by Hermes connection and Asked from. The Hermes connection form gets a Capacity group (Runs at the same time, Now: running, queued, oldest wait, See activity) and Paused models (full reason, Run, Resume). The agent's Engine & limits tab links "N more questions wait in the queue" to Activity and adds Daily limits by source (`ai.agent.caller.limit`), enforced when a question is asked. Paused models move from the connection's JSON field to `ai.agent.model.pause`; runs store their Hermes connection (`engine_id`).
+- Reason: owner request (plan phase 3).
+- Affected areas: ai_agent (models/capacity.py, conversation.py, agent.py, configuration.py, views, security, migrations/20.0.1.18.0, tests/test_capacity.py).
+- Compatibility: version 20.0.1.18.0; update `ai_agent` (new models, fields and views; the migration fills `engine_id` on existing runs). The "In progress" filter is replaced by Queued and Running. Limits by source are edited while the agent is paused, like the other limits.
+
 ## 2026-11-09 — AI Agent: one entry point for every caller; used-up models are paused
 
 - Change (ADR 0014, phase 2): `ai.agent.run._ask(agent, prompt, *, caller, origin, conversation, attachments, automation, as_assistant)` is the one way modules ask an agent; all 14 call sites moved (Ask AI, Home, Discuss, workflows, Omnichannel, Social, marketing). Runs record their `caller`. Background work done for a person (`automation=True`: automatic analysis after research, campaign learning note, flow AI split) no longer counts against that person's daily limit. When Hermes reports a failure that will repeat (quota used up, "limit: 0", model not found, rate limit), the model is paused on the connection (`ai.agent.engine.model_pauses`, 10 or 60 minutes) and questions waiting for it fail at once with Hermes's full reason instead of using slots. Fallback models stay in Hermes (`fallback_providers`).

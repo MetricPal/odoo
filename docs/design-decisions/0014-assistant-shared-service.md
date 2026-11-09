@@ -1,7 +1,7 @@
 # ADR 0014: The assistant is the shared service of the ERP
 
-Date: 2026-11-09. Status: phases 1 and 2 built 2026-11-09 (owner: "do next"); the per-caller limits and the load
-view wait for an approved mock.
+Date: 2026-11-09. Status: phases 1 and 2 built 2026-11-09 (owner: "do next"); per-caller limits and the load
+view built 2026-11-09 from the approved mock (AI Agent canvas boards 16 to 18).
 Plan: `docs/exec-plans/active/2026-11-09-assistant-shared-service.md`. Builds on ADR 0012 and 0013.
 
 ## Context
@@ -56,7 +56,12 @@ cap to 2.
    Only Odoo writes pauses. Hermes has its own `fallback_providers` (verified in v0.21 `config_defaults.py`), so
    Odoo does not add a fallback model; it is configured in Hermes.
 
-### Still to do (need an approved mock)
+### Phase 3 (built from the approved mock)
+
+Paused models are records (`ai.agent.model.pause`) so they can be listed and resumed; daily limits by source are
+`ai.agent.caller.limit`; runs keep their Hermes connection. Screens: `docs/DESIGN.md`, "AI Agent capacity".
+
+### Originally listed as still to do (now built)
 
 - Optional per-caller daily limits per agent, so one automation cannot use an agent's whole day (a setting).
 - A load view: in flight and waiting per connection, profile and agent; oldest wait; failures by reason; paused

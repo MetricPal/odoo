@@ -147,12 +147,35 @@
                   <field name="provider" invisible="1"/><field name="model" invisible="1"/>
                 </group>
                 <group string="Request limits">
-                  <field name="max_concurrent" string="Requests at the same time" readonly="state == 'active'" />
+                  <label for="max_concurrent" string="Requests at the same time"/>
+                  <div class="d-flex flex-column">
+                    <field name="max_concurrent" readonly="state == 'active'" />
+                    <field name="queued_count" invisible="1"/>
+                    <button name="action_view_queued" type="object" class="btn-link p-0 text-start" invisible="not queued_count">
+                      <field name="queued_label" readonly="1"/>
+                    </button>
+                  </div>
                   <field name="max_requests_per_day" string="Requests per day" readonly="state == 'active'" />
-                  <field name="max_requests_per_user_day" string="Requests per person per day" readonly="state == 'active'" />
+                  <label for="max_requests_per_user_day" string="Requests per person per day"/>
+                  <div class="d-flex align-items-baseline gap-2">
+                    <field name="max_requests_per_user_day" class="oe_inline" readonly="state == 'active'" />
+                    <span class="text-muted small">background work does not count</span>
+                  </div>
                   <field name="revision" string="Configuration revision" />
                 </group>
               </group>
+              <separator string="Daily limits by source"/>
+              <p class="text-muted">So one app or automation cannot use the whole day of this agent. A source not listed is limited only by Requests per day. Days are UTC.</p>
+              <field name="caller_limit_ids" nolabel="1" readonly="state == 'active'">
+                <list editable="bottom">
+                  <field name="caller" width="220px"/>
+                  <field name="daily_limit" width="160px"/>
+                  <field name="used_today" width="120px" decoration-warning="reached"/>
+                  <field name="reached" column_invisible="True"/>
+                  <field name="reached_label" string=" " widget="badge" invisible="not reached" decoration-warning="reached"/>
+                </list>
+              </field>
+              <div class="text-muted small">Past its limit, a new question from that source is refused with a message such as "Marketing writer reached today's limit for Workflows (50). Try again tomorrow." The workflow, campaign or chat shows that message.</div>
             </page>
           </notebook>
         </sheet>

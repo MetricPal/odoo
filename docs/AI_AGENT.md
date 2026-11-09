@@ -75,6 +75,9 @@ What needs my approval?
   with "quota used up" or "model not found" is paused on its Hermes connection (10 or 60
   minutes) and questions waiting for it fail at once with Hermes's reason. Fallback
   models are configured in Hermes (`fallback_providers`).
+- Activity shows the queue (queued and running per agent, who asked, how long); the
+  Hermes connection shows its load and paused models (Resume); an agent may have daily
+  limits by source (Asked from), refused with "<agent> reached today's limit for <source>".
 - Status checks that fail are retried automatically with backoff. Only an
   unconfirmed submission needs a manager check. A definite rejection (HTTP 4xx
   other than 408/429) fails without retry.

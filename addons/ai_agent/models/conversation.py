@@ -115,8 +115,12 @@ class Run(models.Model):
                                 help='Runs a person is waiting for are sent to Hermes before automation runs.')
     busy_retries = fields.Integer(readonly=True, help='Times Hermes was full when this run was submitted.')
     stop_sent_at = fields.Datetime(readonly=True, help='When the stop was sent to Hermes.')
-    caller = fields.Selection(CALLERS, default='other', required=True, readonly=True, index=True,
-                              help='The part of the ERP that asked.')
+    caller = fields.Selection(CALLERS, string='Asked from', default='other', required=True, readonly=True,
+                              index=True, help='The part of the ERP that asked.')
+    engine_id = fields.Many2one('ai.agent.engine', string='Hermes connection', readonly=True, index=True,
+                                ondelete='set null', help='The Hermes connection of the agent when it was asked.')
+    status_label = fields.Char(string='Status', compute='_compute_queue_labels')
+    waiting_label = fields.Char(string='Waiting since', compute='_compute_queue_labels')
     input_tokens = fields.Integer(readonly=True)
     output_tokens = fields.Integer(readonly=True)
     runtime_model = fields.Char(readonly=True)
@@ -144,6 +148,26 @@ class Run(models.Model):
     def _event(self, kind, detail):
         self.ensure_one()
         internal(self.env['ai.agent.event'].sudo()).create({'run_id': self.id, 'kind': kind, 'detail': detail})
+
+    @api.depends('state', 'busy_retries', 'create_date', 'started_at')
+    def _compute_queue_labels(self):
+        now = fields.Datetime.now()
+
+        def elapsed(since):
+            minutes, seconds = divmod(max(0, int((now - since).total_seconds())), 60)
+            hours, minutes = divmod(minutes, 60)
+            return '%d:%02d:%02d' % (hours, minutes, seconds) if hours else '%d:%02d' % (minutes, seconds)
+
+        labels = dict(STATES)
+        for run in self:
+            run.status_label = _('%s · Hermes busy', labels['queued']) if run.state == 'queued' and run.busy_retries \
+                else labels.get(run.state, '')
+            if run.state == 'queued' and run.create_date:
+                run.waiting_label = elapsed(run.create_date)
+            elif run.state in IN_FLIGHT and run.started_at:
+                run.waiting_label = _('started %s ago', elapsed(run.started_at))
+            else:
+                run.waiting_label = ''
 
     @api.model
     def _ask(self, agent, prompt, *, caller, origin=None, conversation=None, attachments=None, automation=False,
@@ -202,6 +226,12 @@ class Run(models.Model):
         daily = self.sudo().search_count([('agent_id', '=', agent.id), ('create_date', '>=', today)])
         if daily >= agent.max_requests_per_day:
             raise UserError(_('This agent has reached its request limit. Wait or ask a manager to review it.'))
+        source = self.env['ai.agent.caller.limit'].sudo().search([('agent_id', '=', agent.id), ('caller', '=', caller)],
+                                                                  limit=1)
+        if source and self.sudo().search_count([('agent_id', '=', agent.id), ('caller', '=', caller),
+                                                ('create_date', '>=', today)]) >= source.daily_limit:
+            raise UserError(_("%(agent)s reached today's limit for %(source)s (%(limit)s). Try again tomorrow.",
+                              agent=agent.sudo().name, source=dict(CALLERS)[caller], limit=source.daily_limit))
         if agent.max_requests_per_user_day and priority == 'interactive':
             # Background work done for a person does not use up their own questions (ADR 0014).
             mine = self.sudo().search_count([('agent_id', '=', agent.id), ('user_id', '=', self.env.uid),
@@ -223,7 +253,8 @@ class Run(models.Model):
                                            'attachment_ids': [fields.Command.set(attachments.ids)],
                                            'origin_model': origin._name if origin is not None else False,
                                            'origin_res_id': origin.id if origin is not None else 0,
-                                           'priority': priority, 'caller': caller})
+                                           'priority': priority, 'caller': caller,
+                                           'engine_id': agent.sudo().engine_id.id})
         if attachments:
             # The files now belong to the run: whoever may read the run may read them.
             attachments.sudo().write({'res_model': self._name, 'res_id': run.id})
@@ -461,21 +492,15 @@ class Run(models.Model):
         minutes = next((m for pattern, m in MODEL_FAILURES if pattern.search(reason)), 0)
         if not minutes:
             return
-        engine = self.agent_id.engine_id.sudo()
-        until = fields.Datetime.now() + timedelta(minutes=minutes)
-        pauses = dict(engine.model_pauses or {})
-        pauses[self._model_key()] = {'until': fields.Datetime.to_string(until), 'reason': reason, 'run': self.id}
-        internal(engine).write({'model_pauses': pauses})
+        pause = self.env['ai.agent.model.pause']._pause(self.agent_id.engine_id.sudo(), self._model_key(), minutes,
+                                                        reason, self)
         self._event('model_paused', _('%(model)s paused on this Hermes connection until %(until)s UTC: questions '
-                                      'waiting for it fail at once.', model=self._model_key(),
-                                      until=fields.Datetime.to_string(until)))
+                                      'waiting for it fail at once.', model=pause.name,
+                                      until=fields.Datetime.to_string(pause.until)))
 
     def _model_pause(self):
         """The current pause of this run's model, or None."""
-        pause = (self.agent_id.engine_id.sudo().model_pauses or {}).get(self._model_key())
-        if pause and fields.Datetime.to_datetime(pause['until']) > fields.Datetime.now():
-            return pause
-        return None
+        return self.env['ai.agent.model.pause']._active(self.agent_id.engine_id.sudo(), self._model_key()) or None
 
     @api.model
     def _queue_for_record(self, agent, prompt, origin, caller='other'):
@@ -585,8 +610,8 @@ class Run(models.Model):
                 internal(run).write({'state': 'failed', 'finished_at': fields.Datetime.now(),
                                      'error_message': _('Not sent: %(model)s is paused until %(until)s UTC after it '
                                                         'failed for another question. Hermes said: %(reason)s',
-                                                        model=run._model_key(), until=pause['until'],
-                                                        reason=pause['reason'])})
+                                                        model=pause.name, until=fields.Datetime.to_string(pause.until),
+                                                        reason=pause.reason)})
                 run._event('failed', _('Not sent: the model is paused after a provider failure.'))
                 run._notify_origin()
             elif run.state == 'queued':

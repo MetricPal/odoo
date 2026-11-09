@@ -83,6 +83,38 @@ class Agent(models.Model):
     revision = fields.Integer(default=1, readonly=True)
     activation_hash = fields.Char(readonly=True, groups='ai_agent.group_manager')
     run_ids = fields.One2many('ai.agent.run', 'agent_id', readonly=True)
+    caller_limit_ids = fields.One2many('ai.agent.caller.limit', 'agent_id', string='Daily limits by source')
+    queued_count = fields.Integer(compute='_compute_queued', groups='ai_agent.group_manager')
+    queued_label = fields.Char(compute='_compute_queued', groups='ai_agent.group_manager')
+
+    def _compute_queued(self):
+        counts = dict(self.env['ai.agent.run'].sudo()._read_group(
+            [('agent_id', 'in', self.ids), ('state', '=', 'queued')], ['agent_id'], ['__count'])) if self.ids else {}
+        for agent in self:
+            agent.queued_count = counts.get(agent._origin, 0)
+            agent.queued_label = _('1 more question waits in the queue') if agent.queued_count == 1 else \
+                _('%s more questions wait in the queue', agent.queued_count)
+
+    @api.depends('name')
+    @api.depends_context('ai_agent_show_load')
+    def _compute_display_name(self):
+        """In Activity grouped by agent, the group line says how full each agent is (ADR 0014)."""
+        super()._compute_display_name()
+        if not self.env.context.get('ai_agent_show_load'):
+            return
+        running = dict(self.env['ai.agent.run'].sudo()._read_group(
+            [('agent_id', 'in', self.ids), ('state', 'in', ['submitting', 'running', 'stop_requested'])],
+            ['agent_id'], ['__count'])) if self.ids else {}
+        for agent in self:
+            agent.display_name = _('%(name)s · %(running)s of %(limit)s at the same time', name=agent.display_name,
+                                   running=running.get(agent._origin, 0), limit=agent.sudo().max_concurrent)
+
+    def action_view_queued(self):
+        """Activity: this agent's queued questions."""
+        self.ensure_one()
+        action = self.env['ir.actions.actions']._for_xml_id('ai_agent.action_activity')
+        action['context'] = {'search_default_queued': 1, 'search_default_agent_id': self.id, 'ai_agent_show_load': 1}
+        return action
 
     def _assistant_user(self):
         """The AI assistant user this agent acts as: its profile's, else its department's, else its company's."""
