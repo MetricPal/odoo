@@ -1,3 +1,5 @@
+"""Runs once every module is loaded: making the assistant users creates contacts, whose columns come from many apps."""
+
 from odoo import SUPERUSER_ID, api
 
 
