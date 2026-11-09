@@ -448,14 +448,11 @@
   <menuitem id="menu_root" name="Marketing" sequence="37" action="action_marketing_home"
             web_icon="marketing_intel,static/description/icon.svg" groups="group_mi_user"/>
   <menuitem id="menu_insights" name="Insights" parent="menu_root" sequence="20"/>
-  <menuitem id="menu_findings" name="Market changes" parent="menu_insights" action="action_findings" sequence="10"/>
-  <menuitem id="menu_recommendations" name="Suggested campaigns" parent="menu_insights" action="action_recommendations" sequence="20"/>
+  <menuitem id="menu_findings" name="Market changes" parent="menu_insights" action="action_findings" sequence="20"/>
+  <menuitem id="menu_recommendations" name="Suggested campaigns" parent="menu_insights" action="action_recommendations" sequence="10"/>
   <menuitem id="menu_risks" name="Risks" parent="menu_insights" action="action_risks" sequence="30"/>
   <menuitem id="menu_setup" name="Configuration" parent="menu_root" sequence="90"/>
   <menuitem id="menu_brands" name="Brands" parent="menu_setup" action="action_brands" sequence="5"/>
-  <menuitem id="menu_competitors" name="Competitors" parent="menu_setup" action="action_competitors" sequence="20"/>
-  <menuitem id="menu_sources" name="Sources" parent="menu_setup" action="action_sources" sequence="30"/>
-  <menuitem id="menu_runs" name="Research history" parent="menu_setup" action="action_runs" sequence="40"/>
   <record id="goal_search" model="ir.ui.view">
     <field name="name">mi.goal.search</field><field name="model">mi.goal</field>
     <field name="arch" type="xml"><search>

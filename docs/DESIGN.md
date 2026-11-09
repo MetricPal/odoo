@@ -310,6 +310,14 @@ panel shows that brand; removing the tag shows all brands), with Favorites and a
 view per role) in its dropdown; **New campaign**,
 **Portfolio**, **Ask the assistant** and **Customise** (gear) on the right.
 
+## Marketing menu (board 7, 2026-11-09)
+
+Control panel · Campaigns (Campaigns, Requests, Tasks, Templates) · Workflows (opens the workflows) · Insights
+(Suggested campaigns, Market changes, Risks) · Consent (People, Data requests) · Configuration (Brands, Consent topics,
+Workflow templates, Proposal approvers, Approval routes). A list that is already shown on its own form (brand,
+campaign, workflow, person) is not in the menu. Each page is titled like its menu item. Proposal approvers set Finance
+and CEO; the HOD is the department manager.
+
 ## Department AI (`ai_agent`)
 
 A department form has an **AI** tab (approved mock 2026-11-07): its AI assistant (the user agents act as, its

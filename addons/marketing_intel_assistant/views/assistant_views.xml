@@ -70,7 +70,6 @@
     <field name="name">Ask the assistant</field><field name="res_model">mi.assistant.request</field>
     <field name="view_mode">form</field><field name="target">current</field>
   </record>
-  <menuitem id="menu_assistant" name="Assistant history" parent="marketing_intel.menu_setup" action="action_assistant" sequence="60"/>
   <record id="assistant_search" model="ir.ui.view">
     <field name="name">mi.assistant.request.search</field><field name="model">mi.assistant.request</field>
     <field name="arch" type="xml"><search>

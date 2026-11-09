@@ -468,8 +468,12 @@ class TestCampaignPlan(TransactionCase):
         self.assertEqual(self.env.ref('marketing_intel.menu_root').action,
                          self.env.ref('marketing_intel_plan.action_control_panel'))
         self.assertFalse(self.env.ref('marketing_intel.menu_reporting', raise_if_not_found=False))
-        self.assertEqual(self.env.ref('marketing_intel_plan.menu_goals').parent_id,
-                         self.env.ref('marketing_intel_plan.menu_campaigns_root'))
+        # board 7: goals are set and read on the brand, not in the menu
+        self.assertFalse(self.env.ref('marketing_intel_plan.menu_goals', raise_if_not_found=False))
+        campaigns = self.env.ref('marketing_intel_plan.menu_campaigns_root')
+        self.assertEqual(self.env.ref('marketing_intel_plan.menu_plans').name, 'Campaigns')
+        self.assertEqual(self.env.ref('marketing_intel_plan.menu_templates').parent_id, campaigns)
+        self.assertEqual(self.env.ref('marketing_intel_plan.action_templates').name, 'Templates')
         menus = self.env['ir.ui.menu'].with_user(self.user).load_menus(False)
         self.assertTrue(menus)
 

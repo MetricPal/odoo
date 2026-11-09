@@ -50,7 +50,7 @@
     </search></field>
   </record>
   <record id="action_subjects" model="ir.actions.act_window">
-    <field name="name">People and consent</field><field name="res_model">mi.consent.subject</field><field name="view_mode">list,form</field>
+    <field name="name">People</field><field name="res_model">mi.consent.subject</field><field name="view_mode">list,form</field>
     <field name="help" type="html"><p class="o_view_nocontent_smiling_face">One consent record per person</p>
       <p>Every opt-in and opt-out, from forms, unsubscribe links, Messaging, keyword replies and the preference page,
         with its source and evidence. Opt-outs stop messages in Email, SMS, WhatsApp and Telegram.</p></field>
@@ -81,7 +81,7 @@
       <field name="description"/><field name="company_id" groups="base.group_multi_company"/></list></field>
   </record>
   <record id="action_topics" model="ir.actions.act_window">
-    <field name="name">Topics</field><field name="res_model">mi.consent.topic</field><field name="view_mode">list</field>
+    <field name="name">Consent topics</field><field name="res_model">mi.consent.topic</field><field name="view_mode">list</field>
   </record>
   <record id="request_form" model="ir.ui.view">
     <field name="name">mi.data.request.form</field><field name="model">mi.data.request</field>
@@ -111,9 +111,8 @@
   <record id="action_requests" model="ir.actions.act_window">
     <field name="name">Data requests</field><field name="res_model">mi.data.request</field><field name="view_mode">list,form</field>
   </record>
-  <menuitem id="menu_consent_root" name="Contacts" parent="marketing_intel.menu_root" sequence="40"/>
-  <menuitem id="menu_subjects" name="People and consent" parent="menu_consent_root" action="action_subjects" sequence="10"/>
-  <menuitem id="menu_records" name="Consent history" parent="menu_consent_root" action="action_records" sequence="20"/>
+  <menuitem id="menu_consent_root" name="Consent" parent="marketing_intel.menu_root" sequence="40"/>
+  <menuitem id="menu_subjects" name="People" parent="menu_consent_root" action="action_subjects" sequence="10"/>
   <menuitem id="menu_requests" name="Data requests" parent="menu_consent_root" action="action_requests" sequence="30"/>
   <menuitem id="menu_topics" name="Consent topics" parent="marketing_intel.menu_setup" action="action_topics" sequence="15"
             groups="marketing_intel.group_mi_manager"/>

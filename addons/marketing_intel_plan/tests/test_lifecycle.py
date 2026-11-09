@@ -110,6 +110,16 @@ class TestLifecycle(TransactionCase):
         with self.assertRaises(UserError):
             self._plan(proposal_type='paid').action_submit_proposal()
 
+    def test_hod_is_only_the_department_manager(self):
+        """Board 7: proposal approvers hold Finance and CEO; the HOD is the owner's department manager."""
+        self.assertNotIn('hod', dict(self.env['mi.approver']._fields['role'].selection))
+        loner = new_test_user(self.env, 'mil_loner', name='No Department', groups='marketing_intel.group_mi_user')
+        plan = self.env['mi.plan'].with_user(loner).create({
+            'name': 'Alone', 'brand_id': self.brand.id, 'budget': 0, 'proposal_type': 'owned',
+            'channel_ids': [Command.set(self.email.ids)]})
+        with self.assertRaisesRegex(UserError, 'set the manager of their department'):
+            plan.action_submit_proposal()
+
     def test_review_waits_for_the_proposal_and_activity_cannot_be_cancelled(self):
         plan = self._plan(proposal_type='paid')
         with self.assertRaises(UserError):

@@ -39,8 +39,8 @@
     <field name="name">Proposal approvers</field><field name="res_model">mi.approver</field>
     <field name="view_mode">list</field>
     <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Set who approves proposals</p>
-      <p>HOD is the owner's department manager (Employees); set an HOD here for owners without one. Finance and CEO
-        approve Paid proposals, the CEO also approves Earned ones.</p></field>
+      <p>The HOD is the owner's department manager (Employees › Departments). Finance and CEO approve Paid
+        proposals, the CEO also approves Earned ones.</p></field>
   </record>
   <record id="route_list" model="ir.ui.view">
     <field name="name">mi.approval.route.list</field><field name="model">mi.approval.route</field>

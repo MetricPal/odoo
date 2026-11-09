@@ -203,3 +203,31 @@ class TestMarketingTeam(TransactionCase):
         self.assertIn('Channel', asked['prompt'])
         with self.assertRaises(UserError):
             self.env['mi.panel'].with_user(self.senior).explain_block('team_table')
+
+    def test_the_marketing_menu_has_only_the_pages_of_board_7(self):
+        """Board 7 (2026-11-09): pages shown on their own form leave the menu; each page is titled like its item."""
+        ref = self.env.ref
+        for xmlid in ('marketing_intel.menu_competitors', 'marketing_intel.menu_sources', 'marketing_intel.menu_runs',
+                      'marketing_intel_plan.menu_goals', 'marketing_intel_work.menu_proofs',
+                      'marketing_intel_flow.menu_flows', 'marketing_intel_flow.menu_runs',
+                      'marketing_intel_consent.menu_records', 'marketing_intel_assistant.menu_assistant'):
+            self.assertFalse(ref(xmlid, raise_if_not_found=False), xmlid)
+        workflows = ref('marketing_intel_flow.menu_flows_root')
+        self.assertEqual(workflows.action, ref('marketing_intel_flow.action_flows'))
+        self.assertFalse(workflows.child_id, 'Workflows opens the workflows directly')
+        templates = ref('marketing_intel_flow.menu_recipes')
+        self.assertEqual((templates.name, templates.parent_id), ('Workflow templates', ref('marketing_intel.menu_setup')))
+        self.assertEqual(ref('marketing_intel_flow.action_recipes').name, 'Workflow templates')
+        self.assertEqual(ref('marketing_intel_work.action_campaign_tasks').name, 'Tasks')
+        self.assertEqual(ref('marketing_intel.menu_insights').child_id.sorted('sequence').mapped('name'),
+                         ['Suggested campaigns', 'Market changes', 'Risks'])
+        consent = ref('marketing_intel_consent.menu_consent_root', raise_if_not_found=False)
+        if consent:
+            self.assertEqual(consent.name, 'Consent')
+            self.assertEqual(consent.child_id.sorted('sequence').mapped('name'), ['People', 'Data requests'])
+
+    def test_without_a_manager_nobody_is_head_of_department(self):
+        """Board 7: the head of department is the department manager only (no proposal approver stands in)."""
+        department = self.env['hr.department'].create({'name': 'No manager'})
+        self.assertFalse(department.mi_hod_user_id)
+        self.assertEqual(department.mi_hod_label, "Nobody: set the department's manager")

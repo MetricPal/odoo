@@ -63,15 +63,9 @@ class Department(models.Model):
     def _compute_mi_hod(self):
         for department in self:
             user = department.manager_id.user_id
-            if not user:
-                user = self.env['mi.approver'].sudo().search([('role', '=', 'hod'),
-                                                              ('company_id', '=', department.company_id.id)],
-                                                             limit=1).user_id
             department.mi_hod_user_id = user
-            if department.manager_id.user_id:
+            if user:
                 department.mi_hod_label = _('Department manager: %s', user.name)
-            elif user:
-                department.mi_hod_label = _('%s (proposal approver; the department has no manager)', user.name)
             else:
                 department.mi_hod_label = _('Nobody: set the department\'s manager')
 

@@ -23,6 +23,7 @@ PROPOSAL_TYPES = [('paid', 'Paid'), ('owned', 'Owned'), ('earned', 'Earned')]
 PROPOSAL_STATES = [('draft', 'Draft'), ('approval', 'In approval'), ('changes', 'Changes requested'),
                    ('approved', 'Approved'), ('refused', 'Refused')]
 ROLES = [('hod', 'HOD'), ('finance', 'Finance'), ('ceo', 'CEO')]
+APPROVER_ROLES = [('finance', 'Finance'), ('ceo', 'CEO')]  # the HOD is the owner's department manager
 STEP_STATES = [('waiting', 'Waiting'), ('current', 'To approve'), ('approved', 'Approved'), ('refused', 'Refused'),
                ('changes', 'Changes requested'), ('skipped', 'Skipped'), ('cancelled', 'Cancelled')]
 APPROVAL_DAYS = 3  # due date of an approval activity
@@ -48,7 +49,7 @@ class Approver(models.Model):
     _description = 'Proposal approver'
     _order = 'company_id, role'
 
-    role = fields.Selection(ROLES, required=True)
+    role = fields.Selection(APPROVER_ROLES, required=True)
     user_id = fields.Many2one('res.users', string='Approver', required=True,
                               domain=[('share', '=', False)])
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
@@ -179,8 +180,8 @@ class Plan(models.Model):
         return routes.filtered(lambda r: not (r.skip_without_budget and not self.budget))
 
     def _approver(self, role):
-        """Who approves ``role`` for this campaign: the owner's department manager for HOD (else the configured
-        HOD), the configured approver for Finance and CEO."""
+        """Who approves ``role`` for this campaign: the owner's department manager (else their manager) for HOD,
+        the configured approver for Finance and CEO."""
         self.ensure_one()
         if role == 'hod':
             employee = self.env['hr.employee'].sudo().search(
@@ -190,6 +191,7 @@ class Plan(models.Model):
                 return manager
             if employee.department_id.manager_id.user_id == self.user_id:
                 return self.user_id  # the owner is the HOD
+            return self.env['res.users']
         return self.env['mi.approver'].sudo().search(
             [('role', '=', role), ('company_id', '=', self.company_id.id)], limit=1).user_id
 
@@ -234,6 +236,9 @@ class Plan(models.Model):
 
     def _missing_approver(self, role):
         name = dict(ROLES)[role]
+        if role == 'hod':
+            raise UserError(_('%s has no head of department: set the manager of their department (Employees › '
+                              'Departments).', self.user_id.name))
         if can_fix(self.env.user, BRANDS):
             raise RedirectWarning(_('Nobody is set as %s approver for this company.', name),
                                   self.env.ref('marketing_intel_plan.action_approvers').id, _('Set the approvers'))

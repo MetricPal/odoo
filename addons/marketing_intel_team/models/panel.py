@@ -289,8 +289,7 @@ class Panel(models.AbstractModel):
         rows = []
         team = self._team()
         hod = team.mi_hod_user_id if team else False
-        if not hod and not self.env['mi.approver'].sudo().search_count([('role', '=', 'hod'),
-                                                                        ('company_id', '=', self.env.company.id)]):
+        if not hod:
             rows.append({'title': _('No head of department: set the marketing department\'s manager'),
                          'value': _('Set it'), 'danger': True, 'action': 'marketing_intel_team.action_mi_department'})
         for brand in brands.filtered(lambda b: not b.account_ids):

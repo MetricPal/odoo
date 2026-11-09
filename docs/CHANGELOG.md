@@ -12,6 +12,23 @@ Format:
 
 
 
+## 2026-11-09 — Marketing: a shorter menu, pages titled like their menu item
+
+- Change (owner, approved board 7 of the Marketing mocks): the Marketing menu goes from 25 to 16 pages. Leaving the
+  menu (still on their form): Goals, Competitors, Sources (brand form), Proofs (campaign form; proofs to review stay on
+  the Control panel to-do list), Research history (brand form, and each market change links its research), workflow
+  History (workflow form), Consent history (person form), Assistant history. Renamed: All campaigns › Campaigns,
+  Contacts › Consent, People and consent › People, Workflows › Recipes › Configuration › Workflow templates (and
+  "recipe" becomes "template" in its buttons and messages). Workflows opens the workflows directly. Page titles now
+  match the menu: Templates, Tasks, People, Workflow templates, Consent topics.
+- Change (owner, option A): Proposal approvers hold Finance and CEO only. The HOD is always the owner's department
+  manager (else their manager in Employees); with neither, submitting says to set the department's manager.
+- Affected areas: marketing_intel, marketing_intel_plan (lifecycle, migration 20.0.1.8.0), marketing_intel_work,
+  marketing_intel_flow, marketing_intel_consent, marketing_intel_assistant, marketing_intel_team (head of department
+  and setup block).
+- Compatibility: `marketing_intel_plan` 20.0.1.8.0 deletes HOD rows from Proposal approvers. Models and access rights
+  are unchanged.
+
 ## 2026-11-09 — AI Agent: the assistant user comes with the profile; only the manager configures
 
 - Change (owner): a department's AI assistant user is created automatically when the department gets a Hermes profile (department or own-agent profile; the company's with the company profile); existing profiles get theirs on update. "Who configures the agents" is the department's manager only: the AI admins list is removed, with the Create AI assistant / company / department assistant buttons.

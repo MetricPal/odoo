@@ -915,11 +915,11 @@ class FlowRun(models.Model):
 class FlowRecipe(models.Model):
     """A ready-made workflow to start from. Shipped ones and ones a manager saved from a working workflow."""
     _name = 'mi.flow.recipe'
-    _description = 'Marketing workflow recipe'
+    _description = 'Marketing workflow template'
     _order = 'sequence, id'
 
     name = fields.Char(required=True, translate=True)
-    description = fields.Text(translate=True, help='What it is for, shown on the recipe card.')
+    description = fields.Text(translate=True, help='What it is for, shown on the template card.')
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     icon = fields.Char(default='flash_on', help='Icon name on the card, e.g. forum, mail, event_available, mouse.')
@@ -980,14 +980,14 @@ class FlowRecipe(models.Model):
             if self[name]:
                 values[name] = self[name]
         flow = self.env['mi.flow'].create(values)
-        flow.message_post(body=_('Started from the recipe “%s”.', self.name))
+        flow.message_post(body=_('Started from the template “%s”.', self.name))
         return {'type': 'ir.actions.act_window', 'res_model': 'mi.flow', 'res_id': flow.id, 'view_mode': 'form',
                 'views': [(False, 'form')], 'target': 'current'}
 
 
 class FlowRecipeStep(models.Model):
     _name = 'mi.flow.recipe.step'
-    _description = 'Marketing workflow recipe step'
+    _description = 'Marketing workflow template step'
     _order = 'recipe_id, sequence, id'
 
     recipe_id = fields.Many2one('mi.flow.recipe', required=True, ondelete='cascade', index=True)
@@ -1029,7 +1029,7 @@ class FlowRecipeStep(models.Model):
 
 class FlowRecipeUse(models.TransientModel):
     _name = 'mi.flow.recipe.use'
-    _description = 'Use a workflow recipe'
+    _description = 'Use a workflow template'
 
     recipe_id = fields.Many2one('mi.flow.recipe', required=True, readonly=True)
     brand_id = fields.Many2one('mi.brand', required=True, string='For brand')
@@ -1050,7 +1050,7 @@ class FlowFromRecipe(models.Model):
         pages, sending channel, lists, campaign, limits — are not kept: whoever uses the recipe sets them."""
         self.ensure_one()
         if not self.env.user.has_group('marketing_intel.group_mi_manager'):
-            raise AccessError(_('Only a marketing manager saves workflows as recipes.'))
+            raise AccessError(_('Only a marketing manager saves workflows as templates.'))
         Recipe = self.env['mi.flow.recipe'].with_context(active_test=False)
         values = {'trigger': self.trigger, 'keyword': self.keyword, 'form_kind': self.form_kind,
                   'path_a_name': self.path_a_name if self.has_split else False,
@@ -1062,12 +1062,12 @@ class FlowFromRecipe(models.Model):
             recipe.write(dict(values, active=True))
         else:
             if Recipe.search_count([('name', '=ilike', self.name)]):
-                raise UserError(_('A recipe called “%s” already exists. Rename this workflow before saving it as a '
-                                  'recipe, or edit that recipe (Workflows › Recipes).', self.name))
+                raise UserError(_('A template called “%s” already exists. Rename this workflow before saving it as a '
+                                  'template, or edit that template (Configuration › Workflow templates).', self.name))
             recipe = Recipe.create(dict(values, name=self.name, description=self.summary, source_flow_id=self.id,
                                         icon=dict(RECIPE_ICONS).get(self.trigger, 'flash_on'),
                                         sequence=100))
-        self.message_post(body=_('Saved as the recipe “%s”.', recipe.name))
+        self.message_post(body=_('Saved as the template “%s”.', recipe.name))
         return {'type': 'ir.actions.act_window', 'res_model': 'mi.flow.recipe', 'res_id': recipe.id,
                 'view_mode': 'form', 'views': [(False, 'form')], 'target': 'current'}
 
