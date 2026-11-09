@@ -25,20 +25,22 @@ class TestMarketingTeam(TransactionCase):
         cls.junior = person('mt_junior', 'marketing_intel.group_mi_user')
         elsewhere = cls.env['res.company'].create({'name': 'Elsewhere'})
         cls.env.cr.execute('UPDATE mi_brand SET company_id = %s WHERE company_id = %s', (elsewhere.id, cls.env.company.id))
-        cls.env.cr.execute('UPDATE mi_team SET company_id = %s WHERE company_id = %s', (elsewhere.id, cls.env.company.id))
+        cls.env.cr.execute('UPDATE hr_department SET mi_is_marketing = FALSE')
         cls.env.invalidate_all()
         cls.brand = cls.env['mi.brand'].sudo().create({'name': 'metric.io'})
         if 'mailing.list' in cls.env:
             lists = cls.env['mailing.list'].sudo().create({'name': 'metric.io subscribers'})
             cls.brand.account_ids = [Command.create({'account': f'mailing.list,{lists.id}'})]
         cls.channels = cls.env['mi.channel'].search([('code', 'in', ('email', 'sms'))])
-        cls.team = cls.env['mi.team'].with_user(cls.hod).create({'company_id': cls.env.company.id,
-                                                                 'senior_budget_limit': 20000})
-        Member = cls.env['mi.team.member'].with_user(cls.hod)
-        Member.create({'team_id': cls.team.id, 'user_id': cls.hod.id, 'role': 'hod'})
-        Member.create({'team_id': cls.team.id, 'user_id': cls.senior.id, 'role': 'senior'})
-        cls.junior_member = Member.create({'team_id': cls.team.id, 'user_id': cls.junior.id, 'role': 'junior',
-                                           'senior_id': cls.senior.id})
+        Employee = cls.env['hr.employee'].sudo()
+        cls.department = cls.env['hr.department'].sudo().create({'name': 'Marketing', 'mi_is_marketing': True,
+                                                                 'mi_senior_budget_limit': 20000})
+        cls.e_hod = Employee.create({'name': 'Head', 'user_id': cls.hod.id, 'department_id': cls.department.id})
+        cls.department.manager_id = cls.e_hod
+        cls.e_senior = Employee.create({'name': 'Senior', 'user_id': cls.senior.id, 'department_id': cls.department.id,
+                                        'parent_id': cls.e_hod.id})
+        cls.e_junior = Employee.create({'name': 'Junior', 'user_id': cls.junior.id, 'department_id': cls.department.id,
+                                        'parent_id': cls.e_senior.id})
 
     def _campaign(self, owner, budget=1000, name='Spring offer'):
         if 'mailing.mailing' not in self.env:
@@ -50,16 +52,26 @@ class TestMarketingTeam(TransactionCase):
     # -- roles --------------------------------------------------------------------------------------------------
     def test_the_role_is_the_marketing_access_right(self):
         self.assertTrue(self.hod.has_group('marketing_intel_team.group_mi_senior'), 'HOD ⊃ Senior ⊃ Junior')
-        self.junior_member.with_user(self.hod).role = 'senior'
+        self.assertEqual(self.e_junior.mi_role, 'junior')
+        self.e_junior.with_user(self.hod).mi_role = 'senior'
         self.assertTrue(self.junior.has_group('marketing_intel_team.group_mi_senior'))
-        self.junior_member.with_user(self.hod).role = 'junior'
-        self.assertFalse(self.junior.has_group('marketing_intel_team.group_mi_senior'))
+        self.department.with_user(self.hod).write({'mi_member_ids': [Command.update(self.e_junior.id, {'mi_role': 'junior'})]})
+        self.assertFalse(self.junior.has_group('marketing_intel_team.group_mi_senior'), 'set from the Marketing tab')
         self.assertTrue(self.junior.has_group('marketing_intel.group_mi_user'))
         with self.assertRaises(AccessError):
-            self.junior_member.with_user(self.senior).role = 'senior'
-        self.assertEqual(self.team.hod_user_id, self.hod)
-        self.assertEqual(self.team._senior_for(self.junior), self.senior)
+            self.e_junior.with_user(self.senior).mi_role = 'senior'
+        with self.assertRaises(AccessError):
+            self.e_junior.with_user(self.hod).mi_role = 'hod'
+        self.assertEqual(self.department.mi_hod_user_id, self.hod)
+        self.assertEqual(self.department._senior_for(self.junior), self.senior)
+        self.assertEqual(self.department._senior_for(self.senior), self.hod)
+        self.assertEqual(self.e_senior.mi_reviews_label, 'Junior')
+        self.department.with_user(self.hod).mi_senior_audience_limit = 5000
+        self.assertEqual(self.department.mi_senior_audience_limit, 5000)
         self.assertEqual(self.env.ref('marketing_intel.group_mi_user').name, 'Junior')
+        self.assertEqual(self.env['hr.employee'].with_user(self.hod).search(
+            [('id', 'in', (self.e_junior | self.e_senior).ids)]), self.e_junior | self.e_senior,
+            'the head of department reads the marketing employees')
 
     # -- the review chain ---------------------------------------------------------------------------------------
     def test_a_juniors_campaign_goes_to_the_senior_who_releases_it_within_limits(self):
@@ -120,8 +132,8 @@ class TestMarketingTeam(TransactionCase):
         big.action_submit_review()
         self.assertEqual((big.state, big.review_request_id.approver_ids.user_id), ('review', self.hod))
 
-    def test_without_a_team_nothing_changes(self):
-        self.team.sudo().unlink()
+    def test_without_a_marketing_department_nothing_changes(self):
+        self.department.mi_is_marketing = False
         plan = self._campaign(self.junior)
         self.assertFalse(plan.needs_senior_review)
         self.assertTrue(plan.within_limits)
@@ -133,12 +145,12 @@ class TestMarketingTeam(TransactionCase):
         self.assertEqual(plan.senior_review_state, 'none')
 
     def test_a_junior_without_a_senior_is_told_who_sets_it(self):
-        self.junior_member.with_user(self.hod).senior_id = False
-        self.team.member_ids.filtered(lambda m: m.role == 'hod').sudo().unlink()
+        self.e_junior.parent_id = False
+        self.department.manager_id = False
         plan = self._campaign(self.junior)
         with self.assertRaises(UserError) as error:
             plan.action_submit_review()
-        self.assertIn('Team and roles', str(error.exception))
+        self.assertIn('Department', str(error.exception))
 
     # -- role panels ------------------------------------------------------------------------------------------
     def test_each_role_opens_on_its_view(self):

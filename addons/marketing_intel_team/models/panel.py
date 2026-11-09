@@ -13,7 +13,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import format_date, formatLang
 
-from .team import user_role
+from .team import ROLES as ROLE_LABELS, user_role
 
 ROLE_VIEWS = [('junior', 'My day'), ('senior', 'My team'), ('hod', 'Department')]
 ROLE_BLOCKS = {
@@ -57,7 +57,7 @@ class PanelLayout(models.Model):
     def _user_role(self, user=None):
         """With a marketing team, the panel opens on the person's role view; without one, as before."""
         user = user or self.env.user
-        if self.env['mi.team']._for_company(self.env.company):
+        if self.env['hr.department']._mi_department(self.env.company):
             role = user_role(user)
             if role:
                 return role
@@ -78,7 +78,8 @@ class Panel(models.AbstractModel):
         return formatLang(self.env, amount, currency_obj=brands[:1].currency_id or self.env.company.currency_id)
 
     def _team(self):
-        return self.env['mi.team']._for_company(self.env.company)
+        """The marketing department (the team), or an empty recordset."""
+        return self.env['hr.department']._mi_department(self.env.company)
 
     def _period_start(self, months=3):
         today = fields.Date.context_today(self)
@@ -233,9 +234,10 @@ class Panel(models.AbstractModel):
         team = self._team()
         if not team:
             return self.env.user
+        members = team.sudo().member_ids
         if user_role(self.env.user) == 'hod':
-            return team.member_ids.user_id
-        return self.env.user | team.member_ids.filtered(lambda m: m.senior_id == self.env.user).user_id
+            return members.user_id
+        return self.env.user | members.filtered(lambda e: e.parent_id.user_id == self.env.user).user_id
 
     def _block_team_tiles(self, brands, plans):
         users = self._team_users()
@@ -286,11 +288,11 @@ class Panel(models.AbstractModel):
         """What stops the team from running a campaign on every channel (M0 audit); hidden when nothing is missing."""
         rows = []
         team = self._team()
-        hod = team.hod_user_id if team else False
+        hod = team.mi_hod_user_id if team else False
         if not hod and not self.env['mi.approver'].sudo().search_count([('role', '=', 'hod'),
                                                                         ('company_id', '=', self.env.company.id)]):
-            rows.append({'title': _('No head of department approver: proposals cannot be submitted'),
-                         'value': _('Set it'), 'danger': True, 'action': 'marketing_intel_team.action_team'})
+            rows.append({'title': _('No head of department: set the marketing department\'s manager'),
+                         'value': _('Set it'), 'danger': True, 'action': 'marketing_intel_team.action_mi_department'})
         for brand in brands.filtered(lambda b: not b.account_ids):
             rows.append({'title': _('Brand “%s” has no channel accounts (lists, messaging channel, pages)', brand.name),
                          'value': _('Link them'), 'danger': True, 'model': 'mi.brand', 'res_id': brand.id})
@@ -317,7 +319,7 @@ class Panel(models.AbstractModel):
         revenue = sum(period_plans.mapped('result_revenue'))
         leads = sum(period_plans.mapped('result_leads'))
         team = self._team()
-        late = self._late_tasks(team.member_ids.user_id if team else None)
+        late = self._late_tasks(team.sudo().member_ids.user_id if team else None)
         health = self._automation_rows(brands)
         healthy = len([row for row in health if row.get('good')])
         return {'title': _('Department this quarter'), 'icon': 'widgets', 'tiles': [
@@ -354,19 +356,22 @@ class Panel(models.AbstractModel):
     def _block_team_table(self, brands, plans):
         team = self._team()
         if not team:
-            return {'title': _('Team'), 'icon': 'groups', 'rows': [], 'empty': _('Set up the team in Configuration › '
-                                                                                 'Team and roles.')}
-        roles = dict(self.env['mi.team.member']._fields['role']._description_selection(self.env))
+            return {'title': _('Team'), 'icon': 'groups', 'rows': [],
+                    'empty': _('Mark your marketing department: Marketing › Configuration › Department.')}
+        roles = dict(ROLE_LABELS)
         table = []
-        for member in team.member_ids.sorted(lambda m: ({'hod': 0, 'senior': 1}.get(m.role, 2), m.user_id.name or '')):
-            user = member.user_id
+        employees = team.sudo().member_ids.filtered('user_id')
+        order = {'hod': 0, 'senior': 1}
+        for employee in employees.sorted(lambda e: (order.get(user_role(e.user_id), 2), e.name or '')):
+            user, role = employee.user_id, user_role(employee.user_id)
             waiting = self.env['approval.center.approver'].sudo().search_count([
                 ('user_id', '=', user.id), ('status', '=', 'submitted'), ('request_id.state', '=', 'submitted')])
-            table.append([user.name, roles.get(member.role, ''), str(len(self._open_tasks(user))),
-                          str(len(self._late_tasks(user))), str(waiting) if member.role != 'junior' else '—'])
+            table.append([employee.name, roles.get(role, _('No Marketing access')), str(len(self._open_tasks(user))),
+                          str(len(self._late_tasks(user))), str(waiting) if role in ('senior', 'hod') else '—'])
         return {'title': _('Team'), 'icon': 'groups', 'columns': [_('Person'), _('Role'), _('Open tasks'), _('Late'),
                                                                    _('Reviews waiting')],
-                'table_rows': table, 'action': 'marketing_intel_team.action_team', 'action_label': _('Team and roles')}
+                'table_rows': table, 'action': 'marketing_intel_team.action_mi_department',
+                'action_label': _('Department')}
 
     def _block_approvals_waiting(self, brands, plans):
         block = self._block_reviews_waiting(brands, plans)

@@ -396,8 +396,10 @@ Submitting, Running, Stopping, Completed, Failed; "Queued · Hermes busy" when H
 
 Approved mocks 2026-11-09 (Marketing canvas boards 5.1 to 6.3, ADR 0016).
 
-- **Team and roles** (Configuration): team list (Person, Role badge, Reports to = reviewer, Reviews whose work),
-  "What a senior may release alone" (budget, audience, channels as checkboxes), Approvers (read-only, Set approvers).
+- **Department › Marketing tab** (approved board 5.1b; Marketing › Configuration › Department): "This is the
+  marketing department"; the team = the department's employees (Employee, Marketing role editable, Manager (reviews
+  their work), Reviews whose work); "What a senior may release alone" (budget, audience, channels); Proposal approvers.
+  Replaces the earlier Team and roles page.
 - **Campaign**: a junior sees **Send to senior review** instead of Send for review; the senior sees **Accept and
   send for release** (within limits) or **Accept and send to Head of department** (above), and **Request changes**
   (dialog with the comment). A green or orange "Release:" line says who releases and why; the Next step line says

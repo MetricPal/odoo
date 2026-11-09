@@ -7,7 +7,7 @@
   campaign"). Request changes sends it back to Content with the comment.
 - A senior's own campaign within the limits, and the head of department's, are released by their owner (recorded as
   a release within limits); above the limits a senior's goes to the head of department.
-- Without a marketing team for the company, nothing changes (one review, as before).
+- Without a marketing department for the company, nothing changes (one review, as before).
 """
 
 from markupsafe import Markup
@@ -37,8 +37,9 @@ class Plan(models.Model):
 
     # -- helpers ----------------------------------------------------------------------------------------------
     def _team(self):
+        """The marketing department (the team), or an empty recordset."""
         self.ensure_one()
-        return self.env['mi.team']._for_company(self.company_id)
+        return self.env['hr.department']._mi_department(self.company_id)
 
     def _money(self, amount):
         return formatLang(self.env, amount, currency_obj=self.currency_id or self.company_id.currency_id)
@@ -70,7 +71,7 @@ class Plan(models.Model):
             plan.within_limits = not problems
             if problems:
                 plan.limit_note = _('%(problems)s: the release goes to %(hod)s.', problems='; '.join(problems),
-                                    hod=team.hod_user_id.name or _('the head of department'))
+                                    hod=team.mi_hod_user_id.name or _('the head of department'))
             else:
                 plan.limit_note = _('Within the limits: %s can release it.', releaser.name)
 
@@ -130,8 +131,8 @@ class Plan(models.Model):
         team = self._team()
         senior = team._senior_for(self.user_id)
         if not senior:
-            raise UserError(_('Nobody reviews %s\'s work yet: the head of department sets it in Marketing › '
-                              'Configuration › Team and roles.', self.user_id.name))
+            raise UserError(_('Nobody reviews %s\'s work yet: set their manager in Employees, or the marketing '
+                              'department\'s manager (Marketing › Configuration › Department).', self.user_id.name))
         self.action_prepare()
         request = self._open_request(self._team_policy('marketing_intel_team.policy_senior_review'), senior,
                                      self._review_summary())
@@ -190,10 +191,10 @@ class Plan(models.Model):
         releaser = self._releaser()
         problems = team._limit_problems(self, releaser)
         if problems:
-            if not team.hod_user_id:
-                raise UserError(_('%s, and nobody is head of department: set it in Marketing › Configuration › Team '
-                                  'and roles.', '; '.join(problems)))
-            policy, approver = self._campaign_policy(), team.hod_user_id
+            if not team.mi_hod_user_id:
+                raise UserError(_('%s, and nobody is head of department: set the marketing department\'s manager '
+                                  '(Marketing › Configuration › Department).', '; '.join(problems)))
+            policy, approver = self._campaign_policy(), team.mi_hod_user_id
             reason = '%s\n\n%s' % ('; '.join(problems), self._review_summary())
         else:
             policy = self._team_policy('marketing_intel_team.policy_release_within_limits')

@@ -1,6 +1,6 @@
 {
     'name': 'Marketing: team, roles and dashboards',
-    'version': '20.0.1.0.0',
+    'version': '20.0.1.1.0',
     'category': 'Marketing',
     'summary': 'Head of department, Senior and Junior roles, the senior review, and a control panel per role',
     'description': 'Marketing roles (ADR 0016): juniors send their work to a senior review, seniors release within '
@@ -8,7 +8,7 @@
                    'panel opens on My day (junior), My team (senior) or Department (head of department), with '
                    'Explain this, a setup checklist and the health of the assistant and automations.',
     'author': 'metric.io',
-    'depends': ['marketing_intel_work', 'marketing_intel_flow', 'hr'],
+    'depends': ['marketing_intel_work', 'marketing_intel_flow', 'hr', 'ai_agent'],
     'data': [
         'security/security.xml',
         'security/ir.access.csv',
