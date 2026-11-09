@@ -357,7 +357,7 @@ class Panel(models.AbstractModel):
         team = self._team()
         if not team:
             return {'title': _('Team'), 'icon': 'groups', 'rows': [],
-                    'empty': _('Mark your marketing department: Employees › Departments › Marketing tab.')}
+                    'empty': _('Put your marketing people in their department in Employees.')}
         roles = dict(ROLE_LABELS)
         table = []
         employees = team.sudo().member_ids.filtered('user_id')

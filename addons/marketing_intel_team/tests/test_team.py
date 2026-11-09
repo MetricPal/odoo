@@ -57,7 +57,7 @@ class TestMarketingTeam(TransactionCase):
         self.e_junior.with_user(self.hod).mi_role = 'senior'
         self.assertTrue(self.junior.has_group('marketing_intel_team.group_mi_senior'))
         self.department.with_user(self.hod).write({'mi_member_ids': [Command.update(self.e_junior.id, {'mi_role': 'junior'})]})
-        self.assertFalse(self.junior.has_group('marketing_intel_team.group_mi_senior'), 'set from the Marketing tab')
+        self.assertFalse(self.junior.has_group('marketing_intel_team.group_mi_senior'), 'set through the department')
         self.assertTrue(self.junior.has_group('marketing_intel.group_mi_user'))
         with self.assertRaises(AccessError):
             self.e_junior.with_user(self.senior).mi_role = 'senior'
@@ -72,9 +72,6 @@ class TestMarketingTeam(TransactionCase):
         self.department.with_user(self.hod).mi_senior_audience_limit = 5000
         self.assertEqual(self.department.mi_senior_audience_limit, 5000)
         self.assertEqual(self.env.ref('marketing_intel.group_mi_user').name, 'Junior')
-        self.assertEqual(self.env['hr.employee'].with_user(self.hod).search(
-            [('id', 'in', (self.e_junior | self.e_senior).ids)]), self.e_junior | self.e_senior,
-            'the head of department reads the marketing employees')
 
     # -- the review chain ---------------------------------------------------------------------------------------
     def test_a_juniors_campaign_goes_to_the_senior_who_releases_it_within_limits(self):

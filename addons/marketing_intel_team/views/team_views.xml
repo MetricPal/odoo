@@ -1,63 +1,6 @@
 <odoo>
-  <!-- Department › Marketing (approved board 5.1b, ADR 0016): the marketing department is the team. -->
-  <record id="hr_department_form_marketing" model="ir.ui.view">
-    <field name="name">hr.department.form.marketing</field>
-    <field name="model">hr.department</field>
-    <field name="inherit_id" ref="ai_agent.hr_department_form_ai"/>
-    <field name="arch" type="xml">
-      <xpath expr="//notebook" position="attributes">
-        <attribute name="groups">ai_agent.group_user,marketing_intel.group_mi_user</attribute>
-      </xpath>
-      <xpath expr="//page[@name='ai']" position="attributes">
-        <attribute name="groups">ai_agent.group_user</attribute>
-      </xpath>
-      <xpath expr="//notebook" position="before">
-        <field name="mi_is_marketing" invisible="1"/>
-      </xpath>
-      <xpath expr="//page[@name='ai']" position="after">
-        <page string="Marketing" name="marketing" groups="marketing_intel.group_mi_user,hr.group_hr_user"
-              invisible="not mi_is_marketing">
-          <div>
-            <separator string="The team: this department's employees"/>
-            <field name="mi_member_ids" nolabel="1">
-              <list editable="bottom" create="0" delete="0">
-                <field name="name" readonly="1" string="Employee"/>
-                <field name="user_id" column_invisible="True"/>
-                <field name="mi_is_assistant" column_invisible="True"/>
-                <field name="mi_role" readonly="not user_id or mi_is_assistant" placeholder="No user"/>
-                <field name="parent_id" readonly="1" string="Manager (reviews their work)"/>
-                <field name="mi_reviews_label" readonly="1"/>
-              </list>
-            </field>
-            <div class="text-muted small mb-4">Add people by adding employees to this department. The manager column is each employee's Manager in Employees; change it there. The role is the person's Marketing access right; an employee without a user cannot work in Marketing, and an AI assistant's role is set by administrators.</div>
-            <div class="row">
-              <div class="col-lg-6">
-                <separator string="What a senior may release alone"/>
-                <group>
-                  <field name="mi_currency_id" invisible="1"/>
-                  <field name="mi_senior_budget_limit"/>
-                  <field name="mi_senior_audience_limit"/>
-                  <field name="mi_senior_channel_ids" widget="many2many_checkboxes"/>
-                </group>
-                <div class="text-muted small">Above any limit the release goes to the head of department. 0 means no limit.</div>
-              </div>
-              <div class="col-lg-6">
-                <separator string="Proposal approvers"/>
-                <group>
-                  <field name="mi_hod_label"/>
-                </group>
-                <field name="mi_approver_ids" nolabel="1" readonly="1">
-                  <list create="0" delete="0"><field name="role"/><field name="user_id"/></list>
-                </field>
-                <button name="action_set_mi_approvers" type="object" string="Set approvers" class="btn-link p-0"
-                        groups="marketing_intel.group_mi_manager"/>
-              </div>
-            </div>
-          </div>
-        </page>
-      </xpath>
-    </field>
-  </record>
+  <!-- The marketing department is the team (ADR 0016); no Marketing tab (owner, 2026-11-09). The dashboard's links
+       open the department form. -->
   <record id="action_mi_department" model="ir.actions.server">
     <field name="name">Marketing department</field>
     <field name="model_id" ref="hr.model_hr_department"/>

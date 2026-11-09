@@ -12,6 +12,11 @@ Format:
 
 
 
+## 2026-11-09 — Marketing: no Marketing tab on the department
+
+- Change (owner: "remove it"): the department's Marketing tab is removed. Roles stay the people's Marketing access rights (Users), reviewers stay each employee's manager (Employees), the head of department the department's manager. The senior release limits have no screen now and stay at 0 (no limit) until a place is chosen.
+- Affected areas: marketing_intel_team (view and the head of department's read rule on employees removed).
+
 ## 2026-11-09 — Marketing: the marketing department is found, not ticked
 
 - Change (owner: "Marketing users' dept"): the "This is the marketing department" checkbox is removed. The marketing department is the department where most people with Marketing access work (administrators count only when nobody else has access); the Marketing tab shows only on that department (no extra line).

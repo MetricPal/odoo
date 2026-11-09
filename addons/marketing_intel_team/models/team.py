@@ -107,7 +107,7 @@ class Department(models.Model):
             raise ValidationError(_('Limits cannot be negative.'))
 
     def write(self, vals):
-        """The head of department changes the Marketing tab without HR rights (only its own fields)."""
+        """The head of department changes the marketing fields without HR rights (only those fields)."""
         if vals and set(vals) <= MI_DEPARTMENT_FIELDS and not self.env.su \
                 and self.env.user.has_group('marketing_intel_team.group_mi_hod') \
                 and not self.env.user.has_group('hr.group_hr_user'):
@@ -132,21 +132,16 @@ class Department(models.Model):
 
     @api.model
     def action_open_mi_department(self):
-        """The marketing department's Marketing tab (opened from the Department dashboard's links)."""
+        """The marketing department's form (from the Department dashboard's links), else the departments."""
         department = self._mi_department()
         view = self.env.ref('hr.view_department_form').id
         if department:
             return {'type': 'ir.actions.act_window', 'res_model': 'hr.department', 'res_id': department.id,
-                    'views': [(view, 'form')], 'target': 'current', 'name': _('Marketing department'),
-                    'context': {'mi_marketing_tab': True}}
-        if not self.env.user.has_group('marketing_intel.group_mi_manager') \
-                and not self.env.user.has_group('hr.group_hr_user'):
-            raise UserError(_('No department is marked as the marketing department yet. Ask HR or a Marketing '
-                              'administrator to tick "This is the marketing department" on it.'))
+                    'views': [(view, 'form')], 'target': 'current', 'name': _('Marketing department')}
         return {'type': 'ir.actions.act_window', 'res_model': 'hr.department', 'views': [(False, 'list'), (view, 'form')],
-                'target': 'current', 'name': _('Choose the marketing department'),
-                'help': _('<p>Open the department your marketing people belong to and tick "This is the marketing '
-                          'department" in its Marketing tab.</p>')}
+                'target': 'current', 'name': _('Departments'),
+                'help': _('<p>The marketing department is where most people with Marketing access work: put them in '
+                          'their department in Employees.</p>')}
 
     def action_set_mi_approvers(self):
         return self.env['ir.actions.actions']._for_xml_id('marketing_intel_plan.action_approvers')

@@ -1,3 +1,2 @@
 id,name,model_id:id,group_id:id,operation,domain
 decision_senior,Senior review decision,model_mi_senior_decision,group_mi_senior,crud,
-employee_hod,Marketing head of department: the marketing department's employees,hr.model_hr_employee,group_mi_hod,r,"[('department_id.mi_is_marketing', '=', True)]"

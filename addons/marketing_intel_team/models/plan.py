@@ -132,7 +132,7 @@ class Plan(models.Model):
         senior = team._senior_for(self.user_id)
         if not senior:
             raise UserError(_('Nobody reviews %s\'s work yet: set their manager in Employees, or the marketing '
-                              'department\'s manager (Employees › Departments › Marketing tab).', self.user_id.name))
+                              'department\'s manager (Employees › Departments).', self.user_id.name))
         self.action_prepare()
         request = self._open_request(self._team_policy('marketing_intel_team.policy_senior_review'), senior,
                                      self._review_summary())
@@ -193,7 +193,7 @@ class Plan(models.Model):
         if problems:
             if not team.mi_hod_user_id:
                 raise UserError(_('%s, and nobody is head of department: set the marketing department\'s manager '
-                                  '(Employees › Departments › Marketing tab).', '; '.join(problems)))
+                                  '(Employees › Departments).', '; '.join(problems)))
             policy, approver = self._campaign_policy(), team.mi_hod_user_id
             reason = '%s\n\n%s' % ('; '.join(problems), self._review_summary())
         else:
