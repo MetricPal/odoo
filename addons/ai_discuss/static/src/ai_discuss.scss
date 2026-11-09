@@ -13,3 +13,16 @@
 .o-mail-MessagingMenuItem.o_ai_discuss_paused {
     opacity: 0.6;
 }
+
+// "Ask an assistant" (ADR 0015, approved board 20)
+.o_ai_discuss_ask {
+    border: 1px dashed $o-brand-primary;
+    .o_ai_discuss_ask_icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        background: $o-brand-primary;
+        color: #fff;
+        font-weight: 700;
+    }
+}

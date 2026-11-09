@@ -65,6 +65,13 @@ TOOLS = [
          'run_key': {'type': 'string'}, 'model': {'type': 'string'}, 'id': {'type': 'integer'},
          'values': {'type': 'object', 'description': 'Field name to new value, for fields the agent may read.'},
          'reason': {'type': 'string', 'maxLength': 1000}}}},
+    # Agents working together (ADR 0015): only agents on the asking agent's May ask list, as the same person.
+    {'name': 'ask_agent',
+     'description': 'Ask another agent from your list a question that needs its department\'s data. Returns at once; '
+                    'its answer is added automatically after you reply.',
+     'inputSchema': {'type': 'object', 'required': ['run_key', 'agent', 'question'], 'properties': {
+         'run_key': {'type': 'string'}, 'agent': {'type': 'integer', 'description': 'The agent id from your list.'},
+         'question': {'type': 'string', 'maxLength': 4000}}}},
 ]
 
 
@@ -184,7 +191,7 @@ class AgentTools(models.AbstractModel):
             handler = {'search_records': self._tool_search, 'read_record': self._tool_read,
                        'record_activities': self._tool_activities, 'record_messages': self._tool_messages,
                        'propose_note': self._tool_propose_note, 'propose_activity': self._tool_propose_activity,
-                       'propose_change': self._tool_propose_change}.get(name)
+                       'propose_change': self._tool_propose_change, 'ask_agent': self._tool_ask_agent}.get(name)
             if not handler:
                 raise ToolCallError(_('Unknown tool %s.', name))
             result = handler(run, arguments)
@@ -301,6 +308,22 @@ class AgentTools(models.AbstractModel):
             run, 'activity', record, _('To-do on %(record)s: %(summary)s', record=record.display_name, summary=summary),
             text=str(arguments.get('note') or '')[:4000], values={'summary': summary, 'due': str(due)})
         return self._sent(proposal, request)
+
+    def _tool_ask_agent(self, run, arguments):
+        agent_id = arguments.get('agent')
+        if not isinstance(agent_id, int):
+            raise ToolCallError(_('Pass the agent id from your list.'))
+        target = run.agent_id.sudo().may_ask_ids.filtered(lambda agent: agent.id == agent_id and agent.state == 'active')
+        if not target:
+            allowed = ', '.join('%s (%s)' % (agent.id, agent.name) for agent in run.agent_id.sudo().may_ask_ids)
+            raise ToolCallError(_('You may not ask this agent. Agents you may ask: %s', allowed or _('none')))
+        try:
+            child = run._ask_other_agent(target, arguments.get('question'))
+        except (AccessError, UserError) as error:
+            raise ToolCallError(_('%(agent)s cannot be asked for this person: %(reason)s', agent=target.name,
+                                  reason=str(error.args[0] if error.args else error))) from None
+        return {'asked': target.name, 'request': child.id, 'summary': _('asked %s', target.name),
+                'note': 'Reply now with one short line saying whom you asked; the full answer follows automatically.'}
 
     def _tool_propose_change(self, run, arguments):
         access, users, field_names, record = self._proposable(run, arguments)

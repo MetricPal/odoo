@@ -267,14 +267,29 @@
                 <div class="o_ai_home_ask" t-att-class="{ 'o_is_unavailable': !this.aiAvailable }" t-ref="this.askRef">
                     <section t-if="this.state.chat" class="o_ai_home_chat" t-att-aria-label="'Conversation with ' + this.aiName">
                         <div class="o_ai_home_chat_head">
-                            <span t-esc="this.aiName"/>
+                            <span t-esc="this.state.chat.answeredBy or this.aiName"/>
+                            <span t-if="this.state.chat.answeredBy" class="o_ai_home_chat_routed o_ai_home_muted">
+                                Answered by <t t-esc="this.state.chat.answeredBy"/><t t-if="this.state.chat.why"> · chosen for: <t t-esc="this.state.chat.why"/></t>
+                            </span>
+                            <div t-if="this.state.chat.answeredBy and !this.state.chat.waiting and this.changeAgents.length" class="dropdown o_ai_home_chat_change">
+                                <button type="button" class="btn o_ai_home_chat_action" aria-haspopup="menu"
+                                        t-att-aria-expanded="this.state.showChangeMenu ? 'true' : 'false'"
+                                        t-on-click="() => this.state.showChangeMenu = !this.state.showChangeMenu">Change ▾</button>
+                                <div t-if="this.state.showChangeMenu" class="dropdown-menu dropdown-menu-end show" role="menu" aria-label="Ask another assistant">
+                                    <button t-foreach="this.changeAgents" t-as="agent" t-key="agent.id" type="button" role="menuitem"
+                                            class="dropdown-item" t-on-click="() => this.askAgain(agent)">
+                                        <strong t-esc="agent.name"/><span t-if="agent.description" class="o_ai_home_muted"> · <t t-esc="agent.description"/></span>
+                                    </button>
+                                </div>
+                            </div>
                             <button type="button" class="btn o_ai_home_chat_close" aria-label="Close conversation" t-on-click="this.closeChat">×</button>
                         </div>
                         <div class="o_ai_home_chat_question" t-esc="this.state.chat.question"/>
                         <div class="o_ai_home_chat_answer">
                             <span class="o_ai_home_chat_avatar" aria-hidden="true">AI</span>
                             <div class="o_ai_home_chat_body">
-                                <span t-if="this.state.chat.waiting" class="o_ai_home_muted">Thinking…</span>
+                                <span t-if="this.state.chat.waiting and this.state.chat.choosing" class="o_ai_home_muted">Choosing the right assistant…</span>
+                                <span t-elif="this.state.chat.waiting" class="o_ai_home_muted">Thinking…</span>
                                 <span t-if="this.state.chat.answer" class="o_ai_home_chat_text" t-esc="this.state.chat.answer"/>
                                 <span t-if="this.state.chat.error" class="o_ai_home_chat_error" t-esc="this.state.chat.error"/>
                                 <div t-if="this.state.chat.conversationId and !this.state.chat.waiting" class="o_ai_home_chat_actions">
@@ -335,8 +350,20 @@
                                     aria-haspopup="menu"
                                     t-att-aria-expanded="this.state.showAgentMenu ? 'true' : 'false'"
                                     t-on-click="() => this.state.showAgentMenu = !this.state.showAgentMenu"
-                                ><t t-esc="this.aiName"/> ▾</button>
+                                ><t t-esc="this.pickerLabel"/> ▾</button>
                                 <div t-if="this.state.showAgentMenu" class="dropdown-menu show o_ai_home_agent_menu" role="menu" aria-label="Assistants available to you">
+                                    <button
+                                        t-if="this.state.canRoute"
+                                        type="button"
+                                        role="menuitemradio"
+                                        class="dropdown-item o_ai_home_agent_option o_ai_home_agent_auto"
+                                        t-att-class="{ active: this.state.agentId === 'auto' }"
+                                        t-att-aria-checked="this.state.agentId === 'auto' ? 'true' : 'false'"
+                                        t-on-click="() => this.selectAgent(this.autoAgent)"
+                                    >
+                                        <span class="o_ai_home_agent_line"><strong>Choose for me</strong></span>
+                                        <span class="d-block o_ai_home_muted">The right assistant is picked from yours, by the question</span>
+                                    </button>
                                     <div t-if="this.pickerAgents.length" class="dropdown-header o_ai_home_agent_heading">Your assistants (<t t-esc="this.pickerAgents.length"/>)</div>
                                     <button
                                         t-foreach="this.pickerAgents"

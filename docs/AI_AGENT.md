@@ -78,6 +78,9 @@ What needs my approval?
 - Activity shows the queue (queued and running per agent, who asked, how long); the
   Hermes connection shows its load and paused models (Resume); an agent may have daily
   limits by source (Asked from), refused with "<agent> reached today's limit for <source>".
+- Agents working together (ADR 0015): `ai.agent.run._route(prompt, caller=...)` chooses the
+  agent ("Choose for me", "Ask an assistant"); an agent with **Other agents it may ask** gets
+  the `ask_agent` tool, which asks as the same person; a follow-up run merges the answers.
 - Status checks that fail are retried automatically with backoff. Only an
   unconfirmed submission needs a manager check. A definite rejection (HTTP 4xx
   other than 408/429) fails without retry.

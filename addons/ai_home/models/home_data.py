@@ -75,6 +75,7 @@ class AiHomeItem(models.Model):
             'feed': self._home_feed(),
             'recent': self._home_recent(),
             'agents': agents,
+            'canRoute': self._can_route(agents),
             'pausedAgents': self._paused_agents(),
             'prompts': self._home_prompts(self._home_role()) if agents else [],
             'canManageAgents': self.env.user.has_group('ai_agent.group_manager') if 'ai.agent' in self.env else False,
@@ -105,6 +106,11 @@ class AiHomeItem(models.Model):
         """Send the user's question to an agent (an answer only, it changes no records). Returns the run to follow."""
         if 'ai.agent' not in self.env:
             raise UserError(_('The AI assistant is not installed.'))
+        attachments = self.env['ir.attachment'].browse([int(i) for i in attachment_ids or []]).exists()
+        if not agent_id:
+            # "Choose for me" (ADR 0015): the right assistant among the user's is chosen for this question.
+            run = self.env['ai.agent.run']._route(prompt, caller='home', attachments=attachments)
+            return {'runId': run.id, 'conversationId': run.conversation_id.id if run.purpose != 'route' else False}
         agent = self.env['ai.agent'].browse(int(agent_id)).exists()
         if not agent:
             raise UserError(_('This assistant is no longer available.'))
@@ -112,7 +118,6 @@ class AiHomeItem(models.Model):
             else self.env['ai.agent.conversation']
         if conversation and conversation.user_id != self.env.user:
             conversation = self.env['ai.agent.conversation']
-        attachments = self.env['ir.attachment'].browse([int(i) for i in attachment_ids or []]).exists()
         run = self.env['ai.agent.run']._ask(agent, prompt, caller='home', conversation=conversation or None,
                                             attachments=attachments)
         return {'runId': run.id, 'conversationId': run.conversation_id.id}
@@ -124,8 +129,17 @@ class AiHomeItem(models.Model):
             if self._can_read('ai.agent.run') else False
         if not run:
             return {'state': 'failed', 'answer': '', 'error': _('This question is no longer available.')}
-        return {'state': run.state, 'answer': run.answer or '', 'error': run.error_message or '',
-                'conversationId': run.conversation_id.id}
+        if run.purpose == 'route' and run.state not in ('completed', 'failed', 'cancelled', 'discarded', 'uncertain'):
+            return {'state': 'choosing', 'answer': '', 'error': ''}
+        final = run.sudo()._final_run().with_env(self.env)
+        state = final.state
+        if state == 'completed' and final.sudo().child_run_ids and not final.sudo().followup_run_ids:
+            state = 'running'  # it asked other agents: the merged answer follows (ADR 0015)
+        chosen = run.sudo().routed_run_id
+        return {'state': state, 'answer': (final.answer or '') if state == 'completed' else '',
+                'error': final.error_message or '', 'conversationId': final.sudo().conversation_id.id,
+                'answeredBy': chosen.agent_id.name or '', 'answeredById': final.sudo().agent_id.id,
+                'why': chosen.route_reason or ''}
 
     # ------------------------------------------------------------------
     # Helpers
@@ -164,6 +178,13 @@ class AiHomeItem(models.Model):
                 continue
             agents.append(self._agent_row(agent))
         return agents
+
+    @api.model
+    def _can_route(self, agents):
+        """'Choose for me' (ADR 0015, board 19): with several assistants, one of them a company assistant."""
+        if len(agents) < 2:
+            return False
+        return bool(self.env['ai.agent'].browse([row['id'] for row in agents])._router())
 
     @api.model
     def _agent_row(self, agent):

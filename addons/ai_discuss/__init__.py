@@ -1,4 +1,4 @@
-from . import controllers, models
+from . import controllers, models, wizard
 
 
 def _post_init(env):

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.MessagingMenu" t-inherit-mode="extension">
+        <xpath expr="//t[@name='messagingMenuExtraItems']" position="before">
+            <button t-if="this.showAskAnAssistant" type="button"
+                    class="o_ai_discuss_ask btn d-flex align-items-center gap-2 text-start o-my-0_5 p-2 rounded-3"
+                    t-on-click="() => this.onClickAskAnAssistant()">
+                <span class="o_ai_discuss_ask_icon d-flex align-items-center justify-content-center flex-shrink-0" aria-hidden="true">?</span>
+                <span class="d-flex flex-column min-w-0">
+                    <strong>Ask an assistant</strong>
+                    <small class="text-muted">Your question goes to the right assistant</small>
+                </span>
+            </button>
+        </xpath>
+    </t>
+</templates>

@@ -1516,3 +1516,21 @@
         display: none;
     }
 }
+
+// "Choose for me": who answered and why, and Change (ADR 0015, approved board 19)
+.o_ai_home_chat_head {
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.o_ai_home_chat_routed {
+    flex: 1 1 auto;
+    font-size: 12px;
+    font-weight: 400;
+}
+.o_ai_home_chat_change {
+    position: relative;
+    .dropdown-menu {
+        max-width: 360px;
+        white-space: normal;
+    }
+}

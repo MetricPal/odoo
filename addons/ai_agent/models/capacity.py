@@ -78,7 +78,7 @@ class ModelPause(models.Model):
     company_id = fields.Many2one(related='engine_id.company_id', store=True)
     model_key = fields.Char(required=True, readonly=True, help='provider/model, or default/<profile>.')
     name = fields.Char(string='Model', compute='_compute_name')
-    until = fields.Datetime(string='Paused until', required=True, readonly=True)
+    until = fields.Datetime(string='Until', required=True, readonly=True)
     until_label = fields.Char(string='Paused until', compute='_compute_until_label')
     reason = fields.Text(string='What Hermes said', readonly=True)
     run_id = fields.Many2one('ai.agent.run', string='Run', readonly=True, ondelete='set null')

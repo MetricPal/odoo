@@ -122,7 +122,9 @@ export class WorkDashboard extends Component {
             busy: "",
             prompt: "",
             agentId: "",
+            canRoute: false,
             showAgentMenu: false,
+            showChangeMenu: false,
             attachments: [],
             uploading: false,
             chat: null,
@@ -170,6 +172,10 @@ export class WorkDashboard extends Component {
         }
         if (this.state.agents.some((agent) => String(agent.id) === stored)) {
             return stored;
+        }
+        // "Choose for me" is the default when it is offered (ADR 0015, approved board 19).
+        if (this.state.canRoute) {
+            return "auto";
         }
         return this.state.agents.length ? String(this.state.agents[0].id) : "";
     }
@@ -399,12 +405,34 @@ export class WorkDashboard extends Component {
     // Ask the assistant
     // ------------------------------------------------------------------
 
+    /** "Choose for me" in the assistant picker (ADR 0015). */
+    get autoAgent() {
+        return { id: "auto", name: _t("Choose for me") };
+    }
+
     get selectedAgent() {
+        if (this.state.agentId === "auto") {
+            return this.state.canRoute ? this.autoAgent : null;
+        }
         return this.state.agents.find((agent) => String(agent.id) === this.state.agentId) || null;
     }
 
     get aiName() {
+        if (this.state.agentId === "auto" && this.state.canRoute) {
+            return _t("an assistant");
+        }
         return this.selectedAgent?.name || (this.aiAvailable ? _t("Assistant") : _t("No assistant"));
+    }
+
+    /** The assistant picker's label: "Choose for me" or the chosen assistant. */
+    get pickerLabel() {
+        return this.state.agentId === "auto" && this.state.canRoute ? this.autoAgent.name : this.aiName;
+    }
+
+    /** The other assistants the same question can be sent to (Change ▾). */
+    get changeAgents() {
+        const current = this.state.chat?.answeredById;
+        return this.state.agents.filter((agent) => agent.id !== current);
     }
 
     isSelected(agent) {
@@ -523,10 +551,28 @@ export class WorkDashboard extends Component {
             return;
         }
         const question = this.state.prompt.trim();
-        const conversationId = this.state.chat?.conversationId || false;
-        this.state.chat = { question, answer: "", error: "", waiting: true, conversationId };
+        const previous = this.state.chat;
+        const conversationId = previous?.conversationId || false;
+        // After "Choose for me", the next question in the same conversation goes to the assistant that answered.
+        let agentId = this.state.agentId === "auto" ? previous?.answeredById || false : Number(this.state.agentId);
+        if (this.state.agentId === "auto" && !conversationId) {
+            agentId = false;
+        }
+        await this.ask(question, agentId, conversationId, {
+            answeredBy: agentId && previous?.answeredById === agentId ? previous.answeredBy : "",
+            answeredById: agentId && previous?.answeredById === agentId ? agentId : false,
+            why: agentId && previous?.answeredById === agentId ? previous.why : "",
+        });
+    }
+
+    async ask(question, agentId, conversationId, routed = {}) {
+        this.state.showChangeMenu = false;
+        this.state.chat = {
+            question, answer: "", error: "", waiting: true, conversationId, choosing: !agentId,
+            answeredBy: "", answeredById: false, why: "", ...routed,
+        };
         const { runId, conversationId: newConversation } = await this.orm.call("ai.home.item", "ask_ai", [
-            Number(this.state.agentId),
+            agentId,
             question,
             this.state.attachments.map((file) => file.id),
             conversationId,
@@ -537,11 +583,32 @@ export class WorkDashboard extends Component {
         this.poll(runId, 0);
     }
 
+    /** Change ▾: the same question to another assistant, in a new conversation with it. */
+    askAgain(agent) {
+        const question = this.state.chat?.question;
+        if (!question) {
+            return;
+        }
+        browser.clearTimeout(this.pollTimer);
+        return this.ask(question, agent.id, false, { answeredBy: agent.name, answeredById: agent.id, why: "" });
+    }
+
     async poll(runId, round) {
         const result = await this.orm.call("ai.home.item", "get_ai_answer", [runId]);
         const chat = this.state.chat;
         if (!chat) {
             return;
+        }
+        chat.choosing = result.state === "choosing";
+        if (result.answeredBy) {
+            chat.answeredBy = result.answeredBy;
+            chat.why = result.why;
+        }
+        if (result.answeredById) {
+            chat.answeredById = result.answeredById;
+        }
+        if (result.conversationId) {
+            chat.conversationId = result.conversationId;
         }
         if (FINISHED.includes(result.state)) {
             chat.waiting = false;

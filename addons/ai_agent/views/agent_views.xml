@@ -137,6 +137,17 @@
                   </sheet>
                 </form>
               </field>
+              <separator string="Other agents it may ask"/>
+              <p class="text-muted">When a question needs another department, this agent asks one of these agents. It asks as the same person: the other agent answers only with what that person may see there. One level only, at most 3 questions per answer.</p>
+              <field name="may_ask_ids" readonly="state == 'active'" options="{'no_create': True}"
+                     domain="[('id', '!=', id), ('company_id', '=', company_id)]">
+                <list>
+                  <field name="name" string="Agent"/>
+                  <field name="department_id"/>
+                  <field name="description" string="What it helps with"/>
+                </list>
+              </field>
+              <div class="text-muted small">AI Agent managers choose these, while the agent is paused, like the other data access settings. Questions it asks count on the other agent's limits ("Another agent" source).</div>
             </page>
             <page string="Engine &amp; limits" groups="ai_agent.group_manager">
               <group>

@@ -392,6 +392,27 @@ Submitting, Running, Stopping, Completed, Failed; "Queued · Hermes busy" when H
   beside Requests per person per day; **Daily limits by source**: Asked from, Requests per day, Used today (with a
   "reached" badge), Add a line. Like the other limits, they are changed while the agent is paused.
 
+## Agents working together (`ai_agent`, `ai_discuss`, `ai_home`)
+
+Approved mocks 2026-11-09 (AI Agent canvas boards 19 to 22, ADR 0015).
+
+- **Home** (board 19): **Choose for me** is the first and default choice of the assistant picker when the person
+  has several assistants and one is a company assistant. While choosing: "Choosing the right assistant…", then
+  "Thinking…". The answer header: "Answered by <agent> · chosen for: <why>" and **Change ▾** (the same question to
+  another assistant). A next question in that conversation goes to the assistant that answered.
+- **Discuss** (board 20): **Ask an assistant** at the top of the Assistants filter opens a small standard dialog
+  (question, Send) — the dialog is not drawn on the board; the question is then posted in the person's chat with the
+  chosen assistant under the system line "Chosen for you: <agent>, for <why>. **Change**" (Change opens the same
+  dialog with the question and a choice of assistant). While an agent asks another: "↳ <agent> is asking <other>
+  about <question>… **Stop**" (Stop opens the request, which has Stop request), replaced by the merged answer, under
+  which "Asked <other>: <question> · **View**".
+- **Agent, Data access** (board 21): **Other agents it may ask** (Agent, Department, What it helps with), changed by
+  AI Agent managers while the agent is paused.
+- **Run form** (board 22): "Asked by <agent> for <person> · answered with what this person may see in this agent's
+  department"; Asked from; **Linked requests** (Asked from, Asked <agent>, Follow-up answer, Chose the assistant).
+- **Agent avatar** (owner, 2026-11-09): the AI Agent app icon (frame and sparkles) with the agent's initial in place
+  of "AI", wherever the agent's partner appears.
+
 ## AI agent proposals (`ai_agent`)
 
 On an agent's Data access rows, **May propose** lets the agent propose notes, to-dos and field changes on that

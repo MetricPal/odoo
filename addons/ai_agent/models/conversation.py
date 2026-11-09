@@ -37,7 +37,8 @@ REASON_MAX = 8000  # Hermes's failure reason is kept whole up to this safety len
 PRIORITIES = [('interactive', 'A person is waiting'), ('automation', 'Automation')]
 # Who asked (ADR 0014): every module asks through ``ai.agent.run._ask`` and names itself.
 CALLERS = [('ask', 'Ask AI'), ('home', 'Home'), ('chat', 'Discuss'), ('workflow', 'Workflows'),
-           ('omnichannel', 'Omnichannel'), ('social', 'Social'), ('marketing', 'Marketing'), ('other', 'Other')]
+           ('omnichannel', 'Omnichannel'), ('social', 'Social'), ('marketing', 'Marketing'), ('agent', 'Another agent'),
+           ('other', 'Other')]
 # Provider failures that will repeat for every question sent to the same model: the model is paused for a while and
 # questions waiting for it fail at once with the reason, instead of using slots on requests that will fail.
 MODEL_FAILURES = (
@@ -171,7 +172,7 @@ class Run(models.Model):
 
     @api.model
     def _ask(self, agent, prompt, *, caller, origin=None, conversation=None, attachments=None, automation=False,
-             as_assistant=False):
+             as_assistant=False, purpose='answer'):
         """The one way any module asks an agent (ADR 0014). Returns the queued run; ``origin`` (a record with
         ``_ai_agent_finished(run)``) is told when it finishes.
 
@@ -186,7 +187,7 @@ class Run(models.Model):
             raise UserError(_('Unknown caller of the AI agent.'))
         if not as_assistant:
             return self._queue(agent, prompt, conversation, attachments, origin,
-                               priority='automation' if automation else 'interactive', caller=caller)
+                               priority='automation' if automation else 'interactive', caller=caller, purpose=purpose)
         assistant = agent._assistant_user()
         if not assistant or not assistant.active:
             raise UserError(_('%s has no AI assistant user. An AI Agent manager creates it on the department.',
@@ -194,17 +195,18 @@ class Run(models.Model):
         if origin is not None and not callable(getattr(type(origin), '_ai_agent_finished', None)):
             raise UserError(_('This record cannot receive an AI answer.'))
         run = self.with_user(assistant)._queue(agent.with_user(assistant), prompt, priority='automation',
-                                               caller=caller).sudo()
+                                               caller=caller, purpose=purpose).sudo()
         if origin is not None:
             internal(run).write({'origin_model': origin._name, 'origin_res_id': origin.id})
         return run
 
     @api.model
     def _queue(self, agent, prompt, conversation=None, attachments=None, origin=None, priority='interactive',
-               caller='other'):
+               caller='other', purpose='answer'):
         """Low-level admission; modules call :meth:`_ask`."""
         agent._usable()
-        if priority not in dict(PRIORITIES) or caller not in dict(CALLERS):
+        if priority not in dict(PRIORITIES) or caller not in dict(CALLERS) or \
+                purpose not in ('answer', 'route', 'followup'):
             raise UserError(_('Unknown request priority or caller.'))
         if origin is not None:
             # Only a record the requester may change can receive the answer.
@@ -232,10 +234,12 @@ class Run(models.Model):
                                                 ('create_date', '>=', today)]) >= source.daily_limit:
             raise UserError(_("%(agent)s reached today's limit for %(source)s (%(limit)s). Try again tomorrow.",
                               agent=agent.sudo().name, source=dict(CALLERS)[caller], limit=source.daily_limit))
-        if agent.max_requests_per_user_day and priority == 'interactive':
-            # Background work done for a person does not use up their own questions (ADR 0014).
+        if agent.max_requests_per_user_day and priority == 'interactive' and purpose == 'answer' and caller != 'agent':
+            # Background work, choosing an assistant, another agent's questions and merging their answers do not
+            # use up a person's own questions (ADR 0014, ADR 0015).
             mine = self.sudo().search_count([('agent_id', '=', agent.id), ('user_id', '=', self.env.uid),
-                                             ('priority', '=', 'interactive'), ('create_date', '>=', today)])
+                                             ('priority', '=', 'interactive'), ('purpose', '=', 'answer'),
+                                             ('caller', '!=', 'agent'), ('create_date', '>=', today)])
             if mine >= agent.max_requests_per_user_day:
                 raise UserError(_('You reached your daily limit of %s questions for this agent. Try again tomorrow.',
                                   agent.max_requests_per_user_day))
@@ -253,7 +257,7 @@ class Run(models.Model):
                                            'attachment_ids': [fields.Command.set(attachments.ids)],
                                            'origin_model': origin._name if origin is not None else False,
                                            'origin_res_id': origin.id if origin is not None else 0,
-                                           'priority': priority, 'caller': caller,
+                                           'priority': priority, 'caller': caller, 'purpose': purpose,
                                            'engine_id': agent.sudo().engine_id.id})
         if attachments:
             # The files now belong to the run: whoever may read the run may read them.
@@ -364,7 +368,7 @@ class Run(models.Model):
         profile = self.agent_id._run_profile()
         # A run on an Odoo-managed profile has Odoo's tools: give it a one-run key (only its hash is kept, and the
         # stored payload has it masked).
-        run_key = token_urlsafe(24) if profile else None
+        run_key = token_urlsafe(24) if profile and self.purpose != 'route' else None
         payload, context_hash = self._prepare_payload(run_key)
         stored = json.loads(json.dumps(payload).replace(run_key, '[run key]')) if run_key else payload
         internal(self).write({'request_payload': stored, 'context_hash': context_hash, 'profile_id': profile.id if profile else False,

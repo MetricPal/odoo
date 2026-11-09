@@ -110,10 +110,16 @@
               <field name="name" />
             </h1>
           </div>
+          <div class="alert alert-info" role="status" invisible="not asked_by_label">
+            <strong><field name="asked_by_label" readonly="1" /></strong>
+            <span class="text-muted"> · answered with what this person may see in this agent's department</span>
+          </div>
           <group>
             <group string="Context">
               <field name="agent_id" string="Assistant" />
               <field name="user_id" string="Requested by" />
+              <field name="caller" />
+              <field name="route_reason" invisible="not route_reason" />
               <field name="conversation_id" />
             </group>
             <group string="Timing">
@@ -128,6 +134,10 @@
           <div class="alert alert-secondary" role="status" invisible="state != 'discarded'">This answer was not published because the agent configuration or your access changed while it was being prepared. Ask again.</div>
           <div class="alert alert-warning" role="alert" invisible="not error_message">
             <field name="error_message" nolabel="1" />
+          </div>
+          <div invisible="not linked_html">
+            <separator string="Linked requests" />
+            <field name="linked_html" nolabel="1" readonly="1" />
           </div>
           <notebook>
             <page string="Question &amp; answer">

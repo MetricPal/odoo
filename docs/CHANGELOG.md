@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-11-09 — AI Agent: Choose for me, agents asking other agents; agent avatars
+
+- Change (ADR 0015; approved mocks 2026-11-09, boards 19 to 22): **Choose for me** in Home's assistant picker (default when the person has several assistants and one is a company assistant) and **Ask an assistant** in Discuss's Assistants list: a short *route* run asks the company agent to pick one of the person's own assistants (no tools, no business data), Odoo checks the pick, and the question goes to the chosen agent (Home: "Answered by X · chosen for: …", **Change ▾**; Discuss: the question is posted in the chosen chat under "Chosen for you: X, for … · Change"). **Other agents it may ask** (agent, Data access tab): the new `ask_agent` Odoo tool queues a child run on such an agent as the same person (`caller` Another agent); when the asking run and its children end, one follow-up run merges the answers and only that answer is shown (Discuss shows "<agent> is asking <other> about …" meanwhile, then "Asked <other>: … · View" under the answer). One level, at most 3 per answer. The run form shows "Asked by <agent> for <person>" and **Linked requests**. Agent avatars (Discuss, chatter) are now the AI Agent app icon with the agent's initial in place of "AI" (owner request).
+- Reason: owner request (plan phase 4).
+- Affected areas: ai_agent (models/collaboration.py, conversation.py, tools.py, views, tests/test_collaboration.py), ai_discuss (routing delivery, asking line, Ask an assistant entry and dialog, avatar; tests/test_together.py), ai_home (Choose for me, answered by, Change; tests/test_choose_for_me.py).
+- Compatibility: `ai_agent` 20.0.1.19.0, `ai_discuss` 20.0.1.1.0: update both and `ai_home`. Route, follow-up and Another-agent runs do not count against a person's daily questions. Hermes's own `delegate_task` stays off.
+
 ## 2026-11-09 — AI Agent: Profiles moved under Configuration
 
 - Change: the Profiles menu is now under Configuration, below Hermes engines (same menu ID, AI Agent managers only).

@@ -1,7 +1,7 @@
 # 2026-11-09 The assistant as the shared service of the ERP
 
 Status: phases 1 to 3 done 2026-11-09 (`ai_agent` 20.0.1.16.0, 20.0.1.17.0, 20.0.1.18.0; boards 16 to 18 approved).
-ADR 0014. Phase 4 (many agents working together) needs an ADR first.
+ADR 0014. Phase 4 (many agents working together): ADR 0015, built 2026-11-09 (`ai_agent` 20.0.1.19.0, boards 19 to 22).
 
 ## What the owner asked (2026-11-09)
 
@@ -81,6 +81,9 @@ review before any code.
 
 Routing a person's command to the right department agent, and one agent asking another (delegation) within the
 same permission rules (ADR 0012). Design and ADR only until the owner approves.
+Proposed in ADR 0015: Odoo routes ("Ask" without choosing; the company agent picks among the agents the person may
+ask, Odoo checks the pick) and an `ask_agent` Odoo tool lets an agent ask another on its May ask list, as the same
+person, without blocking (a follow-up run merges the answer). Hermes `delegate_task` stays off. Mocks after approval.
 
 ## Not in this plan
 
