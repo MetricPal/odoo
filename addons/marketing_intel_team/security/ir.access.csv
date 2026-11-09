@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,operation,domain
+team_user,Marketing team (read),model_mi_team,marketing_intel.group_mi_user,r,
+team_hod,Marketing team (head of department),model_mi_team,group_mi_hod,crud,
+member_user,Marketing team members (read),model_mi_team_member,marketing_intel.group_mi_user,r,
+member_hod,Marketing team members (head of department),model_mi_team_member,group_mi_hod,crud,
+decision_senior,Senior review decision,model_mi_senior_decision,group_mi_senior,crud,

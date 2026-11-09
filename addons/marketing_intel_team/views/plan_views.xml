@@ -1,0 +1,42 @@
+<odoo>
+  <!-- The senior review on the campaign (approved board 5.2). -->
+  <record id="plan_form_review_chain" model="ir.ui.view">
+    <field name="name">mi.plan.form.review.chain</field>
+    <field name="model">mi.plan</field>
+    <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//button[@name='action_submit_review']" position="attributes">
+        <attribute name="invisible">is_template or state not in ('brief', 'content') or phase != 'planning' or (needs_senior_review and senior_review_state != 'accepted')</attribute>
+      </xpath>
+      <xpath expr="//button[@name='action_submit_review']" position="after">
+        <button name="action_submit_review" type="object" string="Send to senior review" class="btn-primary"
+                invisible="is_template or state not in ('brief', 'content') or phase != 'planning' or not needs_senior_review or senior_review_state == 'accepted'"
+                help="Your senior reviews the campaign before its release. Nothing goes out before the release."/>
+        <button name="action_senior_accept" type="object" string="Accept and send for release" class="btn-success"
+                invisible="not can_senior_decide or not within_limits"/>
+        <button name="action_senior_accept" type="object" string="Accept and send to Head of department" class="btn-success"
+                invisible="not can_senior_decide or within_limits"/>
+        <button name="action_senior_changes" type="object" string="Request changes" invisible="not can_senior_decide"/>
+        <field name="needs_senior_review" invisible="1"/>
+        <field name="senior_review_state" invisible="1"/>
+        <field name="can_senior_decide" invisible="1"/>
+        <field name="within_limits" invisible="1"/>
+      </xpath>
+      <xpath expr="//sheet/div[hasclass('alert-info')][1]" position="after">
+        <field name="limit_note" invisible="1"/>
+        <div class="alert alert-success d-flex flex-wrap gap-2 mb-3" role="status"
+             invisible="not limit_note or not within_limits or state not in ('content', 'review') or (senior_review_state == 'none' and not needs_senior_review)">
+          <span class="fw-bold">Release:</span> <field name="limit_note" nolabel="1" readonly="1"/>
+          <span invisible="senior_review_state == 'none'">· <field name="senior_review_state" readonly="1" nolabel="1" class="d-inline"/>:
+            <field name="senior_reviewer_id" readonly="1" nolabel="1" class="d-inline"/></span>
+        </div>
+        <div class="alert alert-warning d-flex flex-wrap gap-2 mb-3" role="status"
+             invisible="not limit_note or within_limits or state not in ('content', 'review')">
+          <span class="fw-bold">Release:</span> <field name="limit_note" nolabel="1" readonly="1"/>
+          <span invisible="senior_review_state == 'none'">· <field name="senior_review_state" readonly="1" nolabel="1" class="d-inline"/>:
+            <field name="senior_reviewer_id" readonly="1" nolabel="1" class="d-inline"/></span>
+        </div>
+      </xpath>
+    </field>
+  </record>
+</odoo>

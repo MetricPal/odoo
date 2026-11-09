@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+  <!-- ADR 0016. Each company gets its own copy on first use, like "Marketing campaign". -->
+  <record id="policy_senior_review" model="approval.center.policy">
+    <field name="name">Marketing: senior review</field>
+    <field name="description">A junior's campaign is reviewed by their senior before its release. The approver is chosen per campaign (Marketing › Configuration › Team and roles).</field>
+    <field name="model_id" ref="marketing_intel_plan.model_mi_plan"/>
+    <field name="action_name">action_senior_accepted</field>
+    <field name="approval_minimum">1</field>
+  </record>
+  <record id="policy_release_within_limits" model="approval.center.policy">
+    <field name="name">Marketing: release within limits</field>
+    <field name="description">A senior (or the head of department) releases a campaign that is within the limits the head of department set. Recorded here; above the limits the release goes to "Marketing campaign" with the head of department as approver.</field>
+    <field name="model_id" ref="marketing_intel_plan.model_mi_plan"/>
+    <field name="action_name">action_release_within_limits</field>
+    <field name="approval_minimum">1</field>
+    <field name="allow_self_approval" eval="True"/>
+  </record>
+</odoo>

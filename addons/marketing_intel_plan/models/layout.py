@@ -77,6 +77,11 @@ class PanelLayout(models.Model):
 
     # ------------------------------------------------------------------ which layout applies
     @api.model
+    def _roles(self):
+        """The roles a view can be for (other modules add theirs with selection_add)."""
+        return dict(self._fields['role']._description_selection(self.env))
+
+    @api.model
     def _role_layout(self, role):
         return self.sudo().search([('user_id', '=', False), ('role', '=', role)], limit=1)
 
@@ -85,7 +90,7 @@ class PanelLayout(models.Model):
         """(layout record or empty, blocks, role) for the current user."""
         user = self.env.user
         view = user.mi_panel_view
-        if view in dict(ROLES):
+        if view in self._roles():
             role = view
         else:
             mine = self.sudo().search([('user_id', '=', user.id)], limit=1)
@@ -107,7 +112,7 @@ class PanelLayout(models.Model):
             'view': user.mi_panel_view or ('mine' if layout.user_id else role),
             'role': role,
             'has_mine': bool(self.sudo().search_count([('user_id', '=', user.id)])),
-            'roles': [{'key': k, 'label': v} for k, v in ROLES],
+            'roles': [{'key': k, 'label': v} for k, v in self._roles().items()],
             'catalogue': [{'key': k, 'label': v} for k, v in self._catalogue().items()],
             'boxes': [{'id': b.id, 'title': b.title or dict(b._fields['type']._description_selection(self.env))[b.type],
                        'report': b.report_id.name} for b in boxes],
@@ -117,7 +122,7 @@ class PanelLayout(models.Model):
     # ------------------------------------------------------------------ saving
     @api.model
     def choose_view(self, view):
-        if view not in ('mine', *dict(ROLES)):
+        if view not in ('mine', *self._roles()):
             raise UserError(_('Unknown view.'))
         self.env.user.sudo().mi_panel_view = view
         return True
@@ -133,10 +138,10 @@ class PanelLayout(models.Model):
         if scope == 'role':
             if not self.env.user.has_group('marketing_intel.group_mi_manager'):
                 raise AccessError(_('Only a marketing manager saves views for a role.'))
-            if role not in dict(ROLES):
+            if role not in self._roles():
                 raise UserError(_('Choose the role.'))
             layout = self._role_layout(role)
-            values = {'blocks': blocks, 'name': dict(ROLES)[role]}
+            values = {'blocks': blocks, 'name': self._roles()[role]}
             if layout:
                 layout.write(values)
             else:

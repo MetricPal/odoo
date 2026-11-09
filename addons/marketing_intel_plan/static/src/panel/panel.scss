@@ -147,3 +147,39 @@
     .o_mi_click { cursor: pointer; }
 }
 @media (max-width: 991px) { .o_mi_mgmt .o_mi_mgmt_tiles, .o_mi_mgmt .o_mi_mgmt_grid { grid-template-columns: 1fr 1fr; } }
+
+// Extra block types: tiles, tables, buttons, warning, Explain this (ADR 0016, boards 6.1 to 6.3)
+.o_mi_card_warning {
+    background: #fff8eb;
+    border-color: #f0c48a !important;
+}
+.o_mi_tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+    .o_mi_tile {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: 4px;
+        padding: 8px 10px;
+        strong { font-size: 1.35rem; }
+    }
+}
+.o_mi_extra_table {
+    th { font-weight: 500; color: var(--text-muted, #6c757d); }
+}
+.o_mi_extra_buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 6px;
+}
+.o_mi_explained {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: #f6f1f5;
+    white-space: pre-wrap;
+}

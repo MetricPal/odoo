@@ -57,7 +57,8 @@ export class MarketingPanel extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = proxy({ data: null, brandId: false, tab: "upcoming", loading: true, editing: false, draft: [] });
+        this.state = proxy({ data: null, brandId: false, tab: "upcoming", loading: true, editing: false, draft: [],
+            explain: {} });
         this.notification = useService("notification");
         // The brand comes from Odoo's search bar (searching campaigns by brand).
         this.searchModel = this.env.searchModel;
@@ -234,6 +235,27 @@ export class MarketingPanel extends Component {
             width: `${(100 * row.groups[key]) / total}%`,
             label: GROUP_LABELS[key],
         }));
+    }
+
+    /** "Explain this": the assistant reads the block's numbers for the viewer's role (ADR 0016, board 6.x). */
+    async explain(key) {
+        this.state.explain[key] = { waiting: true, text: "" };
+        let runId;
+        try {
+            runId = await this.orm.call("mi.panel", "explain_block", [key], { brand_id: this.state.brandId || false });
+        } catch (error) {
+            this.state.explain[key] = { waiting: false, text: error.data?.message || _t("The assistant could not be asked.") };
+            return;
+        }
+        for (let round = 0; round < 90; round++) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const result = await this.orm.call("mi.panel", "explain_result", [runId]);
+            if (result.done) {
+                this.state.explain[key] = { waiting: false, text: result.text };
+                return;
+            }
+        }
+        this.state.explain[key] = { waiting: false, text: _t("The answer is taking longer than usual. Try again later.") };
     }
 
     open(model, resId) {

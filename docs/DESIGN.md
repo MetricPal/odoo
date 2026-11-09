@@ -392,6 +392,22 @@ Submitting, Running, Stopping, Completed, Failed; "Queued · Hermes busy" when H
   beside Requests per person per day; **Daily limits by source**: Asked from, Requests per day, Used today (with a
   "reached" badge), Add a line. Like the other limits, they are changed while the agent is paused.
 
+## Marketing roles and role panels (`marketing_intel_team`)
+
+Approved mocks 2026-11-09 (Marketing canvas boards 5.1 to 6.3, ADR 0016).
+
+- **Team and roles** (Configuration): team list (Person, Role badge, Reports to = reviewer, Reviews whose work),
+  "What a senior may release alone" (budget, audience, channels as checkboxes), Approvers (read-only, Set approvers).
+- **Campaign**: a junior sees **Send to senior review** instead of Send for review; the senior sees **Accept and
+  send for release** (within limits) or **Accept and send to Head of department** (above), and **Request changes**
+  (dialog with the comment). A green or orange "Release:" line says who releases and why; the Next step line says
+  "Waiting for the senior review by …" / "Review …'s campaign: accept it or request changes". The status bar keeps
+  the campaign phases (deviation from board 5.2, which drew review stages there).
+- **Control panel views**: My day (junior), My team (senior), Department (head of department), chosen by role when
+  the company has a team; people still switch views and save their own. Extra blocks may show tiles, a table,
+  buttons, a warning style (the Department setup checklist, shown only while something is missing) and **Explain
+  this** (a short reading of the numbers by the brand's AI agent, shown under the block).
+
 ## Agents working together (`ai_agent`, `ai_discuss`, `ai_home`)
 
 Approved mocks 2026-11-09 (AI Agent canvas boards 19 to 22, ADR 0015).

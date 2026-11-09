@@ -345,15 +345,43 @@
                         </t>
                         <t t-if="data.extra[block.key]">
                             <t t-set="extra" t-value="data.extra[block.key]"/>
-                            <section class="o_mi_card">
+                            <section class="o_mi_card" t-att-class="extra.warning ? 'o_mi_card_warning' : ''">
                                 <div class="o_mi_card_head"><h2><i class="oi me-1" t-att-data-icon="extra.icon"/><t t-esc="extra.title"/></h2>
-                                    <button t-if="extra.action" class="btn btn-link btn-sm" t-on-click="() => this.go(extra.action)" t-esc="extra.action_label"/></div>
-                                <p t-if="!extra.rows.length" class="o_mi_empty" t-esc="extra.empty"/>
+                                    <span class="ms-auto d-flex gap-1">
+                                        <button t-if="extra.explain" class="btn btn-light btn-sm o_mi_explain_btn" t-att-disabled="this.state.explain[block.key]?.waiting"
+                                                t-on-click="() => this.explain(block.key)">Explain this</button>
+                                        <button t-if="extra.action" class="btn btn-link btn-sm" t-on-click="() => this.go(extra.action)" t-esc="extra.action_label"/>
+                                    </span></div>
+                                <div t-if="extra.tiles and extra.tiles.length" class="o_mi_tiles">
+                                    <div t-foreach="extra.tiles" t-as="tile" t-key="tile_index" class="o_mi_tile">
+                                        <small t-esc="tile.label"/>
+                                        <strong t-esc="tile.value"/>
+                                        <small t-if="tile.note" t-att-class="tile.danger ? 'text-danger' : (tile.good ? 'text-success' : 'text-muted')" t-esc="tile.note"/>
+                                    </div>
+                                </div>
+                                <div t-if="extra.columns and extra.table_rows and extra.table_rows.length" class="table-responsive">
+                                    <table class="table table-sm o_mi_extra_table mb-1">
+                                        <thead><tr><th t-foreach="extra.columns" t-as="col" t-key="col_index" t-esc="col"/></tr></thead>
+                                        <tbody><tr t-foreach="extra.table_rows" t-as="trow" t-key="trow_index">
+                                            <td t-foreach="trow" t-as="cell" t-key="cell_index" t-esc="cell"/></tr></tbody>
+                                    </table>
+                                </div>
+                                <p t-if="!extra.rows.length and !(extra.tiles and extra.tiles.length) and !(extra.table_rows and extra.table_rows.length) and !(extra.buttons and extra.buttons.length)" class="o_mi_empty" t-esc="extra.empty"/>
                                 <button t-foreach="extra.rows" t-as="row" t-key="row_index" type="button" class="o_mi_todo"
-                                        t-on-click="() => this.open(row.model, row.res_id)">
+                                        t-on-click="() => row.action ? this.go(row.action) : this.open(row.model, row.res_id)">
                                     <span><strong t-esc="row.title"/><small t-esc="row.subtitle"/></span>
-                                    <span class="ms-auto o_mi_extra_value" t-att-class="row.danger ? 'text-danger' : ''" t-esc="row.value"/>
+                                    <span class="ms-auto o_mi_extra_value" t-att-class="row.danger ? 'text-danger' : (row.good ? 'text-success' : '')" t-esc="row.value"/>
                                 </button>
+                                <div t-if="extra.buttons and extra.buttons.length" class="o_mi_extra_buttons">
+                                    <button t-foreach="extra.buttons" t-as="b" t-key="b_index" type="button" class="btn btn-secondary btn-sm"
+                                            t-on-click="() => this.go(b.action)" t-esc="b.label"/>
+                                </div>
+                                <p t-if="extra.note" class="o_mi_extra_note text-muted small mb-0" t-esc="extra.note"/>
+                                <t t-set="explained" t-value="this.state.explain[block.key]"/>
+                                <p t-if="explained" class="o_mi_explained mb-0" role="status">
+                                    <t t-if="explained.waiting">The assistant is reading these numbers…</t>
+                                    <t t-else="" t-esc="explained.text"/>
+                                </p>
                             </section>
                         </t>
                     </div>

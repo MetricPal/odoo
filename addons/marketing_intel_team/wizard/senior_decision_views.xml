@@ -1,0 +1,17 @@
+<odoo>
+  <record id="senior_decision_form" model="ir.ui.view">
+    <field name="name">mi.senior.decision.form</field>
+    <field name="model">mi.senior.decision</field>
+    <field name="arch" type="xml">
+      <form string="Request changes">
+        <field name="plan_id" invisible="1"/>
+        <p class="text-muted">The campaign goes back to Content; the owner gets a to-do with your comment.</p>
+        <field name="comment" nolabel="1" placeholder="What should change before you accept it?"/>
+        <footer>
+          <button name="action_confirm" type="object" string="Request changes" class="btn-primary"/>
+          <button string="Cancel" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

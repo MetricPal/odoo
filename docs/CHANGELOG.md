@@ -12,6 +12,16 @@ Format:
 
 
 
+## 2026-11-09 — Marketing: Junior / Senior / Head of department, senior review, a control panel per role
+
+- Change (ADR 0016; approved mocks 2026-11-09, Marketing canvas boards 5.1 to 6.3; new module `marketing_intel_team`, auto-installed):
+  - Roles: Marketing access rights are now Junior (the former "User") ⊂ Senior ⊂ Head of department ⊂ Administrator. **Configuration › Team and roles** lists the team (role, who reviews whose work, from Employees by default), what a senior may release alone (budget, audience, channels) and the approvers. The head of department is the Marketing department's manager, else the team member with that role.
+  - Review chain (Approval Center): a junior's campaign has **Send to senior review** ("Marketing: senior review", the junior's senior as approver); the senior **Accept and send for release** (within the limits the senior releases it: "Marketing: release within limits") or **Accept and send to Head of department** (above them: "Marketing campaign" with the head of department) or **Request changes** (back to Content, to-do with the comment). A senior's own campaign within the limits, and the head of department's, are released by their owner, recorded as a release within limits. The campaign shows "Release: within the limits… / above the limit…".
+  - Control panel per role: **My day** (junior: to-dos, prepared by the assistant, going out today, my work in review, my results with Explain this, quick buttons), **My team** (senior: numbers, reviews waiting for me, team workload, channel performance with Explain this, alerts, campaigns), **Department** (head of department: setup checklist from the M0 audit, department numbers, channel performance, assistant and automations health, team, approvals waiting for me, timeline). The panel's extra blocks gain tiles, tables, buttons, a warning style and **Explain this** (the brand's AI agent reads the block's numbers, caller Marketing).
+- Reason: owner request (marketing plan M1 and M3).
+- Affected areas: marketing_intel_team (new), marketing_intel_plan (panel: roles from the field selection; extra block types and Explain this in panel.js/xml/scss).
+- Compatibility: install `marketing_intel_team` and update `marketing_intel_plan`. Without a marketing team for the company nothing changes (one review, previous panel views). Existing marketing users stay Juniors until promoted on Team and roles. Board 5.2 showed review stages in the status bar; the campaign's status bar shows phases, so the senior review appears in the Next step and Release lines and the buttons instead. Per-channel spend, leads and revenue are not recorded (spend is per campaign), so the Department channel table shows sends and engagement per channel, and money per campaign in its numbers.
+
 ## 2026-11-09 — Discuss: an assistant chat's menu only adds it to Favorites
 
 - Change: the ⋯ / right-click menu of an assistant chat in the chat list shows only Add to Favorites (Remove from Favorites once it is a favourite); Invite People, Mute Conversation, View Recordings and Hide Until New Message are not offered for assistants. People's chats are unchanged.
