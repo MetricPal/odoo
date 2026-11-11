@@ -1,0 +1,38 @@
+// Writing tools (approved boards 8.1 to 8.4): the button, and the suggestion card under the text.
+.o_mi_writing_button {
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    background-color: color-mix(in srgb, var(--primary) 6%, transparent);
+
+    &:hover, &:focus {
+        background-color: color-mix(in srgb, var(--primary) 14%, transparent);
+        color: var(--primary);
+    }
+}
+
+.o_mi_writing_icon {
+    width: 34px;
+    justify-content: center;
+}
+
+.o_mi_writing_card {
+    border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+    background-color: color-mix(in srgb, var(--primary) 4%, transparent);
+    border-radius: .25rem;
+    padding: .5rem 1rem;
+}
+
+.o_mi_writing_ai {
+    background-color: color-mix(in srgb, var(--primary) 15%, transparent);
+    color: var(--primary);
+    font-weight: normal;
+}
+
+.o_mi_writing_text {
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.o_mi_writing_line + .o_mi_writing_line {
+    border-top: 1px solid color-mix(in srgb, var(--primary) 15%, transparent);
+}

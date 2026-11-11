@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Writing tools under each marketing text (approved boards 8.1 to 8.4). Shown only while the text can be edited;
+       the widget itself hides when no marketing assistant is active for the person. -->
+
+  <!-- 8.2 Email: subject lines, and the preview text -->
+  <record id="mailing_form_writing" model="ir.ui.view">
+    <field name="name">mailing.mailing.form.writing</field>
+    <field name="model">mailing.mailing</field>
+    <field name="inherit_id" ref="mass_mailing.view_mail_mass_mailing_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='subject']" position="after">
+        <div invisible="mailing_type != 'mail' or state in ('sending', 'done')"/>
+        <widget name="mi_writing_tools" field="subject" compact="1"
+                invisible="mailing_type != 'mail' or state in ('sending', 'done')"/>
+      </xpath>
+      <xpath expr="//field[@name='preview']" position="after">
+        <div invisible="mailing_type != 'mail' or state in ('sending', 'done')"/>
+        <widget name="mi_writing_tools" field="preview"
+                invisible="mailing_type != 'mail' or state in ('sending', 'done')"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- 8.3 SMS Marketing -->
+  <record id="mailing_form_sms_writing" model="ir.ui.view">
+    <field name="name">mailing.mailing.form.sms.writing</field>
+    <field name="model">mailing.mailing</field>
+    <field name="inherit_id" ref="mass_mailing_sms.mailing_mailing_view_form_sms"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='body_plaintext']" position="after">
+        <widget name="mi_writing_tools" field="body_plaintext" invisible="state in ('sending', 'done')"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- 8.4 Messaging Marketing (WhatsApp, Telegram) -->
+  <record id="mm_mailing_form_writing" model="ir.ui.view">
+    <field name="name">mm.mailing.form.writing</field>
+    <field name="model">mm.mailing</field>
+    <field name="inherit_id" ref="messaging_marketing.mailing_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='body']" position="after">
+        <widget name="mi_writing_tools" field="body" invisible="state != 'draft'"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- 8.1 Social post -->
+  <record id="publication_form_writing" model="ir.ui.view">
+    <field name="name">omni.social.publication.form.writing</field>
+    <field name="model">omni.social.publication</field>
+    <field name="inherit_id" ref="omni_social.publication_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//div[@name='text_block']/field[@name='body']" position="after">
+        <widget name="mi_writing_tools" field="body" invisible="state != 'draft'"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- Campaign texts: key message and audience -->
+  <record id="plan_form_writing" model="ir.ui.view">
+    <field name="name">mi.plan.form.writing</field>
+    <field name="model">mi.plan</field>
+    <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//page[@name='message']//field[@name='message']" position="after">
+        <div/>
+        <widget name="mi_writing_tools" field="message"/>
+      </xpath>
+      <xpath expr="//page[@name='message']//field[@name='audience']" position="after">
+        <div/>
+        <widget name="mi_writing_tools" field="audience"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

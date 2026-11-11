@@ -426,6 +426,24 @@ Approved mocks 2026-11-09 (Marketing canvas boards 5.1 to 6.3, ADR 0016).
   buttons, a warning style (the Department setup checklist, shown only while something is missing) and **Explain
   this** (a short reading of the numbers by the brand's AI agent, shown under the block).
 
+## Writing tools (`marketing_intel_writing`)
+
+Approved mocks 2026-11-11 (Marketing canvas boards 8.1 to 8.4).
+
+- One **Writing tools** button (sparkle icon) under each marketing text; on the email subject only the icon. Menu, in
+  this order: Subject lines (email subject), Rewrite, Shorter, Longer, Tone › Friendly / Formal / Bold, Translate ›
+  the company's active languages, Fix grammar, Hashtags (social), Fit to [one SMS / WhatsApp / Telegram / the
+  platform], then Ask something else….
+- The suggestion card sits under the text: tool name, AI badge, the agent's name, and a count ("212 → 118
+  characters", "148 characters · 1 SMS", "151 / 1,024"; red when over). Buttons: **Use**, **Try again**, **Discard**,
+  and "Your text stays until you click Use". While waiting: "Writing…" and Stop. A warning line says when the
+  suggestion left out a placeholder, link or STOP.
+- Subject lines: one row per line with Use and **A/B test it** (only with the Mailing Campaigns option), then More
+  and Discard.
+- Email body: Writing tools in the editor's text toolbar, for the selected text; the suggestion opens in a dialog
+  (Use / Try again / Discard), as Odoo's Translate does.
+- Shown only while the text can be edited and a marketing agent is active for the person.
+
 ## Agents working together (`ai_agent`, `ai_discuss`, `ai_home`)
 
 Approved mocks 2026-11-09 (AI Agent canvas boards 19 to 22, ADR 0015).

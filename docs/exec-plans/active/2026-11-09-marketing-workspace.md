@@ -1,7 +1,8 @@
 # 2026-11-09 Marketing: the team's whole working day inside metric.io
 
 Status: plan agreed 2026-11-09. M0 done (audit below); M1 and M3 built 2026-11-09 in `marketing_intel_team` from the
-approved boards 5.1 to 6.3. Next: M2 writing tools. New screens need approved mocks first (CLAUDE.md); the
+approved boards 5.1 to 6.3. M2 writing tools built 2026-11-11 in `marketing_intel_writing` from the
+approved boards 8.1 to 8.4. Next: M4 marketing jobs. New screens need approved mocks first (CLAUDE.md); the
 role model and assistant jobs are proposed in ADR 0016 (`docs/design-decisions/0016-marketing-roles-and-jobs.md`).
 Builds on the marketing roadmap (P0 to P6 delivered 2026-10-25), ADR 0012 (department assistants), ADR 0014
 (the assistant as a shared service) and ADR 0015 (agents working together).

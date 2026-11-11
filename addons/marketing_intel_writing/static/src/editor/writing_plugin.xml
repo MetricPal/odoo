@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <t t-name="marketing_intel_writing.ToolbarMenu">
+    <Dropdown t-if="this.state.tools.available" menuRef="this.menuRef">
+      <button type="button" class="btn btn-light d-inline-flex align-items-center gap-1 o_mi_writing_toolbar" name="mi_writing"
+              t-att-title="this.props.title" t-att-disabled="this.props.isDisabled">
+        <t t-call="marketing_intel_writing.Sparkle"/> Writing tools
+      </button>
+      <t t-set-slot="content">
+        <div data-prevent-closing-overlay="true">
+          <t t-call="marketing_intel_writing.ToolItems" tools="this.state.tools.tools" tones="this.tones" languages="this.state.tools.languages"
+             onPick="(tool, option) =&gt; this.pick(tool, option)" onCustom="() =&gt; this.pick('custom', false)" label="(tool) =&gt; this.label(tool)"/>
+        </div>
+      </t>
+    </Dropdown>
+  </t>
+
+  <t t-name="marketing_intel_writing.SuggestionDialog">
+    <Dialog size="'md'" title="this.title">
+      <div class="d-flex flex-column gap-2 o_mi_writing_dialog">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <span class="badge o_mi_writing_ai">AI</span>
+          <span class="text-muted small" t-out="this.props.tools.agent"/>
+          <span class="text-muted small">For the selected text</span>
+          <span t-if="this.state.state === 'ready'" class="ms-auto text-muted small o_mi_writing_count" t-out="this.count"/>
+        </div>
+        <t t-if="this.state.state === 'custom'">
+          <label class="fw-semibold" for="mi_writing_custom_dialog">What should the assistant do with the selected text?</label>
+          <div class="d-flex gap-2">
+            <input id="mi_writing_custom_dialog" class="form-control o_mi_writing_custom_input" maxlength="500"
+                   placeholder="e.g. Mention that the shop is open on Sunday" t-att-value="this.state.customText"
+                   t-on-input="(ev) =&gt; { this.state.customText = ev.target.value; }"
+                   t-on-keydown="(ev) =&gt; this.onCustomKeydown(ev)"/>
+            <button type="button" class="btn btn-primary" t-on-click="() =&gt; this.askCustom()">Ask</button>
+          </div>
+        </t>
+        <div t-elif="this.state.state === 'waiting'" class="d-flex align-items-center gap-2 text-muted">
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"/>
+          <span>Writing&#8230;</span>
+        </div>
+        <div t-elif="this.state.state === 'failed'" class="alert alert-warning mb-0 py-2" role="alert" t-out="this.state.error"/>
+        <t t-else="">
+          <p class="mb-0 o_mi_writing_text" t-out="this.state.text"/>
+          <div t-if="this.state.warning" class="alert alert-warning mb-0 py-1 small" role="status" t-out="this.state.warning"/>
+          <span class="text-muted small">Use replaces only the selected text; Ctrl+Z undoes it.</span>
+        </t>
+      </div>
+      <t t-set-slot="footer">
+        <button type="button" class="btn btn-primary" t-att-disabled="this.state.state !== 'ready'" t-on-click="() =&gt; this.use()">Use</button>
+        <button t-if="this.state.state === 'ready' or this.state.state === 'failed'" type="button" class="btn btn-secondary" t-on-click="() =&gt; this.ask()">Try again</button>
+        <button type="button" class="btn btn-secondary" t-on-click="() =&gt; this.discard()">Discard</button>
+      </t>
+    </Dialog>
+  </t>
+
+</templates>

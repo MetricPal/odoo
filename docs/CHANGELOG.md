@@ -12,6 +12,23 @@ Format:
 
 
 
+## 2026-11-11 — Marketing: writing tools on every marketing text (plan M2)
+
+- Change (owner, approved boards 8.1 to 8.4): a **Writing tools** button under the email subject and preview text, SMS,
+  Messaging (WhatsApp, Telegram), social post texts and the campaign's key message and audience, and in the email
+  editor's text toolbar for the selected text. Tools: Rewrite, Shorter, Longer, Tone (Friendly, Formal, Bold),
+  Translate (the company's active languages), Fix grammar, Hashtags (social), Subject lines (email subject, each with
+  Use and **A/B test it**, which uses Odoo's own A/B test), Fit to the channel (one SMS, WhatsApp 1,024 / Telegram
+  4,096, the social platform's limit) and Ask something else. The marketing agent answers as the person (caller
+  Marketing, ADR 0014); the suggestion shows under the text with Use / Try again / Discard and the text changes only
+  on Use. A suggestion that drops a placeholder, link or STOP says so.
+- Reason: plan M2 of `docs/exec-plans/active/2026-11-09-marketing-workspace.md` (work without leaving for ChatGPT).
+- Affected areas: new module `marketing_intel_writing` (auto-installed; depends on marketing_intel_ai,
+  marketing_intel_team, mass_mailing_sms, messaging_marketing, omni_social).
+- Known limitations: the email body's suggestion opens in a dialog (like Odoo's Translate), not beside the body as on
+  board 8.2; the subject's sparkle button sits under the subject, not inside its line; the template's Saved texts list
+  has no tools yet.
+
 ## 2026-11-09 — Marketing: Ask the assistant opens the marketing agent's chat; Portfolio in Odoo's layout
 
 - Change (owner): on the Marketing control panel (and the role panels), Ask the assistant shows only while a

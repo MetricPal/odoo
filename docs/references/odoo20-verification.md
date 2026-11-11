@@ -1577,3 +1577,29 @@ Persistent model registry uses native `models.UniqueIndex` (verified against
 mail_message_reaction), related stored company boundaries, One2many domain/list,
 Many2one no-create dropdown and Owl field record `isDirty()`/`load()` APIs.
 Management uses ordinary paired native groups rather than an advanced tab.
+
+
+### Marketing writing tools — 2026-11-11
+
+- View widgets: `registry.category("view_widgets")` with `extractProps({attrs})` and `standardWidgetProps`
+  (`web/static/src/views/widgets/standard_widget_props.js`); the widget writes with the form's `record.update`.
+- Owl 3: `t-model` needs a signal (`modelExpr` in `web/static/lib/owl/owl.js`), so inputs use `t-on-input`; template
+  arrow functions cannot hold statements (`if`), so handlers call methods.
+- Nested `Dropdown` inside a dropdown's content opens as a submenu (`hasParent`, `web/core/dropdown/dropdown.js`).
+- Editor toolbar items: `toolbar_groups` / `toolbar_items` resources with a `Component` and `toolbarButtonProps`, as
+  `html_editor/static/src/main/translate/translate_plugin.js`. The mailing editor loads plugins from
+  `basic-editor-plugins` (simple editor, `web.assets_backend`) and `mass_mailing-plugins` (builder, lazy bundle
+  `mass_mailing.assets_builder`).
+- SMS counting reuses `@sms/core/sms_char_counter_utils` (`countSMS`, `extractSmsEncoding`).
+- A/B test: writing `ab_testing_enabled` makes the UTM campaign (`_create_ab_testing_utm_campaigns`); `copy()` keeps
+  the flag and campaign.
+- View inheritance cannot select on `string` (`View inheritance may not use attribute 'string' as a selector`).
+- Hoot: `_t` outside a mounted component fails ("translations have not been loaded"); `_t` returns a lazy string.
+  The headless runner (`web/tests/test_js.py`, `--test-tags /<module>:WebSuite.test_unit_desktop`) needs the
+  `websocket-client` package.
+- Browser check on a copy of the live data (2026-11-11): Odoo 20's backend does not define Bootstrap's
+  `--bs-primary`/`--bs-primary-rgb`; use `var(--primary)` (and `color-mix()` for tints). A toolbar item shows in the
+  editor's compact toolbar only with `namespaces: ["compact", "expanded"]` (default is expanded only,
+  `html_editor/static/src/main/toolbar/toolbar_plugin.js`). A view widget in an inner group fills one cell: put an
+  empty `<div/>` before it to place it in the value column under its field. A mailing body without Odoo's email blocks
+  has no editable area in the builder, so no text toolbar shows there.
