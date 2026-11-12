@@ -1,58 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-  <!-- Writing tools under each marketing text (approved boards 8.1 to 8.4). Shown only while the text can be edited;
-       the widget itself hides when no marketing assistant is active for the person. -->
+  <!-- One look for every marketing text (owner, 2026-11-11, board 9.1 option A plus): a box with its label above and
+       a placeholder, Writing tools (✦) in the box's top-right corner after Odoo's own text icons, the character
+       count in its bottom-right corner, and the suggestion right under the box.
+       Each field is moved into its box (position="move", which Odoo applies only as a direct child of an xpath), so
+       attributes other modules set on it stay. -->
 
-  <!-- 8.2 Email: subject lines, and the preview text -->
+  <!-- Email Marketing: subject and preview text -->
   <record id="mailing_form_writing" model="ir.ui.view">
     <field name="name">mailing.mailing.form.writing</field>
     <field name="model">mailing.mailing</field>
     <field name="inherit_id" ref="mass_mailing.view_mail_mass_mailing_form"/>
     <field name="arch" type="xml">
-      <xpath expr="//field[@name='subject']" position="after">
-        <div invisible="mailing_type != 'mail' or state in ('sending', 'done')"/>
-        <widget name="mi_writing_tools" field="subject" compact="1"
-                invisible="mailing_type != 'mail' or state in ('sending', 'done')"/>
+      <xpath expr="//field[@name='subject']" position="attributes">
+        <attribute name="nolabel">1</attribute>
+        <attribute name="class">text-break</attribute>
       </xpath>
-      <xpath expr="//field[@name='preview']" position="after">
-        <div invisible="mailing_type != 'mail' or state in ('sending', 'done')"/>
-        <widget name="mi_writing_tools" field="preview"
-                invisible="mailing_type != 'mail' or state in ('sending', 'done')"/>
+      <xpath expr="//field[@name='subject']" position="before">
+        <div class="o_mi_text_field" colspan="2" invisible="mailing_type != 'mail'">
+          <label for="subject" class="o_form_label"/>
+          <div class="o_mi_text_box" name="mi_box_subject"/>
+        </div>
+      </xpath>
+      <xpath expr="//div[@name='mi_box_subject']" position="inside">
+        <xpath expr="//field[@name='subject']" position="move"/>
+        <widget name="mi_writing_tools" field="subject" invisible="state in ('sending', 'done')"/>
+      </xpath>
+
+      <xpath expr="//field[@name='preview']" position="attributes">
+        <attribute name="nolabel">1</attribute>
+        <attribute name="class">text-break</attribute>
+      </xpath>
+      <xpath expr="//field[@name='preview']" position="before">
+        <div class="o_mi_text_field" colspan="2" invisible="mailing_type != 'mail'">
+          <label for="preview" string="Preview Text" class="o_form_label"/>
+          <div class="o_mi_text_box" name="mi_box_preview"/>
+        </div>
+      </xpath>
+      <xpath expr="//div[@name='mi_box_preview']" position="inside">
+        <xpath expr="//field[@name='preview']" position="move"/>
+        <widget name="mi_writing_tools" field="preview" invisible="state in ('sending', 'done')"/>
       </xpath>
     </field>
   </record>
 
-  <!-- 8.3 SMS Marketing -->
+  <!-- SMS Marketing -->
   <record id="mailing_form_sms_writing" model="ir.ui.view">
     <field name="name">mailing.mailing.form.sms.writing</field>
     <field name="model">mailing.mailing</field>
     <field name="inherit_id" ref="mass_mailing_sms.mailing_mailing_view_form_sms"/>
     <field name="arch" type="xml">
-      <xpath expr="//field[@name='body_plaintext']" position="after">
+      <xpath expr="//field[@name='body_plaintext']" position="attributes">
+        <attribute name="placeholder">e.g. Spring Shop: 20% off every plant until Sunday. Reply STOP to opt out.</attribute>
+      </xpath>
+      <xpath expr="//field[@name='body_plaintext']" position="before">
+        <div class="o_mi_text_box" name="mi_box_sms"/>
+      </xpath>
+      <xpath expr="//div[@name='mi_box_sms']" position="inside">
+        <xpath expr="//field[@name='body_plaintext']" position="move"/>
         <widget name="mi_writing_tools" field="body_plaintext" invisible="state in ('sending', 'done')"/>
       </xpath>
     </field>
   </record>
 
-  <!-- 8.4 Messaging Marketing (WhatsApp, Telegram) -->
+  <!-- Messaging Marketing (WhatsApp, Telegram): the count moves into the box -->
   <record id="mm_mailing_form_writing" model="ir.ui.view">
     <field name="name">mm.mailing.form.writing</field>
     <field name="model">mm.mailing</field>
     <field name="inherit_id" ref="messaging_marketing.mailing_form"/>
     <field name="arch" type="xml">
-      <xpath expr="//field[@name='body']" position="after">
+      <xpath expr="//field[@name='body']" position="before">
+        <div class="o_mi_text_box" name="mi_box_message"/>
+      </xpath>
+      <xpath expr="//div[@name='mi_box_message']" position="inside">
+        <xpath expr="//field[@name='body']" position="move"/>
         <widget name="mi_writing_tools" field="body" invisible="state != 'draft'"/>
+      </xpath>
+      <xpath expr="(//span[.//field[@name='char_count']])[1]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="(//span[.//field[@name='char_count']])[2]" position="attributes">
+        <attribute name="invisible">1</attribute>
       </xpath>
     </field>
   </record>
 
-  <!-- 8.1 Social post -->
+  <!-- Social post: the composer's own counter is already in the box -->
   <record id="publication_form_writing" model="ir.ui.view">
     <field name="name">omni.social.publication.form.writing</field>
     <field name="model">omni.social.publication</field>
     <field name="inherit_id" ref="omni_social.publication_form"/>
     <field name="arch" type="xml">
-      <xpath expr="//div[@name='text_block']/field[@name='body']" position="after">
+      <xpath expr="//div[@name='text_block']/field[@name='body']" position="before">
+        <div class="o_mi_text_box" name="mi_box_post"/>
+      </xpath>
+      <xpath expr="//div[@name='mi_box_post']" position="inside">
+        <xpath expr="//div[@name='text_block']//field[@name='body']" position="move"/>
         <widget name="mi_writing_tools" field="body" invisible="state != 'draft'"/>
       </xpath>
     </field>
@@ -64,12 +107,33 @@
     <field name="model">mi.plan</field>
     <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
     <field name="arch" type="xml">
-      <xpath expr="//page[@name='message']//field[@name='message']" position="after">
-        <div/>
+      <xpath expr="//page[@name='message']//field[@name='message']" position="attributes">
+        <attribute name="nolabel">1</attribute>
+        <attribute name="placeholder">The one thing every draft should say, e.g. Spring prices on every plant, two weeks only.</attribute>
+      </xpath>
+      <xpath expr="//page[@name='message']//field[@name='message']" position="before">
+        <div class="o_mi_text_field" colspan="2">
+          <label for="message" class="o_form_label"/>
+          <div class="o_mi_text_box" name="mi_box_key_message"/>
+        </div>
+      </xpath>
+      <xpath expr="//div[@name='mi_box_key_message']" position="inside">
+        <xpath expr="//page[@name='message']//field[@name='message']" position="move"/>
         <widget name="mi_writing_tools" field="message"/>
       </xpath>
-      <xpath expr="//page[@name='message']//field[@name='audience']" position="after">
-        <div/>
+
+      <xpath expr="//page[@name='message']//field[@name='audience']" position="attributes">
+        <attribute name="nolabel">1</attribute>
+        <attribute name="placeholder">Who it is for, e.g. returning customers who bought in the last year.</attribute>
+      </xpath>
+      <xpath expr="//page[@name='message']//field[@name='audience']" position="before">
+        <div class="o_mi_text_field" colspan="2">
+          <label for="audience" class="o_form_label"/>
+          <div class="o_mi_text_box" name="mi_box_audience"/>
+        </div>
+      </xpath>
+      <xpath expr="//div[@name='mi_box_audience']" position="inside">
+        <xpath expr="//page[@name='message']//field[@name='audience']" position="move"/>
         <widget name="mi_writing_tools" field="audience"/>
       </xpath>
     </field>

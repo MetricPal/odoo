@@ -450,13 +450,13 @@
     <field name="view_id" ref="goal_report_list"/><field name="context">{'group_by': 'brand_id'}</field>
   </record>
   <record id="action_control_panel" model="ir.actions.client">
-    <field name="name">Marketing control panel</field><field name="tag">marketing_intel_plan.control_panel</field>
+    <field name="name">Marketing</field><field name="tag">marketing_intel_plan.control_panel</field>
     <field name="path">marketing-panel</field>
   </record>
   <record id="marketing_intel.menu_root" model="ir.ui.menu">
     <field name="action" ref="action_control_panel"/>
   </record>
-  <menuitem id="menu_control_panel" name="Control panel" parent="marketing_intel.menu_root" action="action_control_panel" sequence="1"/>
+  <!-- No "Control panel" menu item (owner, 2026-11-11): the Marketing app itself opens the panel. -->
   <record id="server_action_duplicate" model="ir.actions.server">
     <field name="name">Duplicate &amp; edit</field>
     <field name="model_id" ref="model_mi_plan"/><field name="binding_model_id" ref="model_mi_plan"/>

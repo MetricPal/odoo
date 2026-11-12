@@ -1,0 +1,82 @@
+// Results by channel and source (board 10): the table beside a donut chart.
+.o_mi_cr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 1.25rem;
+    align-items: start;
+
+    @media (max-width: 991.98px) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.o_mi_cr_toggle {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:disabled {
+        opacity: 1;
+    }
+}
+
+.o_mi_cr_source td:first-child {
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.o_mi_cr_bar {
+    display: inline-block;
+    height: 8px;
+    min-width: 2px;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.o_mi_cr_chart {
+    margin: 0;
+    border: 1px solid $border-color;
+    border-radius: .5rem;
+    padding: .75rem;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+
+.o_mi_cr_donut {
+    align-self: center;
+}
+
+.o_mi_cr_slice, .o_mi_cr_center {
+    cursor: pointer;
+    outline: none;
+
+    &:hover, &:focus-visible {
+        opacity: .8;
+    }
+}
+
+.o_mi_cr_center_label {
+    fill: #6c757d;
+}
+
+.o_mi_cr_legend {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.o_mi_cr_legend_item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: .2rem .25rem;
+    border-radius: .25rem;
+    font-size: .85rem;
+
+    &:hover, &:focus-visible {
+        background-color: color-mix(in srgb, var(--primary) 8%, transparent);
+    }
+}

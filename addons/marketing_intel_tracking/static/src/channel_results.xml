@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <!-- The panel's generic block: this block draws its own table and chart (its columns feed "Explain this" only). -->
+  <t t-inherit="marketing_intel_plan.Panel" t-inherit-mode="extension">
+    <xpath expr="//div[@t-if='extra.columns and extra.table_rows and extra.table_rows.length']" position="after">
+      <t t-if="extra.channel_results" t-call="marketing_intel_tracking.ChannelResults"/>
+    </xpath>
+    <xpath expr="//div[@t-if='extra.columns and extra.table_rows and extra.table_rows.length']" position="attributes">
+      <attribute name="t-if">!extra.channel_results and extra.columns and extra.table_rows and extra.table_rows.length</attribute>
+    </xpath>
+    <xpath expr="//p[hasclass('o_mi_empty')][@t-esc='extra.empty']" position="attributes">
+      <attribute name="t-if">!extra.channel_results and !extra.rows.length and !(extra.tiles and extra.tiles.length) and !(extra.table_rows and extra.table_rows.length) and !(extra.buttons and extra.buttons.length)</attribute>
+    </xpath>
+  </t>
+
+  <!-- One number of the table: a link to its list when it can be opened. -->
+  <t t-name="marketing_intel_tracking.CRNumber">
+    <a t-if="cr.can_open[measure] and value and value !== '—'" href="#" class="o_mi_cr_number"
+       t-on-click.prevent="() =&gt; this.crOpen(measure, rowKey, sub)" t-esc="value"/>
+    <span t-else="" t-esc="value"/>
+  </t>
+
+  <t t-name="marketing_intel_tracking.ChannelResults">
+    <t t-set="cr" t-value="extra.channel_results"/>
+    <div class="o_mi_cr">
+      <div class="table-responsive o_mi_cr_table">
+        <table class="table table-sm o_mi_extra_table mb-1">
+          <thead>
+            <tr>
+              <th>Channel · source</th>
+              <th class="text-end">Clicks</th><th class="text-end">Leads</th><th class="text-end">Won</th>
+              <th class="text-end">Revenue</th><th class="text-end">Spend</th><th class="text-end">Cost per lead</th>
+              <th class="text-end">Revenue ÷ spend</th><th>Share of leads</th>
+            </tr>
+          </thead>
+          <tbody>
+            <t t-foreach="cr.rows" t-as="row" t-key="row.key">
+              <tr class="o_mi_cr_channel">
+                <td>
+                  <button type="button" class="btn btn-link p-0 o_mi_cr_toggle" t-att-disabled="!row.sources.length"
+                          t-att-aria-expanded="this.cr.open[row.key] ? 'true' : 'false'" t-on-click="() =&gt; this.crToggle(row.key)">
+                    <i class="oi" t-att-data-icon="this.cr.open[row.key] ? 'expand_more' : 'chevron_right'" aria-hidden="true"/>
+                    <t t-esc="row.label"/>
+                  </button>
+                </td>
+                <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'clicks'" rowKey="row.key" sub="false" value="row.clicks"/></td>
+                <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'leads'" rowKey="row.key" sub="false" value="row.leads"/></td>
+                <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'won'" rowKey="row.key" sub="false" value="row.won"/></td>
+                <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'revenue'" rowKey="row.key" sub="false" value="row.revenue_value ? row.revenue : ''"/></td>
+                <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'spend'" rowKey="row.key" sub="false" value="row.spend"/></td>
+                <td class="text-end" t-esc="row.cpl"/>
+                <td class="text-end" t-att-class="row.roi_bad ? 'text-danger' : ''" t-esc="row.roi"/>
+                <td><span t-if="row.share" class="o_mi_cr_bar" t-att-style="'width:' + row.share + 'px; background-color:' + row.color"/> <t t-esc="row.share"/>%</td>
+              </tr>
+              <t t-if="this.cr.open[row.key]">
+                <tr t-foreach="row.sources" t-as="src" t-key="src_index" class="o_mi_cr_source">
+                  <td class="ps-4" t-esc="src.label"/>
+                  <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'clicks'" rowKey="row.key" sub="src.sub" value="src.clicks"/></td>
+                  <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'leads'" rowKey="row.key" sub="src.sub" value="src.leads"/></td>
+                  <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'won'" rowKey="row.key" sub="src.sub" value="src.won"/></td>
+                  <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'revenue'" rowKey="row.key" sub="src.sub" value="src.revenue"/></td>
+                  <td class="text-end">—</td><td class="text-end">—</td><td class="text-end">—</td><td/>
+                </tr>
+              </t>
+            </t>
+            <tr t-if="cr.other" class="o_mi_cr_other text-muted">
+              <td t-esc="cr.other.label"/>
+              <td class="text-end">—</td>
+              <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'leads'" rowKey="'other'" sub="false" value="cr.other.leads"/></td>
+              <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'won'" rowKey="'other'" sub="false" value="cr.other.won"/></td>
+              <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'revenue'" rowKey="'other'" sub="false" value="cr.other.revenue_value ? cr.other.revenue : ''"/></td>
+              <td class="text-end">—</td><td class="text-end">—</td><td class="text-end">—</td>
+              <td><span t-if="cr.other.share" class="o_mi_cr_bar" t-att-style="'width:' + cr.other.share + 'px; background-color:' + cr.other.color"/> <t t-esc="cr.other.share"/>%</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="fw-semibold">
+              <td>All channels</td>
+              <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'clicks'" rowKey="'all'" sub="false" value="cr.totals.clicks"/></td>
+              <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'leads'" rowKey="'all'" sub="false" value="cr.totals.leads"/></td>
+              <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'won'" rowKey="'all'" sub="false" value="cr.totals.won"/></td>
+              <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'revenue'" rowKey="'all'" sub="false" value="cr.totals.revenue"/></td>
+              <td class="text-end"><t t-call="marketing_intel_tracking.CRNumber" measure="'spend'" rowKey="'all'" sub="false" value="cr.totals.spend"/></td>
+              <td class="text-end" t-esc="cr.totals.cpl"/>
+              <td class="text-end" t-att-class="cr.totals.roi_bad ? 'text-danger' : ''" t-esc="cr.totals.roi"/>
+              <td/>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <t t-set="chart" t-value="cr.charts[this.cr.measure]"/>
+      <figure class="o_mi_cr_chart" t-att-aria-label="'Share by channel'">
+        <div class="d-flex align-items-center gap-2">
+          <figcaption class="fw-semibold flex-grow-1">Share by channel</figcaption>
+          <div class="btn-group btn-group-sm" role="group" aria-label="Measure">
+            <button type="button" class="btn btn-light" t-att-class="this.cr.measure === 'leads' ? 'active' : ''" t-att-aria-pressed="this.cr.measure === 'leads' ? 'true' : 'false'" t-on-click="() =&gt; this.crMeasure('leads')">Leads</button>
+            <button type="button" class="btn btn-light" t-att-class="this.cr.measure === 'revenue' ? 'active' : ''" t-att-aria-pressed="this.cr.measure === 'revenue' ? 'true' : 'false'" t-on-click="() =&gt; this.crMeasure('revenue')">Revenue</button>
+            <button type="button" class="btn btn-light" t-att-class="this.cr.measure === 'clicks' ? 'active' : ''" t-att-aria-pressed="this.cr.measure === 'clicks' ? 'true' : 'false'" t-on-click="() =&gt; this.crMeasure('clicks')">Clicks</button>
+          </div>
+        </div>
+        <p t-if="!chart.slices.length" class="o_mi_empty mb-0">Nothing in this period yet.</p>
+        <t t-else="">
+          <svg class="o_mi_cr_donut" width="190" height="190" viewBox="0 0 200 200" role="img"
+               t-att-aria-label="'Share by channel: ' + chart.slices.map((s) =&gt; s.label + ' ' + s.pct + '%').join(', ')">
+            <path t-foreach="chart.slices" t-as="s" t-key="s.key" t-att-d="s.path" t-att-fill="s.color" stroke="#fff" stroke-width="2"
+                  class="o_mi_cr_slice" role="button" tabindex="0" t-att-aria-label="s.label + ': ' + s.value + ' (' + s.pct + '%)'"
+                  t-on-click="() =&gt; this.crOpen(this.cr.measure, s.key)" t-on-keydown="(ev) =&gt; this.crSliceKeydown(ev, s.key)">
+              <title t-esc="s.label + ': ' + s.value + ' (' + s.pct + '%)'"/>
+            </path>
+            <g class="o_mi_cr_center" role="button" tabindex="0" t-att-aria-label="'All: ' + chart.total"
+               t-on-click="() =&gt; this.crOpen(this.cr.measure, 'all')" t-on-keydown="(ev) =&gt; this.crSliceKeydown(ev, 'all')">
+              <circle cx="100" cy="100" r="44" fill="transparent"/>
+              <text x="100" y="100" text-anchor="middle" font-size="20" font-weight="600" t-esc="chart.total"/>
+              <text x="100" y="120" text-anchor="middle" font-size="12" class="o_mi_cr_center_label" t-esc="this.cr.measure === 'leads' ? 'leads' : (this.cr.measure === 'clicks' ? 'clicks' : 'revenue')"/>
+            </g>
+          </svg>
+          <div class="o_mi_cr_legend">
+            <button t-foreach="chart.slices" t-as="s" t-key="s.key" type="button" class="o_mi_cr_legend_item"
+                    t-on-click="() =&gt; this.crOpen(this.cr.measure, s.key)">
+              <span class="o_mi_dot" t-att-style="'background-color:' + s.color"/>
+              <span class="flex-grow-1 text-start" t-esc="s.label"/>
+              <span><t t-esc="s.value"/> · <t t-esc="s.pct"/>%</span>
+            </button>
+          </div>
+        </t>
+      </figure>
+    </div>
+  </t>
+
+</templates>

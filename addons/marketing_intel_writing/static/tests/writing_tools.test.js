@@ -46,7 +46,10 @@ beforeEach(() => {
                     return { available: false };
                 }
                 if (args[0] === "mailing.mailing") {
-                    return { ...TOOLS, kind: "email_subject", tools: ["subjects", ...TOOLS.tools], ab_test: true };
+                    return {
+                        ...TOOLS, kind: "email_subject", tools: ["subjects", ...TOOLS.tools], ab_test: true,
+                        limit: 78, soft: true, limit_note: "The email standard (RFC 5322) recommends at most 78.",
+                    };
                 }
                 return TOOLS;
             }
@@ -70,9 +73,41 @@ test("helpers: labels, characters and email text", async () => {
     expect(htmlToText("<p>Spring</p><p>is here</p>")).toMatch(/Spring\s*is here/);
 });
 
-test("no button when the assistant is not available", async () => {
+test("the email subject shows n / 78, orange past the recommended length", async () => {
+    const record = makeRecord({ subject: "Our spring offer" }, "mailing.mailing");
+    await mountWithCleanup(WritingTools, { props: { record, field: "subject" } });
+    expect(".o_mi_writing_box_count").toHaveText("16 / 78");
+    expect(".o_mi_writing_box_count").toHaveClass("text-muted");
+    record.data.subject = "x".repeat(79);
+    await animationFrame();
+    expect(".o_mi_writing_box_count").toHaveText("79 / 78");
+    expect(".o_mi_writing_box_count").toHaveClass("text-warning");
+    expect(".o_mi_writing_box_count").toHaveAttribute("title", /RFC 5322/);
+});
+
+test("an SMS counts 160 per message, 70 once it needs Unicode", async () => {
+    mockService("orm", {
+        async call(model, method) {
+            return method === "get_tools" ? { ...TOOLS, kind: "sms" } : true;
+        },
+    });
+    const record = makeRecord({ body_plaintext: "Spring offer" }, "mailing.mailing");
+    await mountWithCleanup(WritingTools, { props: { record, field: "body_plaintext" } });
+    expect(".o_mi_writing_box_count").toHaveText("12 / 160 · 1 SMS");
+    record.data.body_plaintext = "Весеннее предложение";
+    await animationFrame();
+    expect(".o_mi_writing_box_count").toHaveText("20 / 70 · 1 SMS");
+});
+
+test("no ✦ when the assistant is not available", async () => {
     await mountWithCleanup(WritingTools, { props: { record: makeRecord({}, "res.partner"), field: "comment" } });
-    expect(".o_mi_writing").toHaveCount(0);
+    expect(".o_mi_writing_button").toHaveCount(0);
+});
+
+test("the box shows the channel's count in its corner", async () => {
+    await mountWithCleanup(WritingTools, { props: { record: makeRecord(), field: "body" } });
+    expect(".o_mi_writing_box_count").toHaveText("32 / 1,024");
+    expect(".o_mi_writing_box_count").toHaveClass("text-muted");
 });
 
 test("a tool asks, waits, shows the suggestion and Use puts it in the field", async () => {

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Email and SMS Marketing (owner, 2026-11-11): the medium (Email / SMS) and the source (Mass Mailing / Mass SMS)
+       are set by Odoo and say which channel a click came from; like Messaging and Social, they are kept but not
+       shown. People choose only the campaign, which Marketing users see without Odoo's "Mailing Campaigns" option
+       (that option also brings the A/B test screens). -->
+  <record id="mailing_form_tracking" model="ir.ui.view">
+    <field name="name">mailing.mailing.form.tracking</field>
+    <field name="model">mailing.mailing</field>
+    <field name="inherit_id" ref="mass_mailing.view_mail_mass_mailing_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='campaign_id']" position="attributes">
+        <attribute name="groups">mass_mailing.group_mass_mailing_campaign,marketing_intel.group_mi_user</attribute>
+      </xpath>
+      <xpath expr="//field[@name='medium_id']" position="attributes">
+        <attribute name="invisible">1</attribute>
+        <attribute name="required">0</attribute>
+      </xpath>
+      <xpath expr="//field[@name='source_id']" position="attributes">
+        <attribute name="invisible">1</attribute>
+        <attribute name="required">0</attribute>
+      </xpath>
+    </field>
+  </record>
+</odoo>

@@ -12,6 +12,56 @@ Format:
 
 
 
+## 2026-11-12 — Marketing: Results by channel and source, with a donut chart
+
+- Change (owner, approved board 10): a block of the Marketing panel, on by default on Department (head of
+  department) and My team (senior), anyone can add it with Customise. One row per channel (the UTM medium of the
+  tracked links: Email, SMS, WhatsApp, Telegram, Social Media) with clicks (Link Tracker), leads and won deals (CRM),
+  revenue (confirmed sales; won deals' expected revenue without Sales), spend, cost per lead, revenue ÷ spend and
+  share of leads; each row opens into its sources (the mailing for Email, SMS and Messaging, by `utm_reference`; the
+  platform for Social). A "Not from a marketing link" row (all brands only) makes the shares add up to every lead. A
+  donut chart shows the shares of leads, revenue or clicks. Every number, slice, legend line and the chart's total
+  opens its list (Link Tracker clicks, CRM, Sales, Spend), filtered the same way. This quarter; one brand or all.
+- Spend per channel uses the spend line's existing Channel (the campaign's channel line); Messaging splits into
+  WhatsApp and Telegram by the mailing's channel. Lines without a channel count only in "All channels".
+- Affected areas: marketing_intel_tracking (now depends on marketing_intel_team; `channel_results.py`, panel
+  template extension and patch, styles).
+- Known limitations: the block follows the quarter (the panel has no Month / Year switch yet); a role view someone
+  already saved keeps its blocks (add it with Customise); sale amounts are summed untaxed, without currency
+  conversion.
+
+## 2026-11-11 — Marketing: no Control panel menu item, the page is titled "Marketing"
+
+- Change (owner): the Marketing app opens its panel, so the "Control panel" menu item is gone and the page (and its
+  breadcrumb) is titled "Marketing" instead of "Marketing control panel".
+- Affected areas: marketing_intel_plan (`plan_views.xml`); the menu item is removed on update.
+
+## 2026-11-11 — Marketing: campaign tracking on every marketing tool
+
+- Change (owner): every marketing tool tags its links with a UTM campaign, medium and source, and people choose only
+  the campaign. No tool shows the medium and source: in Email and SMS Marketing (Email / SMS, Mass Mailing / Mass
+  SMS) they are kept but hidden, like Messaging and Social; Marketing users see the Campaign field without Odoo's
+  "Mailing Campaigns" option (it was hidden on
+  the live database, so stand-alone mailings could not get a campaign). Messaging (medium by channel, source per
+  mailing) and Social posts (medium Social Media, source the platform) already kept them fixed and hidden.
+  Social's tracking module (`social_utm`) was not installed on the live database; it now comes with marketing.
+- Affected areas: new module `marketing_intel_tracking` (auto-installed; depends on marketing_intel,
+  mass_mailing_sms, messaging_marketing, social_utm).
+- Known limitation: medium and source are hidden on the form; code or imports can still change them.
+
+## 2026-11-11 — Marketing: one look for every marketing text
+
+- Change (owner, board 9.1 option A plus): every marketing text is a box with its label above and a placeholder;
+  Odoo's own text icons and the ✦ Writing tools sit in its top-right corner, the character count in its bottom-right
+  corner, the suggestion right under it. Email subject and preview text became boxes with the label above; SMS
+  Content and the campaign's key message and audience got placeholders; Messaging's count moved into the box. The
+  email editor's Writing tools shows in the compact text toolbar.
+- The count shows the limit: email subject "n / 78" and preview text "n / 90" (recommended lengths, orange past
+  them, since RFC 5322 sets no hard subject length and the preview text is body text), SMS "n / 160" or "n / 70"
+  when the text needs Unicode, Messaging the channel's limit.
+- Affected areas: marketing_intel_writing (views, widget, styles). The fields are moved into the box with
+  `position="move"`, so attributes other modules set on them stay.
+
 ## 2026-11-11 — Marketing: writing tools on every marketing text (plan M2)
 
 - Change (owner, approved boards 8.1 to 8.4): a **Writing tools** button under the email subject and preview text, SMS,

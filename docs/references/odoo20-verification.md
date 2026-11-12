@@ -1603,3 +1603,15 @@ Management uses ordinary paired native groups rather than an advanced tab.
   `html_editor/static/src/main/toolbar/toolbar_plugin.js`). A view widget in an inner group fills one cell: put an
   empty `<div/>` before it to place it in the value column under its field. A mailing body without Odoo's email blocks
   has no editable area in the builder, so no text toolbar shows there.
+- One look for every marketing text (2026-11-11): view inheritance applies `position="move"` only when the moving
+  `<xpath>` is a direct child of a spec; nested inside new markup it stays literal and the field does not move (two
+  steps: add an empty named box, then `position="inside"` with the move). Owl 3 `signal.ref()` is read by calling it
+  (`this.rootRef()`), not `.el` (`web/core/dropdown/dropdown.js` reads `this.menuRef()`). A regression test checks
+  that each Writing tools widget shares its box with its field.
+- Results by channel and source (2026-11-12): two xpaths on the same node in one template extension apply in order,
+  so one that changes the node's `t-if` must come after one that still selects by it (a failing xpath breaks the
+  whole template; a hoot test now builds `marketing_intel_plan.Panel` with `getTemplate`). A running server keeps the
+  production asset bundle it built: after changing a static file, restart the server (or open `?debug=assets`)
+  before judging the page. `link.tracker`, `crm.lead` and `sale.order` carry `utm_reference` (a Reference field: a
+  record, filtered with "model,id"); Odoo ties leads and sales to a mailing with it. hoot's pointer simulation
+  cannot click SVG shapes; tests dispatch a click event.

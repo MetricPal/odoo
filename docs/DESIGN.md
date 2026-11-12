@@ -318,7 +318,9 @@ window, the department's agent first (owner, 2026-11-09). The role panels' "Ask 
 
 ## Marketing menu (board 7, 2026-11-09)
 
-Control panel · Campaigns (Campaigns, Requests, Tasks, Templates) · Workflows (opens the workflows) · Insights
+The Marketing app opens its panel, titled "Marketing" (owner, 2026-11-11: no "Control panel" menu item).
+
+Campaigns (Campaigns, Requests, Tasks, Templates) · Workflows (opens the workflows) · Insights
 (Suggested campaigns, Market changes, Risks) · Consent (People, Data requests) · Configuration (Brands, Consent topics,
 Workflow templates, Proposal approvers, Approval routes). A list that is already shown on its own form (brand,
 campaign, workflow, person) is not in the menu. Each page is titled like its menu item. Proposal approvers set Finance
@@ -428,21 +430,48 @@ Approved mocks 2026-11-09 (Marketing canvas boards 5.1 to 6.3, ADR 0016).
 
 ## Writing tools (`marketing_intel_writing`)
 
-Approved mocks 2026-11-11 (Marketing canvas boards 8.1 to 8.4).
+Approved mocks 2026-11-11 (Marketing canvas boards 8.1 to 8.4; one look everywhere: board 9.1 option A, with the
+owner's additions the same day).
 
-- One **Writing tools** button (sparkle icon) under each marketing text; on the email subject only the icon. Menu, in
-  this order: Subject lines (email subject), Rewrite, Shorter, Longer, Tone › Friendly / Formal / Bold, Translate ›
-  the company's active languages, Fix grammar, Hashtags (social), Fit to [one SMS / WhatsApp / Telegram / the
-  platform], then Ask something else….
-- The suggestion card sits under the text: tool name, AI badge, the agent's name, and a count ("212 → 118
-  characters", "148 characters · 1 SMS", "151 / 1,024"; red when over). Buttons: **Use**, **Try again**, **Discard**,
-  and "Your text stays until you click Use". While waiting: "Writing…" and Stop. A warning line says when the
-  suggestion left out a placeholder, link or STOP.
+- **Every marketing text is a box** (email subject and preview text, SMS, Messaging message, social text, campaign
+  key message and audience): its label above (none where the tab names it, as SMS Content), a placeholder, the
+  rounded box Social and Messaging already used.
+- **Top-right corner**: Odoo's own text icons (emoji, insert field), then the ✦ Writing tools icon in the brand
+  colour (tooltip "Writing tools"). The ✦ stays pressed while its suggestion is open.
+- **Bottom-right corner**: "n / limit". Email subject `/ 78` and preview text `/ 90` are recommended lengths
+  (no protocol caps a subject: RFC 5322 folds long headers, each line at most 998 and SHOULD be at most 78; the
+  preview text is body text, inboxes show about 90, phones about 40), so past them the count turns orange with the
+  reason as its tooltip. SMS `/ 160`, or `/ 70` once the text needs Unicode, with the number of SMS (red past one);
+  Messaging `/ 1,024` (WhatsApp) or `/ 4,096` (Telegram), red past it; Social keeps its composer's own count; the
+  campaign texts (unlimited) show "n characters". Messaging's count moved there from the helper line.
+- Menu, in this order: Subject lines (email subject), Rewrite, Shorter, Longer, Tone › Friendly / Formal / Bold,
+  Translate › the company's active languages, Fix grammar, Hashtags (social), Fit to [one SMS / WhatsApp / Telegram /
+  the platform], then Ask something else….
+- The suggestion card sits right under the box: tool name, AI badge, the agent's name, the count; **Use**, **Try
+  again**, **Discard**, and "Your text stays until you click Use". While waiting: "Writing…" and Stop. A warning line
+  says when the suggestion left out a placeholder, link or STOP.
 - Subject lines: one row per line with Use and **A/B test it** (only with the Mailing Campaigns option), then More
   and Discard.
-- Email body: Writing tools in the editor's text toolbar, for the selected text; the suggestion opens in a dialog
-  (Use / Try again / Discard), as Odoo's Translate does.
-- Shown only while the text can be edited and a marketing agent is active for the person.
+- Email body: ✦ Writing tools in the editor's compact text toolbar, for the selected text; the suggestion opens in a
+  dialog (Use / Try again / Discard), as Odoo's Translate does.
+- The ✦ shows only while the text can be edited and a marketing agent is active for the person.
+
+## Campaign tracking (`marketing_intel_tracking`)
+
+- Every marketing tool tags its links with campaign, medium and source; people choose only the **campaign**.
+- **No tool shows the medium and source** (owner, 2026-11-11): they are set by the channel, the mailing and the
+  platform. Email and SMS Marketing's Settings › Tracking shows Campaign (a choice, for Marketing users too) and
+  Responsible; Messaging and Social keep their Campaign / Tracking campaign field where it was.
+
+## Results by channel and source (`marketing_intel_tracking`, board 10, approved 2026-11-12)
+
+- A block of the Marketing panel: a table (channel rows ▸ their mailings or platforms; clicks, leads, won, revenue,
+  spend, cost per lead, revenue ÷ spend in red when below 1, share of leads as a coloured bar) beside a donut chart
+  (Leads / Revenue / Clicks switch; the total in the middle). Same colour per channel in bars, slices and legend;
+  colours differ in lightness too.
+- **Everything in the chart is clickable** (owner): each slice, each legend line and the total open the list behind
+  them; slices and the total are keyboard reachable. Every number of the table opens its list too.
+- Medium and source appear only here, never on the forms.
 
 ## Agents working together (`ai_agent`, `ai_discuss`, `ai_home`)
 

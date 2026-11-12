@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+from lxml import etree
+
 from odoo import Command
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
@@ -54,6 +56,13 @@ class TestWritingTools(TransactionCase):
         self.assertNotIn('hashtags', self.Writing.get_tools('mm.mailing', 'body')['tools'])
         self.assertIn('fit', self.Writing.get_tools('mailing.mailing', 'body_plaintext')['tools'])
         self.assertIn(self.env.lang or 'en_US', [code for code, _name in social['languages']])
+        # The box's limit: the email standards set no hard subject length (RFC 5322 folds long headers), so the
+        # recommended lengths are shown; past them the text still sends.
+        self.assertEqual((subject['limit'], subject['soft']), (78, True))
+        self.assertIn('RFC 5322', subject['limit_note'])
+        preview = self.Writing.get_tools('mailing.mailing', 'preview')
+        self.assertEqual((preview['limit'], preview['soft']), (90, True))
+        self.assertNotIn('limit', social, 'Social counts with the platform limit in the browser')
 
     def test_no_tools_without_the_assistant_or_on_other_texts(self):
         self.assertFalse(self.Writing.get_tools('res.partner', 'comment')['available'])
@@ -171,3 +180,21 @@ class TestWritingTools(TransactionCase):
         self.assertEqual(copy.subject, '20% off every plant')
         self.assertTrue(copy.ab_testing_enabled)
         self.assertEqual(copy.campaign_id, mailing.campaign_id, 'the same A/B test campaign')
+
+    # One look for every marketing text (board 9.1 option A plus)
+
+    def test_every_text_sits_in_its_box_with_the_tools(self):
+        """Each Writing tools widget shares its box with the field it works on (the field is moved into the box)."""
+        expected = {'mailing.mailing': {'subject', 'preview', 'body_plaintext'}, 'mm.mailing': {'body'},
+                    'omni.social.publication': {'body'}, 'mi.plan': {'message', 'audience'}}
+        for model, fields in expected.items():
+            arch = etree.fromstring(self.env[model].get_view(view_type='form')['arch'])
+            self.assertFalse(arch.xpath('//xpath'), f'{model}: every move was applied')
+            found = set()
+            for widget in arch.xpath("//widget[@name='mi_writing_tools']"):
+                box = widget.getparent()
+                self.assertIn('o_mi_text_box', box.get('class', ''), f'{model}: the tools are in a box')
+                self.assertTrue(box.xpath(f"./field[@name='{widget.get('field')}']"),
+                                f"{model}: {widget.get('field')} is in the same box")
+                found.add(widget.get('field'))
+            self.assertEqual(found, fields)

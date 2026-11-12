@@ -31,6 +31,15 @@ TARGETS = {
     ('mi.plan', 'audience'): 'campaign',
 }
 # Placeholders, links and opt-out words a suggestion must keep exactly as they are.
+# The box's count (board 9.1 plus, owner 2026-11-11). The fields have no size in the database (unlimited varchar /
+# text) and the email standards set none either: RFC 5322 folds a long Subject over several lines (each line at most
+# 998 characters, SHOULD be at most 78), and the preview text is plain text at the top of the body. So the box shows
+# the recommended length; past it the text still sends but is cut (`soft`). SMS, Messaging and Social limits depend
+# on the form (encoding, channel, platform) and are counted in the browser.
+COUNTS = {
+    'email_subject': {'limit': 78, 'soft': True},
+    'email_preview': {'limit': 90, 'soft': True},
+}
 KEEP = re.compile(r'\{\{.*?\}\}|\{[a-z_]+\}|\[[^\]\n]{1,40}\]|https?://\S+|\bSTOP\b')
 
 
@@ -56,8 +65,10 @@ class Writing(models.AbstractModel):
         """Whether Writing tools show on this text, and what they offer."""
         kind = TARGETS.get((res_model, field))
         agent = self._agent() if kind else False
+        count = dict(COUNTS.get(kind, {}), limit_note=self._limit_note(kind))
         if not agent:
-            return {'available': False}
+            # The box still shows its character count.
+            return {'available': False, 'kind': kind or False, **count}
         tools = ['rewrite', 'shorter', 'longer', 'tone', 'translate', 'grammar']
         if kind == 'social':
             tools.append('hashtags')
@@ -73,7 +84,18 @@ class Writing(models.AbstractModel):
             'tools': tools,
             'languages': [[code, name] for code, name in self.env['res.lang'].get_installed()],
             'ab_test': kind == 'email_subject' and self.env.user.has_group('mass_mailing.group_mass_mailing_campaign'),
+            **count,
         }
+
+    @api.model
+    def _limit_note(self, kind):
+        """Why the box's limit is what it is (its tooltip once the text is longer)."""
+        if kind == 'email_subject':
+            return _('The email standard (RFC 5322) recommends at most 78 characters; inboxes cut subjects earlier, '
+                     'often after about 60.')
+        if kind == 'email_preview':
+            return _('Most inboxes show about the first 90 characters of the preview text, phones about 40.')
+        return ''
 
     # ------------------------------------------------------------------
     # Asking

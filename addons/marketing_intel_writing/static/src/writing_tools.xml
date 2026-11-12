@@ -34,20 +34,23 @@
   </t>
 
   <t t-name="marketing_intel_writing.WritingTools">
-    <div t-if="this.tools.available" class="o_mi_writing d-flex flex-column gap-2 my-2">
-      <div class="d-flex align-items-center gap-2">
-        <Dropdown>
-          <button t-if="this.props.compact" type="button" class="btn btn-sm o_mi_writing_button o_mi_writing_icon" aria-label="Writing tools" title="Writing tools">
-            <t t-call="marketing_intel_writing.Sparkle"/>
-          </button>
-          <button t-else="" type="button" class="btn btn-sm o_mi_writing_button d-inline-flex align-items-center gap-1">
-            <t t-call="marketing_intel_writing.Sparkle"/> Writing tools
-          </button>
-          <t t-set-slot="content">
-            <t t-call="marketing_intel_writing.ToolItems" tools="this.tools.tools" tones="this.tones" languages="this.tools.languages"
-               onPick="(tool, option) =&gt; this.ask(tool, option)" onCustom="() =&gt; this.openCustom()" label="(tool) =&gt; this.label(tool)"/>
-          </t>
-        </Dropdown>
+    <div class="o_mi_writing" t-ref="this.rootRef">
+      <div class="o_mi_writing_overlay" t-att-style="'height: ' + this.state.boxHeight + 'px'">
+        <div t-if="this.tools.available" class="o_mi_writing_corner">
+          <Dropdown>
+            <button type="button" t-attf-class="btn btn-sm o_mi_writing_button o_mi_writing_icon {{ this.state.suggestion or this.state.customOpen ? 'active' : '' }}"
+                    aria-label="Writing tools" title="Writing tools">
+              <t t-call="marketing_intel_writing.Sparkle"/>
+            </button>
+            <t t-set-slot="content">
+              <t t-call="marketing_intel_writing.ToolItems" tools="this.tools.tools" tones="this.tones" languages="this.tools.languages"
+                 onPick="(tool, option) =&gt; this.ask(tool, option)" onCustom="() =&gt; this.openCustom()" label="(tool) =&gt; this.label(tool)"/>
+            </t>
+          </Dropdown>
+        </div>
+        <t t-set="boxCount" t-value="this.boxCount"/>
+        <span t-if="boxCount" t-attf-class="o_mi_writing_box_count {{ boxCount.level === 'over' ? 'text-danger' : (boxCount.level === 'long' ? 'text-warning' : 'text-muted') }}"
+              t-att-title="boxCount.title" t-out="boxCount.label"/>
       </div>
 
       <section t-if="this.state.customOpen" class="o_mi_writing_card d-flex flex-column gap-2" aria-label="Ask something else">

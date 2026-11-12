@@ -11,8 +11,87 @@
 }
 
 .o_mi_writing_icon {
-    width: 34px;
+    width: 28px;
+    height: 26px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
+
+    &.active {
+        background-color: color-mix(in srgb, var(--primary) 22%, transparent);
+    }
+}
+
+// One look for every marketing text (board 9.1 option A plus): the label above, the text in a box with its
+// placeholder, Odoo's own text icons then the ✦ in the top-right corner, the count in the bottom-right corner.
+.o_mi_text_field {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    margin-bottom: .75rem;
+}
+
+.o_mi_text_box {
+    position: relative;
+    margin-bottom: .5rem;
+
+    > .o_field_widget {
+        display: block;
+        width: 100%;
+    }
+
+    .o_input {
+        --o-input-border-color: #{$border-color};
+        border: 1px solid $border-color !important;
+        border-radius: .5rem;
+        padding: .5rem 5.5rem 1.6rem .75rem;
+
+        &:focus {
+            border-color: var(--primary) !important;
+        }
+    }
+
+    textarea.o_input {
+        min-height: 6rem;
+        padding: .5rem 5.5rem 1.6rem .75rem;
+    }
+
+    // Odoo's emoji and placeholder icons sit just left of the ✦.
+    .o_field_input_buttons {
+        top: .3rem;
+        right: 2.4rem;
+        height: auto;
+        align-items: flex-start !important;
+        visibility: visible;
+    }
+}
+
+.o_mi_writing_overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+}
+
+.o_mi_writing_corner {
+    position: absolute;
+    top: .35rem;
+    right: .4rem;
+    pointer-events: auto;
+}
+
+.o_mi_writing_box_count {
+    pointer-events: auto;
+    position: absolute;
+    right: .75rem;
+    bottom: .3rem;
+    font-size: .75rem;
+}
+
+.o_mi_writing .o_mi_writing_card {
+    margin-top: .5rem;
 }
 
 .o_mi_writing_card {
