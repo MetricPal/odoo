@@ -12,6 +12,30 @@ Format:
 
 
 
+## 2026-11-12 — Marketing: assistant jobs and their health (plan M4)
+
+- Change (owner, approved boards 11.1 to 11.3): ten ready-made jobs the Marketing assistant runs on a schedule and
+  hands to an owner, per role. Juniors: weekly social posts, comment replies, weekly newsletter draft, new leads
+  summary. Seniors: weekly performance summary, campaigns at risk, competitor watch (web search). Head of department:
+  monthly department report, budget burn alert, team workload alert. Jobs only prepare: draft posts and replies, a
+  draft mailing, notes on leads, findings in Market changes, notes and to-dos; never a send or a publish. Assistant
+  jobs (list, filters Failing, Waiting for a person, Paused, Mine), Ready-made jobs (switch on: owner, brand,
+  schedule, AI limit) and a job's form (health bar, the last failure, success, average time, AI use, runs, how it
+  works). Health: Healthy, Failing (two failed runs in a row; the owner gets a to-do with the reason), Waiting for a
+  person (the owner's to-do from the last result is open), Paused. The panel's "Assistant and automations" block
+  lists the jobs and opens Jobs and health; Marketing › Workflows has an Assistant jobs button. No new menu item.
+- How: each job is a `mi.job` with `mi.job.run`s; a cron every 15 minutes starts the due runs. Questions go through
+  `ai.agent.run._ask` as the marketing assistant user (caller Marketing, the job's daily AI limit); campaigns at risk,
+  budget burn and team workload ask no question.
+- Schedule hours and days are the owner's local time (else the current user's, else UTC); "Last run" reads "Today
+  21:22" in the reader's timezone. Switch on proposes the current user as owner and then opens the job under
+  Assistant jobs.
+- Affected areas: new module `marketing_intel_jobs` (auto-installed).
+- Deviation from board 11.3: jobs are their own records, not workflows under Workflows, so there is no "open the
+  workflow behind it" (the generic Ask agent step can write one answer to one field or note; jobs create several
+  drafts per answer). Known limitations: the monthly report is posted on the job, not yet a Report Studio PDF; seniors
+  see every job (no "My team" filter yet); the team workload alert runs weekly on one day.
+
 ## 2026-11-12 — Marketing: Results by channel and source, with a donut chart
 
 - Change (owner, approved board 10): a block of the Marketing panel, on by default on Department (head of

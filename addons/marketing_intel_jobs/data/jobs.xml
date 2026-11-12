@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- The ready-made assistant jobs (board 11.2). They start off; Switch on asks for the owner and the schedule. -->
+  <data noupdate="1">
+    <record id="job_social_posts" model="mi.job">
+      <field name="kind">social_posts</field>
+      <field name="name">Weekly social posts</field>
+      <field name="role">junior</field><field name="sequence">10</field>
+      <field name="description">Drafts next week's posts from the running campaigns and their key messages.</field>
+      <field name="gives">Draft posts in Social Marketing</field>
+      <field name="needs">A connected social account</field>
+      <field name="frequency">weekly</field><field name="weekday">0</field><field name="hour">7</field>
+      <field name="how_it_works">Reads the running campaigns → asks the Marketing assistant for 5 posts → saves them as draft posts on the first connected account → a to-do for the owner to check them.</field>
+    </record>
+    <record id="job_comment_replies" model="mi.job">
+      <field name="kind">comment_replies</field>
+      <field name="name">Comment replies</field>
+      <field name="role">junior</field><field name="sequence">20</field>
+      <field name="description">Drafts replies to new comments and messages on the connected accounts.</field>
+      <field name="gives">Draft replies in Social Marketing</field>
+      <field name="needs">A connected social account</field>
+      <field name="frequency">hourly</field><field name="ai_daily_limit">30</field>
+      <field name="how_it_works">Finds new comments and messages without a reply → asks the Marketing assistant for a reply to each → saves them as draft replies → a to-do for the owner when there are new ones.</field>
+    </record>
+    <record id="job_newsletter" model="mi.job">
+      <field name="kind">newsletter</field>
+      <field name="name">Weekly newsletter draft</field>
+      <field name="role">junior</field><field name="sequence">30</field>
+      <field name="description">Prepares the newsletter from the week's posts and the running campaigns.</field>
+      <field name="gives">A draft mailing in Email Marketing</field>
+      <field name="frequency">weekly</field><field name="weekday">4</field><field name="hour">10</field>
+      <field name="how_it_works">Reads the week's posts and the running campaigns → asks the Marketing assistant for a subject and a body → saves a draft mailing → a to-do for the owner.</field>
+    </record>
+    <record id="job_leads_summary" model="mi.job">
+      <field name="kind">leads_summary</field>
+      <field name="name">New leads summary</field>
+      <field name="role">junior</field><field name="sequence">40</field>
+      <field name="description">Writes a one-line summary on each new lead from a marketing link.</field>
+      <field name="gives">A note on each CRM lead</field>
+      <field name="needs">CRM</field>
+      <field name="frequency">daily</field><field name="hour">18</field>
+      <field name="how_it_works">Finds the leads that came from a marketing link since the last run → asks the Marketing assistant for a summary of each → posts it on the lead → a to-do for the owner.</field>
+    </record>
+    <record id="job_performance_summary" model="mi.job">
+      <field name="kind">performance_summary</field>
+      <field name="name">Weekly performance summary</field>
+      <field name="role">senior</field><field name="sequence">10</field>
+      <field name="description">Reads the results per channel and says what is working, what is not, and what to try.</field>
+      <field name="gives">A summary and a to-do for the owner</field>
+      <field name="frequency">weekly</field><field name="weekday">0</field><field name="hour">8</field>
+      <field name="how_it_works">Reads Results by channel and source → asks the Marketing assistant for a short reading → posts it on this job → a to-do for the owner.</field>
+    </record>
+    <record id="job_campaigns_at_risk" model="mi.job">
+      <field name="kind">campaigns_at_risk</field>
+      <field name="name">Campaigns at risk</field>
+      <field name="role">senior</field><field name="sequence">20</field>
+      <field name="description">Flags running campaigns behind their targets, with the reason.</field>
+      <field name="gives">A to-do on each campaign at risk</field>
+      <field name="frequency">daily</field><field name="hour">9</field><field name="uses_ai" eval="False"/>
+      <field name="how_it_works">Compares each running campaign's targets with the time gone → a to-do on each campaign behind, for its owner, with the reason. No AI question.</field>
+    </record>
+    <record id="job_competitor_watch" model="mi.job">
+      <field name="kind">competitor_watch</field>
+      <field name="name">Competitor watch</field>
+      <field name="role">senior</field><field name="sequence">30</field>
+      <field name="description">Searches the web for competitors' new offers and posts; saves findings on the brand.</field>
+      <field name="gives">Findings in Insights › Market changes</field>
+      <field name="needs">Web search on the Marketing assistant's Hermes profile; competitors on the brand</field>
+      <field name="frequency">weekly</field><field name="weekday">0</field><field name="hour">6</field>
+      <field name="how_it_works">Reads the brand's competitors → asks the Marketing assistant to search the web → saves each finding in Market changes → a to-do for the owner when there is something new.</field>
+    </record>
+    <record id="job_monthly_report" model="mi.job">
+      <field name="kind">monthly_report</field>
+      <field name="name">Monthly department report</field>
+      <field name="role">hod</field><field name="sequence">10</field>
+      <field name="description">The month's results, campaigns and spend, with three recommendations.</field>
+      <field name="gives">A report on this job and a to-do</field>
+      <field name="frequency">monthly</field><field name="month_day">1</field><field name="hour">8</field>
+      <field name="how_it_works">Reads Results by channel and source and the campaigns → asks the Marketing assistant for the report → posts it on this job → a to-do for the owner.</field>
+    </record>
+    <record id="job_budget_burn" model="mi.job">
+      <field name="kind">budget_burn</field>
+      <field name="name">Budget burn alert</field>
+      <field name="role">hod</field><field name="sequence">20</field>
+      <field name="description">Warns when a campaign spends faster than its plan.</field>
+      <field name="gives">A to-do for the owner, only when there is something</field>
+      <field name="frequency">daily</field><field name="hour">9</field><field name="uses_ai" eval="False"/>
+      <field name="how_it_works">Compares each running campaign's spend with its budget and the time gone → a to-do for the owner listing the campaigns spending fast. No AI question.</field>
+    </record>
+    <record id="job_team_workload" model="mi.job">
+      <field name="kind">team_workload</field>
+      <field name="name">Team workload alert</field>
+      <field name="role">hod</field><field name="sequence">30</field>
+      <field name="description">Warns when someone has too many late tasks or reviews waiting.</field>
+      <field name="gives">A to-do for the owner, only when there is something</field>
+      <field name="needs">The marketing people in their department (Employees)</field>
+      <field name="frequency">weekly</field><field name="weekday">0</field><field name="hour">9</field><field name="uses_ai" eval="False"/>
+      <field name="how_it_works">Counts each team member's late tasks and reviews waiting → a to-do for the owner naming who is overloaded (3+ late tasks or 5+ reviews). No AI question.</field>
+    </record>
+  </data>
+</odoo>

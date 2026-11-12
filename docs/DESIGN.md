@@ -473,6 +473,17 @@ owner's additions the same day).
   them; slices and the total are keyboard reachable. Every number of the table opens its list too.
 - Medium and source appear only here, never on the forms.
 
+## Assistant jobs (`marketing_intel_jobs`, boards 11.1 to 11.3, approved 2026-11-12)
+
+- Assistant jobs (list): job and what it does, owner, schedule, last and next run, success over 30 days, AI questions,
+  health badge, and Open result / Run now / Pause / Resume. "Ready-made jobs" opens the catalogue: cards grouped For
+  juniors / For seniors / For the head of department, with Gives, schedule and Needs, and Switch on (a dialog: owner,
+  brand, schedule, AI limit).
+- A job: Run now, Pause, Resume; the health as a status bar (Healthy · Failing · Waiting for a person · Paused); a red
+  banner with the last failure; Runs tab (success, average time, AI questions, results; each run with its result,
+  time and reason, and Open); How it works tab.
+- Health words are the same in the panel block, the list and the form. Jobs only prepare; nothing is sent.
+
 ## Agents working together (`ai_agent`, `ai_discuss`, `ai_home`)
 
 Approved mocks 2026-11-09 (AI Agent canvas boards 19 to 22, ADR 0015).

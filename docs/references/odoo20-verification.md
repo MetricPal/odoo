@@ -1615,3 +1615,7 @@ Management uses ordinary paired native groups rather than an advanced tab.
   before judging the page. `link.tracker`, `crm.lead` and `sale.order` carry `utm_reference` (a Reference field: a
   record, filtered with "model,id"); Odoo ties leads and sales to a mailing with it. hoot's pointer simulation
   cannot click SVG shapes; tests dispatch a click event.
+- Assistant jobs (2026-11-12): Odoo 20 keeps a done activity archived (`active=False`) instead of deleting it, so
+  "the owner's to-do is open" means it exists and is active; a computed field that depends on it is not stored.
+  `ai.agent.run._ask(..., as_assistant=True)` needs the agent's AI assistant user (profile, department or company).
+  Within one transaction a One2many lists new records in creation order, not by the comodel's `_order`.

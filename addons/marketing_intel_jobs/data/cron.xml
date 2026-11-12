@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="cron_run_jobs" model="ir.cron">
+    <field name="name">Marketing: run the assistant jobs that are due</field>
+    <field name="model_id" ref="model_mi_job"/>
+    <field name="state">code</field>
+    <field name="code">model._cron_run_due()</field>
+    <field name="interval_number">15</field>
+    <field name="interval_type">minutes</field>
+    <field name="active">True</field>
+  </record>
+</odoo>

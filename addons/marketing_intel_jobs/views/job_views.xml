@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- 11.2 Ready-made jobs, per role -->
+  <record id="job_kanban" model="ir.ui.view">
+    <field name="name">mi.job.kanban</field><field name="model">mi.job</field>
+    <field name="arch" type="xml">
+      <kanban default_group_by="role" create="0" delete="0" group_create="0" records_draggable="0" quick_create="0">
+        <field name="state"/><field name="health"/>
+        <templates><t t-name="card">
+          <field name="name" class="fw-bold"/>
+          <field name="description" class="small"/>
+          <div class="small text-muted">Gives: <field name="gives" class="d-inline"/> · <field name="schedule_label" class="d-inline"/></div>
+          <div class="small text-warning" invisible="not needs">Needs: <field name="needs" class="d-inline"/></div>
+          <div class="d-flex align-items-center gap-2 mt-2">
+            <button name="action_switch_on_dialog" type="object" string="Switch on" class="btn btn-primary btn-sm"
+                    invisible="state != 'off'"/>
+            <field name="health" widget="badge" invisible="state == 'off'" decoration-success="health == 'healthy'"
+                   decoration-danger="health == 'failing'" decoration-warning="health == 'waiting'"
+                   decoration-muted="health == 'paused'"/>
+            <a type="open" invisible="state == 'off'" class="small">Open</a>
+          </div>
+        </t></templates>
+      </kanban>
+    </field>
+  </record>
+
+  <record id="action_job_catalogue" model="ir.actions.act_window">
+    <field name="name">Ready-made jobs</field><field name="res_model">mi.job</field>
+    <field name="view_mode">kanban,form</field>
+    <field name="view_id" ref="job_kanban"/>
+  </record>
+
+  <!-- 11.1 Assistant jobs: list and health -->
+  <record id="job_list" model="ir.ui.view">
+    <field name="name">mi.job.list</field><field name="model">mi.job</field>
+    <field name="arch" type="xml">
+      <list create="0" delete="0" decoration-danger="health == 'failing'">
+        <header>
+          <button name="%(marketing_intel_jobs.action_job_catalogue)d" type="action" string="Ready-made jobs"
+                  class="btn-primary" display="always"/>
+        </header>
+        <field name="name" string="Job" width="170px"/>
+        <field name="description" optional="show" class="text-muted"/>
+        <field name="owner_id" string="Owner (gets the result)" widget="many2one_avatar_user"/>
+        <field name="schedule_label"/>
+        <field name="last_run_label"/>
+        <field name="next_run"/>
+        <field name="success_label" class="text-end"/>
+        <field name="ai_questions_30d" string="AI questions" class="text-end"/>
+        <field name="health" widget="badge" decoration-success="health == 'healthy'" decoration-danger="health == 'failing'"
+               decoration-warning="health == 'waiting'" decoration-muted="health == 'paused'"/>
+        <field name="state" column_invisible="1"/>
+        <button name="action_open_result" type="object" string="Open result" invisible="health != 'waiting'"/>
+        <button name="action_run_now" type="object" string="Run now" invisible="state != 'on'"/>
+        <button name="action_pause" type="object" string="Pause" invisible="state != 'on'"/>
+        <button name="action_resume" type="object" string="Resume" invisible="state != 'paused'"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="job_search" model="ir.ui.view">
+    <field name="name">mi.job.search</field><field name="model">mi.job</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/><field name="owner_id"/>
+        <filter name="failing" string="Failing" domain="[('health', '=', 'failing')]"/>
+        <filter name="waiting" string="Waiting for a person" domain="[('health', '=', 'waiting')]"/>
+        <filter name="paused" string="Paused" domain="[('health', '=', 'paused')]"/>
+        <separator/>
+        <filter name="mine" string="Mine" domain="[('owner_id', '=', uid)]"/>
+        <group><filter name="group_role" string="For" context="{'group_by': 'role'}"/>
+          <filter name="group_owner" string="Owner" context="{'group_by': 'owner_id'}"/></group>
+      </search>
+    </field>
+  </record>
+
+  <!-- 11.3 A job -->
+  <record id="job_form" model="ir.ui.view">
+    <field name="name">mi.job.form</field><field name="model">mi.job</field>
+    <field name="arch" type="xml">
+      <form create="0" delete="0">
+        <header>
+          <button name="action_switch_on_dialog" type="object" string="Switch on" class="btn-primary" invisible="state != 'off'"/>
+          <button name="action_run_now" type="object" string="Run now" class="btn-primary" invisible="state != 'on'"/>
+          <button name="action_pause" type="object" string="Pause" invisible="state != 'on'"/>
+          <button name="action_resume" type="object" string="Resume" class="btn-primary" invisible="state != 'paused'"/>
+          <button name="action_open_result" type="object" string="Open result" invisible="health != 'waiting'"/>
+          <field name="health" widget="statusbar" statusbar_visible="healthy,failing,waiting,paused" invisible="state == 'off'"/>
+        </header>
+        <sheet>
+          <div class="alert alert-danger d-flex gap-2" role="alert" invisible="health != 'failing'">
+            <span>The last two runs failed: <field name="last_error" class="d-inline" nolabel="1"/></span>
+          </div>
+          <field name="state" invisible="1"/><field name="uses_ai" invisible="1"/>
+          <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+          <group>
+            <group>
+              <field name="description" readonly="1"/>
+              <field name="gives" readonly="1"/>
+              <field name="needs" readonly="1" invisible="not needs"/>
+              <field name="owner_id" widget="many2one_avatar_user" required="state != 'off'"/>
+              <field name="brand_id" options="{'no_create': True}" placeholder="Every brand"/>
+            </group>
+            <group>
+              <field name="frequency" string="Schedule"/>
+              <field name="weekday" invisible="frequency != 'weekly'"/>
+              <field name="month_day" invisible="frequency != 'monthly'"/>
+              <field name="hour" invisible="frequency == 'hourly'"/>
+              <label for="ai_daily_limit" invisible="not uses_ai"/>
+              <div class="d-flex gap-1" invisible="not uses_ai">at most <field name="ai_daily_limit" class="oe_inline" nolabel="1"/> questions a day</div>
+              <field name="next_run" invisible="state != 'on'"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Runs" name="runs">
+              <div class="d-flex flex-wrap gap-3 mb-3">
+                <div class="border rounded px-3 py-2"><div class="small text-muted">Success, 30 days</div><field name="success_label" class="fs-5 fw-semibold"/></div>
+                <div class="border rounded px-3 py-2"><div class="small text-muted">Average time</div><field name="average_time_label" class="fs-5 fw-semibold"/></div>
+                <div class="border rounded px-3 py-2" invisible="not uses_ai"><div class="small text-muted">AI questions, 30 days</div><field name="ai_questions_30d" class="fs-5 fw-semibold"/></div>
+                <div class="border rounded px-3 py-2"><div class="small text-muted">Results, 30 days</div><field name="outputs_30d" class="fs-5 fw-semibold"/></div>
+              </div>
+              <field name="run_ids" readonly="1">
+                <list decoration-danger="state == 'failed'" decoration-muted="state in ('running', 'waiting')">
+                  <field name="started_at"/>
+                  <field name="state" string="Result" widget="badge" decoration-success="state == 'done'" decoration-danger="state == 'failed'"/>
+                  <field name="result"/>
+                  <field name="duration_label"/>
+                  <field name="error"/>
+                  <button name="action_open_outputs" type="object" string="Open" invisible="not output_count"/>
+                  <field name="output_count" column_invisible="1"/>
+                </list>
+              </field>
+            </page>
+            <page string="How it works" name="how">
+              <field name="how_it_works" readonly="1"/>
+              <p class="text-muted small mb-0">It runs as the Marketing assistant and only prepares: drafts, notes and to-dos for the owner, never a send or a publish.</p>
+            </page>
+          </notebook>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+
+  <!-- Switch on: owner and schedule -->
+  <record id="job_switch_on_form" model="ir.ui.view">
+    <field name="name">mi.job.switch.on</field><field name="model">mi.job</field><field name="priority">99</field>
+    <field name="arch" type="xml">
+      <form>
+        <field name="uses_ai" invisible="1"/>
+        <p class="text-muted"><field name="description" readonly="1" nolabel="1"/></p>
+        <group>
+          <field name="owner_id" widget="many2one_avatar_user" required="1"/>
+          <field name="brand_id" options="{'no_create': True}" placeholder="Every brand"/>
+          <field name="frequency" string="Schedule"/>
+          <field name="weekday" invisible="frequency != 'weekly'"/>
+          <field name="month_day" invisible="frequency != 'monthly'"/>
+          <field name="hour" invisible="frequency == 'hourly'"/>
+          <field name="ai_daily_limit" invisible="not uses_ai"/>
+        </group>
+        <footer>
+          <button name="action_switch_on" type="object" string="Switch on" class="btn-primary"/>
+          <button special="cancel" string="Cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="run_list" model="ir.ui.view">
+    <field name="name">mi.job.run.list</field><field name="model">mi.job.run</field>
+    <field name="arch" type="xml">
+      <list create="0" delete="0">
+        <field name="job_id"/><field name="started_at"/>
+        <field name="state" widget="badge" decoration-success="state == 'done'" decoration-danger="state == 'failed'"/>
+        <field name="result"/><field name="duration_label"/><field name="error"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_jobs" model="ir.actions.act_window">
+    <field name="name">Assistant jobs</field><field name="res_model">mi.job</field>
+    <field name="view_mode">list,form</field>
+    <field name="view_id" ref="job_list"/>
+    <field name="domain">[('state', '!=', 'off')]</field>
+    <field name="search_view_id" ref="job_search"/>
+    <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No assistant job is on yet</p>
+      <p>Click <b>Ready-made jobs</b> and switch one on: the Marketing assistant prepares drafts, notes and to-dos
+        for its owner on a schedule, never a send or a publish.</p></field>
+  </record>
+
+  <!-- Reached from Marketing › Workflows (no new menu item) -->
+  <record id="flow_kanban_jobs" model="ir.ui.view">
+    <field name="name">mi.flow.kanban.jobs</field><field name="model">mi.flow</field>
+    <field name="inherit_id" ref="marketing_intel_flow.flow_kanban"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_new_from_recipe']" position="after">
+        <button name="%(marketing_intel_jobs.action_jobs)d" type="action" string="Assistant jobs" display="always"/>
+      </xpath>
+    </field>
+  </record>
+  <record id="flow_list_jobs" model="ir.ui.view">
+    <field name="name">mi.flow.list.jobs</field><field name="model">mi.flow</field>
+    <field name="inherit_id" ref="marketing_intel_flow.flow_list"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header/button[@name='action_new_from_recipe']" position="after">
+        <button name="%(marketing_intel_jobs.action_jobs)d" type="action" string="Assistant jobs" display="always"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,operation,domain
+job_user,Assistant jobs (own and ready-made),model_mi_job,marketing_intel.group_mi_user,ru,"['|', ('state', '=', 'off'), ('owner_id', '=', user.id)]"
+job_senior,Assistant jobs (all),model_mi_job,marketing_intel_team.group_mi_senior,ru,
+job_manager,Assistant jobs (all),model_mi_job,marketing_intel.group_mi_manager,ru,
+run_user,Assistant job runs (own jobs),model_mi_job_run,marketing_intel.group_mi_user,r,"[('job_id.owner_id', '=', user.id)]"
+run_senior,Assistant job runs (all),model_mi_job_run,marketing_intel_team.group_mi_senior,r,
+run_manager,Assistant job runs (all),model_mi_job_run,marketing_intel.group_mi_manager,r,
