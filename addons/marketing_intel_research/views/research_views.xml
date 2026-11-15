@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- 12.1 Research: the ask box (and 12.3, its warnings) above the questions -->
+  <record id="research_list" model="ir.ui.view">
+    <field name="name">mi.research.list</field><field name="model">mi.research</field>
+    <field name="arch" type="xml">
+      <list js_class="mi_research_list" create="0" delete="0">
+        <header>
+          <button name="action_ask_in_chat" type="object" string="Ask a research question" class="btn-primary"
+                  display="always"/>
+        </header>
+        <field name="question" class="fw-bold"/>
+        <field name="user_id" string="Asked by" widget="many2one_avatar_user"/>
+        <field name="asked_at"/>
+        <field name="looked_in"/>
+        <field name="source_count" class="text-end"/>
+        <field name="saved_label" class="text-end"/>
+        <field name="state" widget="badge" decoration-info="state == 'searching'"
+               decoration-success="state == 'answered'" decoration-danger="state == 'failed'"/>
+        <field name="error" string="Reason" optional="show" class="text-danger small"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="research_search" model="ir.ui.view">
+    <field name="name">mi.research.search</field><field name="model">mi.research</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="question"/><field name="brand_id"/><field name="user_id"/>
+        <filter name="mine" string="Mine" domain="[('user_id', '=', uid)]"/>
+        <separator/>
+        <filter name="answered" string="Answered" domain="[('state', '=', 'answered')]"/>
+        <filter name="saved" string="Saved"
+                domain="['|', ('finding_ids', '!=', False), ('recommendation_ids', '!=', False)]"/>
+        <group><filter name="group_brand" string="Brand" context="{'group_by': 'brand_id'}"/>
+          <filter name="group_user" string="Asked by" context="{'group_by': 'user_id'}"/></group>
+      </search>
+    </field>
+  </record>
+
+  <!-- 12.2 An answer with its sources -->
+  <record id="research_form" model="ir.ui.view">
+    <field name="name">mi.research.form</field><field name="model">mi.research</field>
+    <field name="arch" type="xml">
+      <form create="0" delete="0" class="o_mi_research_form">
+        <header>
+          <button name="action_save_findings" type="object" string="Save as market changes" class="btn-primary"
+                  invisible="not is_mine or state != 'answered'"/>
+          <button name="action_suggest_campaign" type="object" string="Turn into a suggested campaign"
+                  invisible="not is_mine or state != 'answered'"/>
+          <button name="action_followup_dialog" type="object" string="Ask a follow-up"
+                  invisible="not is_mine or state != 'answered'"/>
+          <field name="state" widget="statusbar" statusbar_visible="searching,answered,failed"/>
+        </header>
+        <sheet>
+          <widget name="mi_research_live"/>
+          <field name="is_mine" invisible="1"/>
+          <div class="oe_title"><h1><field name="question" readonly="1"/></h1></div>
+          <div class="row g-3">
+            <div class="col-lg-8">
+              <group col="4">
+                <field name="brand_id" readonly="1" options="{'no_open': True}"/>
+                <field name="looked_in"/>
+                <label for="user_id" string="Asked by"/>
+                <div class="d-flex gap-1">
+                  <field name="user_id" options="{'no_open': True}" class="w-auto"/> · <field name="asked_at" class="w-auto"/>
+                </div>
+                <label for="took_label" invisible="not took_label"/>
+                <div invisible="not took_label"><field name="took_label" class="d-inline"/><span invisible="not ai_run_id"> · 1 AI question</span></div>
+                <field name="ai_run_id" invisible="1"/>
+              </group>
+              <div role="status" class="alert alert-warning mb-3" invisible="not use_web or state != 'answered'">
+                Web answers can be wrong or out of date. Check a source before you act on it.
+              </div>
+              <div role="status" class="alert alert-info mb-3" invisible="state != 'searching'">
+                The Marketing assistant is searching. The answer appears here when it is ready.
+              </div>
+              <div role="alert" class="alert alert-danger mb-3" invisible="state != 'failed'">
+                <strong>Could not answer.</strong> <field name="error" class="d-inline"/>
+              </div>
+              <field name="use_web" invisible="1"/>
+              <div invisible="state != 'answered'">
+                <h2 class="h5">Answer</h2>
+                <field name="summary" nolabel="1"/>
+                <field name="line_ids" nolabel="1" class="o_mi_research_lines" invisible="not line_ids">
+                  <list editable="bottom" create="0" delete="0" no_open="1">
+                    <field name="selected" nolabel="1" widget="boolean" width="40px"
+                           readonly="not parent.is_mine or finding_id"/>
+                    <field name="text" nolabel="1"/>
+                    <field name="finding_id" string="Saved as" optional="show" widget="badge"/>
+                  </list>
+                </field>
+                <p class="text-muted small" invisible="not is_mine or not line_ids">
+                  Tick the lines to save; each becomes a market change on the brand, with its source.
+                </p>
+              </div>
+              <div invisible="not followup_ids and (not is_mine or state != 'answered')">
+                <h2 class="h5 mt-3">Follow-ups</h2>
+                <field name="followup_ids" nolabel="1" invisible="not followup_ids">
+                  <list create="0" delete="0">
+                    <field name="question" class="fw-bold"/>
+                    <field name="state" widget="badge" decoration-info="state == 'searching'"
+                           decoration-success="state == 'answered'" decoration-danger="state == 'failed'"/>
+                    <field name="source_count" string="Sources" class="text-end"/>
+                    <button name="action_open" type="object" string="Open"/>
+                  </list>
+                </field>
+                <div class="d-flex gap-2" invisible="not is_mine or state != 'answered'">
+                  <field name="followup_text" nolabel="1" class="flex-grow-1"
+                         placeholder="Ask a follow-up about this answer…"/>
+                  <button name="action_ask_followup" type="object" string="Ask" class="btn-secondary"/>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4" invisible="not source_ids">
+              <section aria-label="Sources" class="border rounded p-3">
+                <h2 class="h5">Sources (<field name="source_count" class="d-inline"/>)</h2>
+                <field name="source_ids" nolabel="1" mode="kanban" class="o_mi_research_sources">
+                  <kanban create="0" delete="0" can_open="0">
+                    <templates><t t-name="card" class="border-0 p-0 mb-2">
+                      <div>
+                        <field name="label" class="d-inline fw-bold text-primary"/>
+                        <a t-if="record.url.raw_value" t-att-href="record.url.raw_value" target="_blank"
+                           rel="noopener noreferrer"><field name="name" class="d-inline"/></a>
+                        <field t-else="" name="name" class="d-inline"/>
+                      </div>
+                      <div class="small text-muted">
+                        <field name="site" class="d-inline"/><t t-if="record.when.raw_value"> · <field name="when" class="d-inline"/></t>
+                      </div>
+                      <field name="url" invisible="1"/>
+                    </t></templates>
+                  </kanban>
+                </field>
+                <p class="small text-muted border-top pt-2 mt-2 mb-0">
+                  A competitor named in an answer and already on the brand is linked to the saved market change.
+                  Unknown ones are not added as competitors.
+                </p>
+              </section>
+            </div>
+          </div>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+
+  <!-- 12.2 "Ask a follow-up" in the header -->
+  <record id="research_followup_form" model="ir.ui.view">
+    <field name="name">mi.research.followup.form</field><field name="model">mi.research</field>
+    <field name="priority">90</field>
+    <field name="arch" type="xml">
+      <form create="0" delete="0">
+        <p class="text-muted">About: <field name="question" readonly="1" class="d-inline"/></p>
+        <field name="followup_text" nolabel="1" placeholder="Ask a follow-up about this answer…"/>
+        <footer>
+          <button name="action_ask_followup" type="object" string="Ask" class="btn-primary"/>
+          <button special="cancel" string="Cancel" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_research" model="ir.actions.act_window">
+    <field name="name">Research</field><field name="res_model">mi.research</field>
+    <field name="view_mode">list,form</field>
+    <field name="view_id" ref="research_list"/>
+    <field name="search_view_id" ref="research_search"/>
+    <!-- Board 12.6: the empty-list wording is the owner's to decide; none until then. -->
+    <field name="help" eval="False"/>
+  </record>
+
+  <!-- Approved by the owner 2026-11-13: a new "Research" item under Insights (board 12.1). -->
+  <menuitem id="menu_research" name="Research" parent="marketing_intel.menu_insights" action="action_research" sequence="5"/>
+</odoo>

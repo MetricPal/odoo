@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.Composer" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o-mail-Composer-coreHeader')]" position="inside">
+            <div t-if="this.miResearchOn" class="o_mi_research_bar d-flex flex-wrap align-items-center gap-3 mx-1 mb-2 px-3 py-2 border rounded-3 bg-view small">
+                <t t-if="this.miDesk">
+                    <select class="form-select form-select-sm w-auto py-0" aria-label="Brand"
+                            t-model.proxy="this.miResearch.brandId">
+                        <option t-foreach="this.miDesk.brands" t-as="brand" t-key="brand.id"
+                                t-att-value="brand.id" t-out="brand.name"/>
+                    </select>
+                    <label class="d-inline-flex align-items-center gap-1 m-0" t-att-class="this.miDesk.web ? '' : 'text-muted'">
+                        <input type="checkbox" class="form-check-input m-0" t-model.proxy="this.miResearch.useWeb"
+                               t-att-disabled="!this.miDesk.web"/>the web
+                        <span t-if="!this.miDesk.web" class="o_mi_research_web_off" tabindex="0"
+                              t-att-data-tooltip="this.miWebOffHint">(off)</span>
+                    </label>
+                    <label class="d-inline-flex align-items-center gap-1 m-0">
+                        <input type="checkbox" class="form-check-input m-0" t-model.proxy="this.miResearch.useData"/>our data
+                    </label>
+                </t>
+            </div>
+        </xpath>
+    </t>
+
+    <t t-name="marketing_intel_research.ResearchSwitch">
+        <span class="o_mi_research_menu_switch form-check form-switch ms-auto mb-0 ps-5" aria-hidden="true">
+            <input type="checkbox" class="form-check-input" tabindex="-1" t-att-checked="this.props.on" disabled="disabled"/>
+        </span>
+    </t>
+</templates>

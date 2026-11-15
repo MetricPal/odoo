@@ -136,8 +136,13 @@ class AiHomeItem(models.Model):
         if state == 'completed' and final.sudo().child_run_ids and not final.sudo().followup_run_ids:
             state = 'running'  # it asked other agents: the merged answer follows (ADR 0015)
         chosen = run.sudo().routed_run_id
+        # No answer: what is wrong in plain words, and a fix link or who to ask (owner, 2026-11-13); the technical
+        # reason stays on the request, for AI Agent managers.
+        reason = final._reason_for_people() if state in ('failed', 'cancelled', 'discarded', 'uncertain') \
+            else {'text': '', 'url': '', 'label': ''}
         return {'state': state, 'answer': (final.answer or '') if state == 'completed' else '',
-                'error': final.error_message or '', 'conversationId': final.sudo().conversation_id.id,
+                'error': reason['text'], 'fixUrl': reason['url'], 'fixLabel': reason['label'],
+                'conversationId': final.sudo().conversation_id.id,
                 'answeredBy': chosen.agent_id.name or '', 'answeredById': final.sudo().agent_id.id,
                 'why': chosen.route_reason or ''}
 

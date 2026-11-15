@@ -12,6 +12,160 @@ Format:
 
 
 
+## 2026-11-13 — Consent: no registry warnings; data export works again
+
+- Change: `mi.consent.subject.topic_ids` (not stored) has its own compute method instead of sharing `_compute_status`
+  with the six stored consent fields. Odoo no longer warns "inconsistent 'store'" / "inconsistent 'compute_sudo'" for
+  `mi.consent.subject`, and reading topics no longer recomputes the stored statuses. Same result for people.
+- Fix: an approved data export ("send me my data") failed when saving its file, because it gave the attachment its
+  content as base64 `datas`, which Odoo 20 no longer accepts on create ("_check_contents should handle that"). It now
+  passes the bytes as `raw`. The test also checks the file is JSON and holds the person's consent evidence.
+- Affected areas: marketing_intel_consent (models/consent.py, models/data_request.py, tests).
+
+## 2026-11-13 — Daily question limit: only answered questions count; Home's Ask box says why
+
+- Change (owner): a person's daily question limit per agent no longer counts questions that ended without an
+  answer for a system reason (failed, needs manager check, discarded: Hermes down, the AI provider out of quota, a
+  paused model, access or settings changed). The limit message is plain and says who can raise it: "You've asked a
+  20 questions today, its daily limit. Please ask … (AI Agent managers) to raise it, or try again tomorrow."
+- Fix: Home's Ask box showed Odoo's "Invalid Operation" popup when a question was refused, and left "Thinking…" on
+  screen. It now shows the reason where "Thinking…" was (the question stays in the box), and a question that ends
+  without an answer shows the same plain reason as the chats, with the fix button for those who can fix it.
+- Affected areas: ai_agent (`_queue` limit; tests/test_capacity.py), ai_home (`get_ai_answer`, dashboard.js/xml).
+
+## 2026-11-13 — Research stays on; a used-up AI quota is named
+
+- Change (owner): Research stays on in the Marketing assistant's chat until it is switched off in the + menu (it used
+  to switch off after each question, as on approved board 12.5); closing and opening the chat window keeps it.
+- Change: when the AI provider refuses for quota or rate limits (for example Gemini "HTTP 429 RESOURCE_EXHAUSTED",
+  which failed the owner's research question), or the model is paused after such a refusal, people read "The
+  assistant's AI model has reached its usage limit for now. Please ask … (AI Agent managers) to change the model or
+  its plan." A model that no longer exists reads "The assistant's AI model is not available." AI Agent managers get
+  See what went wrong. The same patterns that pause a model decide this (`MODEL_FAILURES`).
+- Affected areas: marketing_intel_research (static/src/chat_research.js), ai_agent (`_reason_for_people`; tests),
+  docs/DESIGN.md.
+
+## 2026-11-13 — Assistant chats: a slow answer shows as a status
+
+- Change (owner): while an assistant works on a question, the line where "<assistant> is typing..." shows becomes a
+  status as the wait grows: after 10 seconds "This is taking a bit longer than usual…", after 30 seconds "Still
+  working on it; the AI service is slow right now.", then the minutes waited ("… (2 min)"), updated every minute. It
+  is a status, never a message from the assistant, and it goes away when the answer (or why there is none) arrives.
+  Research questions asked in the chat show it too.
+- Why: a single slow call to the AI provider (Gemini took 4 min 16 s for one answer on 2026-11-13; the ERP and Hermes
+  were waiting) left people looking at "is typing..." with no idea why.
+- How: the assistant's "typing" no longer ends after Discuss's 60 seconds (it lasts until the answer, at most 16
+  minutes, past the ERP's 15-minute limit on a question); the wait is counted from the server's `is_typing_dt`.
+  `ai_discuss/static/src/slow_answer_patch.js`; a research question keeps the assistant typing after "On it…".
+- Affected areas: ai_discuss (static/src, static/tests), marketing_intel_research (`_ask_from_chat`).
+
+## 2026-11-13 — Assistant chats and research: say what is wrong and who can fix it
+
+- Change (owner): a question that ends without an answer no longer gets "try again in a little while" (the person
+  would hit the same wall) nor the technical reason. The reply says what is wrong and how it gets fixed:
+  - Hermes not running: "The assistant is unavailable: Hermes, the AI service it runs on, is not running." Settings
+    administrators (the only ones who can start it) get an **Open Hermes to start it** button (the Hermes engine
+    form, with Start Hermes); everyone else reads "Please ask Alice or Bob (Settings administrators) to start it."
+  - Any other failure: "The assistant could not answer this question." AI Agent managers get **See what went
+    wrong** (the AI request); everyone else reads "Please ask … (AI Agent managers) if it keeps happening."
+  - Stopped or access changed: said as such. Up to three names; "your system administrator" when there is nobody.
+  This applies to every assistant chat in Discuss, the research reply in the chat (with Open the answer) and the
+  Research page's Reason. The technical reason stays on the AI request.
+- The Hermes connection no longer claims "Ready / Running" after Hermes stopped: when a question finds Hermes not
+  running (sending refused, a read or a status check that cannot connect), the connection is marked at once (Needs
+  attention, Hermes Stopped), so Start Hermes shows for Settings administrators where the "Open Hermes to start it"
+  button leads. Before, the status changed only with Check connection.
+- How: `ai.agent.run.hermes_unavailable` is set when Hermes could not be reached (`unreachable` on HermesUnavailable
+  or HermesRejected), and `engine._unreachable()` refreshes the connection;
+  `ai.agent.run._reason_for_people()` builds the sentence, the link or who to ask (names via `format_list`, "or").
+- Affected areas: ai_agent (models/conversation.py; tests), ai_discuss (`_ai_agent_finished`; tests),
+  marketing_intel_research (`_plain_reason`, `_chat_answer`; tests).
+
+## 2026-11-13 — Research: the assistant replies in the chat in plain words
+
+- Change (owner): the Marketing assistant's research replies in the chat read like a person: "On it. I'm looking
+  into this now and will reply here.", then the summary, up to five points without [n] markers and "I used N
+  sources…"; when there is no answer, "Sorry, I couldn't find an answer this time. Please try again in a little
+  while." Every message (progress, answer, no answer) ends with the **Open the answer** button. The Research page's
+  Reason is plain too ("The Marketing assistant isn't available right now…"); the technical reason stays on the AI
+  request for AI Agent managers. Status words and the numbered sources stay on the answer's page.
+- Affected areas: marketing_intel_research (`_ask_from_chat`, `_chat_answer`; tests), docs/DESIGN.md.
+
+## 2026-11-13 — AI Agent: a run that cannot be checked says why, and the record that asked is told
+
+- Problem (owner's research question stuck on Searching): a second Odoo server started from a terminal without
+  `AI_AGENT_ENDPOINTS` shared the database and ran the scheduled AI job. Hermes had accepted and answered the
+  question, but that server could not reach Hermes, so the run ended as "Needs manager check" with only "Request
+  blocked or engine unavailable…", and the research question was never told and kept "Searching".
+- Change: when a run is blocked while being sent or checked, its message keeps the real reason ("… Reason: This server
+  (127.0.0.1:8643) is not approved for AI Agent connections …"), and the record that asked (a research question, an
+  assistant chat, an assistant job, a workflow step, a draft) is told for every way a run can end there: blocked,
+  refused by Hermes, uncertain, or a lost submission. A research question then shows Could not answer with the reason
+  (in the chat too); if an AI Agent manager later reconciles the run and Hermes had answered, the same question takes
+  the answer.
+- Note: start every Odoo server for this database with `AI_AGENT_ENDPOINTS` (VS Code's launch config sets
+  `127.0.0.1:8643,127.0.0.1:9120`), or it cannot talk to Hermes.
+- Affected areas: ai_agent (models/conversation.py `_process_one`, `_poll`; tests), marketing_intel_research
+  (`_ai_agent_finished`; tests).
+
+## 2026-11-13 — Home: All insights cards are the filters; no sideways scroll on System overview
+
+- Change (owner): on All insights the five cards (Decisions waiting, Act soon, Incomplete information, Going well,
+  System) are now the filters and the filter buttons under the heading are gone. A card shows its insights; clicking
+  it again, Decisions waiting, or the "All insights" heading shows all. The active card is outlined; the note "Home
+  shows the ones above zero" stays. On System overview, the slowest page's
+  address no longer widens the page: a long value is cut with "…" and shown whole on hover.
+- Affected areas: ai_home (static/src/insight_report, static/src/system_overview), docs/DESIGN.md.
+
+## 2026-11-13 — Marketing: research is asked in the assistant's chat (plan M5, option 2a)
+
+- Change (owner, approved boards 12.4 to 12.6): research questions are asked only in the Marketing assistant's chat.
+  **Research** is an item with an on/off switch in the composer's **+** menu (owner's change the same day, instead
+  of a checkbox above the message box); with it on, a rounded box above the message box shows the brand, Look in (the web, our
+  data; "(off)" with a hint when web search is off); typing or pasting stops at 1000 characters, and the next
+  message is a research question. Typing
+  **/research** followed by the question does the same (first brand, the web when it is on). The question shows in
+  the chat as the person's message ("Research · brand · where"), is saved at once in Insights › Research, and the
+  assistant answers "Searching" with Open in Research. When it finishes, that line is replaced by one message: the
+  status (Answered, or Could not answer with the reason), how many sources and how long, the summary, up to five
+  lines with their source numbers, the web warning, and **Open the answer**. Research switches off after each
+  question; other messages stay normal chat questions. The Research page loses its ask box: the list keeps every
+  question with the same columns, filters and status words, **Ask a research question** in the control panel opens
+  the chat with Research on, and the orange (web search off) and red (no assistant) banners stay. The empty-list
+  text was removed until the owner decides its wording.
+- How: `marketing_intel_research` now depends on `ai_discuss`. `mi.research` gets `channel_id` and
+  `chat_status_message_id`; `ask_in_chat` posts the question (without the normal chat answer) and asks it;
+  `discuss.channel` gets `mi_research` in the web client store and the `research` command
+  (`execute_command_research`). Composer patch in `static/src/chat_research.js`.
+- Not yet: with no Marketing assistant ready, the page shows the red banner and the button explains why the chat
+  cannot open, instead of hiding the button.
+
+## 2026-11-13 — Marketing: research desk (plan M5)
+
+- Change (owner, approved boards 12.1 to 12.3; the new Insights › Research menu item approved 2026-11-13): a marketing
+  person asks a research question in their own words (at most 1000 characters), picks the brand and where to look
+  (the web, our data or both), and the Marketing assistant answers with a summary, lines that cite numbered sources,
+  and the sources (title, site, when). Status, the same words in the list, badges and the status bar: Searching,
+  Answered, Could not answer (with the reason). From an answer the person who asked ticks lines and saves them as
+  market changes on the brand (kind "From research", with the sources' addresses; a competitor already on the brand
+  and named in the line is linked), turns the answer into a suggested campaign (origin Research), or asks a
+  follow-up (in the header dialog or under the answer). Nothing is sent or published. The desk warns when web search
+  is off for the assistant's Hermes profile ("Open the profile" for AI Agent managers) and when no Marketing
+  assistant is ready (the box is disabled; earlier answers stay readable). The list and an open answer refresh when
+  the answer arrives.
+- How: new module `marketing_intel_research` (auto-installed with `marketing_intel_ai`, `marketing_intel_team`,
+  `marketing_intel_tracking`): `mi.research`, `mi.research.line`, `mi.research.source`. Questions go through
+  `ai.agent.run._ask` as the person (caller Marketing; it reads only what both the person and the assistant may read
+  and counts against the person's daily AI limit). The prompt fences the question and our data between markers; the
+  reply is parsed from SUMMARY / POINTS / SOURCES, and only http(s) addresses are kept as links. The person who asked
+  is told over the bus (`mi_research/updated`).
+- Access: people read and change their own questions; seniors, the head of department and administrators read all
+  in their companies.
+- Demo data: a demo brand with a competitor, three answered questions with sources, one line saved as a market change.
+- Affected areas: marketing_intel_research (new), docs/DESIGN.md, docs/exec-plans/active/2026-11-09-marketing-workspace.md.
+- Not yet: switching on "Web search and reading" for the Marketing department's profile in demo data (the demo has no
+  Marketing profile); a senior sees all questions, not only their team's.
+
 ## 2026-11-12 — Marketing: assistant jobs and their health (plan M4)
 
 - Change (owner, approved boards 11.1 to 11.3): ten ready-made jobs the Marketing assistant runs on a schedule and

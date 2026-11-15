@@ -198,7 +198,20 @@ class TestSharedService(AgentCase):
         self._ask('Mine 2')
         with self.assertRaises(UserError) as error:
             self._ask('Mine 3')
-        self.assertIn('daily limit of 2', str(error.exception))
+        self.assertIn('2 questions today, its daily limit', str(error.exception))
+        self.assertIn('AI Agent managers) to raise it, or try again tomorrow', str(error.exception))
+
+    def test_questions_that_failed_for_a_system_reason_do_not_use_up_the_limit(self):
+        """Hermes down or the AI provider out of quota must not cost the person their daily questions."""
+        self.agent.action_pause()
+        self.agent.write({'max_requests_per_day': 20, 'max_requests_per_user_day': 2})
+        self.agent.action_activate()
+        for state in ('failed', 'uncertain', 'discarded'):
+            internal(self._ask('Not answered (%s)' % state).sudo()).write({'state': state})
+        self._ask('Mine 1')
+        self._ask('Mine 2')
+        with self.assertRaises(UserError):
+            self._ask('Mine 3')
 
     def test_a_used_up_model_is_paused_and_waiting_questions_fail_at_once(self):
         failed = self._ask('First')

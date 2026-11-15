@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="marketing_intel_research.Banners">
+        <t t-set="desk" t-value="this.state.desk"/>
+        <div t-if="desk and !desk.assistant" role="alert" class="o_mi_research_banner alert alert-danger d-flex gap-2 align-items-center m-3">
+            <span class="flex-grow-1"><strong>No Marketing assistant is ready.</strong>
+                Research needs the brand's AI agent or the marketing department's agent, active and connected.</span>
+            <a t-if="desk.ai_agent_action" href="#" t-on-click.prevent="() => this.openAiAgent()">Open AI Agent</a>
+        </div>
+        <div t-elif="desk and !desk.web" role="alert" class="o_mi_research_banner alert alert-warning d-flex gap-2 align-items-center m-3">
+            <span class="flex-grow-1"><strong>Web search is off for the Marketing assistant.</strong>
+                Questions can only look in our data until an AI Agent manager switches on "Web search and reading"
+                on its Hermes profile. <t t-out="this.webOffText"/></span>
+            <a t-if="desk.ai_manager" href="#" t-on-click.prevent="() => this.openProfile()">Open the profile</a>
+        </div>
+    </t>
+
+    <t t-name="marketing_intel_research.ListRenderer" t-inherit="web.ListRenderer" t-inherit-mode="primary">
+        <xpath expr="//div[hasclass('o_list_renderer')]" position="before">
+            <ResearchBanners/>
+        </xpath>
+    </t>
+
+    <t t-name="marketing_intel_research.Live"/>
+</templates>

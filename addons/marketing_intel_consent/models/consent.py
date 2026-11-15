@@ -60,7 +60,7 @@ class Subject(models.Model):
     whatsapp_status = fields.Selection(STATUSES, compute='_compute_status', store=True, string='WhatsApp consent')
     telegram_status = fields.Selection(STATUSES, compute='_compute_status', store=True, string='Telegram consent')
     social_status = fields.Selection(STATUSES, compute='_compute_status', store=True, string='Social DM consent')
-    topic_ids = fields.Many2many('mi.consent.topic', compute='_compute_status', string='Topics')
+    topic_ids = fields.Many2many('mi.consent.topic', compute='_compute_topic_ids', string='Topics')
     last_change = fields.Datetime(compute='_compute_status', store=True)
     erased = fields.Boolean(readonly=True, copy=False)
 
@@ -70,17 +70,25 @@ class Subject(models.Model):
     @api.depends('record_ids.action', 'record_ids.channel', 'record_ids.topic_id', 'record_ids.recorded_at')
     def _compute_status(self):
         for subject in self:
-            latest, topics = {}, {}
+            latest = {}
             for record in subject.record_ids.sorted(lambda r: (r.recorded_at, r.id)):
-                if record.topic_id:
-                    topics[record.topic_id.id] = record.action
-                else:
+                if not record.topic_id:
                     latest[record.channel] = record.action
             for channel, _label in CHANNELS:
                 action = latest.get(channel)
                 subject[f'{channel}_status'] = {'opt_in': 'opted_in', 'opt_out': 'opted_out'}.get(action, 'unknown')
-            subject.topic_ids = [(6, 0, [tid for tid, action in topics.items() if action == 'opt_in'])]
             subject.last_change = max(subject.record_ids.mapped('recorded_at'), default=False)
+
+    # Topics are not stored, so they have their own method: sharing one method between stored and non-stored
+    # fields made Odoo warn (inconsistent store / compute_sudo) and recompute the stored statuses on every read.
+    @api.depends('record_ids.action', 'record_ids.topic_id', 'record_ids.recorded_at')
+    def _compute_topic_ids(self):
+        for subject in self:
+            topics = {}
+            for record in subject.record_ids.sorted(lambda r: (r.recorded_at, r.id)):
+                if record.topic_id:
+                    topics[record.topic_id.id] = record.action
+            subject.topic_ids = [fields.Command.set([tid for tid, action in topics.items() if action == 'opt_in'])]
 
     # ------------------------------------------------------------------ finding people
 

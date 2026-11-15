@@ -1,0 +1,16 @@
+.o_mi_research_form .o_mi_research_sources .o_kanban_renderer {
+    display: block;
+    padding: 0;
+}
+
+.o_mi_research_menu_switch .form-check-input:disabled {
+    opacity: 1;
+    pointer-events: none;
+}
+
+.o_mi_research_bar {
+    .o_mi_research_web_off {
+        cursor: help;
+        text-decoration: underline dotted;
+    }
+}

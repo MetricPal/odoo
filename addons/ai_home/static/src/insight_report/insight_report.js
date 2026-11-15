@@ -34,6 +34,11 @@ export class InsightReport extends Component {
         }
     }
 
+    /** A card filters the table; clicking the active card again shows all. */
+    toggleFilter(key) {
+        this.state.filter = this.state.filter === key ? "all" : key;
+    }
+
     get overviewRows() {
         const rows = this.state.overview?.rows || [];
         return this.state.filter === "all" ? rows : rows.filter((row) => row.priority === this.state.filter);

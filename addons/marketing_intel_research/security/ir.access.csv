@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,operation,domain
+research_user,Research questions (own),model_mi_research,marketing_intel.group_mi_user,cru,"[('user_id', '=', user.id)]"
+research_senior,Research questions (all),model_mi_research,marketing_intel_team.group_mi_senior,r,"[('company_id', 'in', company_ids)]"
+research_manager,Research questions (all),model_mi_research,marketing_intel.group_mi_manager,r,"[('company_id', 'in', company_ids)]"
+line_user,Research answer lines (own),model_mi_research_line,marketing_intel.group_mi_user,cru,"[('research_id.user_id', '=', user.id)]"
+line_senior,Research answer lines (all),model_mi_research_line,marketing_intel_team.group_mi_senior,r,"[('company_id', 'in', company_ids)]"
+line_manager,Research answer lines (all),model_mi_research_line,marketing_intel.group_mi_manager,r,"[('company_id', 'in', company_ids)]"
+source_user,Research sources (own),model_mi_research_source,marketing_intel.group_mi_user,cr,"[('research_id.user_id', '=', user.id)]"
+source_senior,Research sources (all),model_mi_research_source,marketing_intel_team.group_mi_senior,r,"[('company_id', 'in', company_ids)]"
+source_manager,Research sources (all),model_mi_research_source,marketing_intel.group_mi_manager,r,"[('company_id', 'in', company_ids)]"

@@ -260,12 +260,14 @@ and `_handle_error` record the duration and whether it was a server error, 5xx) 
 cursor at most once a minute, so a request only pays a dictionary update and a failed write never breaks a request.
 Durations are kept in five buckets (under 100 ms, 300 ms, 1 s, 3 s, slower), so p95 is the bucket's upper bound.
 Once there is data the page adds a "Server requests" figure (with p95), "Traffic today" (requests per hour), server
-errors and the slowest page (routes with at least five requests). Rows older than 90 days are removed by the
-autovacuum.
+errors and the slowest page (routes with at least five requests; a long address is cut with "…" and shown whole on
+hover, so the page never scrolls sideways). Rows older than 90 days are removed by the autovacuum.
 
 From the System overview, **All insights** (`/odoo/insights`) lists every insight rule the viewer can use, including
 those at zero: priority, now, the value 30 days ago (from the daily snapshots), a 30-day trend and a link to its app
-report. A row of the Apps table opens that app's **report** (no side menu; the breadcrumbs lead back): one
+report. The cards above it (Decisions waiting, Act soon, Incomplete information, Going well, System) are the filters
+(owner, 2026-11-13; no filter buttons): a card shows its insights; the same card again, Decisions waiting or the
+"All insights" heading shows all. The active card is outlined; the note "Home shows the ones above zero" stays. A row of the Apps table opens that app's **report** (no side menu; the breadcrumbs lead back): one
 card per insight of the app (click to select), for a completeness insight the records by completeness band and what
 is missing, the selected insight's last 30 days, and the records behind it (least complete first, missing fields
 marked, up to 50 rows) with "Open in <app>". Administrators only for now.
@@ -483,6 +485,33 @@ owner's additions the same day).
   banner with the last failure; Runs tab (success, average time, AI questions, results; each run with its result,
   time and reason, and Open); How it works tab.
 - Health words are the same in the panel block, the list and the form. Jobs only prepare; nothing is sent.
+
+## Research desk (`marketing_intel_research`, boards 12.1 to 12.6, approved 2026-11-13; option 2a)
+
+- Questions are asked in the Marketing assistant's chat. **Research** is an item with an on/off switch in the
+  composer's **+** menu (after Send GIF; owner, 2026-11-13). On, a rounded box above the message box shows the
+  brand, Look in (the web / our data; "(off)" with a hover hint when web search is off) in one box,
+  typing stops at 1000 characters, and the placeholder reads "Ask a research question…". **/research** + question does the same.
+- In the chat the assistant talks as a person (owner, 2026-11-13): "On it. I'm looking into this now and will reply
+  here.", replaced by the answer: the summary, up to five points (no [n] markers) and "I used N sources; web pages can
+  be out of date, so check them before you act."; when there is no answer: "Sorry, I couldn't find an answer this
+  time. Please try again in a little while." Every one of these messages ends with the **Open the answer** button, so
+  progress, the answer or the reason can be opened from any page. Research stays on in that chat until it is switched off in the + menu (owner, 2026-11-13).
+- A slow answer is a status where "<assistant> is typing..." shows, never a message: after 10 s "This is taking a bit
+  longer than usual…", after 30 s "Still working on it; the AI service is slow right now.", then "(N min)", updated
+  every minute. Same in every assistant chat.
+- No technical text and no bare "try again": when there is no answer, the chat and the Research page say what is
+  wrong and who can fix it, e.g. "The assistant is unavailable: Hermes, the AI service it runs on, is not running.
+  Please ask Alice (Settings administrators) to start it." Those who can fix it get a button instead (Open Hermes to
+  start it; See what went wrong for AI Agent managers). An AI provider that refuses for quota or rate limits reads
+  "The assistant's AI model has reached its usage limit for now. Please ask … (AI Agent managers) to change the model
+  or its plan." The same rule applies to every assistant chat in Discuss.
+- Marketing › Insights › Research (first item): **Ask a research question** in the control panel (opens the chat with
+  Research on), the orange or red banner when web search is off or no assistant is ready, then Question, Asked by,
+  When, Looked in, Sources, Saved, Status. Filters Mine, Answered, Saved. Empty list: no text until the owner decides.
+- An answer: Save as market changes, Turn into a suggested campaign, Ask a follow-up, and the status bar (Searching ·
+  Answered · Could not answer). Brand, Looked in, Asked by, Took; a warning that web answers can be wrong; the answer
+  with a tick per line; Follow-ups; Sources on the right ([n] title as a link, site · when).
 
 ## Agents working together (`ai_agent`, `ai_discuss`, `ai_home`)
 

@@ -368,6 +368,89 @@ class TestAgent(TransactionCase):
         self.assertNotIn('synthetic secret', run.error_message)
         self.assertTrue(run.request_payload)
 
+    def test_blocked_status_check_keeps_the_reason_and_tells_the_asker(self):
+        """A status check that cannot reach Hermes from this server (no AI_AGENT_ENDPOINTS) used to end the run
+        with a generic line, and the record that asked waited forever."""
+        run = self._queue().sudo()
+        internal(run).write({'state': 'running', 'remote_id': 'run_blocked', 'started_at': fields.Datetime.now(),
+                             'next_poll_at': False})
+        Run = type(self.env['ai.agent.run'])
+        with patch.object(type(self.engine), '_request',
+                          side_effect=UserError('This server (127.0.0.1:8643) is not approved for AI Agent connections.')), \
+             patch.object(Run, '_notify_origin') as notify, \
+             patch.object(type(self.env['ir.cron']), '_commit_progress', return_value=60):
+            self.env['ai.agent.run']._cron_process()
+        self.assertEqual(run.state, 'uncertain', 'Hermes accepted it: a manager can still reconcile')
+        self.assertIn('Request blocked or engine unavailable', run.error_message)
+        self.assertIn('is not approved for AI Agent connections', run.error_message)
+        notify.assert_called_once()
+
+    def test_hermes_not_running_says_who_can_start_it(self):
+        """Not "try again later": the person is told what is wrong and who can fix it; an administrator gets the link."""
+        # Simulate Hermes being down: the error Odoo raises, with its technical text (as in the live log).
+        technical = 'Hermes is not running or cannot be reached at 127.0.0.1:8643. Start it, or check the address.'
+        error = hermes.HermesUnavailable(technical)
+        error.unreachable = True  # as hermes.request marks "connection refused"
+        run = self._queue().sudo()
+        internal(self.engine).write({'state': 'ready', 'hermes_runtime': 'running'})
+        with patch.object(type(self.engine), '_inspect', return_value=({}, [])), \
+             patch.object(type(self.engine), '_request', side_effect=error), \
+             patch.object(type(self.engine), '_probe_runtime', return_value='stopped'), \
+             patch.object(type(self.env['ir.cron']), '_commit_progress', return_value=60):
+            self.env['ai.agent.run']._cron_process()
+        self.assertEqual(self.engine.state, 'blocked', 'the connection no longer claims Ready')
+        self.assertEqual(self.engine.hermes_runtime, 'stopped', 'and no longer claims Running')
+        self.assertEqual(run.state, 'failed')
+        self.assertTrue(run.hermes_unavailable)
+        self.assertIn(technical, run.error_message, 'the technical reason stays on the request, for AI Agent managers')
+        reason = run.with_user(self.user)._reason_for_people()
+        self.assertNotIn('127.0.0.1', reason['text'], 'the person never sees the technical text')
+        self.assertIn('Hermes, the AI service it runs on, is not running', reason['text'])
+        self.assertIn('(Settings administrators) to start it', reason['text'])
+        self.assertIn(self.env.ref('base.user_admin').name, reason['text'])
+        self.assertFalse(reason['url'], 'only Settings administrators can start Hermes')
+        admin = run.with_user(self.env.ref('base.user_admin'))._reason_for_people()
+        self.assertIn('action_engines/%s' % self.engine.id, admin['url'])
+
+    def test_sending_refused_because_hermes_is_down_is_recognised(self):
+        """Sending (POST) to a Hermes that is not running raises HermesRejected, not HermesUnavailable."""
+        error = hermes.HermesRejected('Hermes is not running or cannot be reached at 127.0.0.1:8643.')
+        error.unreachable = True
+        run = self._queue().sudo()
+        with patch.object(type(self.engine), '_inspect', return_value=({}, [])), \
+             patch.object(type(self.engine), '_request', side_effect=error), \
+             patch.object(type(self.engine), '_probe_runtime', return_value='stopped'), \
+             patch.object(type(self.env['ir.cron']), '_commit_progress', return_value=60):
+            self.env['ai.agent.run']._cron_process()
+        self.assertEqual(run.state, 'failed')
+        self.assertTrue(run.hermes_unavailable)
+        self.assertIn('is not running', run.with_user(self.user)._reason_for_people()['text'])
+        self.assertEqual(self.engine.state, 'blocked')
+
+    def test_a_used_up_quota_is_said_plainly(self):
+        """Google's 429 (owner's research question, 2026-11-13) and the "model paused" refusals after it."""
+        run = self._queue().sudo()
+        for error in ('Hermes stopped without a completed answer: Gemini HTTP 429 (RESOURCE_EXHAUSTED): You exceeded '
+                      'your current quota, please check your plan and billing details.',
+                      'Not sent: gemini/gemini-3.5-flash is paused until 2026-11-13 14:14:23 UTC after it failed for '
+                      'another question. Hermes said: Gemini HTTP 429 (RESOURCE_EXHAUSTED): quota exceeded'):
+            internal(run).write({'state': 'failed', 'error_message': error})
+            reason = run.with_user(self.user)._reason_for_people()
+            self.assertIn("The assistant's AI model has reached its usage limit for now.", reason['text'])
+            self.assertIn('(AI Agent managers) to change the model or its plan', reason['text'])
+            self.assertNotIn('RESOURCE_EXHAUSTED', reason['text'])
+
+    def test_uncertain_post_tells_the_asker(self):
+        run = self._queue().sudo()
+        Run = type(self.env['ai.agent.run'])
+        with patch.object(type(self.engine), '_inspect', return_value=({}, [])), \
+             patch.object(type(self.engine), '_request', side_effect=hermes.HermesUncertain('synthetic secret')), \
+             patch.object(Run, '_notify_origin') as notify, \
+             patch.object(type(self.env['ir.cron']), '_commit_progress', return_value=60):
+            self.env['ai.agent.run']._cron_process()
+        self.assertEqual(run.state, 'uncertain')
+        notify.assert_called_once()
+
     def test_cancellation_claim_not_repeated(self):
         run = self._queue().sudo()
         internal(run).write({'state': 'stop_requested', 'remote_id': 'run_stop', 'stop_claimed': True})

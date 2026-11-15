@@ -11,23 +11,24 @@
 
                     <!-- Overview -->
                     <t t-if="this.state.overview">
+                        <!-- The cards are the filters (owner, 2026-11-13); "Decisions waiting" shows all insights. -->
                         <div class="o_ai_home_overview_tiles">
-                            <section class="o_ai_home_card o_ai_home_overview_tile">
+                            <button type="button" class="o_ai_home_card o_ai_home_overview_tile o_ai_home_report_card o_ai_home_filter_card"
+                                    t-att-class="{ 'o_is_active': this.state.filter === 'all' }" t-att-aria-pressed="this.state.filter === 'all'"
+                                    t-on-click="() => this.state.filter = 'all'">
                                 <span class="o_ai_home_hint">Decisions waiting</span>
                                 <strong class="o_ai_home_overview_value" t-esc="this.state.overview.decisions"/>
-                            </section>
-                            <section t-foreach="this.state.overview.groups" t-as="group" t-key="group.key" class="o_ai_home_card o_ai_home_overview_tile">
+                            </button>
+                            <button t-foreach="this.state.overview.groups" t-as="group" t-key="group.key" type="button"
+                                    class="o_ai_home_card o_ai_home_overview_tile o_ai_home_report_card o_ai_home_filter_card"
+                                    t-att-class="{ 'o_is_active': this.state.filter === group.key }" t-att-aria-pressed="this.state.filter === group.key"
+                                    t-on-click="() => this.toggleFilter(group.key)">
                                 <span class="o_ai_home_hint" t-esc="group.label"/>
                                 <strong class="o_ai_home_overview_value" t-esc="group.count"/>
-                            </section>
+                            </button>
                         </div>
                         <section class="o_ai_home_card" aria-labelledby="ai_home_all_title">
-                            <div class="o_ai_home_card_head"><h2 id="ai_home_all_title">All insights</h2><span class="o_ai_home_hint">Home shows the ones above zero</span></div>
-                            <div class="o_ai_home_chips" role="tablist" aria-label="Priority">
-                                <button type="button" role="tab" class="btn o_ai_home_chip" t-att-class="{ 'o_is_active': this.state.filter === 'all' }" t-on-click="() => this.state.filter = 'all'">All <t t-esc="this.state.overview.rows.length"/></button>
-                                <button t-foreach="this.state.overview.groups" t-as="group" t-key="group.key" type="button" role="tab" class="btn o_ai_home_chip"
-                                        t-att-class="{ 'o_is_active': this.state.filter === group.key }" t-on-click="() => this.state.filter = group.key" t-esc="group.label"/>
-                            </div>
+                            <div class="o_ai_home_card_head"><h2 id="ai_home_all_title"><button type="button" class="btn btn-link p-0 o_ai_home_all_link" t-att-aria-pressed="this.state.filter === 'all'" t-on-click="() => this.state.filter = 'all'">All insights</button></h2><span class="o_ai_home_hint">Home shows the ones above zero</span></div>
                             <table class="o_ai_home_overview_table">
                                 <thead><tr><th>Insight</th><th>App</th><th>Now</th><th>30 days ago</th><th>30 days</th><th/></tr></thead>
                                 <tbody>

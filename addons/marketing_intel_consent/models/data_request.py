@@ -6,7 +6,6 @@
   (blacklisted, opted out) so they are not contacted again; the consent history is kept, anonymized, as proof.
 """
 
-import base64
 import json
 
 from odoo import _, api, fields, models
@@ -88,7 +87,8 @@ class DataRequest(models.Model):
     def _export(self):
         content = json.dumps(self._collect(), indent=2, ensure_ascii=False).encode()
         attachment = self.env['ir.attachment'].sudo().create({
-            'name': 'marketing-data-%s.json' % self.id, 'datas': base64.b64encode(content),
+            # Odoo 20 attachments take the bytes as 'raw' ('datas' is no longer accepted on create).
+            'name': 'marketing-data-%s.json' % self.id, 'raw': content,
             'res_model': self._name, 'res_id': self.id, 'mimetype': 'application/json'})
         self.attachment_id = attachment
         self.message_post(body=_('Data file prepared: send it to the person.'), attachment_ids=attachment.ids)

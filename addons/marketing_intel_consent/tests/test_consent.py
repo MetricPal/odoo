@@ -1,3 +1,5 @@
+import json
+
 from odoo import Command
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import HttpCase, TransactionCase, new_test_user, tagged
@@ -73,6 +75,11 @@ class TestConsent(TransactionCase):
         export.approval_request_id.with_user(self.approver).action_approve()
         self.assertEqual(export.state, 'done')
         self.assertTrue(export.attachment_id)
+        file = export.attachment_id.sudo()
+        self.assertEqual(file.mimetype, 'application/json')
+        content = bytes(file.raw).decode()
+        self.assertIsInstance(json.loads(content), dict, 'the export is a JSON file')
+        self.assertIn('Newsletter form on the website', content, "it holds the person's consent evidence")
         erase = Request.create({'subject_id': subject.id, 'kind': 'erase', 'note': 'Asked by email, ID checked'})
         erase.action_submit()
         erase.approval_request_id.with_user(self.approver).action_approve()

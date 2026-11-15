@@ -94,7 +94,7 @@
                             <div class="o_ai_home_card_head"><h2 id="ai_home_tel_title">Telemetry</h2><span class="o_ai_home_hint">server and storage</span></div>
                             <div class="o_ai_home_overview_telemetry">
                                 <div t-foreach="this.state.data.telemetry" t-as="row" t-key="row.key" class="o_ai_home_overview_kv">
-                                    <span t-esc="row.label"/><strong><t t-esc="row.value"/> <span t-if="row.sub" class="o_ai_home_hint" t-esc="row.sub"/></strong>
+                                    <span class="o_ai_home_overview_kv_label" t-esc="row.label"/><strong class="o_ai_home_overview_kv_value"><span class="o_ai_home_overview_kv_text" t-att-title="row.value" t-esc="row.value"/> <span t-if="row.sub" class="o_ai_home_hint o_ai_home_overview_kv_sub" t-esc="row.sub"/></strong>
                                 </div>
                             </div>
                         </section>

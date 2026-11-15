@@ -571,12 +571,24 @@ export class WorkDashboard extends Component {
             question, answer: "", error: "", waiting: true, conversationId, choosing: !agentId,
             answeredBy: "", answeredById: false, why: "", ...routed,
         };
-        const { runId, conversationId: newConversation } = await this.orm.call("ai.home.item", "ask_ai", [
-            agentId,
-            question,
-            this.state.attachments.map((file) => file.id),
-            conversationId,
-        ]);
+        let asked;
+        try {
+            asked = await this.orm.call("ai.home.item", "ask_ai", [
+                agentId,
+                question,
+                this.state.attachments.map((file) => file.id),
+                conversationId,
+            ]);
+        } catch (error) {
+            // Refused before it started (for example the daily limit): say why where "Thinking…" was, no popup;
+            // the question stays in the box (owner, 2026-11-13).
+            if (!error.data?.message) {
+                throw error;
+            }
+            Object.assign(this.state.chat, { waiting: false, choosing: false, error: error.data.message });
+            return;
+        }
+        const { runId, conversationId: newConversation } = asked;
         this.state.prompt = "";
         this.state.attachments = [];
         this.state.chat.conversationId = newConversation;
@@ -617,6 +629,8 @@ export class WorkDashboard extends Component {
                 result.state === "completed"
                     ? ""
                     : result.error || _t("The assistant could not answer. Open the conversation for details.");
+            chat.fixUrl = result.fixUrl || "";
+            chat.fixLabel = result.fixLabel || "";
             return;
         }
         if (round >= POLL_LIMIT) {

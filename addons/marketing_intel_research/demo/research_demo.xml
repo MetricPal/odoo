@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Board 12.3 "Setup in demo data": three example questions on a demo brand, answered, with sources, and one
+       saved market change. The brand's next research is a year away so the scheduled research leaves it alone. -->
+  <record id="demo_brand" model="mi.brand">
+    <field name="name">Green Corner Plants (demo)</field>
+    <field name="offering">Indoor plants, pots and plant care, sold online and in one shop.</field>
+    <field name="markets">Malaysia</field>
+    <field name="next_research_at" eval="(DateTime.today() + relativedelta(years=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+  </record>
+  <record id="demo_competitor_greenleaf" model="mi.competitor">
+    <field name="brand_id" ref="demo_brand"/>
+    <field name="name">GreenLeaf</field>
+    <field name="website">https://greenleaf.example</field>
+  </record>
+
+  <!-- 1. Answered from the web, one line saved as a market change -->
+  <record id="demo_research_prices" model="mi.research">
+    <field name="question">What prices do our competitors show for monstera this week?</field>
+    <field name="brand_id" ref="demo_brand"/>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="use_web" eval="True"/>
+    <field name="use_data" eval="False"/>
+    <field name="state">answered</field>
+    <field name="summary">GreenLeaf cut its monstera price this week; ours is now the highest of the shops checked.</field>
+    <field name="asked_at" eval="(DateTime.today() - relativedelta(days=1)).strftime('%Y-%m-%d 09:40:00')"/>
+    <field name="answered_at" eval="(DateTime.today() - relativedelta(days=1)).strftime('%Y-%m-%d 09:41:20')"/>
+  </record>
+  <record id="demo_research_prices_source_1" model="mi.research.source">
+    <field name="research_id" ref="demo_research_prices"/>
+    <field name="number">1</field><field name="sequence">1</field>
+    <field name="name">Monstera deliciosa 30 cm</field>
+    <field name="url">https://greenleaf.example/monstera</field>
+    <field name="when">read yesterday</field>
+  </record>
+  <record id="demo_research_prices_source_2" model="mi.research.source">
+    <field name="research_id" ref="demo_research_prices"/>
+    <field name="number">2</field><field name="sequence">2</field>
+    <field name="name">Monstera (our product)</field>
+    <field name="when">our data</field>
+  </record>
+  <record id="demo_finding_prices" model="mi.finding">
+    <field name="brand_id" ref="demo_brand"/>
+    <field name="competitor_id" ref="demo_competitor_greenleaf"/>
+    <field name="kind">research</field>
+    <field name="title">GreenLeaf sells the 30 cm monstera at RM 59, down from RM 75, until 30 Nov</field>
+    <field name="summary">GreenLeaf sells the 30 cm monstera at RM 59, down from RM 75, until 30 Nov
+[1] Monstera deliciosa 30 cm https://greenleaf.example/monstera</field>
+  </record>
+  <record id="demo_research_prices_line_1" model="mi.research.line">
+    <field name="research_id" ref="demo_research_prices"/>
+    <field name="sequence">0</field>
+    <field name="text">GreenLeaf sells the 30 cm monstera at RM 59, down from RM 75, until 30 Nov [1]</field>
+    <field name="selected" eval="True"/>
+    <field name="finding_id" ref="demo_finding_prices"/>
+  </record>
+  <record id="demo_research_prices_line_2" model="mi.research.line">
+    <field name="research_id" ref="demo_research_prices"/>
+    <field name="sequence">1</field>
+    <field name="text">Our price is RM 69, the highest of the shops checked [2]</field>
+  </record>
+  <record id="demo_research_prices" model="mi.research">
+    <field name="finding_ids" eval="[(4, ref('demo_finding_prices'))]"/>
+  </record>
+
+  <!-- 2. Answered from our data -->
+  <record id="demo_research_email" model="mi.research">
+    <field name="question">Why did our email clicks drop last month?</field>
+    <field name="brand_id" ref="demo_brand"/>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="use_web" eval="False"/>
+    <field name="use_data" eval="True"/>
+    <field name="state">answered</field>
+    <field name="summary">Fewer emails went out last month, and the ones that did had no offer in the subject line.</field>
+    <field name="asked_at" eval="(DateTime.today() - relativedelta(days=2)).strftime('%Y-%m-%d 16:05:00')"/>
+    <field name="answered_at" eval="(DateTime.today() - relativedelta(days=2)).strftime('%Y-%m-%d 16:05:40')"/>
+  </record>
+  <record id="demo_research_email_source_1" model="mi.research.source">
+    <field name="research_id" ref="demo_research_email"/>
+    <field name="number">1</field><field name="sequence">1</field>
+    <field name="name">Results by channel: Email</field>
+    <field name="when">our data</field>
+  </record>
+  <record id="demo_research_email_line_1" model="mi.research.line">
+    <field name="research_id" ref="demo_research_email"/>
+    <field name="sequence">0</field>
+    <field name="text">Two newsletters were sent instead of the usual four [1]</field>
+  </record>
+
+  <!-- 3. Answered from the web and our data -->
+  <record id="demo_research_hashtags" model="mi.research">
+    <field name="question">Which hashtags are growing in our market?</field>
+    <field name="brand_id" ref="demo_brand"/>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="use_web" eval="True"/>
+    <field name="use_data" eval="True"/>
+    <field name="state">answered</field>
+    <field name="summary">Plant-care tips and small-space plants grow fastest; our posts use neither.</field>
+    <field name="asked_at" eval="(DateTime.today() - relativedelta(days=3)).strftime('%Y-%m-%d 10:12:00')"/>
+    <field name="answered_at" eval="(DateTime.today() - relativedelta(days=3)).strftime('%Y-%m-%d 10:13:05')"/>
+  </record>
+  <record id="demo_research_hashtags_source_1" model="mi.research.source">
+    <field name="research_id" ref="demo_research_hashtags"/>
+    <field name="number">1</field><field name="sequence">1</field>
+    <field name="name">Explore: #planttips</field>
+    <field name="url">https://www.instagram.com/explore/tags/planttips/</field>
+    <field name="when">read 3 days ago</field>
+  </record>
+  <record id="demo_research_hashtags_line_1" model="mi.research.line">
+    <field name="research_id" ref="demo_research_hashtags"/>
+    <field name="sequence">0</field>
+    <field name="text">#planttips and #smallspaceplants appear on many more posts than a month ago [1]</field>
+  </record>
+</odoo>

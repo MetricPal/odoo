@@ -95,7 +95,11 @@ class TestAssistantChat(TransactionCase):
         follow_up = runs - run
         internal(follow_up).write({'state': 'failed', 'error_message': 'Hermes stopped without a completed answer.'})
         follow_up._notify_origin()
-        self.assertIn('Hermes stopped', str(self._agent_messages(chat, self.helper)[0].body))
+        reply = str(self._agent_messages(chat, self.helper)[0].body)
+        self.assertIn('The assistant could not answer this question.', reply)
+        self.assertIn('Please ask', reply, 'says who can help instead of "try again"')
+        self.assertNotIn('Hermes', reply, 'the technical reason stays on the run')
+        self.assertEqual(follow_up.error_message, 'Hermes stopped without a completed answer.')
 
     def test_paused_assistants_and_people_outside_the_audience_get_a_plain_reply(self):
         self.person._on_webclient_bootstrap()

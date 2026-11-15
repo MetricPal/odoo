@@ -3,7 +3,9 @@
 Status: plan agreed 2026-11-09. M0 done (audit below); M1 and M3 built 2026-11-09 in `marketing_intel_team` from the
 approved boards 5.1 to 6.3. M2 writing tools built 2026-11-11 in `marketing_intel_writing` from the
 approved boards 8.1 to 8.4. M4 assistant jobs built 2026-11-12 in `marketing_intel_jobs` from the approved
-boards 11.1 to 11.3. Next: M5 research desk. New screens need approved mocks first (CLAUDE.md); the
+boards 11.1 to 11.3. M5 research desk built 2026-11-13 in `marketing_intel_research` from the approved boards 12.1 to
+12.3 (with the new Insights › Research item); on 2026-11-13 questions moved into the Marketing assistant's chat
+(option 2a, boards 12.4 to 12.6). Next: M6 design studio 3a. New screens need approved mocks first (CLAUDE.md); the
 role model and assistant jobs are proposed in ADR 0016 (`docs/design-decisions/0016-marketing-roles-and-jobs.md`).
 Builds on the marketing roadmap (P0 to P6 delivered 2026-10-25), ADR 0012 (department assistants), ADR 0014
 (the assistant as a shared service) and ADR 0015 (agents working together).

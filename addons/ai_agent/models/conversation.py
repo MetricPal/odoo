@@ -10,6 +10,7 @@ from odoo import SUPERUSER_ID, _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.modules import module as odoo_module
 from odoo.modules.registry import Registry
+from odoo.tools.i18n import format_list
 
 from ..services import hermes
 from ..services.hermes import HermesBusy, HermesRejected, HermesUnavailable, HermesUncertain
@@ -107,6 +108,8 @@ class Run(models.Model):
     configuration_hash = fields.Char(readonly=True, groups='ai_agent.group_manager')
     context_hash = fields.Char(readonly=True, groups='ai_agent.group_manager')
     error_message = fields.Text(readonly=True)
+    hermes_unavailable = fields.Boolean(readonly=True, copy=False,
+                                        help='Hermes was not running or could not be reached when this request was sent.')
     started_at = fields.Datetime(readonly=True)
     finished_at = fields.Datetime(readonly=True)
     next_poll_at = fields.Datetime(readonly=True)
@@ -237,12 +240,17 @@ class Run(models.Model):
         if agent.max_requests_per_user_day and priority == 'interactive' and purpose == 'answer' and caller != 'agent':
             # Background work, choosing an assistant, another agent's questions and merging their answers do not
             # use up a person's own questions (ADR 0014, ADR 0015).
+            # Questions that ended without an answer for a system reason (Hermes down, the AI provider refused, a
+            # paused model, access or settings changed) do not use up the person's questions (owner, 2026-11-13).
             mine = self.sudo().search_count([('agent_id', '=', agent.id), ('user_id', '=', self.env.uid),
                                              ('priority', '=', 'interactive'), ('purpose', '=', 'answer'),
-                                             ('caller', '!=', 'agent'), ('create_date', '>=', today)])
+                                             ('caller', '!=', 'agent'), ('create_date', '>=', today),
+                                             ('state', 'not in', ('failed', 'uncertain', 'discarded'))])
             if mine >= agent.max_requests_per_user_day:
-                raise UserError(_('You reached your daily limit of %s questions for this agent. Try again tomorrow.',
-                                  agent.max_requests_per_user_day))
+                raise UserError(_("You've asked %(agent)s %(limit)s questions today, its daily limit. %(who)s",
+                                  agent=agent.sudo().name, limit=agent.max_requests_per_user_day,
+                                  who=self._ask_people('ai_agent.group_manager', _('AI Agent managers'),
+                                                       _('to raise it, or try again tomorrow'))))
         agent._context_for(prompt)  # Validate actual requester permissions now; collect again before admission.
         if conversation:
             conversation.check_access('read')
@@ -417,12 +425,15 @@ class Run(models.Model):
         self.ensure_one()
         if not self.remote_id:
             internal(self).write({'state': 'uncertain', 'error_message': _('Remote run identity is unknown. Check Hermes; do not repeat the request.')})
+            self._notify_origin()
             return
         try:
             result = self.agent_id.engine_id._request('GET', f'/v1/runs/{self.remote_id}', **self._profile_kwargs())
-        except HermesUnavailable:
+        except HermesUnavailable as error:
             # A status read is safe to repeat: keep the run and retry with backoff.
             failures = self.poll_failures + 1
+            if failures == 1:
+                self._hermes_unreachable(error)
             delay = POLL_BACKOFF[min(failures, len(POLL_BACKOFF)) - 1]
             internal(self).write({'poll_failures': failures,
                                   'next_poll_at': fields.Datetime.now() + timedelta(seconds=delay)})
@@ -480,6 +491,64 @@ class Run(models.Model):
         if self.state in ('completed', 'failed', 'cancelled'):
             self._event(self.state, _('Run reconciled from Hermes.'))
             self._notify_origin()
+
+    def _hermes_unreachable(self, error):
+        """Hermes could not be reached at all: the connection shows it at once (Needs attention, Hermes stopped, and
+        Start Hermes for Settings administrators) instead of the last check's "Ready / Running"."""
+        if getattr(error, 'unreachable', False):
+            try:
+                with self.env.cr.savepoint():
+                    self.agent_id.engine_id.sudo()._unreachable(error)
+            except Exception:  # noqa: BLE001 - the status refresh never changes what happens to the run
+                _logger.warning('AI Agent: could not refresh the connection status after run %s.', self.id,
+                                exc_info=True)
+
+    def _reason_for_people(self):
+        """Why this request has no answer, for the person who asked (owner, 2026-11-13): what is wrong in plain
+        words, and either a link to fix it (for those who can) or who to ask. The technical reason stays in
+        ``error_message`` for AI Agent managers. Returns {'text', 'url', 'label'}; url and label may be empty."""
+        self.ensure_one()
+        run = self.sudo()
+        user = self.env.user
+        if run.state == 'cancelled':
+            return {'text': _('This question was stopped before an answer came.'), 'url': '', 'label': ''}
+        if run.state == 'discarded':
+            return {'text': _("Access or the assistant's settings changed, so the answer was not kept. Please ask "
+                              "again."), 'url': '', 'label': ''}
+        if run.hermes_unavailable:
+            text = _('The assistant is unavailable: Hermes, the AI service it runs on, is not running.')
+            if user.has_group('base.group_system'):
+                return {'text': text, 'label': _('Open Hermes to start it'),
+                        'url': '/odoo/action-ai_agent.action_engines/%s' % run.agent_id.engine_id.id}
+            return {'text': '%s %s' % (text, self._ask_people('base.group_system', _('Settings administrators'),
+                                                              _('to start it'))), 'url': '', 'label': ''}
+        # The AI provider refused (the same patterns that pause a model, so later questions say the same).
+        error = run.error_message or ''
+        model_problem = True
+        if MODEL_FAILURES[0][0].search(error) or MODEL_FAILURES[2][0].search(error):
+            text = _("The assistant's AI model has reached its usage limit for now.")
+        elif MODEL_FAILURES[1][0].search(error):
+            text = _("The assistant's AI model is not available.")
+        else:
+            model_problem = False
+            text = _('The assistant could not answer this question.')
+        if user.has_group('ai_agent.group_manager'):
+            return {'text': text, 'label': _('See what went wrong'), 'url': '/odoo/ai.agent.run/%s' % run.id}
+        purpose = _('to change the model or its plan') if model_problem else _('if it keeps happening')
+        return {'text': '%s %s' % (text, self._ask_people('ai_agent.group_manager', _('AI Agent managers'), purpose)),
+                'url': '', 'label': ''}
+
+    def _ask_people(self, group_xmlid, role, purpose):
+        """'Please ask Alice or Bob (Settings administrators) to start it.' (or your administrator if nobody)."""
+        group = self.env.ref(group_xmlid, raise_if_not_found=False)
+        # sudo: res.users - only the names of who can fix it are shown to the person who asked.
+        people = self.env['res.users'].sudo().search([
+            ('all_group_ids', 'in', group.ids), ('share', '=', False), ('active', '=', True),
+            ('id', '!=', SUPERUSER_ID), ('ai_assistant', '=', False)], limit=3, order='name') if group else []
+        if not people:
+            return _('Please ask your system administrator %s.', purpose)
+        return _('Please ask %(people)s (%(role)s) %(purpose)s.',
+                 people=format_list(self.env, people.mapped('name'), style='or'), role=role, purpose=purpose)
 
     def _model_key(self):
         """Which model a run is sent to, as Odoo knows it: the agent's model, else its profile's default model."""
@@ -623,6 +692,7 @@ class Run(models.Model):
             elif run.state == 'submitting':
                 # A prior worker lost its response. Never resubmit even with idempotency support.
                 internal(run).write({'state': 'uncertain', 'error_message': _('Submission outcome unknown; reconcile in Hermes.')})
+                run._notify_origin()
             elif run.state == 'stop_requested':
                 if run.remote_id:
                     if not run.stop_claimed:
@@ -673,15 +743,30 @@ class Run(models.Model):
             if retries == 1:
                 run._event('busy', _('Hermes is busy; the question waits for a free slot.'))
         except HermesRejected as rejection:
-            internal(run).write({'state': 'failed', 'error_message': str(rejection), 'finished_at': fields.Datetime.now()})
+            internal(run).write({'state': 'failed', 'error_message': str(rejection), 'finished_at': fields.Datetime.now(),
+                                 'hermes_unavailable': bool(getattr(rejection, 'unreachable', False))})
             run._event('failed', _('Hermes refused the request; nothing was submitted.'))
+            run._hermes_unreachable(rejection)
+            run._notify_origin()
         except HermesUncertain:
             internal(run).write({'state': 'uncertain', 'error_message': _('Remote acceptance is uncertain. Check Hermes; automatic retries are disabled.')})
             run._event('uncertain', _('Remote outcome requires reconciliation.'))
-        except (AccessError, UserError, ValueError, TypeError):
-            internal(run).write({'state': 'uncertain' if run.remote_id else 'failed', 'error_message': _('Request blocked or engine unavailable. Review access, configuration and Hermes readiness.'),
-                                 'finished_at': fields.Datetime.now()})
-            run._event('failed', _('Request could not complete safely.'))
+            run._notify_origin()
+        except (AccessError, UserError, ValueError, TypeError) as error:
+            # Keep the real reason (for example "this server is not approved for AI Agent connections"): the
+            # generic line alone hid why a run stopped. The asking record is told, so it does not wait forever;
+            # a manager's Reconcile can still deliver Hermes's answer later.
+            reason = str(error.args[0] if error.args else error).strip()[:REASON_MAX]
+            message = _('Request blocked or engine unavailable. Review access, configuration and Hermes readiness.')
+            if reason:
+                message = _('%(message)s Reason: %(reason)s', message=message, reason=reason)
+            run.invalidate_recordset(['state'])
+            internal(run).write({'state': 'uncertain' if run.remote_id else 'failed', 'error_message': message,
+                                 'finished_at': fields.Datetime.now(),
+                                 'hermes_unavailable': bool(getattr(error, 'unreachable', False))})
+            run._event('failed', _('Request could not complete safely: %s', reason or '-'))
+            run._hermes_unreachable(error)
+            run._notify_origin()
         return self.env['ir.cron']._commit_progress(1)
 
 

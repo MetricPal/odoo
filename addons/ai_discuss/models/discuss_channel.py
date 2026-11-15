@@ -171,7 +171,13 @@ class DiscussChannel(models.Model):
                     _('Proposed: %s', proposal.name), _('Waiting for approval'), proposal.request_id.id,
                     _('Open request'))
         else:
-            body = Markup('<p>%s</p>') % (run.error_message or _('No answer this time. Ask again.'))
+            # What is wrong in plain words, and a link to fix it or who to ask (owner, 2026-11-13); the technical
+            # reason stays on the run, for AI Agent managers.
+            reason = run.with_user(self.env.user).sudo()._reason_for_people()
+            body = Markup('<p>%s</p>') % reason['text']
+            if reason['url']:
+                body += Markup('<p><a class="btn btn-sm btn-primary" href="%s">%s</a></p>') % (
+                    reason['url'], reason['label'])
         self._ai_reply(body)
 
     # ------------------------------------------------------------------
