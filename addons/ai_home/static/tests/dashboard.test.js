@@ -1,6 +1,6 @@
 import { defineMailModels } from "@mail/../tests/mail_test_helpers";
 import { beforeEach, expect, test } from "@odoo/hoot";
-import { advanceTime, animationFrame } from "@odoo/hoot-dom";
+import { advanceTime, animationFrame, press } from "@odoo/hoot-dom";
 import { browser } from "@web/core/browser/browser";
 import { user } from "@web/core/user";
 import { contains, mockService, mountWithCleanup, patchWithCleanup } from "@web/../tests/web_test_helpers";
@@ -333,7 +333,7 @@ test("the assistant answers on Home and keeps the conversation", async () => {
     await contains(".o_ai_home_send").click();
     expect(calls.filter(([method]) => method === "ask_ai").at(-1)[1]).toEqual([7, "And tomorrow?", [], 11]);
     await animationFrame();
-    await contains(".o_ai_home_chat_action").click();
+    await contains(".o_ai_home_chat_actions .btn-secondary").click();
     expect(calls.at(-1)[1].res_model).toBe("ai.agent.conversation");
     await contains(".o_ai_home_chat_close").click();
     expect(".o_ai_home_chat").toHaveCount(0);
@@ -356,6 +356,14 @@ test("the assistant picker lists your assistants and what each can do", async ()
     data.canManageAgents = true;
     browser.localStorage.removeItem("ai_home.agent");
     await mountWithCleanup(WorkDashboard);
+    await contains(".o_ai_home_agent_toggle").click();
+    // A click outside the menu, or Escape, closes it (owner, 2026-11-15).
+    await contains("#ai_home_prompt").click();
+    expect(".o_ai_home_agent_menu").toHaveCount(0);
+    await contains(".o_ai_home_agent_toggle").click();
+    await press("Escape");
+    await animationFrame();
+    expect(".o_ai_home_agent_menu").toHaveCount(0);
     await contains(".o_ai_home_agent_toggle").click();
     expect(".o_ai_home_agent_heading").toHaveText("Your assistants (3)");
     expect(".o_ai_home_agent_option").toHaveCount(3);

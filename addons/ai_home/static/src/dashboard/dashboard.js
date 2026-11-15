@@ -146,13 +146,35 @@ export class WorkDashboard extends Component {
                 );
                 this.askObserver.observe(ask);
             }
+            window.addEventListener("click", this.closeMenusOutside, true);
+            window.addEventListener("keydown", this.closeMenusOnEscape);
         });
         onWillUnmount(() => {
+            window.removeEventListener("click", this.closeMenusOutside, true);
+            window.removeEventListener("keydown", this.closeMenusOnEscape);
             browser.clearInterval(this.refreshTimer);
             browser.clearTimeout(this.pollTimer);
             this.askObserver?.disconnect();
         });
     }
+
+    // The assistant menus (the picker under the Ask box, "Change" on an answer) close on a click anywhere outside
+    // them and on Escape, as Odoo's own dropdowns do.
+    closeMenusOutside = (ev) => {
+        if (this.state.showAgentMenu && !ev.target.closest?.(".o_ai_home_agent_picker")) {
+            this.state.showAgentMenu = false;
+        }
+        if (this.state.showChangeMenu && !ev.target.closest?.(".o_ai_home_chat_change")) {
+            this.state.showChangeMenu = false;
+        }
+    };
+
+    closeMenusOnEscape = (ev) => {
+        if (ev.key === "Escape") {
+            this.state.showAgentMenu = false;
+            this.state.showChangeMenu = false;
+        }
+    };
 
     async load() {
         const data = await this.orm.call("ai.home.item", "get_home_data", []);

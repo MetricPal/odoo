@@ -292,11 +292,9 @@
                                 <span t-elif="this.state.chat.waiting" class="o_ai_home_muted">Thinking…</span>
                                 <span t-if="this.state.chat.answer" class="o_ai_home_chat_text" t-esc="this.state.chat.answer"/>
                                 <span t-if="this.state.chat.error" class="o_ai_home_chat_error" t-esc="this.state.chat.error"/>
-                                <div t-if="this.state.chat.fixUrl" class="o_ai_home_chat_actions">
-                                    <a class="btn o_ai_home_chat_action" t-att-href="this.state.chat.fixUrl" t-esc="this.state.chat.fixLabel"/>
-                                </div>
-                                <div t-if="this.state.chat.conversationId and !this.state.chat.waiting" class="o_ai_home_chat_actions">
-                                    <button type="button" class="btn o_ai_home_chat_action" t-on-click="this.openConversation">Open conversation</button>
+                                <div t-if="this.state.chat.fixUrl or (this.state.chat.conversationId and !this.state.chat.waiting)" class="o_ai_home_chat_actions">
+                                    <a t-if="this.state.chat.fixUrl" class="btn btn-primary" t-att-href="this.state.chat.fixUrl" t-esc="this.state.chat.fixLabel"/>
+                                    <button t-if="this.state.chat.conversationId and !this.state.chat.waiting" type="button" class="btn btn-secondary" t-on-click="this.openConversation">Open conversation</button>
                                 </div>
                             </div>
                         </div>

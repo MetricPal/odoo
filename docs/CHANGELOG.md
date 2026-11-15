@@ -12,6 +12,15 @@ Format:
 
 
 
+## 2026-11-15 — Home: the Ask box's buttons are standard Odoo buttons
+
+- Change (owner): under an answer in Home's Ask box, the fix button (See what went wrong, Open Hermes to start it)
+  is Odoo's primary button and **Open conversation** is Odoo's secondary button, side by side in one row, instead
+  of Home's own outlined style on two rows. The "Change ▾" assistant picker in the header keeps its look.
+- Fix (owner): the assistant menu under the Ask box (and "Change ▾" on an answer) stayed open after a click
+  elsewhere. Both now close on a click outside them and on Escape, as Odoo's own dropdowns do.
+- Affected areas: ai_home (static/src/dashboard/dashboard.xml, dashboard.js, static/tests/dashboard.test.js).
+
 ## 2026-11-13 — Consent: no registry warnings; data export works again
 
 - Change: `mi.consent.subject.topic_ids` (not stored) has its own compute method instead of sharing `_compute_status`
