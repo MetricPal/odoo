@@ -13,6 +13,8 @@ export const ATTACHMENT_LIMIT = 5;
 export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
 export const ACCEPTED_FILES = ".pdf,.txt,.md,.csv";
 const AGENT_STORAGE_KEY = "ai_home.agent";
+/** The conversation shown on Home, so it is there again after the page is reloaded. */
+const CONVERSATION_STORAGE_KEY = "ai_home.conversation";
 const REFRESH_MS = 60000;
 const POLL_MS = 2000;
 const POLL_LIMIT = 90;
@@ -91,6 +93,7 @@ export class WorkDashboard extends Component {
     fileInputRef = signal.ref();
     promptRef = signal.ref();
     askRef = signal.ref();
+    streamRef = signal.ref();
 
     setup() {
         this.notification = useService("notification");
@@ -125,10 +128,13 @@ export class WorkDashboard extends Component {
             agentId: "",
             canRoute: false,
             showAgentMenu: false,
+            showSuggestMenu: false,
             showChangeMenu: false,
             attachments: [],
             uploading: false,
             chat: null,
+            chatTurns: [],
+            now: Date.now(),
         });
 
         onWillStart(async () => {
@@ -137,6 +143,12 @@ export class WorkDashboard extends Component {
         });
         // Home updates by itself.
         this.refreshTimer = browser.setInterval(() => this.load(), REFRESH_MS);
+        // The time waited for an answer counts up every second, only while one is awaited.
+        this.waitTimer = browser.setInterval(() => {
+            if (this.state.chat?.waiting) {
+                this.state.now = Date.now();
+            }
+        }, 1000);
         // The middle list runs behind the assistant to the bottom of the page; its bottom padding is the assistant's
         // height (--home-ask-height), so the last item can always scroll clear of it.
         onMounted(() => {
@@ -147,6 +159,7 @@ export class WorkDashboard extends Component {
                 );
                 this.askObserver.observe(ask);
             }
+            this.restoreConversation();
             window.addEventListener("click", this.closeMenusOutside, true);
             window.addEventListener("keydown", this.closeMenusOnEscape);
         });
@@ -154,6 +167,7 @@ export class WorkDashboard extends Component {
             window.removeEventListener("click", this.closeMenusOutside, true);
             window.removeEventListener("keydown", this.closeMenusOnEscape);
             browser.clearInterval(this.refreshTimer);
+            browser.clearInterval(this.waitTimer);
             browser.clearTimeout(this.pollTimer);
             this.askObserver?.disconnect();
         });
@@ -165,6 +179,9 @@ export class WorkDashboard extends Component {
         if (this.state.showAgentMenu && !ev.target.closest?.(".o_ai_home_agent_picker")) {
             this.state.showAgentMenu = false;
         }
+        if (this.state.showSuggestMenu && !ev.target.closest?.(".o_ai_home_suggest_picker")) {
+            this.state.showSuggestMenu = false;
+        }
         if (this.state.showChangeMenu && !ev.target.closest?.(".o_ai_home_chat_change")) {
             this.state.showChangeMenu = false;
         }
@@ -173,6 +190,7 @@ export class WorkDashboard extends Component {
     closeMenusOnEscape = (ev) => {
         if (ev.key === "Escape") {
             this.state.showAgentMenu = false;
+            this.state.showSuggestMenu = false;
             this.state.showChangeMenu = false;
         }
     };
@@ -579,6 +597,7 @@ export class WorkDashboard extends Component {
     }
 
     askSuggestion(text) {
+        this.state.showSuggestMenu = false;
         this.state.prompt = text;
         return this.send();
     }
@@ -604,10 +623,17 @@ export class WorkDashboard extends Component {
 
     async ask(question, agentId, conversationId, routed = {}) {
         this.state.showChangeMenu = false;
-        this.state.chat = {
-            question, answer: "", error: "", waiting: true, conversationId, choosing: !agentId,
+        // Every question and its answer stay on Home, under the last item of the middle list; `chat` is the newest.
+        this.state.chatTurns.push({
+            question, answer: "", error: "", did: "", waiting: true, conversationId, choosing: !agentId,
+            startedAt: Date.now(),
+            agentName: this.state.agents.find((agent) => agent.id === agentId)?.name || "",
+            agentAvatar: this.state.agents.find((agent) => agent.id === agentId)?.avatarUrl || "",
             answeredBy: "", answeredById: false, why: "", ...routed,
-        };
+        });
+        this.state.chat = this.state.chatTurns.at(-1);
+        this.state.now = Date.now();
+        this.scrollToChat();
         let asked;
         try {
             asked = await this.orm.call("ai.home.item", "ask_ai", [
@@ -623,12 +649,14 @@ export class WorkDashboard extends Component {
                 throw error;
             }
             Object.assign(this.state.chat, { waiting: false, choosing: false, error: error.data.message });
+            this.scrollToChat();
             return;
         }
         const { runId, conversationId: newConversation } = asked;
         this.state.prompt = "";
         this.state.attachments = [];
         this.state.chat.conversationId = newConversation;
+        this.rememberConversation(newConversation);
         this.poll(runId, 0);
     }
 
@@ -658,21 +686,29 @@ export class WorkDashboard extends Component {
         }
         if (result.conversationId) {
             chat.conversationId = result.conversationId;
+            this.rememberConversation(result.conversationId);
+        }
+        if (result.agentName) {
+            chat.agentName = result.agentName;
+            chat.agentAvatar = result.agentAvatar || "";
         }
         if (FINISHED.includes(result.state)) {
             chat.waiting = false;
             chat.answer = result.answer;
+            chat.did = result.did || "";
             chat.error =
                 result.state === "completed"
                     ? ""
                     : result.error || _t("The assistant could not answer. Open the conversation for details.");
             chat.fixUrl = result.fixUrl || "";
             chat.fixLabel = result.fixLabel || "";
+            this.scrollToChat();
             return;
         }
         if (round >= POLL_LIMIT) {
             chat.waiting = false;
             chat.error = _t("The answer is taking longer than usual. Open the conversation to follow it.");
+            this.scrollToChat();
             return;
         }
         this.pollTimer = browser.setTimeout(() => this.poll(runId, round + 1), POLL_MS);
@@ -681,6 +717,99 @@ export class WorkDashboard extends Component {
     closeChat() {
         browser.clearTimeout(this.pollTimer);
         this.state.chat = null;
+        this.state.chatTurns = [];
+        this.rememberConversation(false);
+    }
+
+    /** The letter in front of an answer: the initial of the assistant that answers ("AI" until it is known). */
+    turnInitial(turn) {
+        const name = turn.agentName || turn.answeredBy;
+        return name ? name.trim().charAt(0).toUpperCase() : _t("AI");
+    }
+
+    /**
+     * While the assistant works on a question: what to say, by how long it has taken. The same steps and words as a
+     * slow answer in the assistant's chat (10 s, 30 s), followed by the time waited.
+     */
+    waitingText(turn) {
+        const seconds = Math.max(0, Math.floor((this.state.now - turn.startedAt) / 1000));
+        if (seconds >= 30) {
+            return _t("Still working on it; the AI service is slow right now.");
+        }
+        if (seconds >= 10) {
+            return _t("This is taking a bit longer than usual…");
+        }
+        return turn.choosing ? _t("Choosing the right assistant…") : _t("Thinking…");
+    }
+
+    /** The time waited, as people say it: "8 s", "1 min 5 s". */
+    waitedText(turn) {
+        const seconds = Math.max(0, Math.floor((this.state.now - turn.startedAt) / 1000));
+        return seconds >= 60 ? _t("%(minutes)s min %(seconds)s s", { minutes: Math.floor(seconds / 60), seconds: seconds % 60 }) : _t("%s s", seconds);
+    }
+
+    rememberConversation(conversationId) {
+        try {
+            if (conversationId) {
+                browser.localStorage.setItem(CONVERSATION_STORAGE_KEY, String(conversationId));
+            } else {
+                browser.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+            }
+        } catch {
+            // Keeping the conversation across a reload is a convenience only.
+        }
+    }
+
+    /** After a reload: the conversation that was on Home is shown again, and a pending answer is followed. */
+    async restoreConversation() {
+        let conversationId;
+        try {
+            conversationId = Number(browser.localStorage.getItem(CONVERSATION_STORAGE_KEY));
+        } catch {
+            return;
+        }
+        if (!conversationId || this.state.chat) {
+            return;
+        }
+        const turns = await this.orm.call("ai.home.item", "get_ai_conversation", [conversationId]);
+        if (!turns.length || this.state.chat) {
+            return;
+        }
+        for (const turn of turns) {
+            const waiting = !FINISHED.includes(turn.state);
+            this.state.chatTurns.push({
+                question: turn.question, answer: turn.answer || "", did: turn.did || "", waiting,
+                error: waiting || turn.state === "completed" ? "" : turn.error || "",
+                fixUrl: turn.fixUrl || "", fixLabel: turn.fixLabel || "",
+                conversationId: turn.conversationId || conversationId, choosing: turn.state === "choosing",
+                startedAt: Date.now() - (turn.waited || 0) * 1000,
+                agentName: turn.agentName || "", agentAvatar: turn.agentAvatar || "",
+                answeredBy: turn.answeredBy || "",
+                answeredById: turn.answeredById || false, why: turn.why || "",
+            });
+        }
+        this.state.chat = this.state.chatTurns.at(-1);
+        if (this.state.chat.waiting) {
+            this.poll(turns.at(-1).runId, 0);
+        }
+        this.scrollToChat();
+    }
+
+    /** Brings the newest question and answer into view, at the bottom of the middle list, once they are drawn. */
+    scrollToChat() {
+        requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+                const list = this.streamRef();
+                if (!list) {
+                    return;
+                }
+                list.scrollTop = list.scrollHeight;
+                if (list.scrollHeight <= list.clientHeight) {
+                    // On a narrow screen the page scrolls, not the list.
+                    list.querySelector(".o_ai_home_chat")?.scrollIntoView({ block: "end" });
+                }
+            })
+        );
     }
 
     openConversation() {

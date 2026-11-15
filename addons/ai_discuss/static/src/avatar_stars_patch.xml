@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- The stars of the AI Agent icon over the top right corner of an assistant's avatar, overhanging it as a
+         status icon (OdooBot's heart) overhangs the bottom right corner (owner, 2026-11-15). -->
+    <t t-inherit="mail.DiscussAvatar" t-inherit-mode="extension">
+        <xpath expr="//foreignObject[@t-att-mask]" position="after">
+            <svg t-if="this.isAssistant" class="o_ai_discuss_stars overflow-visible" x="18" y="-6" width="19" height="17.1" viewBox="75 18 51 46" aria-hidden="true">
+                <path fill="#ffb855" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" d="m92 20 4.7 10.3L107 35l-10.3 4.7L92 50l-4.7-10.3L77 35l10.3-4.7L92 20ZM113 40l3.3 7.7L124 51l-7.7 3.3L113 62l-3.3-7.7L102 51l7.7-3.3L113 40ZM117 24l1.9 4.1L123 30l-4.1 1.9L117 36l-1.9-4.1L111 30l4.1-1.9L117 24Z"/>
+            </svg>
+        </xpath>
+    </t>
+    <t t-inherit="mail.Message" t-inherit-mode="extension">
+        <xpath expr="//img[hasclass('o-mail-Message-avatar')]" position="after">
+            <svg t-if="this.message.author_id?.ai_agent_partner" class="o_ai_discuss_stars o_ai_discuss_message_stars position-absolute overflow-visible pe-none" viewBox="75 18 51 46" aria-hidden="true">
+                <path fill="#ffb855" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" d="m92 20 4.7 10.3L107 35l-10.3 4.7L92 50l-4.7-10.3L77 35l10.3-4.7L92 20ZM113 40l3.3 7.7L124 51l-7.7 3.3L113 62l-3.3-7.7L102 51l7.7-3.3L113 40ZM117 24l1.9 4.1L123 30l-4.1 1.9L117 36l-1.9-4.1L111 30l4.1-1.9L117 24Z"/>
+            </svg>
+        </xpath>
+    </t>
+</templates>

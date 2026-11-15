@@ -1159,17 +1159,15 @@
     }
 }
 
+// The conversation, in the middle list under its last item (owner, 2026-11-15): no box around it, it reads as part
+// of the list; the list scrolls, not the conversation.
 .o_ai_home_chat {
-    background: var(--home-card);
-    border: 1px solid var(--home-line);
-    border-radius: 20px;
-    box-shadow: 0 4px 16px rgba(31, 31, 36, 0.06);
-    padding: 16px 18px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-height: 40vh;
-    overflow-y: auto;
+    // Room under the newest answer, before the Ask box.
+    padding: 12px 12px 32px;
+    list-style: none;
 }
 
 .o_ai_home_chat_head {
@@ -1207,8 +1205,8 @@
 }
 
 .o_ai_home_chat_avatar {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     flex: none;
     border-radius: 8px;
     background: var(--home-brand);
@@ -1226,6 +1224,47 @@
     gap: 10px;
     font-size: 14px;
     line-height: 1.5;
+}
+
+// The assistant's own picture, as in its chat, with the AI Agent stars overhanging its top right corner.
+.o_ai_home_chat_avatar.o_has_picture {
+    position: relative;
+    background: none;
+
+    img {
+        width: 100%;
+        height: 100%;
+        border-radius: 6px;
+        object-fit: cover;
+    }
+}
+
+.o_ai_home_chat_stars {
+    position: absolute;
+    top: -18%;
+    right: -18%;
+    width: 60%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+// The grey lines next to the picture (what the assistant did; what it is doing while it works) are as tall as the
+// picture, so their text is level with its middle (owner, 2026-11-15).
+.o_ai_home_chat_did,
+.o_ai_home_chat_wait {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--home-muted);
+}
+
+.o_ai_home_chat_did {
+    font-size: 12px;
+}
+
+.o_ai_home_chat_waited {
+    font-variant-numeric: tabular-nums;
 }
 
 .o_ai_home_chat_text {
@@ -1250,23 +1289,6 @@
     background: var(--home-card);
     color: var(--home-brand);
     font-weight: 600;
-}
-
-.o_ai_home_prompts {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-}
-
-.o_ai_home_prompt {
-    height: 34px;
-    padding: 0 12px;
-    border: 1px solid var(--home-line);
-    border-radius: 999px;
-    background: var(--home-card);
-    color: var(--home-ink-2);
-    box-shadow: 0 1px 2px rgba(31, 31, 36, 0.06);
 }
 
 .o_ai_home_composer {
@@ -1307,8 +1329,15 @@
     color: var(--home-ink-2);
 }
 
-.o_ai_home_agent_picker {
+.o_ai_home_agent_picker,
+.o_ai_home_suggest_picker {
     position: relative;
+}
+
+// The assistant picker sits by Send, so its menu opens from the right edge (owner, 2026-11-15).
+.o_ai_home_assistant_menu {
+    right: 0;
+    left: auto;
 }
 
 .o_ai_home_agent_toggle {
@@ -1496,24 +1525,13 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    // One swipeable row of suggestions, so the page keeps its room.
-    .o_ai_home_prompts {
-        flex-wrap: nowrap;
-        justify-content: flex-start;
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-
-    .o_ai_home_prompt {
-        flex: none;
-    }
-
-    .o_ai_home_rights {
-        margin-left: 0;
-    }
-
+    // "Uses your access rights" is dropped on a phone; the assistant picker still sits by Send.
     .o_ai_home_rights {
         display: none;
+    }
+
+    .o_ai_home_agent_picker {
+        margin-left: auto;
     }
 }
 

@@ -209,9 +209,20 @@ user's department), **Everything**. Newest first, up to 20 per tab. Direct notif
   its connection needs attention, it says that instead, with who to ask, or
   **Open Hermes to start it** in the picker for those who can; the agent's card
   then keeps Active and adds a red "Unavailable: …" line, without Chat; owner,
-  2026-11-15): docked under the middle column, like claude.ai, with suggested
-  questions, "+" to attach files, the agent picker and "Uses your access rights".
-  The answer shows on Home above the box, with "Open conversation"; follow-ups
+  2026-11-15): docked under the middle column, like claude.ai, with, in its bar from
+  left to right: "+" to attach files, **Suggestions ▾** (the suggested questions as a dropdown; picking one asks
+  it; owner, 2026-11-15, before a row of chips above the box), "Uses your access rights", the agent picker and Send.
+  The conversation goes on in the middle list, under its last item (owner,
+  2026-11-15): every question and answer stays, the newest at the bottom, and the
+  list scrolls to it; no box around it, with a clear gap above the Ask box; each
+  answer starts with the assistant's picture exactly as in its chat (same letter,
+  colour and stars on the top-right corner) and one short grey line, centred on
+  the picture, on what it did (records looked at, assistants asked, time taken).
+  While it works the grey line shows the time waited ("8 s", "1 min 5 s") after
+  "Thinking…" (or "Choosing the right assistant…"), from 10 s "This is taking a
+  bit longer than usual…", from 30 s "Still working on it; the AI service is slow
+  right now."; it is kept across a reload until closed with ×; "Open
+  conversation" is under the newest answer; follow-ups
   continue the same conversation. A question is one inference request, never a
   record change.
 - **Your assistants** (approved mock 2026-11-08, "Assistants A"; no cards and no round badges): the agent picker
@@ -537,8 +548,8 @@ Approved mocks 2026-11-09 (AI Agent canvas boards 19 to 22, ADR 0015).
   department"; Asked from; **Linked requests** (Asked from, Asked <agent>, Follow-up answer, Chose the assistant).
 - **Assistant chat menu** (owner, 2026-11-09): the ⋯ / right-click menu of an assistant chat in the chat list only
   offers Add to Favorites (or Remove from Favorites once it is one); people's chats keep the full menu.
-- **Agent avatar** (owner, 2026-11-15): Odoo's usual avatar (the agent's initial on its colour) with the three stars
-  of the AI Agent app icon at the top right, wherever the agent's partner appears.
+- **Agent avatar** (owner, 2026-11-15): Odoo's usual avatar (the agent's initial on its colour). In Discuss the
+  three stars of the AI Agent app icon overhang its top right corner, as a status icon overhangs the bottom right.
 
 ## AI agent proposals (`ai_agent`)
 

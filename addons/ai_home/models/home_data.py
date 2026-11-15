@@ -11,6 +11,7 @@ from datetime import UTC, datetime, time, timedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.tools import html2plaintext
+from odoo.tools.i18n import format_list
 from odoo.tools.misc import format_date
 
 LIMIT = 20
@@ -130,6 +131,12 @@ class AiHomeItem(models.Model):
             if self._can_read('ai.agent.run') else False
         if not run:
             return {'state': 'failed', 'answer': '', 'error': _('This question is no longer available.')}
+        return self._ai_answer(run)
+
+    @api.model
+    def _ai_answer(self, run):
+        """What Home shows of one question: its state, the answer or why there is none, who answered and, in a few
+        words, what the assistant did to answer."""
         if run.purpose == 'route' and run.state not in ('completed', 'failed', 'cancelled', 'discarded', 'uncertain'):
             return {'state': 'choosing', 'answer': '', 'error': ''}
         final = run.sudo()._final_run().with_env(self.env)
@@ -145,7 +152,47 @@ class AiHomeItem(models.Model):
                 'error': reason['text'], 'fixUrl': reason['url'], 'fixLabel': reason['label'],
                 'conversationId': final.sudo().conversation_id.id,
                 'answeredBy': chosen.agent_id.name or '', 'answeredById': final.sudo().agent_id.id,
+                'agentName': final.sudo().agent_id.name or '',
+                'agentAvatar': self._agent_avatar(final.sudo().agent_id),
+                'waited': max(int((fields.Datetime.now() - run.sudo().create_date).total_seconds()), 0),
+                'did': self._ai_did(run, final) if state == 'completed' else '',
                 'why': chosen.route_reason or ''}
+
+    @api.model
+    def _ai_did(self, run, final):
+        """One short line above an answer (owner, 2026-11-15): whether the assistant looked at records, which other
+        assistants it asked, and how long it took. For example "Looked at records 3 times · asked HR helper · 12 s"."""
+        final = final.sudo()
+        runs = run.sudo() | final | final.followup_of_id
+        looked = len(runs.event_ids.filtered(lambda event: event.kind == 'tool'))
+        asked = runs.child_run_ids.agent_id.mapped('name')
+        parts = [_('Looked at records once') if looked == 1
+                 else _('Looked at records %s times', looked) if looked
+                 else _('No records looked at')]
+        if asked:
+            parts.append(_('asked %s', format_list(self.env, asked)))
+        start, end = run.sudo().create_date, final.finished_at
+        if start and end and end >= start:
+            seconds = int((end - start).total_seconds())
+            parts.append(_('%(minutes)s min %(seconds)s s', minutes=seconds // 60, seconds=seconds % 60)
+                         if seconds >= 60 else _('%s s', max(seconds, 1)))
+        return ' · '.join(parts)
+
+    @api.model
+    def get_ai_conversation(self, conversation_id):
+        """The questions and answers of the user's own conversation, oldest first, so Home shows it again after the
+        page is reloaded (owner, 2026-11-15). A question still being answered carries its ``runId`` to follow."""
+        if not self._can_read('ai.agent.run'):
+            return []
+        runs = self.env['ai.agent.run'].search([
+            ('conversation_id', '=', int(conversation_id or 0)), ('user_id', '=', self.env.uid),
+            ('purpose', '=', 'answer'), ('parent_run_id', '=', False)], order='id desc', limit=30)
+        turns = []
+        for run in runs.sorted('id'):
+            turn = self._ai_answer(run)
+            turn.update(runId=run.id, question=run.prompt or '')
+            turns.append(turn)
+        return turns
 
     # ------------------------------------------------------------------
     # Helpers
@@ -214,7 +261,18 @@ class AiHomeItem(models.Model):
     def _agent_row(self, agent):
         """What the assistant picker shows of an agent: its name, owner (department or Company) and description."""
         return {'id': agent.id, 'name': agent.name, 'description': agent.description or '',
-                'department': agent.sudo().department_id.name or _('Company')}
+                'department': agent.sudo().department_id.name or _('Company'),
+                'avatarUrl': self._agent_avatar(agent)}
+
+    @api.model
+    def _agent_avatar(self, agent):
+        """The agent's picture as its chats show it (its chat partner's avatar, when assistants chat in Discuss), so
+        Home shows the same one; empty otherwise and Home falls back to the agent's initial."""
+        partner = agent.sudo().partner_id if 'partner_id' in agent._fields else False
+        if not partner:
+            return ''
+        return '/web/image/res.partner/%s/avatar_128?unique=%s' % (
+            partner.id, int(partner.write_date.timestamp()) if partner.write_date else 0)
 
     @api.model
     def _paused_agents(self):

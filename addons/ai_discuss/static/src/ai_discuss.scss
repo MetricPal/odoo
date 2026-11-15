@@ -26,3 +26,12 @@
         font-weight: 700;
     }
 }
+
+// The AI Agent stars over the top right corner of an assistant's avatar on a message (owner, 2026-11-15); in the
+// other avatars they are placed by the avatar's own drawing (avatar_stars_patch.xml).
+.o_ai_discuss_message_stars {
+    top: -18%;
+    right: -18%;
+    width: 60%;
+    z-index: 1;
+}

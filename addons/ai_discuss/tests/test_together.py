@@ -42,15 +42,13 @@ class TestAssistantsTogether(TransactionCase):
     def _messages(self, chat):
         return chat.sudo().message_ids.sorted('id')
 
-    def test_agent_avatar_is_the_usual_one_with_the_ai_agent_stars(self):
+    def test_agent_avatar_is_the_usual_one(self):
+        # The AI Agent stars are laid over its corner by Discuss (static/src/avatar_stars_patch), not drawn in it.
         svg = self.sales.partner_id._avatar_generate_svg().decode()
         self.assertIn('>S</text>', svg)
         self.assertIn('fill="#ffffff" font-size="96"', svg, "Odoo's usual avatar: the initial on its colour")
-        self.assertIn('#ffb855', svg, 'The stars of the AI Agent icon, at the top right')
-        self.assertTrue(svg.endswith('</svg>'))
+        self.assertNotIn('#ffb855', svg)
         self.assertNotIn('#004692', svg, 'No AI Agent frame any more')
-        person_svg = self.person.partner_id._avatar_generate_svg().decode()
-        self.assertNotIn('#ffb855', person_svg, 'People keep their usual avatar')
 
     def test_ask_an_assistant_lands_in_the_chosen_chat_with_a_note(self):
         with patch.object(type(self.env['ai.agent']), '_context_for', return_value={}):

@@ -12,6 +12,37 @@ Format:
 
 
 
+## 2026-11-15 — Home: the conversation goes on in the middle list
+
+- Change (owner): a question asked on Home and its answer no longer show in a card over the Ask box that kept only
+  the last exchange. The conversation is now in the middle list, under its last item: every question and answer
+  stays, the newest at the bottom, and the list scrolls to it when a question is asked and when its answer (or why
+  there is none) arrives. "Answered by … · Change ▾" and × (close) are at the top of the conversation; **Open
+  conversation** is under the newest answer. × clears it from Home; the conversation itself is kept.
+  It has no box around it (owner, same day): it reads as part of the list.
+- Change (owner, same day): the letter in front of an answer is the initial of the assistant that answers, not
+  "AI". One short grey line above each answer says what the assistant did: whether it looked at records ("Looked at
+  records 3 times" / "No records looked at"), which other assistants it asked, and how long it took. The
+  conversation is there again after the page is reloaded (the browser remembers which conversation was on Home, and
+  Home reads its questions and answers back; a pending answer is followed); × forgets it.
+- Change (owner, same day): the picture in front of an answer is the assistant's own, exactly as in its chat (same
+  letter, colour and stars over the top right corner); the initial alone shows only where assistants have no chat
+  picture. While the assistant works, the grey line counts the time waited ("Thinking… 8 s") and follows the chat's
+  slow-answer steps: after 10 s "This is taking a bit longer than usual…", after 30 s "Still working on it; the AI
+  service is slow right now.", always followed by the time ("1 min 5 s"). The grey lines are level with the middle
+  of the picture, and there is more room between the newest answer and the Ask box.
+- How: `ai.home.item._ai_answer` (adds `agentName`, `did`), `_ai_did`, `get_ai_conversation`; dashboard.js
+  `restoreConversation`, `rememberConversation`, `turnInitial`.
+- Affected areas: ai_home (models/home_data.py, dashboard.xml, dashboard.js, dashboard.scss, tests), docs/DESIGN.md.
+
+## 2026-11-15 — Home: assistant picker by Send; suggestions as a dropdown
+
+- Change (owner): in Home's Ask box the assistant picker moved from next to "+" to the right, just left of Send
+  (its menu opens from the right edge). In its old place is **Suggestions ▾**: the suggested questions as a
+  dropdown; picking one asks it. The row of suggestion chips above the box is gone, and suggestions stay available
+  while an answer is shown. The dropdown closes on a click outside and on Escape.
+- Affected areas: ai_home (dashboard.xml, dashboard.js, dashboard.scss, static/tests), docs/DESIGN.md.
+
 ## 2026-11-15 — Hermes not running: Home and the agent card say so
 
 - Problem (owner): with Hermes stopped, Home's Ask box read "No assistant is available to you yet. Ask your admin
@@ -30,15 +61,22 @@ Format:
 - Affected areas: ai_agent (models/agent.py, views/agent_views.xml), ai_home (models/home_data.py, dashboard.js/xml,
   tests), docs/DESIGN.md. Update `ai_agent` and `ai_home`.
 
-## 2026-11-15 — Assistants' avatar: the usual avatar with the AI Agent stars
+## 2026-11-15 — Assistants' avatar: the usual avatar with the AI Agent stars over its corner
 
-- Change (owner): an assistant's avatar in Discuss and the chatter is Odoo's usual one (its initial on its colour)
-  with the three stars of the AI Agent app icon at the top right (amber, white edge so they show on any colour). It
-  replaces the 2026-11-09 avatar (the AI Agent icon's frame with the initial), which browsers never showed: they
-  kept the old picture because the assistant's partner had not changed since.
-- How: `res.partner._avatar_generate_svg` adds the stars to the standard avatar for `ai_agent_partner`. A migration
-  (`ai_discuss` 20.0.1.2.0) marks assistants' chat partners as changed, so browsers fetch the new avatar.
-- Affected areas: ai_discuss (models/res_partner.py, migrations, tests/test_together.py). Update `ai_discuss`.
+- Change (owner): an assistant's avatar is Odoo's usual one (its initial on its colour). In Discuss the three stars
+  of the AI Agent app icon (amber, white edge) are laid over its top right corner and overhang it, as a status icon
+  (OdooBot's heart) overhangs the bottom right corner: in the chat list, chat windows and headers, member lists
+  and on the assistant's messages. It replaces the 2026-11-09 avatar (the AI Agent icon's frame with the initial),
+  which browsers never showed: they kept the old picture because the assistant's partner had not changed since.
+- How: the stars are drawn by Discuss, not in the picture (`ai_discuss/static/src/avatar_stars_patch.js/.xml`, on
+  `mail.DiscussAvatar` and the message avatar, for `ai_agent_partner` and chats with an agent); the
+  `_avatar_generate_svg` override is gone. Migrations (`ai_discuss` 20.0.1.2.0 and 20.0.1.3.0) mark assistants' chat
+  partners as changed, so browsers fetch the new avatar. Stop the server before updating, or browsers fetch and
+  keep the old picture again.
+- Known limit: outside Discuss's own avatars (for example a contact picker or a list) the assistant shows the usual
+  avatar without stars.
+- Affected areas: ai_discuss (models/res_partner.py, static/src, migrations, tests/test_together.py). Update
+  `ai_discuss`.
 
 ## 2026-11-15 — Home: the Ask box's buttons are standard Odoo buttons
 

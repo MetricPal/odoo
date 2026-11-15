@@ -156,7 +156,8 @@ beforeEach(() => {
                 ];
             }
             if (method === "get_ai_answer") {
-                return { state: "completed", answer: "You have 3 approvals waiting.", error: "", conversationId: 11 };
+                return { state: "completed", answer: "You have 3 approvals waiting.", error: "", conversationId: 11,
+                         agentName: "Ops Assistant", did: "No records looked at · 3 s" };
             }
             return true;
         },
@@ -337,21 +338,38 @@ test("the assistant answers on Home and keeps the conversation", async () => {
     expect(".o_ai_home_agent_toggle").toHaveText("Ops Assistant ▾");
     expect(".o_ai_home_rights").toHaveText("Uses your access rights");
     expect(".o_ai_home_send").toHaveAttribute("disabled");
+    // Suggested questions are a dropdown next to "+" (owner, 2026-11-15); the assistant picker sits by Send.
+    expect(".o_ai_home_composer_bar > :nth-child(2)").toHaveClass("o_ai_home_suggest_picker");
+    expect(".o_ai_home_agent_picker + .o_ai_home_send").toHaveCount(1);
+    expect(".o_ai_home_prompt").toHaveCount(0);
+    await contains(".o_ai_home_suggest_toggle").click();
     await contains(".o_ai_home_prompt").click();
+    expect(".o_ai_home_suggest_menu").toHaveCount(0);
     expect(calls.find(([method]) => method === "ask_ai")[1]).toEqual([7, "What needs my approval today?", [], false]);
     await animationFrame();
     expect(".o_ai_home_chat_question").toHaveText("What needs my approval today?");
     expect(".o_ai_home_chat_text").toHaveText("You have 3 approvals waiting.");
-    expect(".o_ai_home_prompts").toHaveCount(0);
+    // The assistant's initial, not "AI", and one short line on what it did (owner, 2026-11-15).
+    // Without a picture (assistants not in Discuss) the initial shows; with one, the same picture as in the chat.
+    expect(".o_ai_home_chat_avatar").toHaveText("O");
+    expect(".o_ai_home_chat_did").toHaveText("No records looked at · 3 s");
+    // The conversation goes on in the middle list, under its last item (owner, 2026-11-15).
+    expect(".o_ai_home_stream_list > .o_ai_home_chat:last-child").toHaveCount(1);
+    expect(".o_ai_home_ask .o_ai_home_chat").toHaveCount(0);
     // A follow-up goes to the same conversation.
     await contains("#ai_home_prompt").edit("And tomorrow?");
     await contains(".o_ai_home_send").click();
     expect(calls.filter(([method]) => method === "ask_ai").at(-1)[1]).toEqual([7, "And tomorrow?", [], 11]);
     await animationFrame();
+    // Both questions and their answers stay, the newest last; Open conversation is on the newest only.
+    expect(".o_ai_home_chat_question").toHaveCount(2);
+    expect(".o_ai_home_chat_question:last-of-type").toHaveText("And tomorrow?");
+    expect(".o_ai_home_chat_text").toHaveCount(2);
     await contains(".o_ai_home_chat_actions .btn-secondary").click();
     expect(calls.at(-1)[1].res_model).toBe("ai.agent.conversation");
     await contains(".o_ai_home_chat_close").click();
     expect(".o_ai_home_chat").toHaveCount(0);
+    await contains(".o_ai_home_suggest_toggle").click();
     expect(".o_ai_home_prompt").toHaveCount(1);
 });
 

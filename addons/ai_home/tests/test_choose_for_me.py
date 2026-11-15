@@ -49,5 +49,26 @@ class TestChooseForMe(TransactionCase):
         self.assertEqual((result['state'], result['answeredBy'], result['why']),
                          ('queued', 'HR policy helper', 'leave rules'))
         self.assertEqual(result['answeredById'], self.hr.id)
+        # The answer arrives: a short line says what the assistant did, and Home can show the conversation again
+        # after a reload (owner, 2026-11-15).
+        chosen = router.routed_run_id
+        internal(chosen).write({'remote_id': 'remote_chosen', 'state': 'running'})
+        with patch.object(type(self.engine), '_request', return_value={
+                'status': 'completed', 'output': 'Yes, up to five days.'}), \
+             patch.object(type(self.env['ai.agent']), '_context_for', return_value={}):
+            chosen._poll()
+        result = self.Home.get_ai_answer(asked['runId'])
+        self.assertEqual((result['state'], result['answer'], result['agentName']),
+                         ('completed', 'Yes, up to five days.', 'HR policy helper'))
+        self.assertTrue(result['did'].startswith('No records looked at'), result['did'])
+        if 'partner_id' in self.hr._fields:  # assistants chat in Discuss: Home shows the same picture as the chat
+            self.assertIn('/web/image/res.partner/%s/avatar_128' % self.hr.sudo().partner_id.id, result['agentAvatar'])
+        chosen.sudo()._event('tool', 'search_records on res.partner: 2 records')
+        self.assertTrue(self.Home.get_ai_answer(asked['runId'])['did'].startswith('Looked at records once'))
+        turns = self.Home.get_ai_conversation(result['conversationId'])
+        self.assertEqual([(turn['question'], turn['answer'], turn['runId']) for turn in turns],
+                         [('Can I carry over leave?', 'Yes, up to five days.', chosen.id)])
+        self.assertEqual(self.env['ai.home.item'].with_user(self.env.ref('base.user_admin'))
+                         .get_ai_conversation(result['conversationId']), [], "Only the person's own conversation")
         self.hr.action_pause()
         self.assertFalse(self.Home._can_route(self.Home._usable_agents()), 'One assistant: nothing to choose')
