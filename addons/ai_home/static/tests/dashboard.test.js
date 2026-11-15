@@ -236,6 +236,21 @@ test("renders my plan, decisions and what others did", async () => {
     expect("#ai_home_prompt").toHaveAttribute("placeholder", /No assistant is available to you yet/);
 });
 
+test("an assistant that cannot answer: the Ask box says why and how it gets fixed", async () => {
+    data.aiProblem = {
+        text: "The assistant is unavailable: Hermes, the AI service it runs on, is not running.",
+        url: "/odoo/action-ai_agent.action_engines/6",
+        label: "Open Hermes to start it",
+    };
+    await mountWithCleanup(WorkDashboard);
+    expect("#ai_home_prompt").toHaveAttribute("disabled");
+    expect("#ai_home_prompt").toHaveAttribute("placeholder", /Hermes, the AI service it runs on, is not running/);
+    expect(".o_ai_home_agent_toggle").toHaveText("Assistant unavailable ▾");
+    await contains(".o_ai_home_agent_toggle").click();
+    expect(".o_ai_home_agent_fix").toHaveText("Open Hermes to start it");
+    expect(".o_ai_home_agent_fix").toHaveAttribute("href", "/odoo/action-ai_agent.action_engines/6");
+});
+
 test("insights open their records; plan chips and sections fold", async () => {
     await mountWithCleanup(WorkDashboard);
     calls = [];

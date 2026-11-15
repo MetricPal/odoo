@@ -301,6 +301,20 @@ class TestHomeData(TransactionCase):
         internal(engine).write({'state': 'blocked'})
         self.assertEqual([row['name'] for row in self.Home.get_assistant_details() if row['name'] in mine],
                          ['Finance helper'], 'Assistants that cannot answer now are not offered, paused ones stay')
+        # The Ask box says why (owner, 2026-11-15): Hermes is not running, and who starts it or the link to do so.
+        internal(engine).write({'hermes_runtime': 'stopped'})
+        problem = self.Home._ai_problem()
+        self.assertIn('Hermes, the AI service it runs on, is not running.', problem['text'])
+        self.assertIn('to start it.', problem['text'])
+        self.assertFalse(problem['url'])
+        self.user.write({'group_ids': [Command.link(self.env.ref('base.group_system').id)]})
+        problem = self.Home._ai_problem()
+        self.assertEqual((problem['label'], problem['url']),
+                         ('Open Hermes to start it', '/odoo/action-ai_agent.action_engines/%s' % engine.id))
+        self.assertEqual(company.unavailable_reason, 'Unavailable: Hermes, the AI service it runs on, is not running.')
+        self.assertFalse(finance.unavailable_reason, 'A paused agent is said to be paused, nothing more')
+        internal(engine).write({'state': 'ready', 'hermes_runtime': 'running'})
+        self.assertFalse(company.unavailable_reason)
 
     def test_without_an_assistant(self):
         data = self._data()

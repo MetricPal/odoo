@@ -48,6 +48,8 @@ class Agent(models.Model):
     state = fields.Selection([('draft', 'Draft'), ('active', 'Active'), ('paused', 'Paused')],
                              default='draft', readonly=True, tracking=True)
     engine_id = fields.Many2one('ai.agent.engine', required=True, ondelete='restrict', check_company=True)
+    unavailable_reason = fields.Char(compute='_compute_unavailable_reason',
+                                     help='Why an active agent cannot answer right now: its Hermes connection.')
     engine_model_id = fields.Many2one('ai.agent.engine.model', string='AI model', ondelete='restrict', check_company=True)
     department_id = fields.Many2one('hr.department', string='Department', check_company=True, tracking=True,
                                     index='btree_not_null',
@@ -440,6 +442,46 @@ class Agent(models.Model):
             raise UserError(_('The Hermes connection needs attention. Ask an AI manager to check it.'))
         if self.sudo().activation_hash != self.sudo()._configuration_hash():
             raise UserError(_('Agent configuration changed. A manager must review and activate it again.'))
+
+    def _hermes_problem(self):
+        """What stops an active agent from answering although the agent itself is fine: 'stopped' (Hermes is not
+        running or cannot be reached), 'attention' (its connection is not ready for another reason), or False."""
+        self.ensure_one()
+        engine = self.engine_id.sudo()
+        if self.state != 'active' or engine.state == 'ready':
+            return False
+        return 'stopped' if engine.hermes_runtime in ('stopped', 'gateway_stopped', 'unreachable') else 'attention'
+
+    @api.depends('state', 'engine_id.state', 'engine_id.hermes_runtime')
+    def _compute_unavailable_reason(self):
+        for agent in self:
+            problem = agent._hermes_problem()
+            agent.unavailable_reason = {
+                'stopped': _('Unavailable: Hermes, the AI service it runs on, is not running.'),
+                'attention': _('Unavailable: its Hermes connection needs attention.'),
+            }.get(problem, False)
+
+    def _unavailable_for_people(self):
+        """Why this active agent cannot answer, for the person looking at it: what is wrong in plain words, and
+        either a link to fix it (for those who can) or who to ask. Same words as a question that found Hermes not
+        running (``ai.agent.run._reason_for_people``). Returns {'text', 'url', 'label'}, or False when it can answer."""
+        self.ensure_one()
+        problem = self._hermes_problem()
+        if not problem:
+            return False
+        Run = self.env['ai.agent.run']
+        url = '/odoo/action-ai_agent.action_engines/%s' % self.engine_id.sudo().id
+        if problem == 'stopped':
+            text = _('The assistant is unavailable: Hermes, the AI service it runs on, is not running.')
+            if self.env.user.has_group('base.group_system'):
+                return {'text': text, 'url': url, 'label': _('Open Hermes to start it')}
+            who = Run._ask_people('base.group_system', _('Settings administrators'), _('to start it'))
+        else:
+            text = _('The assistant is unavailable: its Hermes connection needs attention.')
+            if self.env.user.has_group('ai_agent.group_manager'):
+                return {'text': text, 'url': url, 'label': _('Open the Hermes connection')}
+            who = Run._ask_people('ai_agent.group_manager', _('AI Agent managers'), _('to check it'))
+        return {'text': '%s %s' % (text, who), 'url': '', 'label': ''}
 
     @api.model
     def _chat_options(self):

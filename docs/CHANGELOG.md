@@ -12,6 +12,34 @@ Format:
 
 
 
+## 2026-11-15 — Hermes not running: Home and the agent card say so
+
+- Problem (owner): with Hermes stopped, Home's Ask box read "No assistant is available to you yet. Ask your admin
+  to set one up in AI Agents." and offered only Manage agents, while the agent's card read Active with a Chat
+  button. Nothing said the real reason.
+- Change: when a person's active assistants cannot answer because of the Hermes connection, the Ask box reads "The
+  assistant is unavailable: Hermes, the AI service it runs on, is not running." followed by who to ask ("Please ask
+  … (Settings administrators) to start it."); Settings administrators get **Open Hermes to start it** in the
+  picker's menu instead, and the picker reads "Assistant unavailable". A connection that is not ready for another
+  reason reads "… its Hermes connection needs attention." (AI Agent managers: **Open the Hermes connection**). The
+  same words as a question that found Hermes not running. On the Agents page the card keeps Active (the agent's own
+  stage) and adds a red line "Unavailable: Hermes, the AI service it runs on, is not running."; Chat is hidden
+  until Hermes is back.
+- How: `ai.agent._hermes_problem()`, `unavailable_reason` (computed) and `_unavailable_for_people()`;
+  `ai.home.item._ai_problem()` sends `aiProblem` with the Home data.
+- Affected areas: ai_agent (models/agent.py, views/agent_views.xml), ai_home (models/home_data.py, dashboard.js/xml,
+  tests), docs/DESIGN.md. Update `ai_agent` and `ai_home`.
+
+## 2026-11-15 — Assistants' avatar: the usual avatar with the AI Agent stars
+
+- Change (owner): an assistant's avatar in Discuss and the chatter is Odoo's usual one (its initial on its colour)
+  with the three stars of the AI Agent app icon at the top right (amber, white edge so they show on any colour). It
+  replaces the 2026-11-09 avatar (the AI Agent icon's frame with the initial), which browsers never showed: they
+  kept the old picture because the assistant's partner had not changed since.
+- How: `res.partner._avatar_generate_svg` adds the stars to the standard avatar for `ai_agent_partner`. A migration
+  (`ai_discuss` 20.0.1.2.0) marks assistants' chat partners as changed, so browsers fetch the new avatar.
+- Affected areas: ai_discuss (models/res_partner.py, migrations, tests/test_together.py). Update `ai_discuss`.
+
 ## 2026-11-15 — Home: the Ask box's buttons are standard Odoo buttons
 
 - Change (owner): under an answer in Home's Ask box, the fix button (See what went wrong, Open Hermes to start it)

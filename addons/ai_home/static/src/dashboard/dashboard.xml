@@ -337,7 +337,7 @@
                             t-on-input="(event) => this.state.prompt = event.target.value"
                             t-on-keydown="this.onPromptKeydown"
                             t-att-disabled="!this.aiAvailable"
-                            t-att-placeholder="this.aiAvailable ? 'How can I help you today? Ask a question or ask ' + this.aiName + ' to do something' : 'No assistant is available to you yet. Ask your admin to set one up in AI Agents.'"
+                            t-att-placeholder="this.promptPlaceholder"
                         />
                         <div class="o_ai_home_composer_bar">
                             <button type="button" class="btn o_ai_home_attach" aria-label="Attach a file" title="Attach a file" t-att-disabled="!this.aiAvailable" t-on-click="this.chooseFiles">
@@ -347,7 +347,7 @@
                                 <button
                                     type="button"
                                     class="btn o_ai_home_agent_toggle"
-                                    t-att-disabled="!this.pickerAgents.length and !this.state.canManageAgents"
+                                    t-att-disabled="!this.pickerAgents.length and !this.state.canManageAgents and !this.state.aiProblem?.url"
                                     aria-haspopup="menu"
                                     t-att-aria-expanded="this.state.showAgentMenu ? 'true' : 'false'"
                                     t-on-click="() => this.state.showAgentMenu = !this.state.showAgentMenu"
@@ -384,6 +384,7 @@
                                         </span>
                                         <span t-if="agent.description" class="d-block o_ai_home_muted" t-esc="agent.description"/>
                                     </button>
+                                    <a t-if="!this.aiAvailable and this.state.aiProblem?.url" class="dropdown-item o_ai_home_agent_link o_ai_home_agent_fix" t-att-href="this.state.aiProblem.url" t-esc="this.state.aiProblem.label"/>
                                     <div t-if="this.pickerAgents.length or this.state.canManageAgents" class="dropdown-divider"/>
                                     <button t-if="this.pickerAgents.length" type="button" class="dropdown-item o_ai_home_agent_link o_ai_home_agent_details" t-on-click="this.openAssistants">What each assistant can do</button>
                                     <button t-if="this.state.canManageAgents" type="button" class="dropdown-item o_ai_home_agent_link o_ai_home_agent_manage" t-on-click="this.openAgents">Manage agents</button>

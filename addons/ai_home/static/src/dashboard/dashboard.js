@@ -111,6 +111,7 @@ export class WorkDashboard extends Component {
             recent: [],
             agents: [],
             pausedAgents: [],
+            aiProblem: false,
             prompts: [],
             canManageAgents: false,
             planApp: "all",
@@ -448,7 +449,21 @@ export class WorkDashboard extends Component {
 
     /** The assistant picker's label: "Choose for me" or the chosen assistant. */
     get pickerLabel() {
+        if (!this.aiAvailable && this.state.aiProblem) {
+            return _t("Assistant unavailable");
+        }
         return this.state.agentId === "auto" && this.state.canRoute ? this.autoAgent.name : this.aiName;
+    }
+
+    /** The Ask box's hint: how to ask, why the assistant cannot answer right now, or how to get an assistant. */
+    get promptPlaceholder() {
+        if (this.aiAvailable) {
+            return _t("How can I help you today? Ask a question or ask %s to do something", this.aiName);
+        }
+        return (
+            this.state.aiProblem?.text ||
+            _t("No assistant is available to you yet. Ask your admin to set one up in AI Agents.")
+        );
     }
 
     /** The other assistants the same question can be sent to (Change ▾). */

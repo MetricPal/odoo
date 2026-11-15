@@ -77,6 +77,7 @@ class AiHomeItem(models.Model):
             'agents': agents,
             'canRoute': self._can_route(agents),
             'pausedAgents': self._paused_agents(),
+            'aiProblem': False if agents else self._ai_problem(),
             'prompts': self._home_prompts(self._home_role()) if agents else [],
             'canManageAgents': self.env.user.has_group('ai_agent.group_manager') if 'ai.agent' in self.env else False,
         }
@@ -183,6 +184,24 @@ class AiHomeItem(models.Model):
                 continue
             agents.append(self._agent_row(agent))
         return agents
+
+    @api.model
+    def _ai_problem(self):
+        """Why none of the person's active assistants can answer right now (Hermes not running, or its connection
+        needing attention): the Ask box says so, with a link to fix it or who to ask, instead of "No assistant is
+        available to you yet" (owner, 2026-11-15). False when the person simply has no assistant."""
+        if 'ai.agent' not in self.env or not self.env.user.has_group('ai_agent.group_user'):
+            return False
+        for agent in self.env['ai.agent'].search([('state', '=', 'active'), ('can_chat', '=', True)]):
+            try:
+                agent._usable()
+            except AccessError:
+                continue
+            except UserError:
+                problem = agent._unavailable_for_people()
+                if problem:
+                    return problem
+        return False
 
     @api.model
     def _can_route(self, agents):

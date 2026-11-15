@@ -205,7 +205,11 @@ user's department), **Everything**. Newest first, up to 20 per tab. Direct notif
   everything. Home refreshes every minute.
 - **Assistant** (always shown; without a usable agent it is greyed out and says
   "No assistant is available to you yet. Ask your admin to set one up in AI
-  Agents."): docked under the middle column, like claude.ai, with suggested
+  Agents."; when the person's assistants are active but Hermes is not running or
+  its connection needs attention, it says that instead, with who to ask, or
+  **Open Hermes to start it** in the picker for those who can; the agent's card
+  then keeps Active and adds a red "Unavailable: …" line, without Chat; owner,
+  2026-11-15): docked under the middle column, like claude.ai, with suggested
   questions, "+" to attach files, the agent picker and "Uses your access rights".
   The answer shows on Home above the box, with "Open conversation"; follow-ups
   continue the same conversation. A question is one inference request, never a
@@ -533,8 +537,8 @@ Approved mocks 2026-11-09 (AI Agent canvas boards 19 to 22, ADR 0015).
   department"; Asked from; **Linked requests** (Asked from, Asked <agent>, Follow-up answer, Chose the assistant).
 - **Assistant chat menu** (owner, 2026-11-09): the ⋯ / right-click menu of an assistant chat in the chat list only
   offers Add to Favorites (or Remove from Favorites once it is one); people's chats keep the full menu.
-- **Agent avatar** (owner, 2026-11-09): the AI Agent app icon (frame and sparkles) with the agent's initial in place
-  of "AI", wherever the agent's partner appears.
+- **Agent avatar** (owner, 2026-11-15): Odoo's usual avatar (the agent's initial on its colour) with the three stars
+  of the AI Agent app icon at the top right, wherever the agent's partner appears.
 
 ## AI agent proposals (`ai_agent`)
 

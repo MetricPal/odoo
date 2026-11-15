@@ -42,11 +42,13 @@ class TestAssistantsTogether(TransactionCase):
     def _messages(self, chat):
         return chat.sudo().message_ids.sorted('id')
 
-    def test_agent_avatar_is_the_ai_agent_icon_with_its_initial(self):
+    def test_agent_avatar_is_the_usual_one_with_the_ai_agent_stars(self):
         svg = self.sales.partner_id._avatar_generate_svg().decode()
         self.assertIn('>S</text>', svg)
-        self.assertIn('#ffb855', svg, 'The sparkles of the AI Agent icon')
-        self.assertNotIn('>AI<', svg)
+        self.assertIn('fill="#ffffff" font-size="96"', svg, "Odoo's usual avatar: the initial on its colour")
+        self.assertIn('#ffb855', svg, 'The stars of the AI Agent icon, at the top right')
+        self.assertTrue(svg.endswith('</svg>'))
+        self.assertNotIn('#004692', svg, 'No AI Agent frame any more')
         person_svg = self.person.partner_id._avatar_generate_svg().decode()
         self.assertNotIn('#ffb855', person_svg, 'People keep their usual avatar')
 
