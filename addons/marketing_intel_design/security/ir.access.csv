@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,operation,domain
+template_user,Design templates,model_mi_design_template,marketing_intel.group_mi_user,r,
+design_user,Designs (own and of own campaigns),model_mi_design,marketing_intel.group_mi_user,crud,"['|', ('user_id', '=', user.id), ('plan_id.user_id', '=', user.id)]"
+design_senior,Designs (all),model_mi_design,marketing_intel_team.group_mi_senior,crud,"[('company_id', 'in', company_ids)]"
+design_manager,Designs (all),model_mi_design,marketing_intel.group_mi_manager,crud,"[('company_id', 'in', company_ids)]"
+slide_user,Design slides (own and of own campaigns),model_mi_design_slide,marketing_intel.group_mi_user,crud,"['|', ('design_id.user_id', '=', user.id), ('design_id.plan_id.user_id', '=', user.id)]"
+slide_senior,Design slides (all),model_mi_design_slide,marketing_intel_team.group_mi_senior,crud,"[('company_id', 'in', company_ids)]"
+slide_manager,Design slides (all),model_mi_design_slide,marketing_intel.group_mi_manager,crud,"[('company_id', 'in', company_ids)]"
+ask_user,AI image asks (own),model_mi_design_image_ask,marketing_intel.group_mi_user,crud,"[('user_id', '=', user.id)]"
+result_user,AI images made (own),model_mi_design_image_result,marketing_intel.group_mi_user,crud,"[('ask_id.user_id', '=', user.id)]"
+use_user,Use a design,model_mi_design_use,marketing_intel.group_mi_user,crud,"[('create_uid', '=', user.id)]"
+copy_user,Copy a design,model_mi_design_copy,marketing_intel.group_mi_user,crud,"[('create_uid', '=', user.id)]"
+new_user,New design,model_mi_design_new,marketing_intel.group_mi_user,crud,"[('create_uid', '=', user.id)]"

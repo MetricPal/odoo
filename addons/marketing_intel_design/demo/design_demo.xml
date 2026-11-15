@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Boards 13.1 to 13.3: the demo brand's kit, and four designs to open (a post, a carousel, a story, an email
+       header). Plain records; the pictures are drawn from them. -->
+  <record id="marketing_intel_research.demo_brand" model="mi.brand">
+    <field name="kit_color_main">#1B6E4B</field>
+    <field name="kit_color_accent">#F2B544</field>
+    <field name="kit_color_dark">#1F2A24</field>
+    <field name="kit_color_light">#F4F1EA</field>
+    <field name="kit_font_heading">montserrat</field>
+    <field name="kit_font_text">open_sans</field>
+    <field name="kit_website">greencorner.example</field>
+    <field name="kit_handle">@greencorner</field>
+    <field name="kit_footer">Plants that feel at home.</field>
+  </record>
+
+  <record id="demo_design_offer" model="mi.design">
+    <field name="name">Monstera week offer</field>
+    <field name="format">square</field>
+    <field name="template_id" ref="template_offer"/>
+    <field name="brand_id" ref="marketing_intel_research.demo_brand"/>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="slide_ids" eval="[Command.create({'sequence': 10, 'look': 'main',
+        'headline': 'Monstera week: 20% off', 'text': 'Every monstera, in the shop and online, until Sunday.',
+        'button': 'Shop now'})]"/>
+  </record>
+
+  <record id="demo_design_tips" model="mi.design">
+    <field name="name">4 ways to keep a monstera happy</field>
+    <field name="format">carousel</field>
+    <field name="template_id" ref="template_tips"/>
+    <field name="brand_id" ref="marketing_intel_research.demo_brand"/>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="slide_ids" eval="[
+        Command.create({'sequence': 10, 'look': 'main', 'headline': '4 ways to keep a monstera happy'}),
+        Command.create({'sequence': 20, 'look': 'light', 'headline': 'Bright light, no direct sun',
+                        'text': 'A spot near a window with a thin curtain is ideal.'}),
+        Command.create({'sequence': 30, 'look': 'light', 'headline': 'Water when the top soil is dry',
+                        'text': 'About once a week in summer, every two weeks in winter.'}),
+        Command.create({'sequence': 40, 'look': 'light', 'headline': 'Wipe the leaves',
+                        'text': 'Dust blocks light. A damp cloth once a month is enough.'}),
+        Command.create({'sequence': 50, 'look': 'light', 'headline': 'Give it something to climb',
+                        'text': 'A moss pole keeps the leaves large and the plant upright.'}),
+        Command.create({'sequence': 60, 'look': 'main', 'headline': 'Need a new monstera?',
+                        'text': 'Come by the shop or order online.', 'button': 'Visit the shop'})]"/>
+  </record>
+
+  <record id="demo_design_story" model="mi.design">
+    <field name="name">Workshop reminder</field>
+    <field name="format">story</field>
+    <field name="template_id" ref="template_event"/>
+    <field name="brand_id" ref="marketing_intel_research.demo_brand"/>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="slide_ids" eval="[Command.create({'sequence': 10, 'look': 'dark',
+        'headline': 'Repotting workshop', 'text': 'Saturday, 10:00 · Green Corner shop',
+        'button': 'Book a seat'})]"/>
+  </record>
+
+  <record id="demo_design_header" model="mi.design">
+    <field name="name">Newsletter header</field>
+    <field name="format">email_header</field>
+    <field name="template_id" ref="template_announcement"/>
+    <field name="brand_id" ref="marketing_intel_research.demo_brand"/>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="slide_ids" eval="[Command.create({'sequence': 10, 'look': 'light',
+        'headline': 'Plant news', 'text': 'What is new at Green Corner this month.'})]"/>
+  </record>
+</odoo>

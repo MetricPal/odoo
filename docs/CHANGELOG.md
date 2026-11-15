@@ -12,6 +12,30 @@ Format:
 
 
 
+## 2026-11-15 — Marketing: design studio, step 3a (plan M6)
+
+- What: new module `marketing_intel_design` (approved boards 13.1 to 13.4). A **Brand kit** tab on the brand
+  (logos, four colours, two fonts, website, handle, footer line, with a preview). **Campaigns › Designs** (the one new
+  menu item): New asks for the format (square post, portrait post, story, carousel, poster A4/A3, email header) and a
+  template (Offer, Announcement, Quote, Photo with headline, Event, Tip list). A design is made by filling the
+  template's texts and picture, with a live preview; a carousel has 2 to 10 slides, edited one at a time. Writing
+  tools (✦) on the texts, **✦ Suggest text** from the Marketing assistant, **✦ AI image**, **From the library**,
+  **Download PNG / PDF**, **Copy to another format**, and **Use in** a social post, an email (email header only) or
+  a proof. **From Designs** on a social post and under a proof's Creative. A **Designs** button on the campaign.
+- Reason: owner, 2026-11-09: marketing people make posts, carousels and posters without leaving for Canva.
+- Affected areas: `marketing_intel_design` (new, auto-installed); it adds fields to `mi.brand` and `mi.plan`, a
+  button to the social post and proof forms, and three text kinds to Writing tools.
+- Notes: designs are drawn on the server with Pillow and the fonts Odoo ships (Montserrat, Open Sans, Raleway,
+  Oswald, Roboto, Lato), because no HTML-to-image program (wkhtmltoimage) is installed; the preview, PNG and PDF
+  are the same picture. Every template works in every format. Text limits are the same for every template (headline
+  60, text 160, button 24); text shrinks to fit. AI images need Image generation switched on for the Marketing
+  assistant's Hermes profile and an image provider set in Hermes; the picture is fetched from the public HTTPS
+  address the assistant returns (never from a private address). Juniors see their own designs and those of their
+  campaigns; seniors and administrators all. Nothing is sent or published from a design.
+- Tests: 19 Python tests (`/marketing_intel_design`). Checked in the browser on a test database: Designs, New
+  design, a carousel (slide selection, live preview), the brand kit, the AI image dialog with a made picture.
+  Not run: JS (hoot) tests (none written for the four small widgets). Not seen: a real AI picture from Hermes.
+
 ## 2026-11-15 — Home: the conversation goes on in the middle list
 
 - Change (owner): a question asked on Home and its answer no longer show in a card over the Ask box that kept only

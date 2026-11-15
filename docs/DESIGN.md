@@ -528,6 +528,31 @@ owner's additions the same day).
   Answered · Could not answer). Brand, Looked in, Asked by, Took; a warning that web answers can be wrong; the answer
   with a tick per line; Follow-ups; Sources on the right ([n] title as a link, site · when).
 
+## Design studio (`marketing_intel_design`, boards 13.1 to 13.4, approved 2026-11-15)
+
+- **Brand kit**: a tab on the Brand form (no page of its own): Logo, Logo on dark, Icon; Main colour, Accent colour,
+  Dark, Light (Odoo's colour picker); Headings and Text fonts from the fonts that come with Odoo; Website, Social
+  handle, Footer line; two previews, updated on save. An empty kit draws with the company logo and Odoo's colours,
+  and the design and the New dialog say so with **Fill in the brand kit**.
+- **Designs** (Campaigns › Designs, before Templates): standard kanban with the picture, and a list. **New** opens a
+  dialog: "1 · Format" as tiles with shape and size, "2 · Template" as pictures drawn in that format with the kit.
+- **A design**: header **Use in ▾**, Download PNG, Download PDF, Copy to another format. Left: Format, Template,
+  Campaign, Brand; for a carousel the **Slides** table (Cover, 1, 2 …, Last; drag to reorder; a click selects the
+  slide to edit; Add a slide); the box of the slide being edited: Headline, Text, Button text (the usual text boxes
+  with ✦ and the count), Picture (upload, **From the library**, **✦ AI image**), Colours (Main / Light / Dark).
+  Right: the preview, which follows what is typed, and for a carousel the row of small slides.
+- **✦ Suggest text** fills empty fields; where there is text already, the suggestion shows under the box with
+  Use / Discard. While it works: "Asking the assistant for texts… 8 s", then Home's slow wording (10 s, 30 s).
+- **AI image** dialog: Describe the picture, Style (Photo / Illustration / Flat shapes), the shape line, **Make the
+  picture**; while it works "Making the picture… 12 s" with the same slow wording; then the picture, "Made by
+  <assistant> in 18 s · counts in AI Activity", **Use this picture**, **Make another** (earlier pictures stay to
+  choose from), Discard. Orange banner when Image generation is off (Open AI Agent for those who can); red when no
+  assistant is ready (Home's words) or the picture could not be made (the reason, See what went wrong).
+- **Use in**: A social post (a draft with every slide as its photos), An email (email header only; asks for a draft
+  mailing or makes one), A proof for review (asks for the proof or makes one; an approved proof gets a new
+  version). Only what the person may create is offered. **From Designs** on a draft social post and under a
+  proof's Creative. Nothing is sent or published from a design.
+
 ## Agents working together (`ai_agent`, `ai_discuss`, `ai_home`)
 
 Approved mocks 2026-11-09 (AI Agent canvas boards 19 to 22, ADR 0015).

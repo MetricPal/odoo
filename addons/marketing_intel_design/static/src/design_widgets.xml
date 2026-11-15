@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <t t-name="marketing_intel_design.FormatTiles">
+    <div class="o_mi_design_tiles o_mi_design_formats" role="radiogroup">
+      <button t-foreach="this.options" t-as="option" t-key="option.value" type="button" role="radio"
+              class="o_mi_design_tile" t-att-class="{ o_selected: option.value === this.value }"
+              t-att-aria-checked="option.value === this.value ? 'true' : 'false'"
+              t-att-disabled="this.props.readonly" t-on-click="() => this.pick(option.value)">
+        <span class="o_mi_design_shape" t-att-style="option.style" aria-hidden="true"/>
+        <strong t-out="option.label"/>
+        <span class="text-muted" t-out="option.size"/>
+      </button>
+    </div>
+  </t>
+
+  <t t-name="marketing_intel_design.TemplateTiles">
+    <div class="o_mi_design_tiles o_mi_design_templates" role="radiogroup">
+      <button t-foreach="this.state.templates" t-as="template" t-key="template.id" type="button" role="radio"
+              class="o_mi_design_tile" t-att-class="{ o_selected: template.id === this.value?.id }"
+              t-att-aria-checked="template.id === this.value?.id ? 'true' : 'false'"
+              t-att-title="template.description || ''"
+              t-att-disabled="this.props.readonly" t-on-click="() => this.pick(template)">
+        <img t-att-src="this.src(template)" alt="" loading="lazy"/>
+        <span t-out="template.name"/>
+      </button>
+    </div>
+  </t>
+
+  <t t-name="marketing_intel_design.DesignUse">
+    <Dropdown t-if="this.targets.length">
+      <button type="button" class="btn btn-primary o_mi_design_use">Use in <i class="fa fa-caret-down ms-1" aria-hidden="true"/></button>
+      <t t-set-slot="content">
+        <DropdownItem t-foreach="this.targets" t-as="target" t-key="target[0]"
+                      class="'o_mi_design_use_' + target[0]" onSelected="() => this.use(target[2])">
+          <t t-out="target[1]"/>
+        </DropdownItem>
+      </t>
+    </Dropdown>
+  </t>
+
+  <t t-name="marketing_intel_design.DesignWait">
+    <div t-if="this.isWaiting" class="o_mi_design_wait" role="status">
+      <i class="fa fa-circle-o-notch fa-spin" aria-hidden="true"/>
+      <span t-out="this.text"/>
+      <span class="o_mi_design_waited" t-out="this.waited"/>
+    </div>
+  </t>
+
+</templates>

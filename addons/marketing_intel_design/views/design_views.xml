@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- ============================================================ Brand kit (board 13.1) -->
+  <record id="brand_form_kit" model="ir.ui.view">
+    <field name="name">mi.brand.form.kit</field>
+    <field name="model">mi.brand</field>
+    <field name="inherit_id" ref="marketing_intel.brand_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//page[@name='watch']" position="after">
+        <page string="Brand kit" name="kit">
+          <div class="row">
+            <div class="col-lg-6">
+              <separator string="Logos"/>
+              <div class="d-flex flex-wrap gap-3">
+                <div><field name="kit_logo" widget="image" options="{'size': [0, 90]}" nolabel="1"/>
+                  <div class="small"><label for="kit_logo"/></div></div>
+                <div><field name="kit_logo_dark" widget="image" options="{'size': [0, 90]}" nolabel="1"/>
+                  <div class="small"><label for="kit_logo_dark"/></div></div>
+                <div><field name="kit_icon" widget="image" options="{'size': [90, 90]}" nolabel="1"/>
+                  <div class="small"><label for="kit_icon"/></div></div>
+              </div>
+              <p class="text-muted small">PNG or JPG. Click a picture to upload or clear it.</p>
+              <separator string="Colours"/>
+              <group>
+                <field name="kit_color_main" widget="color"/>
+                <field name="kit_color_accent" widget="color"/>
+                <field name="kit_color_dark" widget="color"/>
+                <field name="kit_color_light" widget="color"/>
+              </group>
+              <p class="text-muted small">A template only uses these four, so every design is on-brand.</p>
+              <separator string="Fonts and fixed lines"/>
+              <group>
+                <field name="kit_font_heading"/>
+                <field name="kit_font_text"/>
+                <field name="kit_website" placeholder="e.g. metric.io"/>
+                <field name="kit_handle" placeholder="e.g. @metric.io"/>
+                <field name="kit_footer" placeholder="A line printed on posters"/>
+              </group>
+            </div>
+            <div class="col-lg-6">
+              <separator string="How a design looks with this kit"/>
+              <div role="status" class="alert alert-info" invisible="not kit_empty">
+                The kit is empty: designs use the company logo and Odoo's colours until you fill it in.
+              </div>
+              <field name="kit_empty" invisible="1"/>
+              <div class="d-flex flex-wrap gap-3 o_mi_design_kit_preview">
+                <field name="kit_preview_main" widget="image" readonly="1" nolabel="1"/>
+                <field name="kit_preview_light" widget="image" readonly="1" nolabel="1"/>
+              </div>
+              <p class="text-muted small mt-2">The preview updates when the form is saved. Changing the kit does not
+                change designs already exported; an open design shows the new kit at its next save.</p>
+            </div>
+          </div>
+        </page>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- ============================================================ A design (board 13.3) -->
+  <record id="design_form" model="ir.ui.view">
+    <field name="name">mi.design.form</field>
+    <field name="model">mi.design</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <widget name="mi_design_use" invisible="not id"/>
+          <button name="action_download_png" type="object" string="Download PNG" invisible="not id"/>
+          <button name="action_download_pdf" type="object" string="Download PDF" invisible="not id"/>
+          <button name="action_copy_format" type="object" string="Copy to another format" invisible="not id"/>
+        </header>
+        <sheet>
+          <field name="use_targets" invisible="1"/>
+          <field name="kit_empty" invisible="1"/>
+          <field name="active_slide_id" invisible="1"/>
+          <field name="suggest_state" invisible="1"/>
+          <field name="suggest_asked_at" invisible="1"/>
+          <div role="status" class="alert alert-info d-flex align-items-center gap-2" invisible="not kit_empty">
+            <span class="flex-grow-1">The brand kit is empty, so this design uses the company logo and Odoo's
+              colours.</span>
+            <button name="action_open_brand_kit" type="object" string="Fill in the brand kit" class="btn btn-link p-0"/>
+          </div>
+          <div class="oe_title"><h1><field name="name" placeholder="e.g. Black Friday offer"/></h1></div>
+          <div class="row">
+            <div class="col-lg-7">
+              <group>
+                <group>
+                  <field name="format" invisible="id" widget="selection"/>
+                  <field name="format_label" string="Format" invisible="not id"/>
+                  <field name="paper" invisible="format != 'poster'" widget="radio" options="{'horizontal': true}"/>
+                  <field name="template_id" options="{'no_create': True, 'no_open': True}"/>
+                </group>
+                <group>
+                  <field name="plan_id" options="{'no_create': True}"/>
+                  <field name="brand_id" options="{'no_create': True, 'no_open': True}"/>
+                </group>
+              </group>
+
+              <div invisible="not id">
+                <div class="d-flex align-items-center gap-2 border-top pt-3 mb-2">
+                  <strong class="flex-grow-1"><span invisible="format != 'carousel'">Slides</span></strong>
+                  <widget name="mi_design_wait" state_field="suggest_state" waiting="asking"
+                          since_field="suggest_asked_at" label="Asking the assistant for texts…"/>
+                  <button name="action_suggest_text" type="object" class="btn btn-outline-primary"
+                          invisible="suggest_state == 'asking'"
+                          help="The Marketing assistant writes the texts from the campaign and the brand. It fills empty fields; where you already wrote, its text shows as a suggestion.">
+                    <span invisible="format != 'carousel'">✦ Suggest text for all slides</span>
+                    <span invisible="format == 'carousel'">✦ Suggest text</span>
+                  </button>
+                </div>
+                <div role="alert" class="alert alert-danger d-flex align-items-center gap-2"
+                     invisible="suggest_state != 'failed'">
+                  <span class="flex-grow-1"><field name="suggest_error" class="d-inline"/></span>
+                  <button name="action_dismiss_suggest_error" type="object" string="Close" class="btn btn-link p-0"/>
+                </div>
+                <div invisible="format != 'carousel'">
+                  <field name="slide_ids" widget="mi_slides" nolabel="1">
+                    <list create="0" decoration-bf="id == parent.active_slide_id"
+                          decoration-info="id == parent.active_slide_id">
+                      <field name="sequence" widget="handle"/>
+                      <field name="label"/>
+                      <field name="headline"/>
+                      <field name="has_image" string="Picture"/>
+                    </list>
+                  </field>
+                  <button name="action_add_slide" type="object" string="Add a slide" class="btn btn-link p-0 mb-3"
+                          invisible="slide_count &gt;= 10"/>
+                  <field name="slide_count" invisible="1"/>
+                </div>
+
+                <div class="o_mi_design_slide_box">
+                  <strong class="d-block mb-2"><field name="slide_label" class="d-inline"/></strong>
+                  <div class="o_mi_text_field">
+                    <label for="slide_headline" class="o_form_label"/>
+                    <div class="o_mi_text_box">
+                      <field name="slide_headline" nolabel="1" class="text-break"
+                             placeholder="e.g. 5 ways to save an hour a day"/>
+                      <widget name="mi_writing_tools" field="slide_headline"/>
+                    </div>
+                    <div role="status" class="alert alert-info d-flex align-items-center gap-2 py-1 px-2 mb-0"
+                         invisible="not slide_suggested_headline">
+                      <span class="flex-grow-1">Suggestion: <field name="slide_suggested_headline" class="d-inline"/></span>
+                      <button name="action_use_headline" type="object" string="Use" class="btn btn-link p-0"/>
+                      <button name="action_discard_headline" type="object" string="Discard" class="btn btn-link p-0"/>
+                    </div>
+                  </div>
+                  <div class="o_mi_text_field">
+                    <label for="slide_text" class="o_form_label"/>
+                    <div class="o_mi_text_box">
+                      <field name="slide_text" nolabel="1"
+                             placeholder="e.g. Posts and replies arrive as drafts. You only check and send."/>
+                      <widget name="mi_writing_tools" field="slide_text"/>
+                    </div>
+                    <div role="status" class="alert alert-info d-flex align-items-center gap-2 py-1 px-2 mb-0"
+                         invisible="not slide_suggested_text">
+                      <span class="flex-grow-1">Suggestion: <field name="slide_suggested_text" class="d-inline"/></span>
+                      <button name="action_use_text" type="object" string="Use" class="btn btn-link p-0"/>
+                      <button name="action_discard_text" type="object" string="Discard" class="btn btn-link p-0"/>
+                    </div>
+                  </div>
+                  <div class="o_mi_text_field">
+                    <label for="slide_button" class="o_form_label"/>
+                    <div class="o_mi_text_box">
+                      <field name="slide_button" nolabel="1" class="text-break" placeholder="e.g. Try it this week"/>
+                      <widget name="mi_writing_tools" field="slide_button"/>
+                    </div>
+                    <div role="status" class="alert alert-info d-flex align-items-center gap-2 py-1 px-2 mb-0"
+                         invisible="not slide_suggested_button">
+                      <span class="flex-grow-1">Suggestion: <field name="slide_suggested_button" class="d-inline"/></span>
+                      <button name="action_use_button" type="object" string="Use" class="btn btn-link p-0"/>
+                      <button name="action_discard_button" type="object" string="Discard" class="btn btn-link p-0"/>
+                    </div>
+                    <span class="text-muted small">Shown by templates with a button (Offer, Event, the last slide of
+                      a Tip list).</span>
+                  </div>
+                  <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                    <label for="slide_image" class="o_form_label mb-0"/>
+                    <field name="slide_image" widget="image" options="{'size': [0, 60]}" nolabel="1"/>
+                    <span class="flex-grow-1 text-muted small">Click the picture to upload or clear it.</span>
+                    <button name="action_pick_library" type="object" string="From the library"
+                            class="btn btn-secondary"/>
+                    <button name="action_ai_image" type="object" string="✦ AI image" class="btn btn-outline-primary"/>
+                  </div>
+                  <div class="d-flex align-items-center flex-wrap gap-2">
+                    <label for="slide_look" class="o_form_label mb-0"/>
+                    <field name="slide_look" widget="badges_selection" nolabel="1"/>
+                    <span class="text-muted small">the three looks of the template, from the brand kit</span>
+                  </div>
+                </div>
+              </div>
+              <div role="status" class="alert alert-info" invisible="id">
+                Choose the format and the template, then save: the texts, the picture and the preview show here.
+              </div>
+            </div>
+
+            <div class="col-lg-5" invisible="not id">
+              <div class="o_mi_design_preview">
+                <div class="d-flex align-items-center mb-2">
+                  <strong class="flex-grow-1">Preview</strong>
+                  <span class="text-muted small"><field name="preview_label" class="d-inline"/></span>
+                </div>
+                <div class="text-center">
+                  <field name="preview" widget="image" readonly="1" nolabel="1"/>
+                </div>
+                <field name="strip" nolabel="1" class="o_mi_design_strip" invisible="format != 'carousel'"/>
+                <p class="text-muted small mt-2">You fill the template's fields; things cannot be moved or resized
+                  here. Text shrinks to fit its area. Download PNG gives one file, or one per slide for a
+                  carousel; PDF has all slides, posters at print size.</p>
+              </div>
+            </div>
+          </div>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="design_kanban" model="ir.ui.view">
+    <field name="name">mi.design.kanban</field>
+    <field name="model">mi.design</field>
+    <field name="arch" type="xml">
+      <kanban on_create="marketing_intel_design.action_new_design" class="o_mi_designs_kanban">
+        <templates>
+          <t t-name="card">
+            <div class="o_mi_design_card_picture">
+              <field name="thumbnail" widget="image" alt="Design"/>
+            </div>
+            <field name="name" class="fw-bold"/>
+            <div class="text-muted small"><field name="summary"/></div>
+            <div class="text-muted small"><field name="user_id"/> · <field name="write_date"/></div>
+          </t>
+        </templates>
+      </kanban>
+    </field>
+  </record>
+
+  <record id="design_list" model="ir.ui.view">
+    <field name="name">mi.design.list</field>
+    <field name="model">mi.design</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="format"/>
+        <field name="template_id"/>
+        <field name="plan_id"/>
+        <field name="user_id" widget="many2one_avatar_user"/>
+        <field name="write_date" string="Changed"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="design_search" model="ir.ui.view">
+    <field name="name">mi.design.search</field>
+    <field name="model">mi.design</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="plan_id"/>
+        <field name="user_id"/>
+        <filter name="mine" string="Mine" domain="[('user_id', '=', uid)]"/>
+        <group>
+          <filter name="group_plan" string="Campaign" context="{'group_by': 'plan_id'}"/>
+          <filter name="group_format" string="Format" context="{'group_by': 'format'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_designs" model="ir.actions.act_window">
+    <field name="name">Designs</field>
+    <field name="res_model">mi.design</field>
+    <field name="view_mode">kanban,list,form</field>
+    <field name="path">marketing-designs</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Make your first design</p>
+      <p>Pick a format and a template, fill in the texts and a picture. The brand kit does the rest.</p>
+    </field>
+  </record>
+
+  <!-- ============================================================ New design (board 13.2) -->
+  <record id="design_new_form" model="ir.ui.view">
+    <field name="name">mi.design.new.form</field>
+    <field name="model">mi.design.new</field>
+    <field name="arch" type="xml">
+      <form>
+        <field name="kit_empty" invisible="1"/>
+        <field name="brand_id" invisible="1"/>
+        <field name="plan_id" invisible="1"/>
+        <div role="status" class="alert alert-info d-flex align-items-center gap-2" invisible="not kit_empty">
+          <span class="flex-grow-1">The brand kit is empty: designs use the company logo and Odoo's colours.</span>
+          <button name="action_open_brand_kit" type="object" string="Fill in the brand kit" class="btn btn-link p-0"/>
+        </div>
+        <div class="fw-bold mb-2">1 · Format</div>
+        <field name="format" widget="mi_format_tiles" nolabel="1"/>
+        <div class="mt-2" invisible="format != 'poster'">
+          <field name="paper" widget="radio" options="{'horizontal': true}" nolabel="1"/>
+        </div>
+        <div class="fw-bold mt-3 mb-2">2 · Template</div>
+        <field name="template_id" widget="mi_template_tiles" nolabel="1"
+               options="{'format_field': 'format', 'brand_field': 'brand_id'}"/>
+        <p class="text-muted small mt-2">Templates come with the module and use only the brand kit's logo, colours
+          and fonts.</p>
+        <footer>
+          <button name="action_create" type="object" string="Create" class="btn-primary"/>
+          <button special="cancel" string="Discard" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_new_design" model="ir.actions.act_window">
+    <field name="name">New design</field>
+    <field name="res_model">mi.design.new</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+
+  <record id="design_copy_form" model="ir.ui.view">
+    <field name="name">mi.design.copy.form</field>
+    <field name="model">mi.design.copy</field>
+    <field name="arch" type="xml">
+      <form>
+        <field name="design_id" invisible="1"/>
+        <field name="format" widget="mi_format_tiles" nolabel="1"/>
+        <div class="mt-2" invisible="format != 'poster'">
+          <field name="paper" widget="radio" options="{'horizontal': true}" nolabel="1"/>
+        </div>
+        <p class="text-muted small mt-2">A copy with the same template, texts and picture. A carousel keeps its
+          slides only as a carousel; any other format takes the slide you are editing.</p>
+        <footer>
+          <button name="action_copy" type="object" string="Copy" class="btn-primary"/>
+          <button special="cancel" string="Discard" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <!-- ============================================================ AI image (board 13.4 A, C) -->
+  <record id="image_ask_form" model="ir.ui.view">
+    <field name="name">mi.design.image.ask.form</field>
+    <field name="model">mi.design.image.ask</field>
+    <field name="arch" type="xml">
+      <form>
+        <field name="state" invisible="1"/>
+        <field name="problem" invisible="1"/>
+        <field name="asked_at" invisible="1"/>
+        <field name="error_url" invisible="1"/>
+        <div role="alert" class="alert alert-warning d-flex align-items-center gap-2" invisible="problem != 'off'">
+          <span class="flex-grow-1"><field name="problem_text" class="d-inline"/></span>
+          <button name="action_open_ai_agent" type="object" string="Open AI Agent" class="btn btn-link p-0"
+                  groups="ai_agent.group_manager"/>
+        </div>
+        <div role="alert" class="alert alert-danger" invisible="problem != 'none'">
+          <field name="problem_text" class="d-inline"/>
+        </div>
+        <div invisible="problem">
+          <label for="description" class="o_form_label"/>
+          <field name="description" nolabel="1" readonly="state == 'making'"
+                 placeholder="e.g. A tidy desk in morning light with a laptop and a cup of coffee, seen from above"/>
+          <div class="d-flex align-items-center gap-2 my-2">
+            <label for="style" class="o_form_label mb-0"/>
+            <field name="style" widget="badges_selection" nolabel="1" readonly="state == 'making'"/>
+          </div>
+          <p class="text-muted small"><field name="shape_label" class="d-inline"/></p>
+          <widget name="mi_design_wait" state_field="state" waiting="making" since_field="asked_at"
+                  label="Making the picture…"/>
+          <div role="alert" class="alert alert-danger d-flex align-items-center gap-2" invisible="state != 'failed'">
+            <span class="flex-grow-1"><field name="error" class="d-inline"/></span>
+            <button name="action_see_error" type="object" string="See what went wrong" class="btn btn-link p-0"
+                    invisible="not error_url"/>
+          </div>
+          <div invisible="state != 'ready'" class="text-center">
+            <field name="image" widget="image" readonly="1" nolabel="1" options="{'size': [0, 220]}"/>
+            <p class="text-muted small"><field name="made_label" class="d-inline"/></p>
+          </div>
+          <div invisible="not earlier_ids or state == 'making'">
+            <div class="fw-bold small mb-1">Earlier pictures</div>
+            <field name="earlier_ids" nolabel="1" mode="kanban" class="o_mi_design_earlier">
+              <kanban create="0">
+                <templates>
+                  <t t-name="card">
+                    <field name="image" widget="image" alt="Earlier picture"/>
+                    <button name="action_use" type="object" string="Use this picture" class="btn btn-link p-0 mt-1"/>
+                  </t>
+                </templates>
+              </kanban>
+            </field>
+          </div>
+        </div>
+        <footer>
+          <button name="action_make" type="object" string="Make the picture" class="btn-primary"
+                  invisible="problem or state not in ('draft', 'failed')"/>
+          <button name="action_use" type="object" string="Use this picture" class="btn-primary"
+                  invisible="problem or state != 'ready'"/>
+          <button name="action_make" type="object" string="Make another" class="btn-secondary"
+                  invisible="problem or state != 'ready'"/>
+          <button name="action_discard" type="object" string="Discard" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <!-- From the library: the photos of the team's social posts -->
+  <record id="media_picker_kanban" model="ir.ui.view">
+    <field name="name">omni.social.media.kanban.design</field>
+    <field name="model">omni.social.media</field>
+    <field name="priority">99</field>
+    <field name="arch" type="xml">
+      <kanban create="0" class="o_mi_design_library">
+        <templates>
+          <t t-name="card">
+            <field name="preview" widget="image" alt="Photo"/>
+            <field name="name" class="small text-truncate"/>
+            <button name="action_mi_use_in_design" type="object" string="Use this picture" class="btn btn-link p-0"/>
+          </t>
+        </templates>
+      </kanban>
+    </field>
+  </record>
+
+  <!-- ============================================================ Use in (board 13.4 B) -->
+  <record id="design_use_form" model="ir.ui.view">
+    <field name="name">mi.design.use.form</field>
+    <field name="model">mi.design.use</field>
+    <field name="arch" type="xml">
+      <form>
+        <field name="target" invisible="1"/>
+        <field name="publication_id" invisible="1"/>
+        <field name="target_proof_id" invisible="1"/>
+        <group>
+          <field name="design_id" options="{'no_create': True, 'no_open': True}"
+                 readonly="target in ('email', 'proof')"/>
+          <field name="mailing_id" invisible="target != 'email'" options="{'no_create': True, 'no_open': True}"
+                 placeholder="A new mailing"/>
+          <field name="plan_id" invisible="target != 'proof'" options="{'no_create': True, 'no_open': True}"
+                 required="target == 'proof' and not proof_id"/>
+          <field name="proof_id" invisible="target != 'proof'" options="{'no_create': True, 'no_open': True}"
+                 placeholder="A new proof"/>
+        </group>
+        <p class="text-muted small" invisible="target != 'email'">The picture goes at the top of the mailing's body.
+          Nothing is sent: the mailing stays a draft.</p>
+        <p class="text-muted small" invisible="target != 'proof'">The picture becomes the proof's Creative. An
+          approved proof, or one with changes requested, gets a new version.</p>
+        <p class="text-muted small" invisible="target != 'post'">The design's pictures are added to the post's photos,
+          every slide in order.</p>
+        <p class="text-muted small" invisible="target != 'proof_image'">The design's picture (its first slide)
+          becomes the proof's Creative.</p>
+        <footer>
+          <button name="action_apply" type="object" string="Use" class="btn-primary"/>
+          <button special="cancel" string="Discard" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <!-- The other way round: From Designs on a social post and under a proof's Creative -->
+  <record id="publication_form_designs" model="ir.ui.view">
+    <field name="name">omni.social.publication.form.designs</field>
+    <field name="model">omni.social.publication</field>
+    <field name="inherit_id" ref="omni_social.publication_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='media_ids']" position="after">
+        <button name="action_mi_from_designs" type="object" string="From Designs" class="btn btn-outline-primary mt-1"
+                invisible="state != 'draft'" groups="marketing_intel.group_mi_user"
+                help="Add the pictures of a design made in Marketing › Campaigns › Designs."/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="proof_form_designs" model="ir.ui.view">
+    <field name="name">mi.proof.form.designs</field>
+    <field name="model">mi.proof</field>
+    <field name="inherit_id" ref="marketing_intel_work.proof_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//page[@name='content']//field[@name='image']" position="after">
+        <button name="action_mi_from_designs" type="object" string="From Designs" class="btn btn-link p-0" colspan="2"
+                invisible="state in ('review', 'approved', 'old')"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- A campaign's designs -->
+  <record id="plan_form_designs" model="ir.ui.view">
+    <field name="name">mi.plan.form.designs</field>
+    <field name="model">mi.plan</field>
+    <field name="inherit_id" ref="marketing_intel_plan.plan_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//div[@name='button_box']" position="inside">
+        <button name="action_open_designs" type="object" class="oe_stat_button" icon="palette" invisible="is_template">
+          <field name="design_count" widget="statinfo" string="Designs"/>
+        </button>
+      </xpath>
+    </field>
+  </record>
+
+  <menuitem id="menu_designs" name="Designs" parent="marketing_intel_plan.menu_campaigns_root"
+            action="action_designs" sequence="60"/>
+</odoo>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- The templates that come with the module (board 13.2). Each works in every format. -->
+  <record id="template_offer" model="mi.design.template">
+    <field name="name">Offer</field><field name="code">offer</field><field name="sequence">10</field>
+    <field name="description">A headline, a line of text and a button.</field>
+  </record>
+  <record id="template_announcement" model="mi.design.template">
+    <field name="name">Announcement</field><field name="code">announcement</field><field name="sequence">20</field>
+    <field name="description">A headline and a short text.</field>
+  </record>
+  <record id="template_quote" model="mi.design.template">
+    <field name="name">Quote</field><field name="code">quote</field><field name="sequence">30</field>
+    <field name="description">A quote as the headline, the name as the text.</field>
+  </record>
+  <record id="template_photo" model="mi.design.template">
+    <field name="name">Photo with headline</field><field name="code">photo</field><field name="sequence">40</field>
+    <field name="description">A large picture with a headline under it.</field>
+  </record>
+  <record id="template_event" model="mi.design.template">
+    <field name="name">Event</field><field name="code">event</field><field name="sequence">50</field>
+    <field name="description">A headline, the date and place in a box, and a button.</field>
+  </record>
+  <record id="template_tips" model="mi.design.template">
+    <field name="name">Tip list</field><field name="code">tips</field><field name="sequence">60</field>
+    <field name="description">For a carousel: a cover, one numbered tip per slide, a closing slide with a button.</field>
+  </record>
+</odoo>
