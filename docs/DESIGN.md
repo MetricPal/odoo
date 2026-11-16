@@ -553,6 +553,27 @@ owner's additions the same day).
   version). Only what the person may create is offered. **From Designs** on a draft social post and under a
   proof's Creative. Nothing is sent or published from a design.
 
+## Content calendar (`marketing_intel_calendar`, boards 14.1 and 14.2, approved 2026-11-15)
+
+- **Calendar** (Campaigns › Calendar, after Campaigns): Odoo's calendar, month first, with Odoo's filter panel:
+  **Campaign** and **Channel**. One colour per channel (Email, SMS, Messaging, Social). An item reads
+  "Channel · Title". A draft with a planned time is a dashed outline in its channel's colour; what went out is a plain
+  dot in the month (Odoo strikes it through where items are drawn as blocks). Items without a time are only in the list.
+- **New ▾** (Email, SMS, Message, Social post; only what the person may create) opens that app's own form. A click
+  on an empty day opens a small **New** dialog with the day and the same choices, and fills that day in at 09:00
+  when it is still to come.
+- **An item's popover**: date and time, Channel (with the messaging channel or social account), Status (the app's own
+  wording), Campaign, Owner, the first 140 characters of the text, and one button, **Open**, which goes to the item in
+  its own app. Nothing is edited, reviewed, sent or deleted on the calendar.
+- **Dragging** changes the time only. Email and SMS: a draft takes the planned time; a queued one asks
+  "Move “…”? It is scheduled for … Move it to …? It stays scheduled and goes out at the new time." (Move / Discard).
+  A message or a post moves only as a draft; once approved its time was approved with it, and the calendar says so
+  ("open it, cancel it and submit a copy with the new time"). Sent, in review and not sent items do not move, each
+  with its reason; a refused move goes back where it was.
+- **List**: When (or "No time yet"), Channel, Title, Campaign, Owner, Status badge; filters Mine and Not sent yet;
+  group by Channel, Campaign, Status, Owner. A row opens the item in its own app.
+- Stage wording on the calendar's own filter and grouping: Draft, In review, Scheduled, Sent, Not sent.
+
 ## Agents working together (`ai_agent`, `ai_discuss`, `ai_home`)
 
 Approved mocks 2026-11-09 (AI Agent canvas boards 19 to 22, ADR 0015).

@@ -1,0 +1,10 @@
+// Content calendar (board 14.1): a draft with a planned time shows as a dashed outline in its channel's colour
+// instead of Odoo's hatching (which Odoo draws on the event's `.fc-bg`).
+.o_mi_content_calendar .fc-event.o_event_hatched {
+    background: $o-view-background-color !important;
+    border: 1px dashed var(--o-event-bg, currentColor) !important;
+
+    .fc-bg {
+        background: none !important;
+    }
+}

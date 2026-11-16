@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Content calendar (boards 14.1 and 14.2): Odoo's calendar with its filter panel, and the same content as a list -->
+  <record id="content_calendar" model="ir.ui.view">
+    <field name="name">mi.content.calendar</field>
+    <field name="model">mi.content</field>
+    <field name="arch" type="xml">
+      <calendar js_class="mi_content_calendar" string="Content calendar" date_start="date" color="channel_id"
+                mode="month" quick_create="0" delete="0" event_open_popup="1" show_date_picker="0">
+        <field name="channel_id" filters="1" color="color" invisible="1"/>
+        <field name="plan_id" filters="1" invisible="1"/>
+        <field name="status" invisible="1"/>
+        <field name="is_striked" invisible="1"/>
+        <field name="is_hatched" invisible="1"/>
+        <field name="where" string="Channel"/>
+        <field name="status_label"/>
+        <field name="plan_id" invisible="not plan_id"/>
+        <field name="user_id" widget="many2one_avatar_user" invisible="not user_id"/>
+        <field name="text" invisible="not text"/>
+      </calendar>
+    </field>
+  </record>
+
+  <record id="content_list" model="ir.ui.view">
+    <field name="name">mi.content.list</field>
+    <field name="model">mi.content</field>
+    <field name="arch" type="xml">
+      <list js_class="mi_content_list" create="0" delete="0" edit="0" default_order="date">
+        <field name="date"/>
+        <field name="no_time" class="text-muted" nolabel="1"/>
+        <field name="channel_id"/>
+        <field name="name"/>
+        <field name="plan_id"/>
+        <field name="user_id" widget="many2one_avatar_user" optional="show"/>
+        <field name="status_label" widget="badge"/>
+        <field name="status" column_invisible="1"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="content_search" model="ir.ui.view">
+    <field name="name">mi.content.search</field>
+    <field name="model">mi.content</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="plan_id"/>
+        <field name="user_id"/>
+        <filter name="mine" string="Mine" domain="[('user_id', '=', uid)]"/>
+        <filter name="not_sent" string="Not sent yet" domain="[('status', 'in', ('draft', 'review', 'scheduled'))]"/>
+        <group>
+          <filter name="group_channel" string="Channel" context="{'group_by': 'channel_id'}"/>
+          <filter name="group_plan" string="Campaign" context="{'group_by': 'plan_id'}"/>
+          <filter name="group_status" string="Status" context="{'group_by': 'status'}"/>
+          <filter name="group_user" string="Owner" context="{'group_by': 'user_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_content" model="ir.actions.act_window">
+    <field name="name">Content calendar</field>
+    <field name="res_model">mi.content</field>
+    <field name="view_mode">calendar,list</field>
+    <field name="path">marketing-calendar</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Nothing is planned yet</p>
+      <p>Emails, SMS, messages and social posts show here as soon as they are prepared.</p>
+    </field>
+  </record>
+
+  <menuitem id="menu_content_calendar" name="Calendar" parent="marketing_intel_plan.menu_campaigns_root"
+            action="action_content" sequence="20"/>
+</odoo>

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "odoo-test-db",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["AI_AGENT_ENDPOINTS=hermes.example.com:443", "AI_AGENT_SECRET_TEST=synthetic-not-a-live-key", ".venv/bin/python", "odoo-bin", "-c", "odoo.conf", "-d", "test_wip_20261115", "--db-filter=^test_wip_20261115$", "--http-port=8170", "--gevent-port=8171"],
+      "port": 8170
+    }
+  ]
+}

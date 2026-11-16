@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- The four channels of the content calendar, with their colour (board 14.1). -->
+  <record id="channel_email" model="mi.content.channel">
+    <field name="name">Email</field><field name="code">email</field><field name="color">4</field><field name="sequence">10</field>
+  </record>
+  <record id="channel_sms" model="mi.content.channel">
+    <field name="name">SMS</field><field name="code">sms</field><field name="color">2</field><field name="sequence">20</field>
+  </record>
+  <record id="channel_messaging" model="mi.content.channel">
+    <field name="name">Messaging</field><field name="code">messaging</field><field name="color">10</field><field name="sequence">30</field>
+  </record>
+  <record id="channel_social" model="mi.content.channel">
+    <field name="name">Social</field><field name="code">social</field><field name="color">11</field><field name="sequence">40</field>
+  </record>
+</odoo>

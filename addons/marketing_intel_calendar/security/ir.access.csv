@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,operation,domain
+content_user,Content calendar,model_mi_content,marketing_intel.group_mi_user,r,
+channel_user,Content calendar channels,model_mi_content_channel,marketing_intel.group_mi_user,r,

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <t t-name="marketing_intel_calendar.NewButton">
+    <Dropdown t-if="this.newContent.options.length">
+      <button type="button" class="btn btn-primary o_mi_content_new">New <i class="fa fa-caret-down ms-1" aria-hidden="true"/></button>
+      <t t-set-slot="content">
+        <DropdownItem t-foreach="this.newContent.options" t-as="option" t-key="option[0]"
+                      class="'o_mi_content_new_' + option[0]" onSelected="() => this.newItem(option[0])">
+          <t t-out="option[1]"/>
+        </DropdownItem>
+      </t>
+    </Dropdown>
+  </t>
+
+  <t t-name="marketing_intel_calendar.NewContentDialog">
+    <Dialog title.translate="New" size="'sm'">
+      <p class="text-muted" t-out="this.props.day"/>
+      <div class="d-grid gap-2">
+        <button t-foreach="this.props.options" t-as="option" t-key="option[0]" type="button"
+                class="btn btn-secondary text-start" t-on-click="() => this.pick(option[0])">
+          <t t-out="option[1]"/>
+        </button>
+      </div>
+      <t t-set-slot="footer">
+        <button type="button" class="btn btn-secondary" t-on-click="() => this.props.close()">Discard</button>
+      </t>
+    </Dialog>
+  </t>
+
+  <t t-name="marketing_intel_calendar.PopoverButtons">
+    <a href="#" class="btn btn-primary o_cw_popover_edit" t-on-click="this.onEditEvent">Open</a>
+  </t>
+
+</templates>

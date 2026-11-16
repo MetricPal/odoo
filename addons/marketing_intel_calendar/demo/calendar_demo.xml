@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Board 14.1: two drafts with a planned time, so the calendar is not empty on a demo database.
+       Times are UTC: 10:00 and 16:00 in Kuala Lumpur. -->
+  <record id="demo_email_planned" model="mailing.mailing">
+    <field name="subject">Plant news (demo)</field>
+    <field name="mailing_type">mail</field>
+    <field name="mailing_model_id" ref="mass_mailing.model_mailing_list"/>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="schedule_type">scheduled</field>
+    <field name="schedule_date" eval="(DateTime.today() + relativedelta(days=3)).strftime('%Y-%m-%d 02:00:00')"/>
+  </record>
+  <record id="demo_sms_planned" model="mailing.mailing">
+    <field name="subject">Workshop: last seats (demo)</field>
+    <field name="mailing_type">sms</field>
+    <field name="mailing_model_id" ref="mass_mailing.model_mailing_list"/>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="body_plaintext">Two seats left for Saturday's repotting workshop. Reply STOP to opt out.</field>
+    <field name="schedule_type">scheduled</field>
+    <field name="schedule_date" eval="(DateTime.today() + relativedelta(days=5)).strftime('%Y-%m-%d 08:00:00')"/>
+  </record>
+</odoo>

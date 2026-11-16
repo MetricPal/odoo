@@ -12,6 +12,30 @@ Format:
 
 
 
+## 2026-11-16 — Marketing: content calendar (plan M7)
+
+- What: new module `marketing_intel_calendar` (approved boards 14.1 and 14.2). **Campaigns › Calendar** (the one new
+  menu item) shows every email and SMS (Email Marketing, SMS Marketing), message (Messaging Marketing) and social
+  post (Social) on one calendar, coloured by channel, with filters by channel and campaign, and the same content as
+  a list. **New** (Email, SMS, Message, Social post) and a click on an empty day open the app's own form with the day
+  filled in. An item's popover shows channel and account, status, campaign, owner and the start of the text, with
+  **Open** to the item in its own app. Dragging an item changes its time where its app allows it.
+- Reason: plan M7 (owner, 2026-11-09): all channels on one calendar, with drag to reschedule.
+- Affected areas: `marketing_intel_calendar` (new, auto-installed with Campaigns, SMS Marketing, Messaging Marketing
+  and Social). It adds no field to the other apps: `mi.content` is a read-only SQL view over `mailing.mailing`,
+  `mm.mailing` and `omni.social.publication`, and `mi.content.channel` holds the four channels and their colours.
+- Notes: a person sees only the items they may read in each app (its access rights and record rules), and a move
+  is written on the item's own record with the person's rights. Email and SMS move as drafts and when queued (a
+  queued one asks first). A message or a post moves only as a draft: once approved, its time is part of what was
+  approved, so it is cancelled and resubmitted instead. Sent, in review and not sent items do not move. Cancelled
+  items and social replies are not shown. The campaign of an item comes from the campaign's channel parts. Demo data
+  adds one planned email and one planned SMS; messages and posts show once a channel or account is set up.
+- Tests: 8 Python tests (`/marketing_intel_calendar`), all passing. Checked in the browser on a test database:
+  the calendar with its filters, the dashed draft items, the New menu, the New dialog on an empty day, an item's
+  popover, the list, and opening an SMS from the list. Not checked in the browser: dragging an item (covered by the
+  Python tests only), messages and social posts on the calendar (none in the demo data). Not run: JS (hoot) tests
+  (none written), ruff (not installed in `./.venv`).
+
 ## 2026-11-15 — Marketing: design studio, step 3a (plan M6)
 
 - What: new module `marketing_intel_design` (approved boards 13.1 to 13.4). A **Brand kit** tab on the brand
