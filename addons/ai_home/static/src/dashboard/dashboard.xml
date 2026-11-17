@@ -72,7 +72,7 @@
                                         <div class="o_ai_home_chat_answer">
                                             <!-- The same picture as in the assistant's chat, with the same stars over its corner. -->
                                             <span t-if="turn.agentAvatar" class="o_ai_home_chat_avatar o_has_picture" aria-hidden="true">
-                                                <img t-att-src="turn.agentAvatar" alt=""/>
+                                                <img t-att-src="turn.agentAvatar" alt="" width="32" height="32"/>
                                                 <svg class="o_ai_home_chat_stars" viewBox="75 18 51 46">
                                                     <path fill="#ffb855" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" d="m92 20 4.7 10.3L107 35l-10.3 4.7L92 50l-4.7-10.3L77 35l10.3-4.7L92 20ZM113 40l3.3 7.7L124 51l-7.7 3.3L113 62l-3.3-7.7L102 51l7.7-3.3L113 40ZM117 24l1.9 4.1L123 30l-4.1 1.9L117 36l-1.9-4.1L111 30l4.1-1.9L117 24Z"/>
                                                 </svg>
@@ -322,6 +322,8 @@
                         </div>
                         <input
                             t-ref="this.fileInputRef"
+                            id="ai_home_file_input"
+                            name="ai_home_file_input"
                             type="file"
                             multiple="multiple"
                             class="d-none o_ai_home_file_input"
@@ -331,6 +333,7 @@
                         <label for="ai_home_prompt" class="visually-hidden">Ask <t t-out="this.aiName"/></label>
                         <textarea
                             id="ai_home_prompt"
+                            name="ai_home_prompt"
                             t-ref="this.promptRef"
                             rows="2"
                             t-att-value="this.state.prompt"

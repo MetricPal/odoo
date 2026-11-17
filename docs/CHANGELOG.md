@@ -18,7 +18,8 @@ Format:
   labels that pointed at an image or badges field with no matching element are plain text; the editor's file input,
   zoom and property boxes have names. Remaining in the browser's Issues list: the hidden file input and a label for a
   read-only text that Odoo's own image and read-only field widgets draw (not ours to change).
-- Affected: marketing_intel_design.
+- Home: the attach-file input and the Ask box have names, and the assistant's picture in a chat answer has its size.
+- Affected: marketing_intel_design, ai_home.
 
 ## 2026-11-17 — t-out instead of t-esc (Home, Marketing, AI Agent)
 
