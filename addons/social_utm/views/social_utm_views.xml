@@ -11,7 +11,7 @@
         <field name="link_clicks" invisible="not link_clicks"/>
       </xpath>
       <xpath expr="//div[@name='text_block']" position="inside">
-        <div class="text-muted small mt-1 o_social_link_note" invisible="not link_note"><i class="oi me-1" data-icon="link"/><field name="link_note" nolabel="1" class="d-inline"/></div>
+        <div class="text-muted small mt-1 o_social_link_note" invisible="not link_note"><i class="oi me-1" data-icon="link" title="Tracked link"/><field name="link_note" nolabel="1" class="d-inline"/></div>
       </xpath>
       <xpath expr="//header" position="inside">
         <button name="action_link_clicks" type="object" string="Link clicks" invisible="not link_clicks"/>

@@ -60,7 +60,7 @@
           </div>
           <div class="alert alert-warning d-flex gap-2" role="status"
                invisible="not channel_problem or state not in ('draft', 'approved', 'sending')">
-            <i class="oi" data-icon="warning"/><field name="channel_problem" nolabel="1" class="d-inline"/>
+            <i class="oi" data-icon="warning" title="Problem with the channel"/><field name="channel_problem" nolabel="1" class="d-inline"/>
           </div>
           <div class="oe_title">
             <label for="name"/>
@@ -126,7 +126,7 @@
             <div class="col-lg-5" name="preview">
               <div class="o_mm_phone">
                 <div class="o_mm_phone_bar">
-                  <span class="o_mm_phone_avatar"><i class="oi" data-icon="campaign"/></span>
+                  <span class="o_mm_phone_avatar"><i class="oi" data-icon="campaign" title="Message"/></span>
                   <span class="o_mm_phone_title"><field name="channel_id" nolabel="1" readonly="1" options="{'no_open': true}" placeholder="Your channel"/></span>
                 </div>
                 <div class="o_mm_phone_screen">

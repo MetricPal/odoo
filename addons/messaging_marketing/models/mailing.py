@@ -334,7 +334,8 @@ class Mailing(models.Model):
             row.char_count = len(row.preview_text)
             row.link_count = len(set(re.findall(TEXT_URL_REGEX, row.body or '')))
 
-    @api.depends('channel', 'channel_id', 'channel_id.selected_sender_id.health', 'channel_id.dispatch_enabled',
+    @api.depends('channel', 'channel_id', 'channel_id.sender_ids.is_selected', 'channel_id.sender_ids.health',
+                 'channel_id.dispatch_enabled',
                  'wa_template_id', 'wa_template_id.state', 'state')
     def _compute_channel_problem(self):
         for row in self:

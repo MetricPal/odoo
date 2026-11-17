@@ -141,9 +141,9 @@
         <div class="text-muted small"><field name="brand_id"/></div>
         <div class="small my-1"><field name="summary"/></div>
         <div class="d-flex gap-3 small">
-          <span><i class="oi me-1" data-icon="history"/><field name="runs_today"/> today</span>
-          <span><i class="oi me-1" data-icon="send"/><field name="sent_today"/> sent</span>
-          <span class="text-danger" invisible="not failed_today"><i class="oi me-1" data-icon="warning"/><field name="failed_today"/></span>
+          <span><i class="oi me-1" data-icon="history" title="Runs today"/><field name="runs_today"/> today</span>
+          <span><i class="oi me-1" data-icon="send" title="Sent today"/><field name="sent_today"/> sent</span>
+          <span class="text-danger" invisible="not failed_today"><i class="oi me-1" data-icon="warning" title="Failed today"/><field name="failed_today"/></span>
         </div>
       </t></templates>
     </kanban></field>

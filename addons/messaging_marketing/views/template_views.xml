@@ -88,7 +88,7 @@
             <div class="col-lg-5">
               <div class="o_mm_phone o_mm_phone_whatsapp">
                 <div class="o_mm_phone_bar">
-                  <span class="o_mm_phone_avatar"><i class="oi" data-icon="campaign"/></span>
+                  <span class="o_mm_phone_avatar"><i class="oi" data-icon="campaign" title="Message"/></span>
                   <span class="o_mm_phone_title"><field name="channel_id" nolabel="1" readonly="1" options="{'no_open': true}" placeholder="Your number"/></span>
                 </div>
                 <div class="o_mm_phone_screen">
