@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Insights › Reports: a section heading with no page of its own, and the four reports under it. -->
+  <menuitem id="menu_reports" name="Reports" parent="marketing_intel.menu_insights" sequence="40"/>
+
+  <record id="action_report_executive" model="ir.actions.client">
+    <field name="name">Executive overview</field>
+    <field name="tag">marketing_intel_reports.executive</field>
+    <field name="path">report-executive</field>
+  </record>
+  <record id="action_report_channel" model="ir.actions.client">
+    <field name="name">Channel performance</field>
+    <field name="tag">marketing_intel_reports.page</field>
+    <field name="path">report-channel</field>
+  </record>
+  <record id="action_report_funnel" model="ir.actions.client">
+    <field name="name">Funnel and attribution</field>
+    <field name="tag">marketing_intel_reports.page</field>
+    <field name="path">report-funnel</field>
+  </record>
+  <record id="action_report_audience" model="ir.actions.client">
+    <field name="name">Audience</field>
+    <field name="tag">marketing_intel_reports.page</field>
+    <field name="path">report-audience</field>
+  </record>
+
+  <menuitem id="menu_report_executive" name="Executive overview" parent="menu_reports"
+            action="action_report_executive" sequence="10"/>
+  <menuitem id="menu_report_channel" name="Channel performance" parent="menu_reports"
+            action="action_report_channel" sequence="20"/>
+  <menuitem id="menu_report_funnel" name="Funnel and attribution" parent="menu_reports"
+            action="action_report_funnel" sequence="30"/>
+  <menuitem id="menu_report_audience" name="Audience" parent="menu_reports"
+            action="action_report_audience" sequence="40"/>
+</odoo>

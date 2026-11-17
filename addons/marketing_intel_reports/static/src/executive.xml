@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="marketing_intel_reports.ExecutiveOverview">
+    <div class="o_mi_exec h-100">
+      <Layout display="{ controlPanel: {} }">
+        <t t-set-slot="control-panel-additional-actions">
+          <span t-if="this.state.data and !this.state.data.denied" class="text-muted small ms-2 text-nowrap">
+            <t t-out="this.state.data.label"/>
+          </span>
+        </t>
+        <t t-set-slot="control-panel-navigation-additional">
+          <div class="d-flex gap-2">
+            <div class="btn-group" role="group" aria-label="Period">
+              <button t-foreach="this.periods" t-as="p" t-key="p[0]" type="button" class="btn btn-secondary"
+                      t-att-class="{ active: this.state.period === p[0] }"
+                      t-att-aria-pressed="this.state.period === p[0] ? 'true' : 'false'"
+                      t-on-click="() => this.setPeriod(p[0])" t-out="p[1]"/>
+            </div>
+            <button type="button" class="btn btn-secondary o_mi_exec_print" t-on-click="() => this.print()">Print</button>
+          </div>
+        </t>
+
+        <div class="o_mi_exec_page">
+          <div t-if="!this.state.data" class="p-5 text-center text-muted">Loading…</div>
+          <div t-elif="this.state.data.denied" class="p-5 text-center text-muted" t-out="this.state.data.message"/>
+          <t t-else="">
+            <t t-set="d" t-value="this.state.data"/>
+            <!-- filters -->
+            <div class="o_mi_exec_filters d-flex flex-wrap align-items-center gap-2 mb-3">
+              <select class="form-select w-auto" name="mi_exec_brand" aria-label="Brand" t-on-change="(ev) => this.onFilter('brand', ev)">
+                <option value="0" t-att-selected="!d.selected.brand">Brand: All brands</option>
+                <option t-foreach="d.filters.brands" t-as="b" t-key="b.id" t-att-value="b.id"
+                        t-att-selected="d.selected.brand === b.id" t-out="'Brand: ' + b.label"/>
+              </select>
+              <select class="form-select w-auto" name="mi_exec_channel" aria-label="Channel" t-on-change="(ev) => this.onFilter('channel', ev)">
+                <option value="" t-att-selected="!d.selected.channel">Channel: All channels</option>
+                <option t-foreach="d.filters.channels" t-as="c" t-key="c.id" t-att-value="c.id"
+                        t-att-selected="d.selected.channel === c.id" t-out="'Channel: ' + c.label"/>
+              </select>
+              <span t-if="d.filters.team_fixed" class="form-control w-auto text-muted bg-light">Team: Your team (fixed)</span>
+              <select t-elif="d.filters.teams.length" class="form-select w-auto" name="mi_exec_team" aria-label="Team" t-on-change="(ev) => this.onFilter('team', ev)">
+                <option value="0" t-att-selected="!d.selected.team">Team: All teams</option>
+                <option t-foreach="d.filters.teams" t-as="t" t-key="t.id" t-att-value="t.id"
+                        t-att-selected="d.selected.team === t.id" t-out="'Team: ' + t.label"/>
+              </select>
+              <div class="form-check ms-2 mb-0">
+                <input type="checkbox" class="form-check-input" id="mi_exec_compare" name="mi_exec_compare"
+                       t-att-checked="this.state.compare" t-on-change="(ev) => this.onCompare(ev)"/>
+                <label class="form-check-label" for="mi_exec_compare">Compare with the previous <t t-out="d.previous_label"/></label>
+              </div>
+              <span class="flex-grow-1"/>
+              <span class="text-muted small">Updated <t t-out="d.updated"/> · <a href="#" t-on-click.prevent="() => this.load()">Refresh</a></span>
+            </div>
+
+            <div t-foreach="d.notes" t-as="note" t-key="note_index" class="alert alert-info py-2 mb-2" role="status" t-out="note"/>
+
+            <!-- KPI strip -->
+            <div class="o_mi_exec_kpis mb-3">
+              <div t-foreach="d.kpis" t-as="k" t-key="k.key" class="o_mi_exec_card o_mi_exec_kpi" t-att-data-kpi="k.key">
+                <div class="small text-muted" t-out="k.label"/>
+                <div class="o_mi_exec_value" t-out="k.value"/>
+                <div t-if="k.change" class="small" t-att-class="'o_tone_' + k.tone"><t t-out="k.change"/> vs previous</div>
+                <div t-if="k.sub" class="small text-muted" t-out="k.sub"/>
+              </div>
+            </div>
+
+            <div t-if="d.empty" class="o_mi_exec_card text-center py-5">
+              <div class="fw-bold fs-5">No campaigns in this period</div>
+              <p class="text-muted mb-3">Nothing ran for these filters in the period. Choose another period or brand.</p>
+              <button type="button" class="btn btn-outline-primary" t-on-click="() => this.setPeriod('year')">This year</button>
+            </div>
+            <t t-else="">
+              <!-- trend + funnel -->
+              <div class="o_mi_exec_two mb-3">
+                <div class="o_mi_exec_card">
+                  <h3 class="o_mi_exec_h">Month by month</h3>
+                  <t t-set="tr" t-value="this.trend"/>
+                  <svg width="100%" viewBox="0 0 560 230" role="img" aria-label="Spend and revenue for each part of the period" class="d-block">
+                    <g stroke="#e3e6e8"><line t-foreach="tr.grid" t-as="g" t-key="g_index" x1="48" x2="548" t-att-y1="g.y" t-att-y2="g.y"/></g>
+                    <line x1="48" y1="195" x2="548" y2="195" stroke="#495057"/>
+                    <g font-size="11" fill="#5c6670"><text t-foreach="tr.grid" t-as="g" t-key="g_index" x="6" t-att-y="g.y + 4" t-out="g.text"/></g>
+                    <g t-foreach="tr.bars" t-as="b" t-key="b.label">
+                      <rect t-att-x="b.spend.x" t-att-y="b.spend.y" t-att-width="b.spend.w" t-att-height="b.spend.h" fill="#c9a96a"><title t-out="'Spend ' + b.spend.value"/></rect>
+                      <rect t-if="b.revenue" t-att-x="b.revenue.x" t-att-y="b.revenue.y" t-att-width="b.revenue.w" t-att-height="b.revenue.h" fill="#71639e"><title t-out="'Revenue ' + b.revenue.value"/></rect>
+                      <text t-att-x="b.x" y="214" text-anchor="middle" font-size="12" fill="#212529" t-out="b.text"/>
+                    </g>
+                  </svg>
+                  <div class="d-flex gap-3 small text-muted">
+                    <span><span class="o_mi_exec_sw" style="background:#c9a96a"/> Spend</span>
+                    <span t-if="tr.hasRevenue"><span class="o_mi_exec_sw" style="background:#71639e"/> Revenue</span>
+                    <span class="flex-grow-1"/>
+                    <span t-if="tr.hasRevenue">Leads: <t t-out="tr.leads"/></span>
+                  </div>
+                </div>
+
+                <div class="o_mi_exec_card">
+                  <h3 class="o_mi_exec_h">Conversion funnel</h3>
+                  <p t-if="!d.funnel.rows.length" class="text-muted mb-0">The funnel needs CRM.</p>
+                  <t t-else="">
+                    <div t-foreach="d.funnel.rows" t-as="row" t-key="row_index" class="o_mi_exec_fr">
+                      <span t-out="row.label"/>
+                      <div class="o_mi_exec_bar" t-att-style="this.funnelBar(row)"><t t-out="row.count"/></div>
+                      <span class="text-muted small">
+                        <t t-if="row_index === 0">start</t>
+                        <t t-elif="row.share !== null"><t t-out="row.share"/>% <t t-out="row.of"/></t>
+                      </span>
+                    </div>
+                    <div class="border-top pt-2 mt-2 small text-muted d-flex flex-wrap gap-3">
+                      <span t-if="d.funnel.leads_to_won !== null">Leads to won: <b class="text-body"><t t-out="d.funnel.leads_to_won"/>%</b></span>
+                      <span t-if="d.funnel.biggest_drop">Biggest drop: <b class="text-body" t-out="d.funnel.biggest_drop"/></span>
+                    </div>
+                    <p class="small text-muted mb-0 mt-1">The stages are your CRM stages, so they follow your pipeline settings.</p>
+                  </t>
+                </div>
+              </div>
+
+              <!-- by channel: donut left, table right -->
+              <div class="o_mi_exec_card o_mi_exec_channels mb-3">
+                <div t-if="d.channels.rows.length and d.channels.total" class="o_mi_exec_donut text-center">
+                  <t t-set="dn" t-value="this.donut"/>
+                  <svg width="190" height="190" viewBox="0 0 120 120" role="img" t-att-aria-label="'Share of revenue by channel: ' + dn.text">
+                    <g fill="none" stroke-width="22" transform="rotate(-90 60 60)">
+                      <circle t-foreach="dn.segments" t-as="s" t-key="s_index" cx="60" cy="60" r="50" t-att-stroke="s.color"
+                              t-att-stroke-dasharray="s.dash" t-att-stroke-dashoffset="s.offset"/>
+                    </g>
+                    <text x="60" y="58" text-anchor="middle" font-size="12" font-weight="700" t-out="d.channels.total_label"/>
+                    <text x="60" y="73" text-anchor="middle" font-size="9" fill="#5c6670">revenue</text>
+                  </svg>
+                  <div class="small text-muted">Share of revenue by channel</div>
+                </div>
+                <div class="flex-grow-1" style="min-width:0">
+                  <h3 class="o_mi_exec_h">By channel</h3>
+                  <p t-if="!d.channels.rows.length" class="text-muted mb-0">No channel in these campaigns yet.</p>
+                  <table t-else="" class="table table-sm o_mi_exec_table mb-1">
+                    <thead><tr><th>Channel</th><th class="text-end">Spend</th><th class="text-end">Leads</th><th class="text-end">Cost / lead</th>
+                      <th class="text-end">Revenue</th><th class="text-end">Rev / spend</th><th class="text-end">% of revenue</th></tr></thead>
+                    <tbody>
+                      <tr t-foreach="d.channels.rows" t-as="r" t-key="r.code">
+                        <td><span class="o_mi_exec_sw me-2" t-att-style="'background:' + r.color"/><t t-out="r.label"/></td>
+                        <td class="text-end" t-out="r.spend"/><td class="text-end" t-out="r.leads"/><td class="text-end" t-out="r.cost_per_lead"/>
+                        <td class="text-end" t-out="r.revenue"/><td class="text-end" t-out="r.per_spend"/><td class="text-end"><t t-out="r.share"/>%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p t-if="d.channels.best" class="small text-muted mb-0">
+                    Best return: <t t-out="d.channels.best.label"/>, <t t-out="d.channels.best.per_spend"/> revenue per spend. Leads and revenue are counted by each channel's tracking source.
+                  </p>
+                </div>
+              </div>
+
+              <!-- attention -->
+              <div class="o_mi_exec_card mb-3">
+                <h3 class="o_mi_exec_h">Campaigns needing attention</h3>
+                <p t-if="!d.attention.length" class="text-muted mb-0">Every running campaign is on track.</p>
+                <table t-else="" class="table table-sm o_mi_exec_table mb-0">
+                  <thead><tr><th>Campaign</th><th>Brand</th><th>Owner</th><th>Health</th><th>Why</th><th class="text-end">Spend / budget</th><th/></tr></thead>
+                  <tbody>
+                    <tr t-foreach="d.attention" t-as="a" t-key="a.id">
+                      <td t-out="a.name"/><td t-out="a.brand"/><td t-out="a.owner"/>
+                      <td><span class="badge" t-att-class="a.health === 'off_track' ? 'text-bg-danger' : 'text-bg-warning'"
+                                t-out="a.health === 'off_track' ? 'Off track' : 'At risk'"/></td>
+                      <td t-out="a.why"/><td class="text-end"><t t-out="a.spent"/> / <t t-out="a.budget"/></td>
+                      <td><a href="#" t-on-click.prevent="() => this.open(a.id)">Open</a></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- method -->
+              <div class="o_mi_exec_card">
+                <h3 class="o_mi_exec_h">How the numbers are worked out</h3>
+                <div class="o_mi_exec_method small text-muted">
+                  <div><strong class="text-body">Spend and budget.</strong> The spend lines entered on each campaign, dated in the period, and the budget of the campaigns running in it.</div>
+                  <div><strong class="text-body">Leads, won deals, revenue.</strong> CRM and Sales records tagged with the campaign: leads by the day they were created, won deals and revenue by the day they were won.</div>
+                  <div><strong class="text-body">Conversion funnel.</strong> The leads created in the period, then each CRM stage their opportunities reached, then won; each step shows the share of the stage before it.</div>
+                  <div><strong class="text-body">Channels.</strong> Each channel's spend is the spend lines entered for it; its leads and revenue are counted by the channel's tracking source.</div>
+                  <div><strong class="text-body">Comparison.</strong> Each period is compared with the one before it, of the same length. A period that is not over is shown without a comparison.</div>
+                  <div><strong class="text-body">Who sees what.</strong> The Head of department sees every team; a Senior sees their team's campaigns. Updated when the page opens and on Refresh; Print makes the same page as a PDF.</div>
+                </div>
+              </div>
+            </t>
+          </t>
+        </div>
+      </Layout>
+    </div>
+  </t>
+</templates>

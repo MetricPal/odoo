@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="marketing_intel_reports.ReportPage">
+    <div class="o_mi_report_page h-100">
+      <Layout display="{ controlPanel: {} }">
+        <div class="p-5 text-center text-muted o_mi_report_pending">This report is not built yet.</div>
+      </Layout>
+    </div>
+  </t>
+</templates>

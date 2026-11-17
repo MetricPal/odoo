@@ -1,0 +1,60 @@
+// Odoo's control panel on top; the page scrolls under it (as the Marketing panel does).
+.o_mi_exec {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    > .o_content { overflow: auto; }
+
+    .o_mi_exec_page { padding: 1rem; }
+    .o_mi_exec_card {
+        background: var(--view-background, #fff);
+        border: 1px solid var(--border-color, #d8dadd);
+        border-radius: .375rem;
+        padding: 1rem;
+    }
+    .o_mi_exec_h {
+        font-size: .75rem;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: var(--gray-700, #495057);
+        font-weight: 600;
+        margin: 0 0 .625rem;
+    }
+    .o_mi_exec_kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+        gap: .75rem;
+    }
+    .o_mi_exec_value { font-size: 1.625rem; font-weight: 700; line-height: 1.2; }
+    .o_tone_good { color: #1d6b5a; }
+    .o_tone_bad { color: #c0392f; }
+    .o_tone_warn { color: #b06a00; }
+    .o_tone_neutral { color: var(--gray-600, #6b7280); }
+    .o_mi_exec_two { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: .875rem; }
+    .o_mi_exec_channels { display: flex; flex-wrap: wrap; gap: 1.75rem; align-items: center; }
+    .o_mi_exec_sw { display: inline-block; width: 10px; height: 10px; }
+    .o_mi_exec_fr {
+        display: grid;
+        grid-template-columns: 7rem minmax(0, 1fr) 11rem;
+        gap: .625rem;
+        align-items: center;
+        margin-bottom: .5rem;
+    }
+    .o_mi_exec_bar {
+        height: 1.5rem;
+        display: flex;
+        align-items: center;
+        padding-left: .5rem;
+        color: #fff;
+        font-weight: 600;
+        font-size: .75rem;
+        border-radius: 2px;
+    }
+    .o_mi_exec_table th { border-bottom: 2px solid var(--gray-700, #495057); font-weight: 600; font-size: .75rem; }
+    .o_mi_exec_method { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: .375rem 1.75rem; }
+}
+
+@media print {
+    .o_mi_exec .o_mi_exec_filters,
+    .o_mi_exec .o_mi_exec_print { display: none !important; }
+}
