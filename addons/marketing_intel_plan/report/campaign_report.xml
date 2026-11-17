@@ -9,49 +9,194 @@
     <field name="binding_model_id" ref="model_mi_plan"/>
     <field name="binding_type">report</field>
   </record>
+
+  <!-- The report prints what the campaign's Results tab shows, in the same order (takeaway, headline numbers, where
+       the results came from, lead quality and pipeline, comparison, notes, channel activity, totals and targets),
+       then the Evaluation tab. The numbers come from the same call as the screen (get_results). -->
   <template id="report_campaign">
     <t t-call="web.html_container">
       <t t-foreach="docs" t-as="plan">
+        <t t-set="d" t-value="plan.get_results()"/>
+        <t t-set="h" t-value="d['headline']"/>
         <t t-call="web.external_layout">
           <div class="page">
+            <style>
+              .o_mi_rep th { border-bottom: 2px solid #495057; font-weight: 600; }
+              .o_mi_rep td { border-bottom: 1px solid #e3e6e8; }
+              .o_mi_rep tr { page-break-inside: avoid; }
+            </style>
             <h2 t-out="plan.name"/>
             <p class="text-muted">
               <t t-out="plan.brand_id.name"/> · <t t-out="plan.user_id.name"/> ·
               <span t-field="plan.date_start"/> → <span t-field="plan.date_end"/> ·
-              <t t-out="plan.phase_label"/>
+              <t t-out="plan.phase_label"/> · <t t-out="plan.channel_label"/>
             </p>
-            <table class="table table-sm o_main_table">
-              <tbody>
-                <tr><th>Budget</th><td><span t-field="plan.budget"/></td><th>Spent</th><td><span t-field="plan.spent"/></td></tr>
-                <tr><th>Target quarter</th><td><span t-field="plan.target_quarter"/></td><th>Channels</th><td t-out="plan.channel_label"/></tr>
-                <tr><th>Goal</th><td t-out="plan.goal_id.name or '-'"/><th>Proposal</th><td><span t-field="plan.proposal_type"/> · <t t-out="plan.snapshot_id.name or '-'"/></td></tr>
-              </tbody>
+
+            <div t-if="plan.takeaway" class="p-3 mb-3" style="background-color: #1f2d2b; color: #fff;">
+              <b style="color: #9fd3b5; text-transform: uppercase; font-size: 85%;">Takeaway</b>
+              <span class="ms-3" style="white-space: pre-line" t-out="plan.takeaway"/>
+            </div>
+
+            <table class="table table-borderless mb-3" style="table-layout: fixed; border-bottom: 1px solid #ced4da;">
+              <tr>
+                <td>
+                  <div class="text-muted small">Sales revenue</div>
+                  <div style="font-size: 200%; font-weight: bold;" t-out="h['revenue']"/>
+                  <div t-if="h['revenue_delta'] is not None" class="small">
+                    <t t-out="('+' if h['revenue_delta'] >= 0 else '') + str(h['revenue_delta'])"/>% vs <t t-out="h['compare_name']"/>
+                  </div>
+                </td>
+                <td>
+                  <div class="text-muted small">Revenue / spend</div>
+                  <div style="font-size: 200%; font-weight: bold;" t-out="h['per_spend'] or '—'"/>
+                  <div class="small text-muted"><t t-out="h['spend']"/> spent</div>
+                </td>
+                <td>
+                  <div class="text-muted small">Leads generated</div>
+                  <div style="font-size: 200%; font-weight: bold;" t-out="h['leads']"/>
+                  <div t-if="h['leads_pct'] is not None" class="small"><t t-out="h['leads_pct']"/>% of <t t-out="h['leads_target']"/> target</div>
+                </td>
+                <td>
+                  <div class="text-muted small">Won deals</div>
+                  <div style="font-size: 200%; font-weight: bold;" t-out="h['won']"/>
+                  <div t-if="h['won_pct'] is not None" class="small"><t t-out="h['won_pct']"/>% of <t t-out="h['won_target']"/> target</div>
+                </td>
+              </tr>
             </table>
-            <div t-if="plan.takeaway" class="p-2 mb-3" style="background-color: #1f2d2b; color: #fff;">
-              <b>Takeaway.</b> <span style="white-space: pre-line" t-out="plan.takeaway"/></div>
-            <h4>Message and audience</h4>
-            <p style="white-space: pre-line" t-out="plan.message or '-'"/>
-            <p style="white-space: pre-line" class="text-muted" t-out="plan.audience or ''"/>
-            <h4>Channels and results</h4>
-            <table class="table table-sm o_main_table">
-              <thead><tr><th>Channel</th><th>Status</th><th class="text-end">Sent</th><th class="text-end">Opened</th>
-                <th class="text-end">Clicks</th><th class="text-end">Registrations</th></tr></thead>
+
+            <t t-if="d['channels']">
+              <h5 style="font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #495057; border-bottom: 1px solid #ced4da; padding-bottom: 3px; margin: 14px 0 8px;">Where the results came from</h5>
+              <table class="table table-sm table-borderless o_mi_rep">
+                <thead><tr><th>Channel (UTM source)</th><th class="text-end">Revenue</th><th class="text-end">Leads</th>
+                  <th class="text-end">Wins</th><th class="text-end">Cost / lead</th><th class="text-end">Rev / spend</th></tr></thead>
+                <tbody>
+                  <tr t-foreach="d['channels']" t-as="row">
+                    <td><t t-out="row['label']"/><span t-if="row['source']" class="text-muted small"> · <t t-out="row['source']"/></span></td>
+                    <td class="text-end" t-out="row['revenue_label']"/><td class="text-end" t-out="row['leads']"/>
+                    <td class="text-end" t-out="row['won']"/><td class="text-end" t-out="row['cost_per_lead'] or '—'"/>
+                    <td class="text-end" t-out="row['per_spend'] or '—'"/>
+                  </tr>
+                </tbody>
+              </table>
+              <p t-if="d['best']" class="small">Best return: <b t-out="d['best']['label']"/> at <b t-out="d['best']['per_spend']"/>
+                revenue / spend (<t t-out="d['best']['revenue_label']"/> from <t t-out="d['best']['leads']"/> leads).</p>
+            </t>
+
+            <table t-if="d['quality'] or d['pipeline']" class="table table-borderless mb-3" style="table-layout: fixed;">
+              <tr>
+                <td t-if="d['quality']" style="vertical-align: top;">
+                  <h5 style="font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #495057; border-bottom: 1px solid #ced4da; padding-bottom: 3px; margin: 14px 0 8px;">Lead quality &amp; sales</h5>
+                  <table class="table-borderless" style="width: 100%; border: 0;"><tr>
+                    <td style="width: 140px; border: 0;">
+                      <svg width="130" height="130" viewBox="0 0 200 200">
+                        <t t-foreach="d['quality']['segments']" t-as="seg">
+                          <path t-if="seg['path']" t-att-d="seg['path']" t-att-fill="seg['color']" stroke="#fff" stroke-width="2"/>
+                        </t>
+                        <text x="100" y="98" text-anchor="middle" font-size="24" font-weight="600" t-out="d['quality']['total']"/>
+                        <text x="100" y="118" text-anchor="middle" font-size="12" fill="#6c757d">leads</text>
+                      </svg>
+                    </td>
+                    <td style="border: 0; vertical-align: middle;">
+                      <div t-foreach="d['quality']['segments']" t-as="seg" style="margin-bottom: 3px;">
+                        <span style="display: inline-block; width: 10px; height: 10px;" t-att-style="'background-color: ' + seg['color']"/>
+                        <t t-out="seg['label']"/>: <b t-out="seg['value']"/>
+                      </div>
+                    </td>
+                  </tr></table>
+                </td>
+                <td t-if="d['pipeline']" style="vertical-align: top;">
+                  <h5 style="font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #495057; border-bottom: 1px solid #ced4da; padding-bottom: 3px; margin: 14px 0 8px;">Revenue still in play (CRM pipeline)</h5>
+                  <div><b style="font-size: 160%;" t-out="d['pipeline']['total']"/>
+                    <span class="text-muted small"> open, <t t-out="d['pipeline']['count']"/> opportunities</span></div>
+                  <div t-foreach="d['pipeline']['rows']" t-as="row" style="margin-bottom: 4px;">
+                    <div style="color: #fff; padding: 3px 8px; font-size: 12px; font-weight: bold;"
+                         t-att-style="'width: ' + str(row['width']) + '%; background-color: ' + row['color'] + '; color: #fff; padding: 3px 8px; font-size: 12px; font-weight: bold;'">
+                      <t t-out="row['label']"/> · <t t-out="row['reached']"/>
+                    </div>
+                    <div class="small text-muted" t-out="row['value']"/>
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <t t-if="d['compare']">
+              <h5 style="font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #495057; border-bottom: 1px solid #ced4da; padding-bottom: 3px; margin: 14px 0 8px;">Compared with <t t-out="d['compare']['name']"/></h5>
+              <table class="table table-sm table-borderless o_mi_rep">
+                <thead><tr><th/><th class="text-end">This campaign</th><th class="text-end" t-out="d['compare']['name']"/></tr></thead>
+                <tbody>
+                  <tr><td>Leads</td><td class="text-end" t-out="d['compare']['mine_leads']"/><td class="text-end" t-out="d['compare']['theirs_leads']"/></tr>
+                  <tr t-foreach="d['compare']['bars']" t-as="bar">
+                    <td t-out="bar['label']"/><td class="text-end" t-out="bar['mine']"/><td class="text-end" t-out="bar['theirs']"/>
+                  </tr>
+                </tbody>
+              </table>
+            </t>
+
+            <p t-foreach="d['missing']" t-as="note" class="small mb-1 p-1" style="background-color: #fdf0d0;" t-out="note"/>
+
+            <h5 style="font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #495057; border-bottom: 1px solid #ced4da; padding-bottom: 3px; margin: 14px 0 8px;">Channel activity detail</h5>
+            <table class="table table-sm table-borderless o_mi_rep">
+              <thead><tr>
+                <th>Channel</th><th class="text-end">Audience</th><th class="text-end">Sent</th><th class="text-end">Delivered</th>
+                <th class="text-end">Opened / Read</th><th class="text-end">Clicked</th><th class="text-end">Replies</th>
+                <th class="text-end">Likes</th><th class="text-end">Comments</th><th class="text-end">Registrations</th>
+                <th class="text-end">Not delivered</th>
+              </tr></thead>
               <tbody>
                 <tr t-foreach="plan.item_ids" t-as="item">
-                  <td><span t-field="item.channel"/></td><td><span t-field="item.stage"/></td>
-                  <td class="text-end" t-out="item.result_sent"/><td class="text-end" t-out="item.result_opened"/>
-                  <td class="text-end" t-out="item.result_clicks"/><td class="text-end" t-out="item.result_registrations"/>
+                  <t t-set="ch" t-value="item.channel"/>
+                  <td><span t-field="item.channel"/></td>
+                  <td class="text-end" t-out="item.result_audience if item.res_id else ''"/>
+                  <td class="text-end" t-out="item.result_sent if ch in ('email', 'sms', 'messaging', 'social') else ''"/>
+                  <td class="text-end" t-out="item.result_delivered if ch in ('email', 'sms', 'messaging') else ''"/>
+                  <td class="text-end" t-out="item.result_opened if ch in ('email', 'messaging') else ''"/>
+                  <td class="text-end" t-out="item.result_clicks if ch in ('email', 'sms', 'messaging') else ''"/>
+                  <td class="text-end" t-out="item.result_replied if ch in ('email', 'messaging') else ''"/>
+                  <td class="text-end" t-out="item.result_likes if ch == 'social' else ''"/>
+                  <td class="text-end" t-out="item.result_comments if ch == 'social' else ''"/>
+                  <td class="text-end" t-out="item.result_registrations if ch in ('event_virtual', 'event_physical') else ''"/>
+                  <td class="text-end" t-out="item.result_failed if ch in ('email', 'sms', 'messaging', 'social') else ''"/>
                 </tr>
+                <tr t-if="not plan.item_ids"><td colspan="11" class="text-muted">No channel activity yet.</td></tr>
               </tbody>
             </table>
-            <h4>Business results</h4>
-            <p>Leads: <t t-out="plan.result_leads"/> · Won deals: <t t-out="plan.result_won"/> ·
-              Revenue: <span t-field="plan.result_revenue"/></p>
-            <p>Revenue / spend: <t t-out="'%.2f×' % (plan.result_revenue / plan.spent) if plan.spent else '-'"/> ·
-              Cost per lead: <t t-out="'%.0f' % (plan.spent / plan.result_leads) if plan.spent and plan.result_leads else '-'"/></p>
-            <t t-if="plan.objectives_met or plan.what_worked or plan.to_improve or plan.next_steps">
-              <h4>Evaluation</h4>
-              <table class="table table-sm">
+
+            <table class="table table-borderless" style="table-layout: fixed;">
+              <tr>
+                <td style="vertical-align: top;">
+                  <h6 style="font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #495057; border-bottom: 1px solid #ced4da; padding-bottom: 3px; margin: 14px 0 8px;">Campaign totals</h6>
+                  Sent: <b t-out="plan.result_sent"/> · Opened: <b t-out="plan.result_opened"/> ·
+                  Clicked: <b t-out="plan.result_clicks"/> · Replies: <b t-out="plan.result_replied"/> ·
+                  Registrations: <b t-out="plan.result_registrations"/>
+                </td>
+                <td style="vertical-align: top;">
+                  <h6 style="font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #495057; border-bottom: 1px solid #ced4da; padding-bottom: 3px; margin: 14px 0 8px;">Business results</h6>
+                  Leads: <b t-out="plan.result_leads"/> · Won deals: <b t-out="plan.result_won"/> ·
+                  Revenue: <b t-field="plan.result_revenue"/><br/>
+                  Cost per lead: <b t-field="plan.cost_per_lead"/> ·
+                  Revenue / budget: <b t-out="str(round(plan.return_on_budget * 100)) + '%'"/><br/>
+                  <span t-if="plan.results_at" class="text-muted small">Results updated <span t-field="plan.results_at"/></span>
+                </td>
+              </tr>
+            </table>
+
+            <t t-if="plan.kpi_ids">
+              <h6 style="font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #495057; border-bottom: 1px solid #ced4da; padding-bottom: 3px; margin: 14px 0 8px;">Targets</h6>
+              <table class="table table-sm table-borderless o_mi_rep">
+                <thead><tr><th>Measure</th><th class="text-end">Target</th><th class="text-end">Actual</th><th class="text-end">Progress</th></tr></thead>
+                <tbody>
+                  <tr t-foreach="plan.kpi_ids" t-as="kpi">
+                    <td><span t-field="kpi.metric"/></td>
+                    <td class="text-end" t-out="round(kpi.target, 2)"/><td class="text-end" t-out="round(kpi.actual, 2)"/>
+                    <td class="text-end" t-out="str(round(kpi.progress)) + '%'"/>
+                  </tr>
+                </tbody>
+              </table>
+            </t>
+
+            <t t-if="plan.objectives_met or plan.effective or plan.what_worked or plan.to_improve or plan.next_steps or plan.lost_reasons or plan.objections or plan.buyer_language">
+              <h4 class="mt-4">Evaluation</h4>
+              <table class="table table-sm table-borderless o_mi_rep">
                 <tr t-if="plan.objectives_met"><th>Objectives met?</th><td><span t-field="plan.objectives_met"/></td></tr>
                 <tr t-if="plan.effective"><th>Was it effective?</th><td style="white-space: pre-line" t-out="plan.effective"/></tr>
                 <tr t-if="plan.what_worked"><th>What worked</th><td style="white-space: pre-line" t-out="plan.what_worked"/></tr>
@@ -62,9 +207,9 @@
                 <tr t-if="plan.buyer_language"><th>Words buyers use</th><td style="white-space: pre-line" t-out="plan.buyer_language"/></tr>
               </table>
             </t>
-            <t t-if="plan.advice_ids"><h4>Recommendations</h4>
+            <t t-if="plan.advice_ids"><h5>Recommendations</h5>
               <ul><li t-foreach="plan.advice_ids" t-as="advice"><t t-out="advice.name"/><t t-if="advice.target"> (<t t-out="advice.target"/>)</t></li></ul></t>
-            <t t-if="plan.learning_note"><h4>What we learned</h4><p style="white-space: pre-line" t-out="plan.learning_note"/></t>
+            <t t-if="plan.learning_note"><h5>What we learned</h5><p style="white-space: pre-line" t-out="plan.learning_note"/></t>
           </div>
         </t>
       </t>

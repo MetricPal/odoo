@@ -51,6 +51,14 @@ class TestCampaignPage(TransactionCase):
         html = self.env['ir.actions.report']._render_qweb_html(
             'marketing_intel_plan.action_report_campaign', self.plan.ids)[0]
         self.assertIn(b'Year-End Sale', html)
+        # The printed report shows what the Results tab shows, from the same numbers
+        self.plan.takeaway = 'Email did the work'
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'marketing_intel_plan.action_report_campaign', self.plan.ids)[0].decode()
+        for heading in ('Takeaway', 'Email did the work', 'Sales revenue', 'Revenue / spend', 'Leads generated',
+                        'Won deals', 'Channel activity detail', 'Campaign totals', 'Business results'):
+            self.assertIn(heading, html)
+        self.assertIn(self.plan.get_results()['headline']['revenue'], html)
         names = self.env['ir.actions.server'].search([('binding_model_id.model', '=', 'mi.plan')]).mapped('name')
         self.assertIn('Duplicate & edit', names)
         self.assertIn('Save as template', names)
