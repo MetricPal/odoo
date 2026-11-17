@@ -55,7 +55,7 @@
               <p t-else="">Enter a public HTTPS webhook URL, then enable receiving.</p>
             </t>
             <t t-if="this.setupState.step === 3">
-              <p>The display name and description help your colleagues recognize this channel in metric.io. They do not change the provider account’s public profile or credentials.</p>
+              <p>The display name and description help your colleagues recognize this channel. They do not change the provider account’s public profile or credentials.</p>
             </t>
             <t t-if="this.setupState.step === 4">
               <p>Enter your personal Telegram user ID and send the test message. Then finish setup.</p>

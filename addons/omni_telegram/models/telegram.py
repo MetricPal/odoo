@@ -119,11 +119,11 @@ class TelegramAccount(models.Model):
         except UserError:
             raise
         except Exception:
-            raise UserError(_('metric.io could not read the existing saved credentials. Ask your administrator to check the credential reference, encryption key and storage permissions. No credentials were changed.')) from None
+            raise UserError(_('The system could not read the existing saved credentials. Ask your administrator to check the credential reference, encryption key and storage permissions. No credentials were changed.')) from None
         try:
             reference = runtime_secrets.store(bundle)
         except Exception:
-            raise UserError(_('Telegram verified the bot, but metric.io could not save its encrypted credentials. Ask your administrator to check the data directory permissions, encryption key and available disk space. No connection changes were saved.')) from None
+            raise UserError(_('Telegram verified the bot, but the system could not save its encrypted credentials. Ask your administrator to check the data directory permissions, encryption key and available disk space. No connection changes were saved.')) from None
         database = self.env.cr.dbname
         self.env.cr.postrollback.add(lambda: runtime_secrets.remove(reference, database))
         values.update(identity)

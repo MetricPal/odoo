@@ -3,8 +3,8 @@
     "version": "20.0.1.0.0",
     "summary": "Receive Discord DMs and chosen server channels in the shared inbox; send approved replies",
     "description": "Connect a Discord bot to Omnichannel. A small relay program (tools/discord_relay.py) holds "
-                   "Discord's gateway connection and forwards new messages to metric.io, signed. Replies are reviewed "
-                   "and approved, then sent by metric.io through Discord's API.",
+                   "Discord's gateway connection and forwards new messages to the system, signed. Replies are reviewed "
+                   "and approved, then sent through Discord's API.",
     "category": "Productivity",
     "author": "metric.io",
     "license": "LGPL-3",

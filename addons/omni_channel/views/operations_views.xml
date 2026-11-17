@@ -25,7 +25,7 @@
           </group>
           <button name="action_enable_alerts" type="object" string="Enable email alerts" class="btn-primary" invisible="alerts_enabled" confirm="Authorize monitoring every minute and automatic emails to these recipients when counters change or recover, using the existing mail queue? This enables the shared monitoring scheduler. No customer message will be sent."/>
           <button name="action_pause_alerts" type="object" string="Pause email alerts" invisible="not alerts_enabled" confirm="Pause new alert emails? Emails already queued remain in the mail queue."/>
-          <p class="text-muted mt16">Email delivery depends on metric.io and its outgoing mail service. Use external monitoring for server outages. Failed emails remain available for administrator review; they are not recreated on every check.</p>
+          <p class="text-muted mt16">Email delivery depends on this system and its outgoing mail service. Use external monitoring for server outages. Failed emails remain available for administrator review; they are not recreated on every check.</p>
         </div>
       </xpath>
     </field>

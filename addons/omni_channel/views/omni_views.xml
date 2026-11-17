@@ -219,7 +219,7 @@
             </div>
           </div>
           <div class="o_omni_setup_stage o_omni_setup_stage_3">
-            <p>Choose how your team recognizes this channel inside metric.io.</p>
+            <p>Choose how your team recognizes this channel.</p>
             <group><field name="name" string="Channel display name"/><field name="setup_description"/></group>
             <p class="text-muted">The bot’s public name and profile image are managed in the provider account.</p>
           </div>
@@ -374,7 +374,7 @@
     <field name="arch" type="xml">
       <form>
         <sheet>
-          <p class="text-muted">Create and save an endpoint for the account that will receive messages. Activate a receiving policy for its channel, then use Verify and enable intake to allow metric.io to receive messages. The provider must also be configured to send messages to this endpoint’s webhook URL. This screen does not register the URL with the provider; that setup currently requires a deployment administrator.</p>
+          <p class="text-muted">Create and save an endpoint for the account that will receive messages. Activate a receiving policy for its channel, then use Verify and enable intake to allow this system to receive messages. The provider must also be configured to send messages to this endpoint’s webhook URL. This screen does not register the URL with the provider; that setup currently requires a deployment administrator.</p>
           <group>
             <field name="name"/>
             <field name="channel_id"/>

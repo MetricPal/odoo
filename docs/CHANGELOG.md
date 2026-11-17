@@ -16,7 +16,7 @@ Format:
 
 - What: texts people see no longer say "Odoo": the empty brand kit notice ("the standard colours"), the A/B test
   note, the Omnichannel alert and setup texts, the Telegram and Discord messages, the connector summaries in the app
-  list. Where the product was meant it says metric.io. Comments and code are unchanged.
+  list. Nothing is replaced by a product name. Comments and code are unchanged.
 - Affected: marketing_intel_design, marketing_intel_writing, marketing_intel_tracking, omni_channel, omni_telegram,
   omni_slack, omni_teams, omni_discord, omni_whatsapp. Not changed: the branding module's email overrides and the
   magic link login page ("Powered by"), which still name Odoo.
