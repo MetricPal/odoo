@@ -1,7 +1,7 @@
 {
     "name": "Omnichannel Telegram",
     "version": "20.0.1.16.0",
-    "summary": "Receive Telegram messages in Odoo and send approved test replies",
+    "summary": "Receive Telegram messages and send approved test replies",
     "description": "Connect a Telegram bot to the shared Omnichannel inbox. Receive private text messages and edits, assign team access, and send human-approved replies to authorized test users. Current scope: supervised testing; groups and attachments are not supported.",
     "category": "Productivity",
     "author": "metric.io",

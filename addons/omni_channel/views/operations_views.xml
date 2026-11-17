@@ -12,7 +12,7 @@
             <field name="backup_operator_id" options="{'no_create': True}"/>
           </group>
           <p>Choose active members of this channel's communication team with company access. Assignments do not grant permissions or subscribe operators to alerts; select alert recipients separately below.</p>
-          <p>Use the existing Odoo outgoing mail setup to notify authorized team members when channel counters change or recover. Healthy channels stay quiet. Counts exclude message content.</p>
+          <p>Use the existing outgoing mail setup to notify authorized team members when channel counters change or recover. Healthy channels stay quiet. Counts exclude message content.</p>
           <group>
             <field name="alert_user_ids" widget="many2many_tags" readonly="alerts_enabled"/>
             <field name="alerts_enabled"/>
@@ -23,9 +23,9 @@
             <field name="alerts_last_mail_id"/>
             <field name="alerts_mail_state"/>
           </group>
-          <button name="action_enable_alerts" type="object" string="Enable email alerts" class="btn-primary" invisible="alerts_enabled" confirm="Authorize monitoring every minute and automatic emails to these recipients when counters change or recover, using the existing Odoo mail queue? This enables the shared monitoring scheduler. No customer message will be sent."/>
-          <button name="action_pause_alerts" type="object" string="Pause email alerts" invisible="not alerts_enabled" confirm="Pause new alert emails? Emails already queued remain in the Odoo mail queue."/>
-          <p class="text-muted mt16">Email delivery depends on Odoo and its outgoing mail service. Use external monitoring for server outages. Failed emails remain available for administrator review; they are not recreated on every check.</p>
+          <button name="action_enable_alerts" type="object" string="Enable email alerts" class="btn-primary" invisible="alerts_enabled" confirm="Authorize monitoring every minute and automatic emails to these recipients when counters change or recover, using the existing mail queue? This enables the shared monitoring scheduler. No customer message will be sent."/>
+          <button name="action_pause_alerts" type="object" string="Pause email alerts" invisible="not alerts_enabled" confirm="Pause new alert emails? Emails already queued remain in the mail queue."/>
+          <p class="text-muted mt16">Email delivery depends on metric.io and its outgoing mail service. Use external monitoring for server outages. Failed emails remain available for administrator review; they are not recreated on every check.</p>
         </div>
       </xpath>
     </field>

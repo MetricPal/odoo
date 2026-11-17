@@ -272,7 +272,7 @@ class OmniAccount(models.Model):
     )
     external_account_key = fields.Char(
         required=True, string='Provider account ID',
-        help='The provider-issued account identifier, not an Odoo user ID. Telegram fills its numeric bot ID from the provisioned secret reference. Other adapters define their own account identity.',
+        help='The provider-issued account identifier, not a metric.io user ID. Telegram fills its numeric bot ID from the provisioned secret reference. Other adapters define their own account identity.',
     )
     namespace = fields.Char(
         required=True,

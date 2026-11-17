@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
   <record id="cron_operations_alerts" model="ir.cron">
-    <field name="name">Omni-Channel: operations alerts through Odoo mail</field>
+    <field name="name">Omni-Channel: operations alerts through mail</field>
     <field name="model_id" ref="model_omni_channel"/>
     <field name="state">code</field>
     <field name="code">model._cron_operations_alerts()</field>

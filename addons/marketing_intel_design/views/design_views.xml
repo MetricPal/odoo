@@ -40,7 +40,7 @@
             <div class="col-lg-6">
               <separator string="How a design looks with this kit"/>
               <div role="status" class="alert alert-info" invisible="not kit_empty">
-                The kit is empty: designs use the company logo and Odoo's colours until you fill it in.
+                The kit is empty: designs use the company logo and the standard colours until you fill it in.
               </div>
               <field name="kit_empty" invisible="1"/>
               <div class="d-flex flex-wrap gap-3 o_mi_design_kit_preview">
@@ -78,7 +78,7 @@
           <field name="suggest_state" invisible="1"/>
           <field name="suggest_asked_at" invisible="1"/>
           <div role="status" class="alert alert-info d-flex align-items-center gap-2" invisible="not kit_empty">
-            <span class="flex-grow-1">The brand kit is empty, so this design uses the company logo and Odoo's
+            <span class="flex-grow-1">The brand kit is empty, so this design uses the company logo and the standard
               colours.</span>
             <button name="action_open_brand_kit" type="object" string="Fill in the brand kit" class="btn btn-link p-0"/>
           </div>
@@ -290,7 +290,7 @@
         <field name="brand_id" invisible="1"/>
         <field name="plan_id" invisible="1"/>
         <div role="status" class="alert alert-info d-flex align-items-center gap-2" invisible="not kit_empty">
-          <span class="flex-grow-1">The brand kit is empty: designs use the company logo and Odoo's colours.</span>
+          <span class="flex-grow-1">The brand kit is empty: designs use the company logo and the standard colours.</span>
           <button name="action_open_brand_kit" type="object" string="Fill in the brand kit" class="btn btn-link p-0"/>
         </div>
         <div class="fw-bold mb-2">1 · Format</div>

@@ -139,7 +139,7 @@ class OmniOperations(models.Model):
         if self.alerts_enabled:
             return
         if not email_normalize(self.env.user.email or ''):
-            raise UserError(_('Your administrator account needs a valid email for native Odoo mail routing.'))
+            raise UserError(_('Your administrator account needs a valid email for native mail routing.'))
         addresses = self._recipient_addresses()
         internal(self).write({
             'alerts_enabled': True, 'alerts_authorized_by': self.env.uid,
@@ -160,7 +160,7 @@ class OmniOperations(models.Model):
     def action_pause_alerts(self):
         self._require_alert_admin()
         self._lock()
-        internal(self).write({'alerts_enabled': False, 'alerts_status': 'Paused. Already queued emails remain in the Odoo queue.'})
+        internal(self).write({'alerts_enabled': False, 'alerts_status': 'Paused. Already queued emails remain in the mail queue.'})
         self._audit('alerts_paused', 'Administrator paused new operations email queueing.')
 
     def _operations_snapshot(self):
@@ -224,7 +224,7 @@ class OmniOperations(models.Model):
                 'author_id': actor.partner_id.id, 'email_from': actor.email_formatted,
                 'auto_delete': False,
             })
-            values.update(alerts_last_mail_id=mail.id, alerts_status='Email queued through Odoo; see delivery status.')
+            values.update(alerts_last_mail_id=mail.id, alerts_status='Email queued; see delivery status.')
             self._audit('operations_alert_queued', f"Aggregate {snapshot['severity']} notification queued as mail {mail.id}.")
         else:
             values['alerts_status'] = 'Healthy baseline; no email.' if not previous else 'No counter change; no new email.'

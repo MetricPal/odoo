@@ -5,7 +5,7 @@
     'summary': 'Rewrite, shorten, translate and fit texts to their channel with the marketing assistant',
     'description': 'Writing tools on every marketing text: email subject, preview text and body, SMS, Messaging '
                    '(WhatsApp, Telegram), social posts and campaign texts. Rewrite, Shorter, Longer, Tone, '
-                   'Translate, Fix grammar, Hashtags, Subject lines (with Odoo\'s A/B test), Fit to the channel and '
+                   'Translate, Fix grammar, Hashtags, Subject lines (with the standard A/B test), Fit to the channel and '
                    'Ask something else. The marketing assistant answers with a suggestion beside the text; nothing '
                    'changes until you click Use, and the usual reviews still apply.',
     'author': 'metric.io',

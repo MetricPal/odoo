@@ -100,7 +100,7 @@
           <div class="d-flex flex-wrap align-items-center gap-2">
             <button type="button" class="btn btn-secondary btn-sm" t-on-click="() =&gt; this.tryAgain()">More</button>
             <button type="button" class="btn btn-secondary btn-sm" t-on-click="() =&gt; this.discard()">Discard</button>
-            <span t-if="this.tools.ab_test" class="ms-auto text-muted small">A/B test it: Odoo's own A/B test, a copy of this mailing with that subject</span>
+            <span t-if="this.tools.ab_test" class="ms-auto text-muted small">A/B test it: the standard A/B test, a copy of this mailing with that subject</span>
           </div>
         </t>
 
