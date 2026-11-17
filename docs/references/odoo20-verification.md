@@ -1619,3 +1619,11 @@ Management uses ordinary paired native groups rather than an advanced tab.
   "the owner's to-do is open" means it exists and is active; a computed field that depends on it is not stored.
   `ai.agent.run._ask(..., as_assistant=True)` needs the agent's AI assistant user (profile, department or company).
   Within one transaction a One2many lists new records in creation order, not by the comodel's `_order`.
+
+### Design studio free editor — 2026-11-17
+
+- Odoo 20's backend has no FontAwesome glyphs: `<i class="fa fa-…">` draws nothing (use words, or `oi` icons with
+  `data-icon` and a title). A class named `o_hidden` is `display: none` (`web/static/src/scss/ui.scss`): do not use it
+  for a dimmed state. A running server needs `?debug=assets` after a static file changes.
+- A view widget can hold its own state with `proxy`, call the ORM directly and bind `window` listeners (removed in
+  `onWillDestroy`); the form's record is not involved, so the form is never dirty while editing.

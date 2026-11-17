@@ -47,4 +47,147 @@
     </div>
   </t>
 
+  <t t-name="marketing_intel_design.DesignEditor">
+    <div class="o_mi_editor" t-if="this.state.loaded">
+      <input type="file" class="d-none" accept="image/*" t-ref="this.fileRef" t-on-change="(ev) => this.uploadPicture(ev)"/>
+      <div class="o_mi_editor_left">
+        <strong>Add</strong>
+        <div class="o_mi_editor_add">
+          <button type="button" class="btn btn-secondary o_mi_add_text" t-on-click="() => this.addText()">Text</button>
+          <Dropdown>
+            <button type="button" class="btn btn-secondary o_mi_add_shape w-100">Shape ▾</button>
+            <t t-set-slot="content">
+              <DropdownItem onSelected="() => this.addShape('rect')">Rectangle</DropdownItem>
+              <DropdownItem onSelected="() => this.addShape('round')">Rounded</DropdownItem>
+              <DropdownItem onSelected="() => this.addShape('ellipse')">Ellipse</DropdownItem>
+            </t>
+          </Dropdown>
+          <Dropdown>
+            <button type="button" class="btn btn-secondary o_mi_add_picture w-100">Picture ▾</button>
+            <t t-set-slot="content">
+              <DropdownItem onSelected="() => this.pickUpload(false)">Upload</DropdownItem>
+              <DropdownItem onSelected="() => this.fromLibrary(false)">From the library</DropdownItem>
+              <DropdownItem onSelected="() => this.aiImage(false)">✦ AI image</DropdownItem>
+            </t>
+          </Dropdown>
+          <button type="button" class="btn btn-secondary o_mi_add_logo" t-on-click="() => this.addLogo()">Logo</button>
+        </div>
+        <strong class="mt-2">Layers</strong>
+        <ul class="o_mi_layers list-unstyled mb-0">
+          <li t-foreach="this.layers" t-as="el" t-key="el.id" draggable="true"
+              class="o_mi_layer" t-att-class="{ o_selected: el.id === this.state.selectedId, o_mi_off: el.hidden }"
+              t-on-dragstart="(ev) => this.layerDragStart(el, ev)" t-on-dragover="(ev) => this.layerDragOver(ev)"
+              t-on-drop="(ev) => this.layerDrop(el, ev)" t-on-click="() => this.select(el)">
+            <span class="flex-grow-1 text-truncate" t-out="el.name"/>
+            <button type="button" class="btn btn-link p-0 small o_mi_layer_hide" t-att-title="el.hidden ? 'Show' : 'Hide'"
+                    t-att-aria-label="el.hidden ? 'Show' : 'Hide'" t-on-click.stop="() => this.toggle(el, 'hidden')">
+              <t t-out="el.hidden ? 'Show' : 'Hide'"/>
+            </button>
+            <button type="button" class="btn btn-link p-0 small o_mi_layer_lock" t-att-title="el.locked ? 'Unlock' : 'Lock'"
+                    t-att-aria-label="el.locked ? 'Unlock' : 'Lock'" t-on-click.stop="() => this.toggle(el, 'locked')">
+              <t t-out="el.locked ? 'Unlock' : 'Lock'"/>
+            </button>
+          </li>
+        </ul>
+        <p class="text-muted small mb-0">Drag a layer to move it up or down. Each has Show / Hide and Lock.</p>
+      </div>
+
+      <div class="o_mi_editor_middle">
+        <div class="o_mi_editor_bar">
+          <button type="button" class="btn btn-secondary btn-sm o_mi_undo" t-att-disabled="!this.canUndo" t-on-click="() => this.undo()">Undo</button>
+          <button type="button" class="btn btn-secondary btn-sm o_mi_redo" t-att-disabled="!this.canRedo" t-on-click="() => this.redo()">Redo</button>
+          <span class="flex-grow-1"/>
+          <span class="text-muted" t-out="this.state.label"/>
+          <select class="form-select form-select-sm w-auto o_mi_zoom" aria-label="Zoom" t-on-change="(ev) => this.setZoom(ev)">
+            <option value="fit" t-att-selected="this.state.zoom === 'fit'">Fit</option>
+            <option value="25" t-att-selected="this.state.zoom === '25'">25%</option>
+            <option value="50" t-att-selected="this.state.zoom === '50'">50%</option>
+            <option value="100" t-att-selected="this.state.zoom === '100'">100%</option>
+          </select>
+        </div>
+        <div class="o_mi_editor_stage" t-on-pointerdown="() => this.deselect()">
+          <div class="o_mi_canvas" t-att-style="this.canvasStyle">
+            <img t-att-src="this.imageSrc" alt="" draggable="false"/>
+            <div t-foreach="this.state.elements" t-as="el" t-key="el.id" t-if="!el.hidden"
+                 class="o_mi_box" t-att-class="{ o_selected: el.id === this.state.selectedId, o_locked: el.locked }"
+                 t-att-style="this.boxStyle(el)" t-att-title="el.name"
+                 t-on-pointerdown="(ev) => this.startDrag(el, 'move', ev)">
+              <t t-if="el.id === this.state.selectedId and !el.locked">
+                <span class="o_mi_handle o_nw" t-on-pointerdown="(ev) => this.startDrag(el, 'nw', ev)"/>
+                <span class="o_mi_handle o_ne" t-on-pointerdown="(ev) => this.startDrag(el, 'ne', ev)"/>
+                <span class="o_mi_handle o_sw" t-on-pointerdown="(ev) => this.startDrag(el, 'sw', ev)"/>
+                <span class="o_mi_handle o_se" t-on-pointerdown="(ev) => this.startDrag(el, 'se', ev)"/>
+              </t>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="o_mi_editor_right">
+        <t t-set="sel" t-value="this.selected"/>
+        <p t-if="!sel" class="text-muted">Click an element on the picture or in Layers to change it.</p>
+        <t t-if="sel">
+          <div><strong t-out="sel.name"/> <span class="text-muted">· <t t-out="sel.kind"/></span></div>
+          <p t-if="sel.locked" class="text-muted small mb-0">This element is locked. Unlock it in Layers to change it.</p>
+          <t t-if="!sel.locked">
+            <div t-if="sel.kind === 'text'" class="o_mi_prop">
+              <label for="mi_el_text">Text</label>
+              <textarea id="mi_el_text" class="form-control o_mi_el_text" rows="3" t-att-value="sel.text || ''"
+                        t-on-change="(ev) => this.onValue('text', ev)"/>
+              <div class="d-flex justify-content-between small text-muted"><span><t t-out="(sel.text || '').length"/> characters</span></div>
+            </div>
+            <div t-if="sel.kind === 'text'" class="o_mi_props_row">
+              <div class="o_mi_prop">
+                <label for="mi_el_font">Font</label>
+                <select id="mi_el_font" class="form-select" t-on-change="(ev) => this.onValue('font', ev)">
+                  <option value="heading" t-att-selected="sel.font === 'heading'">Headings</option>
+                  <option value="text" t-att-selected="sel.font === 'text'">Text</option>
+                </select>
+              </div>
+              <div class="o_mi_prop">
+                <label for="mi_el_size">Size</label>
+                <input id="mi_el_size" type="number" class="form-control" t-att-value="sel.size" t-on-change="(ev) => this.onValue('size', ev)"/>
+              </div>
+            </div>
+            <div t-if="sel.kind !== 'picture' and sel.kind !== 'logo'" class="o_mi_prop">
+              <span class="o_mi_label">Colour (from the brand kit)</span>
+              <div class="d-flex gap-2 align-items-center">
+                <button t-foreach="this.colorList" t-as="c" t-key="c[0]" type="button" class="o_mi_swatch"
+                        t-att-class="{ o_selected: sel.color === c[0] }" t-att-style="this.swatch(c[0])"
+                        t-att-title="c[1]" t-att-aria-label="c[1]" t-on-click="() => this.setValue('color', c[0])"/>
+              </div>
+            </div>
+            <div t-if="sel.kind === 'text'" class="o_mi_prop">
+              <span class="o_mi_label">Align</span>
+              <div class="btn-group">
+                <button type="button" class="btn" t-att-class="sel.align === 'left' ? 'btn-primary' : 'btn-secondary'" t-on-click="() => this.setValue('align', 'left')">Left</button>
+                <button type="button" class="btn" t-att-class="sel.align === 'center' ? 'btn-primary' : 'btn-secondary'" t-on-click="() => this.setValue('align', 'center')">Centre</button>
+                <button type="button" class="btn" t-att-class="sel.align === 'right' ? 'btn-primary' : 'btn-secondary'" t-on-click="() => this.setValue('align', 'right')">Right</button>
+              </div>
+            </div>
+            <div t-if="sel.kind === 'picture'" class="o_mi_prop">
+              <span class="o_mi_label">Picture</span>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.pickUpload(true)">Upload</button>
+                <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.fromLibrary(true)">From the library</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" t-on-click="() => this.aiImage(true)">✦ AI image</button>
+              </div>
+            </div>
+            <div class="o_mi_props_row o_mi_geometry">
+              <div class="o_mi_prop"><label for="mi_el_x">X</label><input id="mi_el_x" type="number" class="form-control" t-att-value="sel.x" t-on-change="(ev) => this.onValue('x', ev)"/></div>
+              <div class="o_mi_prop"><label for="mi_el_y">Y</label><input id="mi_el_y" type="number" class="form-control" t-att-value="sel.y" t-on-change="(ev) => this.onValue('y', ev)"/></div>
+              <div class="o_mi_prop"><label for="mi_el_w">Width</label><input id="mi_el_w" type="number" class="form-control" t-att-value="sel.w" t-on-change="(ev) => this.onValue('w', ev)"/></div>
+              <div class="o_mi_prop"><label for="mi_el_h">Height</label><input id="mi_el_h" type="number" class="form-control" t-att-value="sel.h" t-on-change="(ev) => this.onValue('h', ev)"/></div>
+            </div>
+          </t>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-secondary btn-sm flex-fill o_mi_duplicate" t-on-click="() => this.duplicate()">Duplicate</button>
+            <button type="button" class="btn btn-secondary btn-sm flex-fill" t-att-disabled="sel.locked" t-on-click="() => this.bringForward()">Bring forward</button>
+            <button type="button" class="btn btn-secondary btn-sm flex-fill o_mi_delete" t-att-disabled="sel.locked" t-on-click="() => this.remove()">Delete</button>
+          </div>
+        </t>
+      </div>
+    </div>
+  </t>
+
 </templates>

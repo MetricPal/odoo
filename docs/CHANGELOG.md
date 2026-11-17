@@ -12,6 +12,34 @@ Format:
 
 
 
+## 2026-11-17 — Server warnings: icon titles and a searchable dependency
+
+- What: icons without a title or text in the workflow kanban, the Messaging mailing and template forms and the Social
+  tracked-link note now have a title (Odoo 20 warns at every update); a mailing's channel problem depends on the
+  channel's senders (`is_selected`, `health`) instead of the non-stored `selected_sender_id`.
+- Affected: marketing_intel_flow, messaging_marketing, social_utm. No behaviour change.
+
+## 2026-11-17 — Design studio 3b: free editor (plan M9)
+
+- What: **Edit freely** on a template design makes a copy made of elements (text, shapes, pictures, logo) that can be
+  moved, resized, layered, hidden, locked, duplicated and deleted on a canvas, with Undo / Redo; pictures by Upload,
+  From the library or ✦ AI image. The picture is drawn by the server, so the canvas, PNG, PDF, thumbnails and "Use
+  in" are the same. Copy to another format works on a free design (positions and text sizes in proportion).
+  Approved mock boards 16.1 to 16.3 (https://claude.ai/artifact/Ce1wUK2iEpavuiwS6Z1A8T).
+- Reason: plan M9; templates alone cannot place an element freely.
+- Affected: marketing_intel_design (new model `mi.design.element`, `free` on `mi.design`, `mi.design.free` dialog,
+  `editor` route, `mi_design_editor` widget, renderer `render_free` and `collect`), docs/DESIGN.md.
+- Notes: update `marketing_intel_design` on the database. A carousel cannot be edited freely. Tests: 28 in the module
+  (7 new); the editor was driven in the browser on a copy of the demo data (add, move, hide, undo, copy dialog), not
+  the Upload / Library / AI image pickers and not a hoot test.
+
+## 2026-11-17 — Design studio: Button text only where a button is drawn
+
+- What: on a design, the Button text box is shown only for templates that draw a button (Offer, Event, and the last
+  slide of a Tip list). Before, it was always shown and the text was ignored by Announcement, Quote and Photo.
+- Reason: the preview showed no button for text the person had typed.
+- Affected: marketing_intel_design (`slide_has_button`, form, test), docs/DESIGN.md. No data migration.
+
 ## 2026-11-17 — Marketing: WhatsApp templates and per-channel results (plan M8)
 
 - What: Messaging Marketing can now start WhatsApp conversations. **WhatsApp templates** (board 15.1, approved

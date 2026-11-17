@@ -67,9 +67,12 @@
           <button name="action_download_png" type="object" string="Download PNG" invisible="not id"/>
           <button name="action_download_pdf" type="object" string="Download PDF" invisible="not id"/>
           <button name="action_copy_format" type="object" string="Copy to another format" invisible="not id"/>
+          <button name="action_edit_freely" type="object" string="Edit freely"
+                  invisible="not id or free or format == 'carousel'"/>
         </header>
         <sheet>
           <field name="use_targets" invisible="1"/>
+          <field name="free" invisible="1"/>
           <field name="kit_empty" invisible="1"/>
           <field name="active_slide_id" invisible="1"/>
           <field name="suggest_state" invisible="1"/>
@@ -80,7 +83,10 @@
             <button name="action_open_brand_kit" type="object" string="Fill in the brand kit" class="btn btn-link p-0"/>
           </div>
           <div class="oe_title"><h1><field name="name" placeholder="e.g. Black Friday offer"/></h1></div>
-          <div class="row">
+          <div invisible="not id or not free">
+            <widget name="mi_design_editor"/>
+          </div>
+          <div class="row" invisible="free">
             <div class="col-lg-7">
               <group>
                 <group>
@@ -157,7 +163,8 @@
                       <button name="action_discard_text" type="object" string="Discard" class="btn btn-link p-0"/>
                     </div>
                   </div>
-                  <div class="o_mi_text_field">
+                  <field name="slide_has_button" invisible="1"/>
+                  <div class="o_mi_text_field" invisible="not slide_has_button">
                     <label for="slide_button" class="o_form_label"/>
                     <div class="o_mi_text_box">
                       <field name="slide_button" nolabel="1" class="text-break" placeholder="e.g. Try it this week"/>
@@ -169,8 +176,6 @@
                       <button name="action_use_button" type="object" string="Use" class="btn btn-link p-0"/>
                       <button name="action_discard_button" type="object" string="Discard" class="btn btn-link p-0"/>
                     </div>
-                    <span class="text-muted small">Shown by templates with a button (Offer, Event, the last slide of
-                      a Tip list).</span>
                   </div>
                   <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                     <label for="slide_image" class="o_form_label mb-0"/>
@@ -313,6 +318,23 @@
     <field name="target">new</field>
   </record>
 
+  <record id="design_free_form" model="ir.ui.view">
+    <field name="name">mi.design.free.form</field>
+    <field name="model">mi.design.free</field>
+    <field name="arch" type="xml">
+      <form>
+        <field name="design_id" invisible="1"/>
+        <p>This makes a copy of this design that you can move, resize and layer element by element.</p>
+        <p>The copy no longer follows the template: changing its Template or its Headline, Text and Slides boxes will
+          not change it. The original stays as it is, and you can keep using it.</p>
+        <footer>
+          <button name="action_make_copy" type="object" string="Make a copy to edit" class="btn-primary"/>
+          <button special="cancel" string="Discard" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
   <record id="design_copy_form" model="ir.ui.view">
     <field name="name">mi.design.copy.form</field>
     <field name="model">mi.design.copy</field>
@@ -323,8 +345,12 @@
         <div class="mt-2" invisible="format != 'poster'">
           <field name="paper" widget="radio" options="{'horizontal': true}" nolabel="1"/>
         </div>
-        <p class="text-muted small mt-2">A copy with the same template, texts and picture. A carousel keeps its
-          slides only as a carousel; any other format takes the slide you are editing.</p>
+        <field name="free" invisible="1"/>
+        <p class="text-muted small mt-2" invisible="free">A copy with the same template, texts and picture. A
+          carousel keeps its slides only as a carousel; any other format takes the slide you are editing.</p>
+        <div role="status" class="alert alert-warning mt-2" invisible="not free">Elements are placed again by their
+          position in the design and text is kept in proportion. Open each copy and move what does not fit. A design
+          made freely cannot be copied to a carousel.</div>
         <footer>
           <button name="action_copy" type="object" string="Copy" class="btn-primary"/>
           <button special="cancel" string="Discard" class="btn-secondary"/>

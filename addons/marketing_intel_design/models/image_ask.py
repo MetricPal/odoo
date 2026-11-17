@@ -83,6 +83,8 @@ class DesignImageAsk(models.Model):
     _rec_name = 'description'
 
     slide_id = fields.Many2one('mi.design.slide', required=True, ondelete='cascade', index=True)
+    # The picture element of a free design this picture is for (board 16.1); empty for a template design's slide.
+    element_id = fields.Many2one('mi.design.element', ondelete='cascade', index=True)
     design_id = fields.Many2one(related='slide_id.design_id', store=True)
     company_id = fields.Many2one(related='slide_id.company_id', store=True)
     user_id = fields.Many2one('res.users', default=lambda self: self.env.user, required=True, readonly=True,
@@ -114,6 +116,8 @@ class DesignImageAsk(models.Model):
     def _area(self):
         """(width, height) of the picture area of the slide's template, in the design's pixels."""
         design = self.slide_id.design_id
+        if self.element_id:
+            return self.element_id.w, self.element_id.h
         width, height = render.size_of(design.format or 'square', design.paper or 'a4')
         mode = render.TEMPLATES.get(design.template_id.code, {}).get('picture')
         if width / height > 2:
@@ -287,6 +291,6 @@ class DesignImageResult(models.Model):
             raise UserError(_('Make a picture first.'))
         self.ensure_one()
         ask = self.ask_id
-        ask.slide_id._set_picture(self.image.content)
+        (ask.element_id or ask.slide_id)._set_picture(self.image.content)
         ask.unlink()
         return {'type': 'ir.actions.act_window_close'}

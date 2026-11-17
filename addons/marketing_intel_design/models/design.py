@@ -73,6 +73,10 @@ class Design(models.Model):
     # Set whenever a slide changes, so the design's pictures (cached by its write date) are fetched again.
     touched_at = fields.Datetime(readonly=True, copy=False)
     slide_ids = fields.One2many('mi.design.slide', 'design_id', string='Slides', copy=True)
+    # A free design (plan M9) is made of elements placed on the canvas instead of a template's fields. Its one slide
+    # keeps the background colour (look).
+    free = fields.Boolean(string='Free editor', readonly=True, copy=True)
+    element_ids = fields.One2many('mi.design.element', 'design_id', string='Elements', copy=True)
     slide_count = fields.Integer(compute='_compute_slide_count')
     summary = fields.Char(compute='_compute_summary')
     # The slide being edited: its fields are edited on the design's form, next to the preview.
@@ -81,6 +85,7 @@ class Design(models.Model):
     slide_label = fields.Char(compute='_compute_slide_label')
     slide_headline = fields.Char(related='active_slide_id.headline', readonly=False, string='Headline')
     slide_text = fields.Text(related='active_slide_id.text', readonly=False, string='Text')
+    slide_has_button = fields.Boolean(compute='_compute_slide_has_button')
     slide_button = fields.Char(related='active_slide_id.button', readonly=False, string='Button text')
     slide_image = fields.Image(related='active_slide_id.image', readonly=False, string='Picture')
     slide_look = fields.Selection(related='active_slide_id.look', readonly=False, string='Colours', required=True)
@@ -121,6 +126,16 @@ class Design(models.Model):
                 design.format_label = '%s · %s × %s' % (labels[design.format], width, height)
             else:
                 design.format_label = ''
+
+    @api.depends('active_slide_id', 'slide_ids', 'template_id')
+    def _compute_slide_has_button(self):
+        """Only the templates that draw a button (Offer, Event, the last Tip slide) ask for its text."""
+        for design in self:
+            option = render.TEMPLATES.get(design.template_id.code, {}).get('button')
+            slide = design._active()
+            design.slide_has_button = bool(option is True or (
+                option == 'last' and len(design.slide_ids) > 1 and slide
+                and design._position(slide) == len(design.slide_ids) - 1))
 
     @api.depends('slide_ids')
     def _compute_slide_count(self):
@@ -167,6 +182,14 @@ class Design(models.Model):
             design.slide_label = _('Slide %s', slide._label_at(position, count))
             design.preview_label = _('Slide %(n)s of %(count)s', n=position + 1, count=count)
 
+    def _render_slide(self, slide, out_width=None, **values):
+        """The picture of a slide: from the template's fields, or element by element for a free design."""
+        self.ensure_one()
+        spec = self._spec(slide, **values)
+        if self.free:
+            return render.render_free(spec, [element._spec() for element in self.element_ids], out_width)
+        return render.render(spec, out_width)
+
     def _spec(self, slide, **values):
         """What the renderer draws for ``slide``; ``values`` replace the saved texts (the form, not saved yet)."""
         self.ensure_one()
@@ -179,25 +202,28 @@ class Design(models.Model):
         return spec
 
     @api.depends('active_slide_id', 'slide_ids', 'slide_headline', 'slide_text', 'slide_button', 'slide_image',
-                 'slide_look', 'template_id', 'format', 'paper', 'brand_id')
+                 'slide_look', 'template_id', 'format', 'paper', 'brand_id', 'free', 'touched_at')
     def _compute_preview(self):
         for design in self:
             slide = design._active()
-            if not slide or not design.template_id:
+            if not slide or not (design.template_id or design.free):
                 design.preview = False
                 continue
             # The form's values of the slide being edited, so the preview follows what is typed.
             spec = design._spec(slide, headline=design.slide_headline, text=design.slide_text,
                                 button=design.slide_button, image=raw(design.slide_image),
                                 look=design.slide_look or 'main')
+            if design.free:
+                design.preview = BinaryBytes(render.png(design._render_slide(slide, PREVIEW_WIDTH)))
+                continue
             design.preview = BinaryBytes(render.png(render.render(spec, PREVIEW_WIDTH)))
 
-    @api.depends('slide_ids', 'template_id', 'format', 'paper', 'brand_id')
+    @api.depends('slide_ids', 'template_id', 'format', 'paper', 'brand_id', 'free', 'touched_at')
     def _compute_thumbnail(self):
         for design in self:
             slide = design.slide_ids[:1]
-            design.thumbnail = BinaryBytes(render.png(render.render(design._spec(slide), 360))) \
-                if slide and design.template_id else False
+            design.thumbnail = BinaryBytes(render.png(design._render_slide(slide, 360))) \
+                if slide and (design.template_id or design.free) else False
 
     @api.depends('slide_ids', 'active_slide_id')
     def _compute_strip(self):
@@ -260,6 +286,55 @@ class Design(models.Model):
                 design.active_slide_id = design.slide_ids[:1]
         return result
 
+    def _copy_free(self, values):
+        """A free design in another format: every element keeps its place in proportion, text in proportion too."""
+        self.ensure_one()
+        old_w, old_h = render.size_of(self.format, self.paper)
+        new_w, new_h = render.size_of(values.get('format', self.format), values.get('paper', self.paper))
+        copy = self.copy(dict(values, element_ids=False))
+        ratio_x, ratio_y = new_w / old_w, new_h / old_h
+        for element in self.element_ids:
+            element.copy(dict(element._scaled(ratio_x, ratio_y), design_id=copy.id))
+        copy.touched_at = fields.Datetime.now()
+        return copy
+
+    def editor_data(self):
+        """What the free editor needs to draw its panels: the format's size, the kit's colours, the elements."""
+        self.ensure_one()
+        self.check_access('read')
+        width, height = render.size_of(self.format or 'square', self.paper or 'a4')
+        kit = self.brand_id._kit() if self.brand_id else {}
+        colors = {name: (kit.get('colors') or {}).get(name) for name in render.COLOR_KEYS}
+        colors = {name: colors[name] if render.is_hex(colors[name]) else render.DEFAULT_COLORS[name]
+                  for name in render.COLOR_KEYS}
+        names = ('kind', 'name', 'x', 'y', 'w', 'h', 'text', 'font', 'bold', 'size', 'color', 'align', 'shape',
+                 'hidden', 'locked', 'sequence')
+        return {'width': width, 'height': height, 'colors': colors, 'label': self.format_label,
+                'elements': self.element_ids.read(names)}
+
+    def _touch(self):
+        """The picture of the design changed: its cached pictures are fetched again."""
+        designs = self.exists()
+        designs.write({'touched_at': fields.Datetime.now()})
+        designs.invalidate_recordset(['element_ids'])
+
+    def _make_free(self, source=None):
+        """Turn this design into a free one: the elements are what the template drew (of ``source``, or of itself)."""
+        self.ensure_one()
+        source = source or self
+        slide = source._active()
+        collected = []
+        render.render(source._spec(slide), None, collect=collected)
+        self.env['mi.design.element'].create(self.env['mi.design.element']._from_render(collected, self))
+        self.write({'free': True})
+
+    def action_edit_freely(self):
+        self.ensure_one()
+        if self.free or self.format == 'carousel':
+            raise UserError(_('Edit freely is for a design of one picture, made from a template.'))
+        return {'type': 'ir.actions.act_window', 'res_model': 'mi.design.free', 'view_mode': 'form',
+                'target': 'new', 'name': _('Edit freely'), 'context': {'default_design_id': self.id}}
+
     def action_add_slide(self):
         """A new slide before the closing one, ready to edit."""
         self.ensure_one()
@@ -282,7 +357,7 @@ class Design(models.Model):
     def _images(self, out_width=None):
         self.ensure_one()
         self.check_access('read')
-        return [render.render(self._spec(slide), out_width) for slide in self.slide_ids]
+        return [self._render_slide(slide, out_width) for slide in self.slide_ids]
 
     def _file_name(self):
         return re.sub(r'\s+', ' ', re.sub(r'[^\w\- ]+', '', self.name or '')).strip()[:60] or 'design'
@@ -337,6 +412,29 @@ class Design(models.Model):
         Ask = self.env['mi.design.image.ask']
         ask = Ask.search([('slide_id', '=', slide.id), ('user_id', '=', self.env.uid)], limit=1) \
             or Ask.create({'slide_id': slide.id})
+        return ask._open()
+
+    def _picture_element(self, element_id):
+        element = self.element_ids.filtered(lambda e: e.id == element_id and e.kind == 'picture')
+        if not element:
+            raise UserError(_('Choose a picture on the canvas first.'))
+        return element
+
+    def action_pick_library_element(self, element_id):
+        """From the library, for a picture element of a free design."""
+        self.ensure_one()
+        self._picture_element(element_id)
+        action = self.action_pick_library()
+        action['context'] = {'mi_element_id': element_id}
+        return action
+
+    def action_ai_image_element(self, element_id):
+        self.ensure_one()
+        element = self._picture_element(element_id)
+        slide = self._active()
+        Ask = self.env['mi.design.image.ask']
+        ask = Ask.search([('element_id', '=', element.id), ('user_id', '=', self.env.uid)], limit=1) \
+            or Ask.create({'slide_id': slide.id, 'element_id': element.id})
         return ask._open()
 
     # ------------------------------------------------------------------ ✦ Suggest text for all slides

@@ -1,6 +1,8 @@
 from odoo import http
 from odoo.http import request
 
+from ..models import render
+
 
 class DesignController(http.Controller):
 
@@ -31,3 +33,16 @@ class DesignController(http.Controller):
             brand.check_access('read')
         return request.make_response(template._sample(fmt, brand), headers=[
             ('Content-Type', 'image/png'), ('Cache-Control', 'private, max-age=300')])
+
+    @http.route('/marketing_intel_design/<int:design_id>/editor', type='http', auth='user', methods=['GET'],
+                readonly=True)
+    def editor_picture(self, design_id, w=1080, **kwargs):
+        """The picture of a free design for the editor's canvas (board 16.1), drawn as it will be exported."""
+        design = request.env['mi.design'].browse(design_id).exists()
+        if not design:
+            raise request.not_found()
+        design.check_access('read')
+        width = min(max(int(w or 0) or 1080, 120), 2480)
+        image = design._render_slide(design.slide_ids[:1], width)
+        return request.make_response(render.png(image), headers=[
+            ('Content-Type', 'image/png'), ('Cache-Control', 'no-store')])

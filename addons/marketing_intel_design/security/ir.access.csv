@@ -11,3 +11,7 @@ result_user,AI images made (own),model_mi_design_image_result,marketing_intel.gr
 use_user,Use a design,model_mi_design_use,marketing_intel.group_mi_user,crud,"[('create_uid', '=', user.id)]"
 copy_user,Copy a design,model_mi_design_copy,marketing_intel.group_mi_user,crud,"[('create_uid', '=', user.id)]"
 new_user,New design,model_mi_design_new,marketing_intel.group_mi_user,crud,"[('create_uid', '=', user.id)]"
+element_user,Design elements (own and of own campaigns),model_mi_design_element,marketing_intel.group_mi_user,crud,"['|', ('design_id.user_id', '=', user.id), ('design_id.plan_id.user_id', '=', user.id)]"
+element_senior,Design elements (all),model_mi_design_element,marketing_intel_team.group_mi_senior,crud,"[('company_id', 'in', company_ids)]"
+element_manager,Design elements (all),model_mi_design_element,marketing_intel.group_mi_manager,crud,"[('company_id', 'in', company_ids)]"
+free_user,Edit a design freely,model_mi_design_free,marketing_intel.group_mi_user,crud,"[('create_uid', '=', user.id)]"

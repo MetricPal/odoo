@@ -123,13 +123,16 @@ def _open(data):
         return None
 
 
-def render(spec, out_width=None):
+def render(spec, out_width=None, collect=None):
     """The slide described by ``spec`` as an RGB image.
 
     spec: size (w, h), template, look ('main' / 'light' / 'dark'), colors {main, accent, dark, light}, fonts
     (heading key, text key), headline, text, button, image, logo, logo_dark (bytes or None), brand, website, handle,
     footer, index, count. ``out_width`` scales the whole picture (the preview is drawn smaller than the export).
+    ``collect`` (a list, drawn at full size) receives what was drawn as free-editor elements, in drawing order:
+    this is how "Edit freely" turns a template design into elements.
     """
+    keep = collect.append if collect is not None else (lambda element: None)
     width, height = spec['size']
     scale = (out_width / width) if out_width else 1
     W, H = max(round(width * scale), 8), max(round(height * scale), 8)
@@ -168,9 +171,12 @@ def render(spec, out_width=None):
         size = (box[2] - box[0], box[3] - box[1])
         if picture:
             image.paste(ImageOps.fit(picture.convert('RGB'), size, Image.LANCZOS), box[:2])
+            keep({'kind': 'picture', 'x': box[0], 'y': box[1], 'w': size[0], 'h': size[1], 'image': spec.get('image')})
         else:
             mix = tuple((a * 3 + b) // 4 for a, b in zip(background, ink))
             draw.rectangle(box, fill=mix)
+            keep({'kind': 'shape', 'shape': 'rect', 'color': 'dark', 'x': box[0], 'y': box[1], 'w': size[0],
+                  'h': size[1]})
 
     # The brand line at the bottom: the logo (or the name) left, the handle or website right
     mark_height = round(46 * unit)
@@ -182,19 +188,32 @@ def render(spec, out_width=None):
         logo = logo.convert('RGBA').resize((max(round(logo.width * ratio), 1), max(round(logo.height * ratio), 1)),
                                            Image.LANCZOS)
         image.paste(logo, (left, line_y + (mark_height - logo.height) // 2), logo)
+        keep({'kind': 'logo', 'x': left, 'y': line_y + (mark_height - logo.height) // 2, 'w': logo.width,
+              'h': logo.height})
     elif spec.get('brand'):
         font = _font(heading_font, True, 30 * unit)
         draw.text((left, line_y + mark_height / 2), spec['brand'], font=font, fill=ink, anchor='lm')
+        keep({'kind': 'text', 'text': spec['brand'], 'font': 'heading', 'bold': True, 'size': font.size,
+              'color': 'light' if on_dark else 'dark', 'align': 'left', 'x': left,
+              'y': round(line_y + mark_height / 2 - font.size * 0.6), 'w': round(font.getlength(spec['brand'])) + 4,
+              'h': round(font.size * 1.2)})
     contact = spec.get('handle') or spec.get('website') or ''
     if spec.get('handle') and spec.get('website') and not wide and spec['size'][0] >= 2000:
         contact = '%s · %s' % (spec['website'], spec['handle'])
     if contact:
         font = _font(text_font, False, 26 * unit)
         draw.text((right, line_y + mark_height / 2), contact, font=font, fill=ink, anchor='rm')
+        keep({'kind': 'text', 'text': contact, 'font': 'text', 'bold': False, 'size': font.size,
+              'color': 'light' if on_dark else 'dark', 'align': 'right',
+              'x': right - round(font.getlength(contact)) - 4, 'y': round(line_y + mark_height / 2 - font.size * 0.6),
+              'w': round(font.getlength(contact)) + 4, 'h': round(font.size * 1.2)})
     bottom = line_y - round(30 * unit)
     if spec.get('footer') and spec['size'][0] >= 2000:  # posters carry the brand's footer line
         font = _font(text_font, False, 24 * unit)
         draw.text((left, bottom), spec['footer'], font=font, fill=ink, anchor='ls')
+        keep({'kind': 'text', 'text': spec['footer'], 'font': 'text', 'bold': False, 'size': font.size,
+              'color': 'light' if on_dark else 'dark', 'align': 'left', 'x': left, 'y': round(bottom - font.size),
+              'w': round(font.getlength(spec['footer'])) + 4, 'h': round(font.size * 1.3)})
         bottom -= round(50 * unit)
 
     # The button keeps its place at the bottom of the text area
@@ -210,19 +229,33 @@ def render(spec, out_width=None):
         draw.rounded_rectangle(box, radius=round(10 * unit), fill=accent)
         draw.text(((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), label, font=font, anchor='mm',
                   fill=(255, 255, 255) if _is_dark(accent) else (33, 37, 41))
+        keep({'kind': 'shape', 'shape': 'round', 'color': 'accent', 'x': box[0], 'y': box[1],
+              'w': box[2] - box[0], 'h': box[3] - box[1]})
+        keep({'kind': 'text', 'text': label, 'font': 'heading', 'bold': True, 'size': font.size,
+              'color': 'light' if _is_dark(accent) else 'dark', 'align': 'center', 'x': box[0],
+              'y': round((box[1] + box[3]) / 2 - font.size * 0.6), 'w': box[2] - box[0],
+              'h': round(font.size * 1.2)})
         bottom = box[1] - round(34 * unit)
 
     y = top
     if options.get('number') and count > 1 and 0 < index < count - 1:
         font = _font(heading_font, True, min(150 * unit, (bottom - y) * 0.3))
         draw.text((left, y), str(index), font=font, fill=accent, anchor='la')
+        keep({'kind': 'text', 'text': str(index), 'font': 'heading', 'bold': True, 'size': font.size,
+              'color': 'accent', 'align': 'left', 'x': left, 'y': y, 'w': round(font.size * 1.5),
+              'h': round(font.size * 1.2)})
         y += round(font.size * 1.1)
     if options.get('bar'):
         draw.rectangle((left, y, left + round(96 * unit), y + round(10 * unit)), fill=accent)
+        keep({'kind': 'shape', 'shape': 'rect', 'color': 'accent', 'x': left, 'y': y, 'w': round(96 * unit),
+              'h': round(10 * unit)})
         y += round(40 * unit)
     if options.get('quote'):
         font = _font(heading_font, True, min(220 * unit, (bottom - y) * 0.35))
         draw.text((left, y - font.size * 0.15), '“', font=font, fill=accent, anchor='la')
+        keep({'kind': 'text', 'text': '“', 'font': 'heading', 'bold': True, 'size': font.size, 'color': 'accent',
+              'align': 'left', 'x': left, 'y': round(y - font.size * 0.15), 'w': round(font.size * 0.9),
+              'h': round(font.size * 1.2)})
         y += round(font.size * 0.62)
 
     room = max(bottom - y, 10)
@@ -231,6 +264,9 @@ def render(spec, out_width=None):
         largest = (112 if count > 1 and index == 0 else 92) * unit
         font, lines, line_height = _fit(headline, heading_font, True, largest, 30 * unit, right - left,
                                         room * share, 1.14)
+        keep({'kind': 'text', 'text': headline, 'font': 'heading', 'bold': True, 'size': font.size,
+              'color': 'light' if on_dark else 'dark', 'align': 'left', 'x': left, 'y': round(y),
+              'w': right - left, 'h': round(len(lines) * line_height)})
         for line in lines:
             draw.text((left, y), line, font=font, fill=ink, anchor='la')
             y += line_height
@@ -244,9 +280,80 @@ def render(spec, out_width=None):
             draw.rounded_rectangle((left, y, right, y + box_height), radius=round(10 * unit), outline=accent,
                                    width=max(round(4 * unit), 1))
             y += inset
+        keep({'kind': 'text', 'text': text, 'font': 'text', 'bold': False, 'size': font.size,
+              'color': 'light' if on_dark else 'dark', 'align': 'left', 'x': left + inset, 'y': round(y),
+              'w': right - left - 2 * inset, 'h': round(len(lines) * line_height)})
         for line in lines:
             draw.text((left + inset, y), line, font=font, fill=ink, anchor='la')
             y += line_height
+    return image
+
+
+# ---------------------------------------------------------------------------------------------- the free editor
+
+COLOR_KEYS = ('main', 'accent', 'dark', 'light')
+SHAPES = ('rect', 'round', 'ellipse')
+ALIGNS = {'left': 'l', 'center': 'm', 'right': 'r'}
+
+
+def render_free(spec, elements, out_width=None):
+    """A design made element by element (board 16.1): the look's colour as the background, then each element in
+    the order given (back to front). Sizes and positions are in the format's pixels; text is not shrunk."""
+    width, height = spec['size']
+    scale = (out_width / width) if out_width else 1
+    W, H = max(round(width * scale), 8), max(round(height * scale), 8)
+    colors = {name: _rgb((spec.get('colors') or {}).get(name), DEFAULT_COLORS[name]) for name in DEFAULT_COLORS}
+    look = spec.get('look') or 'main'
+    background = colors[look if look in ('main', 'light', 'dark') else 'main']
+    heading_font, text_font = spec.get('fonts') or ('montserrat', 'open_sans')
+    image = Image.new('RGB', (W, H), background)
+    draw = ImageDraw.Draw(image)
+    for element in elements:
+        if element.get('hidden'):
+            continue
+        x, y = round(element['x'] * scale), round(element['y'] * scale)
+        w, h = max(round(element['w'] * scale), 1), max(round(element['h'] * scale), 1)
+        kind = element['kind']
+        color = colors.get(element.get('color') or 'dark', colors['dark'])
+        if kind == 'shape':
+            box = (x, y, x + w, y + h)
+            if element.get('shape') == 'ellipse':
+                draw.ellipse(box, fill=color)
+            elif element.get('shape') == 'round':
+                draw.rounded_rectangle(box, radius=min(w, h) // 2 if min(w, h) < 120 * scale else round(24 * scale),
+                                       fill=color)
+            else:
+                draw.rectangle(box, fill=color)
+        elif kind == 'picture':
+            picture = _open(element.get('image'))
+            if picture:
+                image.paste(ImageOps.fit(picture.convert('RGB'), (w, h), Image.LANCZOS), (x, y))
+            else:
+                draw.rectangle((x, y, x + w, y + h), fill=tuple((a * 3 + b) // 4 for a, b in zip(background, colors['dark'])))
+        elif kind == 'logo':
+            on_dark = _is_dark(background)
+            logo = _open(spec.get('logo_dark') if on_dark else spec.get('logo')) \
+                or _open(spec.get('logo') if on_dark else spec.get('logo_dark'))
+            if logo:
+                ratio = min(w / logo.width, h / logo.height)
+                logo = logo.convert('RGBA').resize((max(round(logo.width * ratio), 1),
+                                                    max(round(logo.height * ratio), 1)), Image.LANCZOS)
+                image.paste(logo, (x + (w - logo.width) // 2, y + (h - logo.height) // 2), logo)
+            elif spec.get('brand'):
+                font = _font(heading_font, True, h * 0.6)
+                draw.text((x, y + h / 2), spec['brand'], font=font, fill=color, anchor='lm')
+        elif kind == 'text' and element.get('text'):
+            font = _font(heading_font if element.get('font') == 'heading' else text_font, bool(element.get('bold')),
+                         (element.get('size') or 40) * scale)
+            align = ALIGNS.get(element.get('align'), 'l')
+            line_height = font.size * 1.2
+            anchor_x = x if align == 'l' else x + w / 2 if align == 'm' else x + w
+            line_y = y
+            for line in _wrap(element['text'], font, w):
+                if line_y - y + line_height > h + line_height * 0.5 and line_y > y:
+                    break
+                draw.text((anchor_x, line_y), line, font=font, fill=color, anchor=align + 'a')
+                line_y += line_height
     return image
 
 

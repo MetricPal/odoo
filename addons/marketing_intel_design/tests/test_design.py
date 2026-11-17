@@ -100,6 +100,110 @@ class TestDesignStudio(TransactionCase):
 
     # ------------------------------------------------------------------ a design (boards 13.2, 13.3)
 
+    def test_button_text_is_asked_only_where_a_button_is_drawn(self):
+        self.assertTrue(self._design().slide_has_button)
+        self.assertTrue(self._design(template=self.env.ref('marketing_intel_design.template_event')).slide_has_button)
+        for code in ('announcement', 'quote', 'photo'):
+            design = self._design(template=self.env.ref('marketing_intel_design.template_' + code))
+            self.assertFalse(design.slide_has_button, code)
+        wizard = self.env['mi.design.new'].with_user(self.junior).create({
+            'format': 'carousel', 'template_id': self.tips.id, 'brand_id': self.brand.id})
+        tips = self.Design.browse(wizard.action_create()['res_id'])
+        self.assertFalse(tips.slide_has_button)  # the cover
+        tips.active_slide_id = tips.slide_ids[-1]
+        self.assertTrue(tips.slide_has_button)  # the last slide
+
+    # ------------------------------------------------------------------ the free editor (plan M9, boards 16.1 to 16.3)
+
+    def _free(self, template=None, **values):
+        design = self._design(template=template, **values)
+        design.slide_ids.write({'headline': 'Ramadan sale', 'text': 'Until 30 March', 'button': 'Shop now'})
+        wizard = self.env['mi.design.free'].with_user(self.junior).create({'design_id': design.id})
+        return design, self.Design.browse(wizard.action_make_copy()['res_id'])
+
+    def test_edit_freely_makes_a_copy_of_elements(self):
+        design, free = self._free()
+        self.assertFalse(design.free)
+        self.assertFalse(design.element_ids)
+        self.assertTrue(free.free)
+        kinds = free.element_ids.mapped('kind')
+        self.assertIn('text', kinds)
+        self.assertIn('shape', kinds)  # the offer's button
+        texts = free.element_ids.filtered(lambda e: e.kind == 'text').mapped('text')
+        self.assertIn('Ramadan sale', texts)
+        self.assertIn('Shop now', texts)
+        self.assertEqual(free.slide_ids.look, design.slide_ids.look)
+        self.assertEqual(free.format, design.format)
+        self.assertTrue(free.thumbnail and free.preview)
+
+    def test_edit_freely_is_not_for_a_carousel_or_a_free_design(self):
+        wizard = self.env['mi.design.new'].with_user(self.junior).create({
+            'format': 'carousel', 'template_id': self.tips.id, 'brand_id': self.brand.id})
+        carousel = self.Design.browse(wizard.action_create()['res_id'])
+        with self.assertRaises(UserError):
+            carousel.action_edit_freely()
+        _design, free = self._free()
+        with self.assertRaises(UserError):
+            free.action_edit_freely()
+
+    def test_elements_are_drawn_in_layer_order_and_can_be_hidden(self):
+        _design, free = self._free()
+        before = free.thumbnail.content
+        free.element_ids.filtered(lambda e: e.kind == 'text').write({'hidden': True})
+        self.assertNotEqual(free.thumbnail.content, before)  # the change shows in the design's picture
+        self.assertEqual(free.element_ids.mapped('sequence'), sorted(free.element_ids.mapped('sequence')))
+        free.element_ids.write({'hidden': True})
+        image = free._images(120)[0]
+        self.assertEqual(len(set(image.getdata())), 1)  # only the background colour is left
+
+    def test_an_element_can_be_added_moved_and_has_limits(self):
+        _design, free = self._free()
+        element = self.env['mi.design.element'].with_user(self.junior).create({
+            'design_id': free.id, 'kind': 'shape', 'shape': 'ellipse', 'color': 'accent', 'x': 10, 'y': 20, 'w': 300,
+            'h': 200, 'sequence': 999})
+        element.write({'x': 500})
+        self.assertEqual(element.name, 'Ellipse')
+        self.assertEqual(free.editor_data()['elements'][-1]['x'], 500)
+        with self.assertRaises(ValidationError):
+            element.write({'w': 1})
+        text = self.env['mi.design.element'].create({'design_id': free.id, 'kind': 'text', 'text': 'Hello\nthere'})
+        self.assertEqual(text.name, 'Hello')
+        with self.assertRaises(ValidationError):
+            text.size = 2
+
+    def test_a_design_is_only_edited_by_who_may_edit_it(self):
+        _design, free = self._free()
+        with self.assertRaises(AccessError):
+            self.env['mi.design.element'].with_user(self.other).create({'design_id': free.id, 'kind': 'shape'})
+        with self.assertRaises(AccessError):
+            free.with_user(self.other).editor_data()
+
+    def test_copy_to_another_format_keeps_places_in_proportion(self):
+        _design, free = self._free()
+        wizard = self.env['mi.design.copy'].with_user(self.junior).create({'design_id': free.id, 'format': 'story'})
+        copy = self.Design.browse(wizard.action_copy()['res_id'])
+        self.assertTrue(copy.free)
+        self.assertEqual(copy.format, 'story')
+        self.assertEqual(len(copy.element_ids), len(free.element_ids))
+        old, new = free.element_ids[0], copy.element_ids[0]
+        self.assertEqual(new.x, old.x)  # same width
+        self.assertAlmostEqual(new.y / old.y, 1920 / 1080, delta=0.02) if old.y else None
+        carousel = self.env['mi.design.copy'].with_user(self.junior).create({'design_id': free.id, 'format': 'carousel'})
+        with self.assertRaises(UserError):
+            carousel.action_copy()
+
+    def test_the_renderer_reports_what_a_template_draws(self):
+        design = self._design()
+        design.slide_ids.write({'headline': 'Hello', 'text': 'World', 'button': 'Go'})
+        collected = []
+        render.render(design._spec(design.slide_ids), None, collect=collected)
+        self.assertIn(('shape', 'round'), [(item['kind'], item.get('shape')) for item in collected])
+        self.assertEqual({item['text'] for item in collected if item['kind'] == 'text'} >= {'Hello', 'World', 'Go'},
+                         True)
+        for item in collected:
+            self.assertGreater(item['w'], 0)
+            self.assertGreater(item['h'], 0)
+
     def test_new_design_from_the_dialog(self):
         wizard = self.env['mi.design.new'].with_user(self.junior).create({
             'format': 'carousel', 'template_id': self.tips.id, 'brand_id': self.brand.id})

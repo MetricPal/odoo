@@ -163,6 +163,7 @@ class DesignCopy(models.TransientModel):
     _description = 'Copy a design to another format'
 
     design_id = fields.Many2one('mi.design', required=True)
+    free = fields.Boolean(related='design_id.free')
     format = fields.Selection(FORMATS, required=True, default='portrait')
     paper = fields.Selection([('a4', 'A4'), ('a3', 'A3')], default='a4', required=True, string='Poster size')
 
@@ -173,6 +174,10 @@ class DesignCopy(models.TransientModel):
         design = self.design_id
         labels = dict(self._fields['format']._description_selection(self.env))
         values = {'name': '%s (%s)' % (design.name, labels[self.format]), 'format': self.format, 'paper': self.paper}
+        if design.free:
+            if self.format == 'carousel':
+                raise UserError(_('A design made freely cannot be copied to a carousel.'))
+            return _form(design._copy_free(values))
         if self.format != 'carousel' or design.format != 'carousel':
             source = design._active()
             slides = [Command.create(source.copy_data()[0] | {'design_id': False, 'sequence': 10})]
@@ -181,6 +186,24 @@ class DesignCopy(models.TransientModel):
                            Command.create({'sequence': 30, 'look': source.look})]
             values['slide_ids'] = slides
         return _form(design.copy(values))
+
+
+class DesignFree(models.TransientModel):
+    """Edit freely (board 16.3): a copy of a template design whose elements can be moved, resized and layered."""
+    _name = 'mi.design.free'
+    _description = 'Edit a design freely'
+
+    design_id = fields.Many2one('mi.design', required=True)
+
+    def action_make_copy(self):
+        self.ensure_one()
+        design = self.design_id
+        if design.free or design.format == 'carousel':
+            raise UserError(_('Edit freely is for a design of one picture, made from a template.'))
+        design.check_access('read')
+        copy = design.copy({'name': _('%s (free)', design.name), 'free': False})
+        copy._make_free(source=design)
+        return _form(copy)
 
 
 class DesignNew(models.TransientModel):
@@ -231,10 +254,11 @@ class Media(models.Model):
     def action_mi_use_in_design(self):
         """From the library: this photo goes on the slide being edited."""
         self.ensure_one()
-        slide = self.env['mi.design.slide'].browse(self.env.context.get('mi_slide_id')).exists()
-        if not slide or self.kind != 'image' or not self.file:
+        target = self.env['mi.design.element'].browse(self.env.context.get('mi_element_id')).exists() \
+            or self.env['mi.design.slide'].browse(self.env.context.get('mi_slide_id')).exists()
+        if not target or self.kind != 'image' or not self.file:
             raise UserError(_('Choose a photo for the slide.'))
-        slide._set_picture(self.file.content)
+        target._set_picture(self.file.content)
         return {'type': 'ir.actions.act_window_close'}
 
 

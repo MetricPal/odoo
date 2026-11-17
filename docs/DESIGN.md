@@ -538,7 +538,7 @@ owner's additions the same day).
   dialog: "1 · Format" as tiles with shape and size, "2 · Template" as pictures drawn in that format with the kit.
 - **A design**: header **Use in ▾**, Download PNG, Download PDF, Copy to another format. Left: Format, Template,
   Campaign, Brand; for a carousel the **Slides** table (Cover, 1, 2 …, Last; drag to reorder; a click selects the
-  slide to edit; Add a slide); the box of the slide being edited: Headline, Text, Button text (the usual text boxes
+  slide to edit; Add a slide); the box of the slide being edited: Headline, Text, Button text (only for templates that draw a button: Offer, Event, the last Tip slide; the usual text boxes
   with ✦ and the count), Picture (upload, **From the library**, **✦ AI image**), Colours (Main / Light / Dark).
   Right: the preview, which follows what is typed, and for a carousel the row of small slides.
 - **✦ Suggest text** fills empty fields; where there is text already, the suggestion shows under the box with
@@ -552,6 +552,23 @@ owner's additions the same day).
   mailing or makes one), A proof for review (asks for the proof or makes one; an approved proof gets a new
   version). Only what the person may create is offered. **From Designs** on a draft social post and under a
   proof's Creative. Nothing is sent or published from a design.
+
+## Design studio 3b: free editor (`marketing_intel_design`, boards 16.1 to 16.3, mock https://claude.ai/artifact/Ce1wUK2iEpavuiwS6Z1A8T)
+
+- **Edit freely** (header button on a template design of one picture, not a carousel) opens a dialog (16.3) and makes
+  **a copy**: the elements the template drew (text, shapes, picture, logo) become movable elements; the copy no
+  longer follows the template. The original stays. A free design shows the editor instead of the template fields;
+  the header keeps Use in, Download PNG, Download PDF and Copy to another format.
+- **The editor** (16.1): left **Add** (Text, Shape ▾ Rectangle / Rounded / Ellipse, Picture ▾ Upload / From the library /
+  ✦ AI image, Logo) and **Layers** (top layer first; drag to reorder; Hide / Show and Lock / Unlock on each row);
+  middle the picture, drawn by the server exactly as it is exported, with a box over each element (drag to move, the
+  four corners to resize), Undo, Redo, the format and Zoom (Fit, 25%, 50%, 100%); right the properties of the selected
+  element: text with its count, font (Headings / Text), size, colour (the brand kit's four), align, X, Y, Width,
+  Height, Duplicate, Bring forward, Delete. Every change is saved at once. A locked element cannot be changed.
+- **Copy to another format** from a free design places each element again by its position (text sizes in
+  proportion) and says so in the dialog (16.2); it cannot make a carousel.
+- Not built (not in the mock): snap guides, grouping, rotation, a background colour control (the design keeps the
+  template's colour look), outlines (the Event template's box becomes plain text).
 
 ## Content calendar (`marketing_intel_calendar`, boards 14.1 and 14.2, approved 2026-11-15)
 
