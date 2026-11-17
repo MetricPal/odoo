@@ -32,8 +32,8 @@
               <group>
                 <field name="kit_font_heading"/>
                 <field name="kit_font_text"/>
-                <field name="kit_website" placeholder="e.g. metric.io"/>
-                <field name="kit_handle" placeholder="e.g. @metric.io"/>
+                <field name="kit_website" placeholder="e.g. example.com"/>
+                <field name="kit_handle" placeholder="e.g. @example"/>
                 <field name="kit_footer" placeholder="A line printed on posters"/>
               </group>
             </div>
