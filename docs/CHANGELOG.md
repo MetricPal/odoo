@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-11-17 — Content calendar: the filter panel always lists every channel and campaign
+
+- What: the right-hand filter panel listed only the channels and campaigns that had an item in the dates on screen,
+  so a period without content left it empty. It now always lists every channel and up to 100 campaigns, and
+  "Undefined" for items without a campaign.
+- Affected: marketing_intel_calendar (`ContentModel.loadDynamicFilterSection`). Layout unchanged.
+
 ## 2026-11-17 — No "Odoo" in what people read
 
 - What: texts people see no longer say "Odoo": the empty brand kit notice ("the standard colours"), the A/B test

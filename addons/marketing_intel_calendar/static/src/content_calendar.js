@@ -64,6 +64,58 @@ export class ContentRenderer extends CalendarRenderer {
 
 /** Dragging an item (board 14.2 B): a scheduled one asks first; what its app refuses goes back where it was. */
 export class ContentModel extends CalendarModel {
+    /**
+     * The filter panel lists every channel and campaign (up to 100), not only those with an item in the dates on
+     * screen, so a period without content does not leave the panel empty.
+     */
+    async loadDynamicFilterSection(data, fieldName, filterInfo, previousSection) {
+        const section = await super.loadDynamicFilterSection(data, fieldName, filterInfo, previousSection);
+        const field = this.meta.fields[fieldName];
+        if (!field?.relation) {
+            return section;
+        }
+        const colorName = filterInfo.colorFieldName;
+        const records = await this.orm.searchRead(
+            field.relation,
+            [],
+            colorName ? ["display_name", colorName] : ["display_name"],
+            { limit: 100 }
+        );
+        const have = new Set(section.filters.map((filter) => filter.value));
+        const previous = previousSection ? previousSection.filters : [];
+        for (const record of records) {
+            if (have.has(record.id)) {
+                continue;
+            }
+            section.filters.push(
+                this.makeFilterDynamic(
+                    filterInfo,
+                    previous.find((filter) => filter.type === "dynamic" && filter.value === record.id),
+                    fieldName,
+                    { id: record.id, [fieldName]: [record.id, record.display_name] },
+                    colorName ? records : []
+                )
+            );
+        }
+        // Items without a campaign are always one of the choices
+        if (fieldName === "plan_id" && !have.has(false)) {
+            section.filters.push(
+                this.makeFilterDynamic(
+                    filterInfo,
+                    previous.find((filter) => filter.type === "dynamic" && filter.value === false),
+                    fieldName,
+                    { id: false, [fieldName]: false },
+                    []
+                )
+            );
+        }
+        // "Undefined" stays first, the others by name
+        section.filters.sort((a, b) =>
+            !b.value - !a.value || String(a.label).localeCompare(String(b.label))
+        );
+        return section;
+    }
+
     async updateRecord(record, options = {}) {
         const current = this.records[record.id];
         if (current?.rawRecord.status === "scheduled" && !(await this.confirmMove(current, record))) {
