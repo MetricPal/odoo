@@ -18,6 +18,7 @@
     ],
     'assets': {'web.assets_backend': ['marketing_intel_plan/static/src/scss/plan.scss',
                                       'marketing_intel_plan/static/src/panel/*',
+                                      'marketing_intel_plan/static/src/today/*',
                                       'marketing_intel_plan/static/src/campaigns/*',
                                       'marketing_intel_plan/static/src/portfolio/*']},
     'auto_install': True,

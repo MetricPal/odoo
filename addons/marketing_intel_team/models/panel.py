@@ -306,14 +306,17 @@ class Panel(models.AbstractModel):
         hod = team.mi_hod_user_id if team else False
         if not hod:
             rows.append({'title': _('No head of department: set the marketing department\'s manager'),
-                         'value': _('Set it'), 'danger': True, 'action': 'marketing_intel_team.action_mi_department'})
+                         'value': _('Set it'), 'danger': True, 'action': 'marketing_intel_team.action_mi_department',
+                         'short': _('Head of department')})
         for brand in brands.filtered(lambda b: not b.account_ids):
             rows.append({'title': _('Brand “%s” has no channel accounts (lists, messaging channel, pages)', brand.name),
-                         'value': _('Link them'), 'danger': True, 'model': 'mi.brand', 'res_id': brand.id})
+                         'value': _('Link them'), 'danger': True, 'model': 'mi.brand', 'res_id': brand.id,
+                         'short': _('Channel accounts')})
         if 'mm.list' in self.env and not self.env['mm.list'].sudo().search_count(
                 [('company_id', 'in', self.env.companies.ids)] if 'company_id' in self.env['mm.list']._fields else []):
             rows.append({'title': _('No Messaging list: WhatsApp and Telegram campaigns are blocked'),
-                         'value': _('Create one'), 'danger': True, 'action': 'messaging_marketing.action_lists'})
+                         'value': _('Create one'), 'danger': True, 'action': 'messaging_marketing.action_lists',
+                         'short': _('Messaging list')})
         if 'mm.whatsapp.template' in self.env:
             # WhatsApp sends only templates Meta approved, from a number switched on for sending (plan M8).
             numbers = self.env['omni.channel'].sudo().search([
@@ -322,17 +325,17 @@ class Panel(models.AbstractModel):
                 rows.append({'title': _('The WhatsApp number “%s” can receive but is not switched on for sending',
                                         number.name),
                              'value': _('Open the channel'), 'danger': True, 'model': 'omni.channel',
-                             'res_id': number.id})
+                             'res_id': number.id, 'short': _('WhatsApp sending')})
             if numbers and not self.env['mm.whatsapp.template'].sudo().search_count([
                     ('channel_id', 'in', numbers.ids), ('state', '=', 'approved')], limit=1):
                 rows.append({'title': _('No WhatsApp template is approved by Meta yet'),
                              'value': _('Write a template'), 'danger': True,
-                             'action': 'messaging_marketing.action_templates'})
+                             'action': 'messaging_marketing.action_templates', 'short': _('WhatsApp template')})
         if 'omni.social.connection' in self.env:
             offline = self.env['omni.social.connection'].sudo().search([('connected', '=', False)])
             if offline:
                 rows.append({'title': _('%s social page(s) not connected', len(offline)), 'value': _('Connect'),
-                             'danger': True, 'action': 'omni_social.accounts'})
+                             'danger': True, 'action': 'omni_social.accounts', 'short': _('Social pages')})
         if not rows:
             return None
         return {'title': _('Before your team can run a campaign on every channel'), 'icon': 'warning', 'warning': True,

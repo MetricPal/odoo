@@ -220,7 +220,7 @@ class TestMarketingTeam(TransactionCase):
         self.assertEqual(ref('marketing_intel_flow.action_recipes').name, 'Workflow templates')
         self.assertEqual(ref('marketing_intel_work.action_campaign_tasks').name, 'Tasks')
         self.assertEqual(ref('marketing_intel.menu_insights').child_id.sorted('sequence').mapped('name'),
-                         ['Suggested campaigns', 'Market changes', 'Risks'])
+                         ['Research', 'Suggested campaigns', 'Market changes', 'Risks', 'Reports'])
         consent = ref('marketing_intel_consent.menu_consent_root', raise_if_not_found=False)
         if consent:
             self.assertEqual(consent.name, 'Consent')
@@ -252,3 +252,35 @@ class TestMarketingTeam(TransactionCase):
         agent.action_activate()
         self.assertEqual(Panel._mi_assistant_agents()[:1], agent)
         self.assertIn('Ask the assistant', [b['label'] for b in Panel._block_make(self.env['mi.brand'], self.env['mi.plan'])['buttons']])
+
+    # -- the Today page (boards 18.1 to 18.3) ---------------------------------------------------------------------
+    def test_today_for_each_role(self):
+        Panel = self.env['mi.panel']
+        hod = Panel.with_user(self.hod).get_today('quarter')
+        self.assertEqual((hod['role'], hod['title']), ('hod', 'Marketing'))
+        self.assertEqual(set(hod['attention']), {'items', 'total', 'chips'})
+        self.assertIsNotNone(hod['side']['team'])
+        self.assertEqual({row['name'] for row in hod['side']['team']}, {'Head', 'Senior', 'Junior'})
+        self.assertIn('done', hod['side']['setup'])
+        senior = Panel.with_user(self.senior).get_today('quarter')
+        self.assertEqual(senior['role'], 'senior')
+        self.assertEqual({row['name'] for row in senior['side']['team']}, {'Senior', 'Junior'})
+        self.assertIsNone(senior['side']['setup'])
+        junior = Panel.with_user(self.junior).get_today('quarter')
+        self.assertEqual((junior['role'], junior['title']), ('junior', 'My day'))
+        self.assertIsNone(junior['numbers'])
+        self.assertEqual(junior['running'], [])
+        self.assertEqual(set(junior['junior']), {'prepared', 'going_out', 'in_review', 'results', 'make'})
+
+    def test_today_senior_runs_only_their_teams_campaigns(self):
+        theirs = self._campaign(self.junior, name='Team campaign')
+        other = self._campaign(self.hod, name='Head campaign')
+        Panel = self.env['mi.panel']
+        names = [r['name'] for r in Panel.with_user(self.senior).get_today()['running']]
+        self.assertIn(theirs.name, names)
+        self.assertNotIn(other.name, names)
+        names = [r['name'] for r in Panel.with_user(self.hod).get_today()['running']]
+        self.assertTrue({theirs.name, other.name} <= set(names))
+
+    def test_today_unknown_period_falls_back_to_quarter(self):
+        self.assertEqual(self.env['mi.panel'].with_user(self.hod).get_today('week')['period'], 'quarter')

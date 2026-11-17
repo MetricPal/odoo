@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="marketing_intel_plan.Today">
+    <div class="o_mi_today_root h-100">
+      <Layout display="{ controlPanel: {} }">
+        <t t-set-slot="control-panel-additional-actions">
+          <span t-if="this.state.data" class="text-muted small ms-2 text-nowrap" t-out="this.subtitle"/>
+        </t>
+        <t t-set-slot="control-panel-navigation-additional">
+          <div t-if="this.state.data" class="d-flex flex-wrap gap-2 align-items-center">
+            <button type="button" class="btn btn-primary o_mi_today_new" t-on-click="() => this.newCampaign()">New campaign</button>
+            <button t-if="this.state.data.assistant" type="button" class="btn btn-secondary" t-on-click="() => this.askAssistant()">Ask the assistant</button>
+            <Dropdown>
+              <button type="button" class="btn btn-secondary" aria-label="More">⋮</button>
+              <t t-set-slot="content">
+                <DropdownItem onSelected="() => this.go('marketing_intel_plan.action_portfolio')">Portfolio</DropdownItem>
+                <DropdownItem onSelected="() => this.go('marketing_intel_plan.action_plans')">All campaigns</DropdownItem>
+              </t>
+            </Dropdown>
+          </div>
+        </t>
+
+        <div class="o_mi_today">
+          <div t-if="!this.state.data" class="p-5 text-center text-muted">Loading…</div>
+          <t t-else="">
+            <t t-set="d" t-value="this.state.data"/>
+            <div class="o_mi_today_grid">
+              <!-- the main column -->
+              <div class="o_mi_today_main">
+                <!-- needs your attention (a Junior: to do today) -->
+                <div class="o_mi_today_card o_mi_today_attention">
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <h2 class="o_mi_today_h" t-out="d.role === 'junior' ? 'To do today' : 'Needs your attention'"/>
+                    <span t-if="d.attention.total" class="badge rounded-pill text-bg-danger" t-out="d.attention.total"/>
+                    <span class="flex-grow-1"/>
+                    <t t-if="d.attention.chips.length > 1">
+                      <button type="button" class="btn btn-sm rounded-pill" t-att-class="this.state.filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                              t-on-click="() => this.setFilter('all')">All <t t-out="d.attention.total"/></button>
+                      <button t-foreach="d.attention.chips" t-as="chip" t-key="chip.kind" type="button" class="btn btn-sm rounded-pill"
+                              t-att-class="this.state.filter === chip.kind ? 'btn-primary' : 'btn-outline-secondary'"
+                              t-on-click="() => this.setFilter(chip.kind)"><t t-out="chip.label"/> <t t-out="chip.count"/></button>
+                    </t>
+                  </div>
+                  <p t-if="!this.items.length" class="text-muted mb-0">Nothing needs you right now.</p>
+                  <div t-foreach="this.items" t-as="item" t-key="item_index" class="o_mi_today_row">
+                    <span class="o_mi_today_dot" t-att-class="'o_tone_' + item.tone"/>
+                    <span class="o_mi_today_text">
+                      <b t-out="this.kindLabel[item.kind] + ':'"/> <t t-out="item.title"/>
+                      <span t-if="item.detail" class="text-muted"> · <t t-out="item.detail"/></span>
+                    </span>
+                    <a href="#" class="o_mi_today_link" t-on-click.prevent="() => this.openTarget(item.target)" t-out="item.label"/>
+                  </div>
+                </div>
+
+                <!-- a Junior: what the assistant prepared, going out, in review -->
+                <t t-if="d.role === 'junior' and d.junior">
+                  <div t-if="d.junior.prepared.length" class="o_mi_today_card">
+                    <div class="d-flex align-items-center mb-2">
+                      <h2 class="o_mi_today_h">Prepared for you by the assistant</h2><span class="flex-grow-1"/>
+                      <span class="small text-muted">drafts, never sent</span>
+                    </div>
+                    <div class="o_mi_today_tiles">
+                      <div t-foreach="d.junior.prepared" t-as="row" t-key="row_index" class="o_mi_today_tile">
+                        <b t-out="row.title"/>
+                        <div class="small text-muted" t-out="row.subtitle"/>
+                        <a href="#" class="o_mi_today_link small" t-on-click.prevent="() => this.open(row.model, row.res_id)" t-out="row.value"/>
+                      </div>
+                    </div>
+                  </div>
+                  <div t-if="d.junior.going_out.length or d.junior.in_review.length" class="o_mi_today_two">
+                    <div t-if="d.junior.going_out.length" class="o_mi_today_card">
+                      <h2 class="o_mi_today_h mb-2">Going out today</h2>
+                      <div t-foreach="d.junior.going_out" t-as="row" t-key="row_index" class="o_mi_today_row o_mi_today_row_time">
+                        <b t-out="row.subtitle"/><a href="#" t-on-click.prevent="() => this.open(row.model, row.res_id)" t-out="row.title"/>
+                      </div>
+                    </div>
+                    <div t-if="d.junior.in_review.length" class="o_mi_today_card">
+                      <h2 class="o_mi_today_h mb-2">My work in review</h2>
+                      <div t-foreach="d.junior.in_review" t-as="row" t-key="row_index" class="o_mi_today_row o_mi_today_row_two">
+                        <a href="#" t-on-click.prevent="() => this.open(row.model, row.res_id)" t-out="row.title"/>
+                        <span class="text-muted small" t-out="row.subtitle"/>
+                      </div>
+                    </div>
+                  </div>
+                </t>
+
+                <!-- the numbers -->
+                <div t-if="d.numbers" class="o_mi_today_card o_mi_today_numbers">
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <h2 class="o_mi_today_h">The numbers</h2><span class="flex-grow-1"/>
+                    <div class="btn-group" role="group" aria-label="Period">
+                      <button t-foreach="this.periods" t-as="p" type="button" t-key="p[0]" class="btn btn-secondary"
+                              t-att-class="{ active: this.state.period === p[0] }"
+                              t-att-aria-pressed="this.state.period === p[0] ? 'true' : 'false'"
+                              t-on-click="() => this.setPeriod(p[0])" t-out="p[1]"/>
+                    </div>
+                  </div>
+                  <div class="o_mi_today_tiles o_mi_today_three">
+                    <div t-foreach="d.numbers.tiles" t-as="tile" t-key="tile.label" class="o_mi_today_tile">
+                      <div class="small text-muted" t-out="tile.label"/>
+                      <div class="o_mi_today_value" t-out="tile.value"/>
+                      <div class="small text-muted" t-out="tile.sub"/>
+                    </div>
+                  </div>
+                  <div class="mt-2 small">
+                    <a href="#" class="o_mi_today_link" t-on-click.prevent="() => this.go('marketing_intel_reports.action_report_executive')">Open the Executive overview →</a>
+                    <span class="text-muted"> for the funnel, channels and campaigns at risk</span>
+                  </div>
+                </div>
+
+                <!-- running now -->
+                <div t-if="d.role !== 'junior' and d.running.length" class="o_mi_today_card">
+                  <div class="d-flex align-items-center mb-2">
+                    <h2 class="o_mi_today_h">Running now</h2><span class="flex-grow-1"/>
+                    <a href="#" class="o_mi_today_link small" t-on-click.prevent="() => this.go('marketing_intel_plan.action_plans')">All campaigns →</a>
+                  </div>
+                  <table class="table table-sm o_mi_today_table mb-0">
+                    <thead><tr><th>Campaign</th><th>Brand</th><th>Owner</th><th>Stage</th><th>Health</th><th>Ends</th><th class="text-end">Spend / budget</th></tr></thead>
+                    <tbody>
+                      <tr t-foreach="d.running" t-as="row" t-key="row.id">
+                        <td><a href="#" t-on-click.prevent="() => this.open('mi.plan', row.id)" t-out="row.name"/></td>
+                        <td t-out="row.brand"/><td t-out="row.owner"/><td t-out="row.stage"/>
+                        <td><span class="badge" t-att-class="row.health === 'off_track' ? 'text-bg-danger' : row.health === 'at_risk' ? 'text-bg-warning' : 'text-bg-success'"
+                                  t-out="row.health === 'off_track' ? 'Off track' : row.health === 'at_risk' ? 'At risk' : 'On track'"/></td>
+                        <td t-out="row.ends"/><td class="text-end"><t t-out="row.spent"/> / <t t-out="row.budget"/></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- the side column -->
+              <div class="o_mi_today_side">
+                <div t-if="d.side.setup" class="o_mi_today_card">
+                  <div class="d-flex align-items-center"><h2 class="o_mi_today_h">Setup</h2><span class="flex-grow-1"/>
+                    <span class="small text-muted"><t t-out="d.side.setup.done"/> of <t t-out="d.side.setup.total"/> done</span></div>
+                  <div class="progress my-2" style="height:8px"><div class="progress-bar bg-success" t-att-style="'width:' + this.pct(d.side.setup) + '%'"/></div>
+                  <div t-if="d.side.setup.left.length" class="small text-muted"><t t-out="d.side.setup.total - d.side.setup.done"/> left: <t t-out="d.side.setup.left.join(', ')"/></div>
+                  <a t-if="d.side.setup.action" href="#" class="o_mi_today_link small" t-on-click.prevent="() => this.go(d.side.setup.action)">Finish setup</a>
+                </div>
+                <div t-if="d.role === 'junior' and d.junior" class="o_mi_today_card">
+                  <h2 class="o_mi_today_h mb-2">My results this week</h2>
+                  <div class="o_mi_today_tiles o_mi_today_two_up">
+                    <div t-foreach="d.junior.results" t-as="tile" t-key="tile.label" class="o_mi_today_tile">
+                      <div class="small text-muted" t-out="tile.label"/><div class="o_mi_today_value" t-out="tile.value"/>
+                    </div>
+                  </div>
+                </div>
+                <div t-if="d.role === 'junior' and d.junior" class="o_mi_today_card">
+                  <h2 class="o_mi_today_h mb-2">Make something</h2>
+                  <div class="d-grid gap-2">
+                    <button t-foreach="d.junior.make" t-as="button" t-key="button_index" type="button" class="btn btn-secondary text-start"
+                            t-on-click="() => this.makeButton(button)" t-out="button.label"/>
+                  </div>
+                </div>
+                <div t-if="d.side.team.length" class="o_mi_today_card">
+                  <h2 class="o_mi_today_h mb-2">Team</h2>
+                  <table class="table table-sm o_mi_today_table mb-0">
+                    <thead><tr><th>Person</th><th class="text-end">Open</th><th class="text-end">Late</th></tr></thead>
+                    <tbody>
+                      <tr t-foreach="d.side.team" t-as="person" t-key="person_index">
+                        <td><t t-out="person.name"/><span t-if="person.role" class="text-muted"> · <t t-out="person.role"/></span></td>
+                        <td class="text-end" t-out="person.open"/>
+                        <td class="text-end" t-att-class="person.late ? 'text-danger fw-bold' : ''" t-out="person.late"/>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div t-if="d.side.assistant" class="o_mi_today_card">
+                  <div class="d-flex align-items-center"><h2 class="o_mi_today_h">Assistant</h2><span class="flex-grow-1"/>
+                    <a href="#" class="o_mi_today_link small" t-on-click.prevent="() => this.go('marketing_intel_flow.action_flows')">Workflows</a></div>
+                  <div class="small mt-2">
+                    <t t-out="d.side.assistant.workflows"/> workflow(s) on<t t-if="d.side.assistant.failing"> · <b class="text-danger"><t t-out="d.side.assistant.failing"/> failing</b></t>
+                    <div t-if="d.side.assistant.questions !== null" class="text-muted">AI in 30 days: <t t-out="d.side.assistant.questions"/> questions, <t t-out="d.side.assistant.failed"/> failed</div>
+                  </div>
+                </div>
+                <div t-if="d.side.coming.length" class="o_mi_today_card">
+                  <h2 class="o_mi_today_h mb-2">Coming up</h2>
+                  <div t-foreach="d.side.coming" t-as="event" t-key="event_index" class="o_mi_today_row o_mi_today_row_time">
+                    <b t-out="event.when"/><a href="#" t-on-click.prevent="() => this.open(event.model, event.res_id)" t-out="event.title"/>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </t>
+        </div>
+      </Layout>
+    </div>
+  </t>
+</templates>

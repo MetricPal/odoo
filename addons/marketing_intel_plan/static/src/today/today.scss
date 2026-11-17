@@ -1,0 +1,59 @@
+// Odoo's control panel on top; the page scrolls under it.
+.o_mi_today_root {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    > .o_content { overflow: auto; }
+}
+
+.o_mi_today {
+    padding: 1rem;
+
+    .o_mi_today_grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        gap: .875rem;
+        align-items: start;
+        @media (max-width: 900px) { grid-template-columns: minmax(0, 1fr); }
+    }
+    .o_mi_today_main, .o_mi_today_side { display: flex; flex-direction: column; gap: .875rem; min-width: 0; }
+    .o_mi_today_card {
+        background: var(--view-background, #fff);
+        border: 1px solid var(--border-color, #d8dadd);
+        border-radius: .375rem;
+        padding: 1rem;
+    }
+    .o_mi_today_h {
+        font-size: .75rem;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: var(--gray-700, #495057);
+        font-weight: 600;
+        margin: 0;
+    }
+    .o_mi_today_row {
+        display: grid;
+        grid-template-columns: 10px minmax(0, 1fr) auto;
+        gap: .75rem;
+        align-items: center;
+        padding: .5rem 0;
+        border-top: 1px solid var(--border-color, #e3e6e8);
+        font-size: .8125rem;
+    }
+    .o_mi_today_row_time { grid-template-columns: 3.5rem minmax(0, 1fr); }
+    .o_mi_today_row_two { grid-template-columns: minmax(0, 1fr) auto; }
+    .o_mi_today_dot {
+        width: 10px; height: 10px; border-radius: 50%; background: #4f7fbf;
+        &.o_tone_danger { background: #c0392f; }
+        &.o_tone_warn { background: #b06a00; }
+        &.o_tone_info { background: #4f7fbf; }
+    }
+    .o_mi_today_link { font-weight: 600; white-space: nowrap; }
+    .o_mi_today_tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .625rem; }
+    .o_mi_today_three { grid-template-columns: repeat(3, minmax(0, 1fr)); @media (max-width: 600px) { grid-template-columns: minmax(0, 1fr); } }
+    .o_mi_today_two_up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_mi_today_tile { border: 1px solid var(--border-color, #e3e6e8); border-radius: .25rem; padding: .625rem .75rem; }
+    .o_mi_today_value { font-size: 1.375rem; font-weight: 700; line-height: 1.2; }
+    .o_mi_today_two { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .875rem; }
+    .o_mi_today_table th { border-bottom: 2px solid var(--gray-700, #495057); font-weight: 600; font-size: .75rem; }
+}

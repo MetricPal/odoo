@@ -12,6 +12,59 @@ Format:
 
 
 
+## 2026-11-17 — Marketing home page: "Today" (redesign)
+
+- What: the Marketing panel is redesigned from the approved boards 18.1 to 18.3
+  (https://claude.ai/artifact/SDy4PwUuUahep2ET9Lgifs). One **Needs your attention** list (approvals waiting, late
+  tasks, channels needing a fix, failing automations, setup gaps; chips by kind; one action each), **The numbers**
+  (Spend, Leads, Revenue with This month / quarter / year, from the Executive overview), **Running now** (campaigns
+  with health), and a side column (Setup progress, Team, Assistant, Coming up). The Senior sees their team; a Junior
+  sees **My day** (to do today, prepared by the assistant, going out today, in review, results this week, make
+  something). Empty cards are not drawn. Analysis (channel tables, department tiles) is in Insights › Reports.
+- Reason: the old page had no first question, repeated the reports, showed internal wording and many empty blocks.
+- Affected: marketing_intel_plan (`get_today`, the Today page; the Marketing action opens it), marketing_intel_team
+  (roles, setup, team), marketing_intel_reports (the numbers), marketing_intel_ai (the assistant button).
+- Notes: the old panel code (blocks, Customise, Results by channel and source) is still in the module but no longer
+  opened; it can be removed once you are happy with the new page. The stale test of the Insights menu now lists
+  Research and Reports.
+
+## 2026-11-17 — Executive overview (Insights › Reports)
+
+- What: the first report, built from the approved boards 17.1 to 17.3 (https://claude.ai/artifact/3sMiSVJbRWNW2ZMUMX6iQ3).
+  For the Head of department (every team, with a Team filter) and the Senior (their team): This month / quarter /
+  year; filters Brand, Channel, Team; six numbers (Spend with budget, Leads, Cost per lead, Won deals, Revenue,
+  Revenue per spend) with the change against the previous period; Month by month (weekly in a month); Conversion
+  funnel (leads, opportunities, each CRM stage, won, with the share of the stage before); By channel (donut and
+  table with the share of revenue); Campaigns needing attention (budget use, channels to fix, no spend entered);
+  a "How the numbers are worked out" note; Print (browser print to PDF).
+- Reason: reports for managers by role, from what exists (campaign budgets and dated spend lines, CRM leads and won
+  deals tagged with the campaign, channels with their tracking source).
+- Affected: marketing_intel_reports (`mi.report.executive`, the Executive overview page and its tests).
+- Notes: as the mock says, a period that is not over is shown without a comparison. The three periods are the current
+  month, quarter and year, so the comparison appears only once a period has ended; a comparison against the same
+  days of the previous period would be a change to the approved mock. A Junior sees a message instead of the page.
+
+## 2026-11-17 — Insights › Reports (menu only)
+
+- What: new module `marketing_intel_reports`. Marketing › Insights has a **Reports** section with no page of its own
+  and four pages under it: **Executive overview**, **Channel performance**, **Funnel and attribution**,
+  **Audience**. Each opens a standard page that says "This report is not built yet."; each report is built from its
+  own approved mock (analysis of the DE-CIX LinkedIn report and the Tableau marketing dashboard examples, 2026-11-17).
+- Affected: marketing_intel_reports (new, auto-installs with Marketing). Install it on a database with
+  `-i marketing_intel_reports`.
+
+## 2026-11-17 — Campaign report prints what the Results tab shows
+
+- What: Print report (Campaign report) now follows the Results tab: takeaway, the four headline numbers (with
+  progress against target and the change against the compared campaign), where the results came from, lead quality
+  and the CRM pipeline, the comparison, the notes about what is missing, Channel activity detail (audience, sent,
+  delivered, opened / read, clicked, replies, likes, comments, registrations, not delivered, by channel), campaign
+  totals, business results and targets; then the Evaluation tab's content. It uses the same numbers as the screen.
+  Before, it printed an older, shorter layout (a budget table, message and audience, a few channel columns).
+- Affected: marketing_intel_plan (report/campaign_report.xml, a test).
+- Notes: the PDF needs wkhtmltopdf on the server; without it Odoo shows the report as a web page ("Unable to find the
+  PDF engine"), which is the preview you saw.
+
 ## 2026-11-17 — Content calendar: the filter panel always lists every channel and campaign
 
 - What: the right-hand filter panel listed only the channels and campaigns that had an item in the dates on screen,

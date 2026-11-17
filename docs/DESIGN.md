@@ -570,6 +570,31 @@ owner's additions the same day).
 - Not built (not in the mock): snap guides, grouping, rotation, a background colour control (the design keeps the
   template's colour look), outlines (the Event template's box becomes plain text).
 
+## Marketing home: Today (`marketing_intel_plan`, boards 18.1 to 18.3, approved 2026-11-17)
+
+- Odoo's control panel: the page name with the role and date, **New campaign**, **Ask the assistant** (when an assistant is
+  active) and **⋮** (Portfolio, All campaigns). Main column / side column (the side goes under the main column under 900 px).
+- **Head of department and Senior**: *Needs your attention* (count, chips All / Approvals / Late / Channels / Automations /
+  Setup, one action per line), *The numbers* (Spend, Leads, Revenue; This month / quarter / year; link to the Executive
+  overview), *Running now* (campaign, brand, owner, stage, health, ends, spend / budget; a Senior: their team's). Side:
+  *Setup* "n of m done" (Head only), *Team* (open and late), *Assistant*, *Coming up*.
+- **Junior, "My day"**: *To do today*, *Prepared for you by the assistant* (drafts, never sent), *Going out today*, *My work in
+  review*; side: *My results this week*, *Make something*, *Coming up*. Cards with nothing in them are not drawn.
+
+## Executive overview (`marketing_intel_reports`, boards 17.1 to 17.3, approved 2026-11-17)
+
+- **Insights › Reports** is a section heading with no page; under it Executive overview, Channel performance, Funnel and
+  attribution and Audience (the last three say "This report is not built yet." until their mocks are approved).
+- **Executive overview**: Odoo's control panel with the page name, the dates and **This month / This quarter / This
+  year** with **Print** (the browser's print to PDF). Filters: Brand, Channel, Team (Head of department: all teams or one
+  Senior's team; Senior: "Your team (fixed)") and "Compare with the previous …". Then six numbers (Spend with budget,
+  Leads, Cost per lead, Won deals, Revenue, Revenue / spend) with the change against the previous period; **Month by
+  month** (spend and revenue bars; weeks in a month) beside the **Conversion funnel** (leads, opportunities, each CRM
+  stage, won, with the share of the stage before; leads to won and the biggest drop); **By channel** with the donut on
+  the left and the table on the right (colour square before the channel, % of revenue last); **Campaigns needing
+  attention**; **How the numbers are worked out**. A period that is not over has no comparison and says so; no CRM, no
+  campaigns and a Junior each have their own message. The donut is left out while no channel has revenue.
+
 ## Content calendar (`marketing_intel_calendar`, boards 14.1 and 14.2, approved 2026-11-15)
 
 - **Calendar** (Campaigns › Calendar, after Campaigns): Odoo's calendar, month first, with Odoo's filter panel:

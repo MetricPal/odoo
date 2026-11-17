@@ -39,6 +39,12 @@ class Panel(models.AbstractModel):
         return data
 
     @api.model
+    def get_today(self, period='quarter'):
+        data = super().get_today(period)
+        data['assistant'] = bool(self._mi_assistant_agents())
+        return data
+
+    @api.model
     def open_assistant_chat(self):
         """The person's chat with the marketing agent (its id), made if needed."""
         agent = self._mi_assistant_agents()[:1]
