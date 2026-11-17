@@ -5,7 +5,7 @@
         <div class="o_mi_panel_root h-100">
           <Layout display="{ controlPanel: {} }">
             <t t-set-slot="control-panel-additional-actions">
-                <span t-if="this.state.data" class="text-muted small ms-2 text-nowrap">Every brand side by side · <t t-esc="this.state.data.label"/></span>
+                <span t-if="this.state.data" class="text-muted small ms-2 text-nowrap">Every brand side by side · <t t-out="this.state.data.label"/></span>
             </t>
             <t t-set-slot="control-panel-navigation-additional">
                 <div class="btn-group" role="group" aria-label="Period">
@@ -13,7 +13,7 @@
                             t-as="p" t-key="p[0]" type="button" class="btn btn-secondary"
                             t-att-class="{ active: this.state.period === p[0] }"
                             t-att-aria-pressed="this.state.period === p[0] ? 'true' : 'false'"
-                            t-on-click="() => this.setPeriod(p[0])" t-esc="p[1]"/>
+                            t-on-click="() => this.setPeriod(p[0])" t-out="p[1]"/>
                 </div>
             </t>
         <div class="o_mi_panel o_mi_portfolio">
@@ -23,22 +23,22 @@
 
                 <section class="o_mi_kpis">
                     <div class="o_mi_kpi"><span class="o_mi_kpi_label">Budget</span>
-                        <div class="o_mi_kpi_value" t-esc="this.money(data.totals.budget)"/>
-                        <small class="text-muted">planned <t t-esc="this.money(data.totals.planned)"/></small></div>
+                        <div class="o_mi_kpi_value" t-out="this.money(data.totals.budget)"/>
+                        <small class="text-muted">planned <t t-out="this.money(data.totals.planned)"/></small></div>
                     <div class="o_mi_kpi"><span class="o_mi_kpi_label">Spent</span>
-                        <div class="o_mi_kpi_value" t-esc="this.money(data.totals.spent)"/>
+                        <div class="o_mi_kpi_value" t-out="this.money(data.totals.spent)"/>
                         <small class="text-muted">entered on campaigns</small></div>
                     <div class="o_mi_kpi"><span class="o_mi_kpi_label">Leads</span>
-                        <div class="o_mi_kpi_value" t-esc="data.totals.leads"/>
+                        <div class="o_mi_kpi_value" t-out="data.totals.leads"/>
                         <small class="text-muted">in this period</small></div>
                     <div class="o_mi_kpi"><span class="o_mi_kpi_label">Won revenue</span>
-                        <div class="o_mi_kpi_value" t-esc="this.money(data.totals.revenue)"/>
-                        <small class="text-muted"><t t-esc="data.totals.roi"/>× the spend</small></div>
+                        <div class="o_mi_kpi_value" t-out="this.money(data.totals.revenue)"/>
+                        <small class="text-muted"><t t-out="data.totals.roi"/>× the spend</small></div>
                     <div class="o_mi_kpi"><span class="o_mi_kpi_label">Health</span>
                         <div class="o_mi_health_counts">
-                            <span class="o_mi_h o_mi_h_on_track"><t t-esc="data.health_counts.on_track"/> on track</span>
-                            <span class="o_mi_h o_mi_h_at_risk"><t t-esc="data.health_counts.at_risk"/> at risk</span>
-                            <span class="o_mi_h o_mi_h_off_track"><t t-esc="data.health_counts.off_track"/> off track</span>
+                            <span class="o_mi_h o_mi_h_on_track"><t t-out="data.health_counts.on_track"/> on track</span>
+                            <span class="o_mi_h o_mi_h_at_risk"><t t-out="data.health_counts.at_risk"/> at risk</span>
+                            <span class="o_mi_h o_mi_h_off_track"><t t-out="data.health_counts.off_track"/> off track</span>
                         </div></div>
                 </section>
 
@@ -52,38 +52,38 @@
                             <th class="text-end">Revenue / spend</th><th class="text-end">Campaigns</th><th>Goals</th>
                         </tr></thead>
                         <tbody t-foreach="data.groups" t-as="group" t-key="group.name">
-                            <tr class="o_mi_group_row"><td colspan="10"><t t-esc="group.name or 'Brands'"/>
-                                <small class="text-muted ms-2">budget <t t-esc="this.money(group.totals.budget)"/> ·
-                                    spent <t t-esc="this.money(group.totals.spent)"/> · revenue
-                                    <t t-esc="this.money(group.totals.revenue)"/></small></td></tr>
+                            <tr class="o_mi_group_row"><td colspan="10"><t t-out="group.name or 'Brands'"/>
+                                <small class="text-muted ms-2">budget <t t-out="this.money(group.totals.budget)"/> ·
+                                    spent <t t-out="this.money(group.totals.spent)"/> · revenue
+                                    <t t-out="this.money(group.totals.revenue)"/></small></td></tr>
                             <tr t-foreach="group.rows" t-as="row" t-key="row.id" class="o_mi_prow"
                                 t-on-click="() => this.open('mi.brand', row.id)">
-                                <td><strong t-esc="row.name"/>
+                                <td><strong t-out="row.name"/>
                                     <small t-if="row.client" class="d-block text-muted">Client · fee
-                                        <t t-esc="this.money(row.fee)"/><t t-if="row.contract_end"> · until <t t-esc="row.contract_end"/></t></small></td>
+                                        <t t-out="this.money(row.fee)"/><t t-if="row.contract_end"> · until <t t-out="row.contract_end"/></t></small></td>
                                 <td><span class="o_mi_h" t-att-class="'o_mi_h_' + row.health" t-att-title="row.reasons.join('; ')">
-                                        <i class="oi" t-att-data-icon="this.health[row.health].icon"/> <t t-esc="this.health[row.health].label"/></span>
-                                    <small class="d-block text-muted o_mi_reason" t-esc="row.reasons.join('; ')"/></td>
-                                <td class="text-end" t-esc="row.budget ? this.money(row.budget) : '—'"/>
+                                        <i class="oi" t-att-data-icon="this.health[row.health].icon"/> <t t-out="this.health[row.health].label"/></span>
+                                    <small class="d-block text-muted o_mi_reason" t-out="row.reasons.join('; ')"/></td>
+                                <td class="text-end" t-out="row.budget ? this.money(row.budget) : '—'"/>
                                 <td style="min-width:140px"><div class="d-flex align-items-center gap-2">
                                     <div class="o_mi_meter"><span t-att-style="this.meter(row)"
                                         t-att-class="row.spent_pct &gt; 100 ? 'bg-danger' : (row.spent_pct &gt; 90 ? 'bg-warning' : '')"/></div>
-                                    <small t-esc="this.money(row.spent)"/></div></td>
-                                <td class="text-end" t-esc="this.money(row.planned)"/>
-                                <td class="text-end" t-esc="row.leads"/>
-                                <td class="text-end" t-esc="this.money(row.revenue)"/>
-                                <td class="text-end" t-esc="row.spent ? row.roi + '×' : '—'"/>
-                                <td class="text-end"><t t-esc="row.running"/> running / <t t-esc="row.campaigns"/></td>
-                                <td><t t-if="row.goals"><t t-esc="row.goals - row.goals_behind"/>/<t t-esc="row.goals"/> on track</t>
+                                    <small t-out="this.money(row.spent)"/></div></td>
+                                <td class="text-end" t-out="this.money(row.planned)"/>
+                                <td class="text-end" t-out="row.leads"/>
+                                <td class="text-end" t-out="this.money(row.revenue)"/>
+                                <td class="text-end" t-out="row.spent ? row.roi + '×' : '—'"/>
+                                <td class="text-end"><t t-out="row.running"/> running / <t t-out="row.campaigns"/></td>
+                                <td><t t-if="row.goals"><t t-out="row.goals - row.goals_behind"/>/<t t-out="row.goals"/> on track</t>
                                     <t t-else="">—</t></td>
                             </tr>
                         </tbody>
                         <tfoot><tr class="fw-bold">
-                            <td>Total</td><td/><td class="text-end" t-esc="this.money(data.totals.budget)"/>
-                            <td t-esc="this.money(data.totals.spent)"/><td class="text-end" t-esc="this.money(data.totals.planned)"/>
-                            <td class="text-end" t-esc="data.totals.leads"/><td class="text-end" t-esc="this.money(data.totals.revenue)"/>
-                            <td class="text-end" t-esc="data.totals.spent ? data.totals.roi + '×' : '—'"/>
-                            <td class="text-end"><t t-esc="data.totals.running"/> / <t t-esc="data.totals.campaigns"/></td><td/>
+                            <td>Total</td><td/><td class="text-end" t-out="this.money(data.totals.budget)"/>
+                            <td t-out="this.money(data.totals.spent)"/><td class="text-end" t-out="this.money(data.totals.planned)"/>
+                            <td class="text-end" t-out="data.totals.leads"/><td class="text-end" t-out="this.money(data.totals.revenue)"/>
+                            <td class="text-end" t-out="data.totals.spent ? data.totals.roi + '×' : '—'"/>
+                            <td class="text-end"><t t-out="data.totals.running"/> / <t t-out="data.totals.campaigns"/></td><td/>
                         </tr></tfoot>
                     </table>
                     </div>
@@ -100,10 +100,10 @@
                         <div class="o_mi_tl_head"><div class="o_mi_tl_label"/>
                             <div class="o_mi_tl_axis">
                                 <span t-foreach="data.timeline.weeks" t-as="week" t-key="week_index" class="o_mi_tl_week"
-                                      t-att-style="'left:' + week.left + '%'" t-esc="week.label"/>
+                                      t-att-style="'left:' + week.left + '%'" t-out="week.label"/>
                             </div></div>
                         <div t-foreach="data.timeline.lanes" t-as="lane" t-key="lane.id" class="o_mi_tl_lane">
-                            <div class="o_mi_tl_label"><strong t-esc="lane.name"/><small class="text-muted" t-esc="lane.group"/></div>
+                            <div class="o_mi_tl_label"><strong t-out="lane.name"/><small class="text-muted" t-out="lane.group"/></div>
                             <div class="o_mi_tl_track" t-att-style="this.laneStyle(lane)">
                                 <span class="o_mi_tl_today" t-att-style="'left:' + data.timeline.today + '%'"/>
                                 <button t-foreach="lane.bars" t-as="bar" t-key="bar_index" type="button"
@@ -113,7 +113,7 @@
                                             + (bar.clash ? ' o_mi_tl_clash' : '')"
                                         t-att-style="this.barStyle(bar)" t-att-title="bar.title"
                                         t-on-click="() => this.open('mi.plan', bar.id)">
-                                    <i t-if="bar.repeat" class="oi" data-icon="repeat"/> <t t-esc="bar.name"/>
+                                    <i t-if="bar.repeat" class="oi" data-icon="repeat"/> <t t-out="bar.name"/>
                                 </button>
                             </div>
                         </div>

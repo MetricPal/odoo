@@ -8,19 +8,19 @@
                     class="o_ai_home_assistant_row" t-att-class="{ o_is_paused: assistant.paused }">
                     <div class="o_ai_home_assistant_info">
                         <div class="o_ai_home_assistant_title">
-                            <strong t-esc="assistant.name"/>
-                            <span class="o_ai_home_muted" t-esc="assistant.department"/>
+                            <strong t-out="assistant.name"/>
+                            <span class="o_ai_home_muted" t-out="assistant.department"/>
                             <span t-if="this.isChosen(assistant)" class="o_ai_home_assistant_badge">Chosen</span>
                             <span t-if="assistant.paused" class="o_ai_home_assistant_badge">Paused</span>
                         </div>
-                        <span t-if="assistant.description" class="o_ai_home_assistant_description" t-esc="assistant.description"/>
+                        <span t-if="assistant.description" class="o_ai_home_assistant_description" t-out="assistant.description"/>
                         <t t-if="assistant.paused">
                             <span class="o_ai_home_muted">Paused by its department. It answers again once it is turned back on.</span>
                         </t>
                         <t t-else="">
-                            <span t-if="assistant.knows.length" class="o_ai_home_assistant_fact"><strong>Knows:</strong> <t t-esc="assistant.knows.join(', ')"/></span>
-                            <span t-if="assistant.models.length" class="o_ai_home_assistant_fact"><strong>Can look at:</strong> <t t-esc="assistant.models.join(', ')"/></span>
-                            <span t-if="assistant.proposes.length" class="o_ai_home_assistant_fact"><strong>Can propose:</strong> notes, to-dos and changes on <t t-esc="assistant.proposes.join(', ')"/> (you approve)</span>
+                            <span t-if="assistant.knows.length" class="o_ai_home_assistant_fact"><strong>Knows:</strong> <t t-out="assistant.knows.join(', ')"/></span>
+                            <span t-if="assistant.models.length" class="o_ai_home_assistant_fact"><strong>Can look at:</strong> <t t-out="assistant.models.join(', ')"/></span>
+                            <span t-if="assistant.proposes.length" class="o_ai_home_assistant_fact"><strong>Can propose:</strong> notes, to-dos and changes on <t t-out="assistant.proposes.join(', ')"/> (you approve)</span>
                         </t>
                     </div>
                     <button type="button" class="btn o_ai_home_assistant_ask"

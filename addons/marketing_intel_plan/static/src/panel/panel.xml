@@ -12,7 +12,7 @@
         <div class="o_mi_panel_root h-100">
           <Layout display="{ controlPanel: {} }">
             <t t-set-slot="control-panel-additional-actions">
-                <span t-if="this.state.data" class="text-muted small ms-2 text-nowrap o_mi_panel_summary" t-esc="this.summary"/>
+                <span t-if="this.state.data" class="text-muted small ms-2 text-nowrap o_mi_panel_summary" t-out="this.summary"/>
             </t>
             <t t-set-slot="control-panel-actions">
                 <!-- Odoo's search bar: brands are searched in the box; the dropdown adds a View section. -->
@@ -27,7 +27,7 @@
                                           class="{ 'o_menu_item text-truncate': true, selected: this.state.data.layout.view === view.key }"
                                           checked="this.state.data.layout.view === view.key" closingMode="'none'"
                                           onSelected="() => this.setView(view.key)">
-                                <t t-esc="view.label"/>
+                                <t t-out="view.label"/>
                             </CheckboxItem>
                         </div>
                     </t>
@@ -58,18 +58,18 @@
                         <select class="form-select form-select-sm" t-on-change="(ev) => this.addBlock(ev)" aria-label="Add a block">
                             <option value="">+ Add a block…</option>
                             <optgroup t-if="this.missingBlocks.length" label="Panel">
-                                <option t-foreach="this.missingBlocks" t-as="c" t-key="c.key" t-att-value="c.key" t-esc="c.label"/>
+                                <option t-foreach="this.missingBlocks" t-as="c" t-key="c.key" t-att-value="c.key" t-out="c.label"/>
                             </optgroup>
                             <optgroup t-if="data.layout.boxes.length" label="Report Studio boxes">
                                 <option t-foreach="data.layout.boxes" t-as="b" t-key="b.id" t-att-value="'report:' + b.id"
-                                        t-esc="b.report + ' › ' + b.title"/>
+                                        t-out="b.report + ' › ' + b.title"/>
                             </optgroup>
                         </select>
                         <button class="btn btn-primary btn-sm" t-on-click="() => this.save('mine')">Save as my view</button>
                         <t t-if="data.layout.can_save_role">
                             <select class="form-select form-select-sm" t-on-change="(ev) => this.saveRole(ev)" aria-label="Save for a role">
                                 <option value="">Save for a role…</option>
-                                <option t-foreach="data.layout.roles" t-as="r" t-key="r.key" t-att-value="r.key" t-esc="r.label"/>
+                                <option t-foreach="data.layout.roles" t-as="r" t-key="r.key" t-att-value="r.key" t-out="r.label"/>
                             </select>
                         </t>
                         <button class="btn btn-light btn-sm" t-on-click="() => this.cancelEdit()">Cancel</button>
@@ -79,12 +79,12 @@
                     <div t-foreach="this.blocks" t-as="block" t-key="block.key + (block.report_block_id || '')"
                          class="o_mi_block" t-att-class="block.width === 'full' ? 'o_mi_full' : 'o_mi_half'">
                         <div t-if="this.state.editing" class="o_mi_block_tools">
-                            <span class="fw-bold small" t-esc="this.blockLabel(block)"/>
+                            <span class="fw-bold small" t-out="this.blockLabel(block)"/>
                             <span class="ms-auto btn-group btn-group-sm">
                                 <button class="btn btn-light" title="Move up" t-on-click="() => this.move(block_index, -1)">↑</button>
                                 <button class="btn btn-light" title="Move down" t-on-click="() => this.move(block_index, 1)">↓</button>
                                 <button class="btn btn-light" t-on-click="() => this.toggleWidth(block_index)"
-                                        t-esc="block.width === 'full' ? 'Half width' : 'Full width'"/>
+                                        t-out="block.width === 'full' ? 'Half width' : 'Full width'"/>
                                 <button class="btn btn-light text-danger" title="Remove" t-on-click="() => this.remove(block_index)">✕</button>
                             </span>
                         </div>
@@ -94,16 +94,16 @@
                             t-att-class="'o_mi_kpi_' + kpi.key" t-on-click="() => this.openKpi(kpi)">
                         <div class="o_mi_kpi_top">
                             <span class="o_mi_kpi_icon"><i class="oi" t-att-data-icon="kpi.icon"/></span>
-                            <span class="o_mi_kpi_label" t-esc="kpi.label"/>
+                            <span class="o_mi_kpi_label" t-out="kpi.label"/>
                         </div>
-                        <div class="o_mi_kpi_value" t-esc="this.formatValue(kpi)"/>
+                        <div class="o_mi_kpi_value" t-out="this.formatValue(kpi)"/>
                         <div class="o_mi_kpi_foot">
                             <t t-if="kpi.trend.length">
                                 <svg viewBox="0 0 100 32" preserveAspectRatio="none" class="o_mi_spark" aria-hidden="true">
                                     <polyline t-att-points="this.spark(kpi.trend)"/>
                                 </svg>
                                 <span t-att-class="kpi.delta &gt;= 0 ? 'text-success' : 'text-danger'">
-                                    <t t-if="kpi.delta &gt;= 0">▲</t><t t-else="">▼</t> <t t-esc="Math.abs(kpi.delta)"/>%
+                                    <t t-if="kpi.delta &gt;= 0">▲</t><t t-else="">▼</t> <t t-out="Math.abs(kpi.delta)"/>%
                                 </span>
                             </t>
                             <t t-else="">
@@ -111,7 +111,7 @@
                                     t-att-class="kpi.pct &gt; 100 ? 'bg-danger' : ''"/></div>
                             </t>
                         </div>
-                        <small class="text-muted" t-esc="kpi.hint"/>
+                        <small class="text-muted" t-out="kpi.hint"/>
                     </button>
                 </section>
 
@@ -132,18 +132,18 @@
                             <t t-else="">Nothing happened in the last two weeks.</t>
                         </p>
                         <div t-foreach="this.timeline" t-as="day" t-key="day.key" class="o_mi_day">
-                            <h3 t-esc="day.label"/>
+                            <h3 t-out="day.label"/>
                             <button t-foreach="day.events" t-as="event" t-key="event_index" type="button"
                                     class="o_mi_event" t-att-class="'o_mi_event_' + event.kind"
                                     t-on-click="() => this.open(event.model, event.res_id)">
                                 <span class="o_mi_event_icon"><i class="oi" t-att-data-icon="event.icon"/></span>
                                 <span class="o_mi_event_text">
-                                    <strong t-esc="event.title"/>
-                                    <small t-esc="event.subtitle"/>
+                                    <strong t-out="event.title"/>
+                                    <small t-out="event.subtitle"/>
                                 </span>
                                 <span class="o_mi_event_meta">
                                     <i t-if="event.recurring" class="oi" data-icon="repeat" title="Recurring"/>
-                                    <small t-esc="event.time"/>
+                                    <small t-out="event.time"/>
                                 </span>
                             </button>
                         </div>
@@ -153,13 +153,13 @@
                         <t t-if="block.key === 'todos'">
                         <section class="o_mi_card">
                             <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="checklist"/>Your action needed</h2>
-                                <span class="badge rounded-pill text-bg-primary" t-esc="data.todos.length"/></div>
+                                <span class="badge rounded-pill text-bg-primary" t-out="data.todos.length"/></div>
                             <p t-if="!data.todos.length" class="o_mi_empty">Nothing needs your action. Campaigns and workflows run on their own.</p>
                             <p class="small text-muted mb-1" t-if="data.todos.length">Your marketing activities (also in the Activities menu at the top) and campaign tasks due this week.</p>
                             <button t-foreach="data.todos" t-as="todo" t-key="todo_index" type="button" class="o_mi_todo"
                                     t-on-click="() => this.open(todo.model, todo.res_id)">
                                 <i class="oi" t-att-data-icon="todo.icon"/>
-                                <span><strong t-esc="todo.title"/><small t-att-class="todo.late ? 'text-danger' : ''" t-esc="todo.subtitle"/></span>
+                                <span><strong t-out="todo.title"/><small t-att-class="todo.late ? 'text-danger' : ''" t-out="todo.subtitle"/></span>
                                 <i class="oi ms-auto" data-icon="arrow_forward"/>
                             </button>
                         </section>
@@ -172,7 +172,7 @@
                                     class="o_mi_alert" t-att-class="'o_mi_alert_' + alert.level"
                                     t-on-click="() => this.open(alert.model, alert.res_id)">
                                 <i class="oi" t-att-data-icon="alert.level === 'danger' ? 'error' : 'warning'"/>
-                                <span t-esc="alert.text"/>
+                                <span t-out="alert.text"/>
                             </button>
                         </section>
                         </t>
@@ -191,15 +191,15 @@
                     <div t-foreach="data.campaigns" t-as="row" t-key="row.id" class="o_mi_campaign"
                          t-on-click="() => this.open('mi.plan', row.id)">
                         <div class="o_mi_campaign_name">
-                            <strong t-esc="row.name"/>
-                            <small class="text-muted"><t t-esc="row.brand"/> · <t t-esc="row.dates"/></small>
+                            <strong t-out="row.name"/>
+                            <small class="text-muted"><t t-out="row.brand"/> · <t t-out="row.dates"/></small>
                             <span class="o_mi_tags">
                                 <span t-if="row.worker === 'ai'" class="badge text-bg-light">✨ AI</span>
                                 <span t-if="row.repeat" class="badge text-bg-light"><i class="oi" data-icon="repeat"/></span>
                                 <span t-if="row.needs_me" class="badge text-bg-warning">Your action needed</span>
                             </span>
                         </div>
-                        <span class="o_mi_status" t-att-class="'o_mi_status_' + row.status" t-esc="row.status_label"/>
+                        <span class="o_mi_status" t-att-class="'o_mi_status_' + row.status" t-out="row.status_label"/>
                         <div class="o_mi_progress">
                             <div class="o_mi_bar">
                                 <span t-foreach="this.segments(row)" t-as="seg" t-key="seg.key"
@@ -209,13 +209,13 @@
                             <div class="o_mi_channels">
                                 <span t-foreach="row.items" t-as="item" t-key="item_index" class="o_mi_chip"
                                       t-att-class="'o_mi_chip_' + item.group" t-att-title="item.stage_label + ': ' + item.next">
-                                    <i class="oi" t-att-data-icon="item.icon"/> <t t-esc="item.channel"/>
+                                    <i class="oi" t-att-data-icon="item.icon"/> <t t-out="item.channel"/>
                                 </span>
                             </div>
                         </div>
                         <div class="o_mi_campaign_next">
-                            <small class="text-muted" t-esc="row.day"/>
-                            <span t-esc="row.next"/>
+                            <small class="text-muted" t-out="row.day"/>
+                            <span t-out="row.next"/>
                         </div>
                     </div>
                 </section>
@@ -230,15 +230,15 @@
                         <button t-foreach="data.flows" t-as="flow" t-key="flow.id" type="button" class="o_mi_flow"
                                 t-on-click="() => this.open('mi.flow', flow.id)">
                             <div class="d-flex justify-content-between align-items-start">
-                                <strong t-esc="flow.name"/>
-                                <span class="o_mi_status" t-att-class="'o_mi_flow_' + flow.state" t-esc="flow.state_label"/>
+                                <strong t-out="flow.name"/>
+                                <span class="o_mi_status" t-att-class="'o_mi_flow_' + flow.state" t-out="flow.state_label"/>
                             </div>
-                            <small class="text-muted d-block" t-esc="flow.summary"/>
+                            <small class="text-muted d-block" t-out="flow.summary"/>
                             <div class="o_mi_flow_stats">
-                                <span><b t-esc="flow.runs"/> today</span>
-                                <span><b t-esc="flow.sent"/> sent</span>
-                                <span><b t-esc="flow.skipped"/> skipped</span>
-                                <span t-if="flow.failed" class="text-danger"><b t-esc="flow.failed"/> errors</span>
+                                <span><b t-out="flow.runs"/> today</span>
+                                <span><b t-out="flow.sent"/> sent</span>
+                                <span><b t-out="flow.skipped"/> skipped</span>
+                                <span t-if="flow.failed" class="text-danger"><b t-out="flow.failed"/> errors</span>
                             </div>
                         </button>
                     </div>
@@ -247,12 +247,12 @@
                         <t t-if="block.key === 'management' and data.management">
                             <t t-set="m" t-value="data.management"/>
                             <section class="o_mi_card o_mi_mgmt">
-                                <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="monitoring"/>Management view · <t t-esc="m.period"/></h2></div>
+                                <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="monitoring"/>Management view · <t t-out="m.period"/></h2></div>
                                 <div class="o_mi_mgmt_tiles">
                                     <div t-foreach="m.tiles" t-as="tile" t-key="tile_index" class="o_mi_mgmt_tile">
-                                        <small class="text-muted" t-esc="tile.label"/>
-                                        <strong t-esc="tile.value"/>
-                                        <small class="text-muted" t-esc="tile.sub"/>
+                                        <small class="text-muted" t-out="tile.label"/>
+                                        <strong t-out="tile.value"/>
+                                        <small class="text-muted" t-out="tile.sub"/>
                                     </div>
                                 </div>
                                 <div class="o_mi_mgmt_grid">
@@ -261,26 +261,26 @@
                                         <p t-if="!m.revenue_spend.length" class="o_mi_empty">No campaign this quarter.</p>
                                         <button t-foreach="m.revenue_spend" t-as="row" t-key="row.id" type="button" class="o_mi_mgmt_rs"
                                                 t-on-click="() => this.open('mi.plan', row.id)">
-                                            <span class="text-truncate" t-esc="row.name"/>
+                                            <span class="text-truncate" t-out="row.name"/>
                                             <span class="o_mi_mgmt_bars">
                                                 <span class="o_mi_bar_spend" t-att-style="'width:' + row.spend_pct + '%'" t-att-title="'Spend ' + row.spend"/>
                                                 <span class="o_mi_bar_rev" t-att-style="'width:' + row.revenue_pct + '%'" t-att-title="'Revenue ' + row.revenue"/>
                                             </span>
-                                            <small><t t-esc="row.revenue"/> / <t t-esc="row.spend"/></small>
+                                            <small><t t-out="row.revenue"/> / <t t-out="row.spend"/></small>
                                         </button>
                                         <small class="text-muted"><span class="o_mi_dot o_mi_bar_rev"/> revenue <span class="o_mi_dot o_mi_bar_spend ms-2"/> spend</small>
                                     </div>
                                     <div>
                                         <h3>Leads by source (UTM)</h3>
-                                        <p t-if="!m.sources.length" class="o_mi_empty" t-esc="m.crm ? 'No leads from campaigns yet.' : 'CRM is not installed.'"/>
+                                        <p t-if="!m.sources.length" class="o_mi_empty" t-out="m.crm ? 'No leads from campaigns yet.' : 'CRM is not installed.'"/>
                                         <div t-else="" class="d-flex gap-3 align-items-center">
                                             <svg width="150" height="150" viewBox="0 0 200 200" role="img" aria-label="Leads by source">
                                                 <t t-foreach="m.sources" t-as="s" t-key="s_index"><path t-if="s.path" t-att-d="s.path" t-att-fill="s.color" stroke="#fff" stroke-width="2"/></t>
-                                                <text x="100" y="105" text-anchor="middle" font-size="22" font-weight="600" t-esc="m.leads_total"/>
+                                                <text x="100" y="105" text-anchor="middle" font-size="22" font-weight="600" t-out="m.leads_total"/>
                                             </svg>
                                             <div class="flex-grow-1 small">
                                                 <div t-foreach="m.sources" t-as="s" t-key="s_index" class="d-flex gap-2 align-items-center">
-                                                    <span class="o_mi_dot" t-att-style="'background-color:' + s.color"/><span class="flex-grow-1" t-esc="s.label"/><b t-esc="s.value"/>
+                                                    <span class="o_mi_dot" t-att-style="'background-color:' + s.color"/><span class="flex-grow-1" t-out="s.label"/><b t-out="s.value"/>
                                                 </div>
                                             </div>
                                         </div>
@@ -289,9 +289,9 @@
                                         <h3>Pipeline by CRM stage</h3>
                                         <p t-if="!m.stages.length" class="o_mi_empty">No open opportunities from campaigns.</p>
                                         <div t-foreach="m.stages" t-as="st" t-key="st_index" class="o_mi_mgmt_stage">
-                                            <span t-esc="st.label"/>
+                                            <span t-out="st.label"/>
                                             <span class="o_mi_mgmt_bars"><span class="o_mi_bar_pipe" t-att-style="'width:' + st.pct + '%'"/></span>
-                                            <small t-esc="st.value"/>
+                                            <small t-out="st.value"/>
                                         </div>
                                     </div>
                                     <div>
@@ -299,8 +299,8 @@
                                         <p t-if="!m.waiting.length" class="o_mi_empty">No proposal waits for your approval.</p>
                                         <button t-foreach="m.waiting" t-as="w" t-key="w_index" type="button" class="o_mi_todo"
                                                 t-on-click="() => this.open('mi.plan', w.id)">
-                                            <span><strong t-esc="w.label"/><small><t t-esc="w.name"/> · <t t-esc="w.detail"/></small></span>
-                                            <span class="ms-auto small text-muted" t-esc="w.due"/>
+                                            <span><strong t-out="w.label"/><small><t t-out="w.name"/> · <t t-out="w.detail"/></small></span>
+                                            <span class="ms-auto small text-muted" t-out="w.due"/>
                                         </button>
                                     </div>
                                 </div>
@@ -309,10 +309,10 @@
                                         <th class="text-end">Return</th><th class="text-end">Leads</th><th class="text-end">Cost per lead</th><th class="text-end">Pipeline</th></tr></thead>
                                     <tbody>
                                         <tr t-foreach="m.campaigns" t-as="c" t-key="c.id" class="o_mi_click" t-on-click="() => this.open('mi.plan', c.id)">
-                                            <td t-esc="c.name"/><td><span class="badge text-bg-light border" t-esc="c.stage"/></td>
-                                            <td class="text-end" t-esc="c.spend"/><td class="text-end" t-esc="c.revenue"/>
-                                            <td class="text-end" t-esc="c.return"/><td class="text-end" t-esc="c.leads"/>
-                                            <td class="text-end" t-esc="c.cpl"/><td class="text-end" t-esc="c.pipeline"/>
+                                            <td t-out="c.name"/><td><span class="badge text-bg-light border" t-out="c.stage"/></td>
+                                            <td class="text-end" t-out="c.spend"/><td class="text-end" t-out="c.revenue"/>
+                                            <td class="text-end" t-out="c.return"/><td class="text-end" t-out="c.leads"/>
+                                            <td class="text-end" t-out="c.cpl"/><td class="text-end" t-out="c.pipeline"/>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -323,64 +323,64 @@
                                 <t t-set="box" t-value="block.box"/>
                                 <p t-if="!box" class="o_mi_empty">This box shows after you save.</p>
                                 <t t-else="">
-                                    <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="show_chart"/><t t-esc="box.title"/></h2>
-                                        <button class="btn btn-link btn-sm" t-on-click="() => this.open('report.studio.report', box.report_id)" t-esc="box.report"/></div>
-                                    <p t-if="box.error" class="text-danger small" t-esc="box.error"/>
-                                    <div t-if="box.display" class="o_mi_box_value" t-esc="box.display"/>
+                                    <div class="o_mi_card_head"><h2><i class="oi me-1" data-icon="show_chart"/><t t-out="box.title"/></h2>
+                                        <button class="btn btn-link btn-sm" t-on-click="() => this.open('report.studio.report', box.report_id)" t-out="box.report"/></div>
+                                    <p t-if="box.error" class="text-danger small" t-out="box.error"/>
+                                    <div t-if="box.display" class="o_mi_box_value" t-out="box.display"/>
                                     <div t-if="box.chart" class="o_mi_box_chart">
                                         <div t-foreach="box.chart" t-as="bar" t-key="bar_index" class="o_mi_box_bar">
-                                            <span class="o_mi_box_label" t-esc="bar.label"/>
+                                            <span class="o_mi_box_label" t-out="bar.label"/>
                                             <span class="o_mi_box_track"><span t-att-style="'width:' + bar.pct + '%'"/></span>
-                                            <span class="o_mi_box_num" t-esc="bar.value.toLocaleString()"/>
+                                            <span class="o_mi_box_num" t-out="bar.value.toLocaleString()"/>
                                         </div>
                                     </div>
                                     <table t-if="box.rows.length" class="table table-sm mb-0">
-                                        <thead><tr><th t-foreach="box.columns" t-as="col" t-key="col_index" t-esc="col"/></tr></thead>
-                                        <tbody><tr t-foreach="box.rows" t-as="row" t-key="row_index"><td t-foreach="row" t-as="cell" t-key="cell_index" t-esc="cell"/></tr></tbody>
+                                        <thead><tr><th t-foreach="box.columns" t-as="col" t-key="col_index" t-out="col"/></tr></thead>
+                                        <tbody><tr t-foreach="box.rows" t-as="row" t-key="row_index"><td t-foreach="row" t-as="cell" t-key="cell_index" t-out="cell"/></tr></tbody>
                                     </table>
-                                    <ul t-if="box.items.length" class="mb-0"><li t-foreach="box.items" t-as="it" t-key="it_index" t-esc="it"/></ul>
-                                    <p t-if="box.text and !box.display and !box.chart" class="mb-0" t-esc="box.text"/>
+                                    <ul t-if="box.items.length" class="mb-0"><li t-foreach="box.items" t-as="it" t-key="it_index" t-out="it"/></ul>
+                                    <p t-if="box.text and !box.display and !box.chart" class="mb-0" t-out="box.text"/>
                                 </t>
                             </section>
                         </t>
                         <t t-if="data.extra[block.key]">
                             <t t-set="extra" t-value="data.extra[block.key]"/>
                             <section class="o_mi_card" t-att-class="extra.warning ? 'o_mi_card_warning' : ''">
-                                <div class="o_mi_card_head"><h2><i class="oi me-1" t-att-data-icon="extra.icon"/><t t-esc="extra.title"/></h2>
+                                <div class="o_mi_card_head"><h2><i class="oi me-1" t-att-data-icon="extra.icon"/><t t-out="extra.title"/></h2>
                                     <span class="ms-auto d-flex gap-1">
                                         <button t-if="extra.explain" class="btn btn-light btn-sm o_mi_explain_btn" t-att-disabled="this.state.explain[block.key]?.waiting"
                                                 t-on-click="() => this.explain(block.key)">Explain this</button>
-                                        <button t-if="extra.action" class="btn btn-link btn-sm" t-on-click="() => this.go(extra.action)" t-esc="extra.action_label"/>
+                                        <button t-if="extra.action" class="btn btn-link btn-sm" t-on-click="() => this.go(extra.action)" t-out="extra.action_label"/>
                                     </span></div>
                                 <div t-if="extra.tiles and extra.tiles.length" class="o_mi_tiles">
                                     <div t-foreach="extra.tiles" t-as="tile" t-key="tile_index" class="o_mi_tile">
-                                        <small t-esc="tile.label"/>
-                                        <strong t-esc="tile.value"/>
-                                        <small t-if="tile.note" t-att-class="tile.danger ? 'text-danger' : (tile.good ? 'text-success' : 'text-muted')" t-esc="tile.note"/>
+                                        <small t-out="tile.label"/>
+                                        <strong t-out="tile.value"/>
+                                        <small t-if="tile.note" t-att-class="tile.danger ? 'text-danger' : (tile.good ? 'text-success' : 'text-muted')" t-out="tile.note"/>
                                     </div>
                                 </div>
                                 <div t-if="extra.columns and extra.table_rows and extra.table_rows.length" class="table-responsive">
                                     <table class="table table-sm o_mi_extra_table mb-1">
-                                        <thead><tr><th t-foreach="extra.columns" t-as="col" t-key="col_index" t-esc="col"/></tr></thead>
+                                        <thead><tr><th t-foreach="extra.columns" t-as="col" t-key="col_index" t-out="col"/></tr></thead>
                                         <tbody><tr t-foreach="extra.table_rows" t-as="trow" t-key="trow_index">
-                                            <td t-foreach="trow" t-as="cell" t-key="cell_index" t-esc="cell"/></tr></tbody>
+                                            <td t-foreach="trow" t-as="cell" t-key="cell_index" t-out="cell"/></tr></tbody>
                                     </table>
                                 </div>
-                                <p t-if="!extra.rows.length and !(extra.tiles and extra.tiles.length) and !(extra.table_rows and extra.table_rows.length) and !(extra.buttons and extra.buttons.length)" class="o_mi_empty" t-esc="extra.empty"/>
+                                <p t-if="!extra.rows.length and !(extra.tiles and extra.tiles.length) and !(extra.table_rows and extra.table_rows.length) and !(extra.buttons and extra.buttons.length)" class="o_mi_empty" t-out="extra.empty"/>
                                 <button t-foreach="extra.rows" t-as="row" t-key="row_index" type="button" class="o_mi_todo"
                                         t-on-click="() => row.action ? this.go(row.action) : this.open(row.model, row.res_id)">
-                                    <span><strong t-esc="row.title"/><small t-esc="row.subtitle"/></span>
-                                    <span class="ms-auto o_mi_extra_value" t-att-class="row.danger ? 'text-danger' : (row.good ? 'text-success' : '')" t-esc="row.value"/>
+                                    <span><strong t-out="row.title"/><small t-out="row.subtitle"/></span>
+                                    <span class="ms-auto o_mi_extra_value" t-att-class="row.danger ? 'text-danger' : (row.good ? 'text-success' : '')" t-out="row.value"/>
                                 </button>
                                 <div t-if="extra.buttons and extra.buttons.length" class="o_mi_extra_buttons">
                                     <button t-foreach="extra.buttons" t-as="b" t-key="b_index" type="button" class="btn btn-secondary btn-sm"
-                                            t-on-click="() => b.chat ? this.askAssistant() : this.go(b.action)" t-esc="b.label"/>
+                                            t-on-click="() => b.chat ? this.askAssistant() : this.go(b.action)" t-out="b.label"/>
                                 </div>
-                                <p t-if="extra.note" class="o_mi_extra_note text-muted small mb-0" t-esc="extra.note"/>
+                                <p t-if="extra.note" class="o_mi_extra_note text-muted small mb-0" t-out="extra.note"/>
                                 <t t-set="explained" t-value="this.state.explain[block.key]"/>
                                 <p t-if="explained" class="o_mi_explained mb-0" role="status">
                                     <t t-if="explained.waiting">The assistant is reading these numbers…</t>
-                                    <t t-else="" t-esc="explained.text"/>
+                                    <t t-else="" t-out="explained.text"/>
                                 </p>
                             </section>
                         </t>

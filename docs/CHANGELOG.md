@@ -12,6 +12,13 @@ Format:
 
 
 
+## 2026-11-17 — t-out instead of t-esc (Home, Marketing, AI Agent)
+
+- What: our templates use `t-out` instead of the deprecated `t-esc` (Home page, assistants dialog, System overview,
+  insight report; the Marketing panel and Portfolio; Channel results; the AI Agent profile sync). Same output (text is
+  still escaped). The Channel results extension that selects a node by `@t-esc` now selects it by `@t-out`.
+- Affected: ai_home, marketing_intel_plan, marketing_intel_tracking, ai_agent. Odoo's own modules are untouched.
+
 ## 2026-11-17 — Server warnings: icon titles and a searchable dependency
 
 - What: icons without a title or text in the workflow kanban, the Messaging mailing and template forms and the Social

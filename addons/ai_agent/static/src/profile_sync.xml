@@ -11,7 +11,7 @@
         <section t-if="this.state.running" class="o_ai_sync_progress mb-3" role="status" aria-live="polite" aria-label="Sync to Hermes progress">
             <div class="d-flex justify-content-between flex-wrap gap-2">
                 <strong>Syncing to Hermes</strong>
-                <span class="text-muted small">Step <t t-esc="this.state.step"/> of <t t-esc="this.state.total"/></span>
+                <span class="text-muted small">Step <t t-out="this.state.step"/> of <t t-out="this.state.total"/></span>
             </div>
             <div class="o_ai_sync_bar my-2" aria-hidden="true"><div t-attf-style="width: {{ this.percent }}%"/></div>
             <ol class="list-unstyled mb-0 small d-flex flex-column gap-1">
@@ -21,9 +21,9 @@
                     <span t-elif="label_index + 1 === this.state.step" class="spinner-border spinner-border-sm o_ai_sync_spinner" aria-hidden="true"/>
                     <span t-else="" class="o_ai_sync_todo" aria-hidden="true"/>
                     <span>
-                        <t t-esc="label"/><t t-if="label_index + 1 === this.state.step">…</t>
+                        <t t-out="label"/><t t-if="label_index + 1 === this.state.step">…</t>
                         <span t-if="label_index + 1 === this.state.step and this.state.step === this.state.total" class="fw-normal text-muted ms-1">
-                            <t t-esc="this.state.seconds"/> s (up to 30 s)
+                            <t t-out="this.state.seconds"/> s (up to 30 s)
                         </span>
                     </span>
                 </li>
