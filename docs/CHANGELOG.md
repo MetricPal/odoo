@@ -12,6 +12,14 @@ Format:
 
 
 
+## 2026-11-17 — Design studio: browser accessibility warnings
+
+- What: the New design template pictures have a width and height (lazy-loaded images without a size were flagged);
+  labels that pointed at an image or badges field with no matching element are plain text; the editor's file input,
+  zoom and property boxes have names. Remaining in the browser's Issues list: the hidden file input and a label for a
+  read-only text that Odoo's own image and read-only field widgets draw (not ours to change).
+- Affected: marketing_intel_design.
+
 ## 2026-11-17 — t-out instead of t-esc (Home, Marketing, AI Agent)
 
 - What: our templates use `t-out` instead of the deprecated `t-esc` (Home page, assistants dialog, System overview,

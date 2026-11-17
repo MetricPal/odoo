@@ -21,7 +21,7 @@
               t-att-aria-checked="template.id === this.value?.id ? 'true' : 'false'"
               t-att-title="template.description || ''"
               t-att-disabled="this.props.readonly" t-on-click="() => this.pick(template)">
-        <img t-att-src="this.src(template)" alt="" loading="lazy"/>
+        <img t-att-src="this.src(template)" alt="" loading="lazy" t-att-width="this.sampleWidth" t-att-height="this.sampleHeight"/>
         <span t-out="template.name"/>
       </button>
     </div>
@@ -49,7 +49,7 @@
 
   <t t-name="marketing_intel_design.DesignEditor">
     <div class="o_mi_editor" t-if="this.state.loaded">
-      <input type="file" class="d-none" accept="image/*" t-ref="this.fileRef" t-on-change="(ev) => this.uploadPicture(ev)"/>
+      <input type="file" id="mi_editor_file" name="mi_editor_file" class="d-none" accept="image/*" t-ref="this.fileRef" t-on-change="(ev) => this.uploadPicture(ev)"/>
       <div class="o_mi_editor_left">
         <strong>Add</strong>
         <div class="o_mi_editor_add">
@@ -98,7 +98,7 @@
           <button type="button" class="btn btn-secondary btn-sm o_mi_redo" t-att-disabled="!this.canRedo" t-on-click="() => this.redo()">Redo</button>
           <span class="flex-grow-1"/>
           <span class="text-muted" t-out="this.state.label"/>
-          <select class="form-select form-select-sm w-auto o_mi_zoom" aria-label="Zoom" t-on-change="(ev) => this.setZoom(ev)">
+          <select id="mi_editor_zoom" name="mi_editor_zoom" class="form-select form-select-sm w-auto o_mi_zoom" aria-label="Zoom" t-on-change="(ev) => this.setZoom(ev)">
             <option value="fit" t-att-selected="this.state.zoom === 'fit'">Fit</option>
             <option value="25" t-att-selected="this.state.zoom === '25'">25%</option>
             <option value="50" t-att-selected="this.state.zoom === '50'">50%</option>
@@ -132,21 +132,21 @@
           <t t-if="!sel.locked">
             <div t-if="sel.kind === 'text'" class="o_mi_prop">
               <label for="mi_el_text">Text</label>
-              <textarea id="mi_el_text" class="form-control o_mi_el_text" rows="3" t-att-value="sel.text || ''"
+              <textarea id="mi_el_text" name="mi_el_text" class="form-control o_mi_el_text" rows="3" t-att-value="sel.text || ''"
                         t-on-change="(ev) => this.onValue('text', ev)"/>
               <div class="d-flex justify-content-between small text-muted"><span><t t-out="(sel.text || '').length"/> characters</span></div>
             </div>
             <div t-if="sel.kind === 'text'" class="o_mi_props_row">
               <div class="o_mi_prop">
                 <label for="mi_el_font">Font</label>
-                <select id="mi_el_font" class="form-select" t-on-change="(ev) => this.onValue('font', ev)">
+                <select id="mi_el_font" name="mi_el_font" class="form-select" t-on-change="(ev) => this.onValue('font', ev)">
                   <option value="heading" t-att-selected="sel.font === 'heading'">Headings</option>
                   <option value="text" t-att-selected="sel.font === 'text'">Text</option>
                 </select>
               </div>
               <div class="o_mi_prop">
                 <label for="mi_el_size">Size</label>
-                <input id="mi_el_size" type="number" class="form-control" t-att-value="sel.size" t-on-change="(ev) => this.onValue('size', ev)"/>
+                <input id="mi_el_size" name="mi_el_size" type="number" class="form-control" t-att-value="sel.size" t-on-change="(ev) => this.onValue('size', ev)"/>
               </div>
             </div>
             <div t-if="sel.kind !== 'picture' and sel.kind !== 'logo'" class="o_mi_prop">
@@ -174,10 +174,10 @@
               </div>
             </div>
             <div class="o_mi_props_row o_mi_geometry">
-              <div class="o_mi_prop"><label for="mi_el_x">X</label><input id="mi_el_x" type="number" class="form-control" t-att-value="sel.x" t-on-change="(ev) => this.onValue('x', ev)"/></div>
-              <div class="o_mi_prop"><label for="mi_el_y">Y</label><input id="mi_el_y" type="number" class="form-control" t-att-value="sel.y" t-on-change="(ev) => this.onValue('y', ev)"/></div>
-              <div class="o_mi_prop"><label for="mi_el_w">Width</label><input id="mi_el_w" type="number" class="form-control" t-att-value="sel.w" t-on-change="(ev) => this.onValue('w', ev)"/></div>
-              <div class="o_mi_prop"><label for="mi_el_h">Height</label><input id="mi_el_h" type="number" class="form-control" t-att-value="sel.h" t-on-change="(ev) => this.onValue('h', ev)"/></div>
+              <div class="o_mi_prop"><label for="mi_el_x">X</label><input id="mi_el_x" name="mi_el_x" type="number" class="form-control" t-att-value="sel.x" t-on-change="(ev) => this.onValue('x', ev)"/></div>
+              <div class="o_mi_prop"><label for="mi_el_y">Y</label><input id="mi_el_y" name="mi_el_y" type="number" class="form-control" t-att-value="sel.y" t-on-change="(ev) => this.onValue('y', ev)"/></div>
+              <div class="o_mi_prop"><label for="mi_el_w">Width</label><input id="mi_el_w" name="mi_el_w" type="number" class="form-control" t-att-value="sel.w" t-on-change="(ev) => this.onValue('w', ev)"/></div>
+              <div class="o_mi_prop"><label for="mi_el_h">Height</label><input id="mi_el_h" name="mi_el_h" type="number" class="form-control" t-att-value="sel.h" t-on-change="(ev) => this.onValue('h', ev)"/></div>
             </div>
           </t>
           <div class="d-flex gap-2">

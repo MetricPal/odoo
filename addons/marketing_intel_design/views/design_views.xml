@@ -13,11 +13,11 @@
               <separator string="Logos"/>
               <div class="d-flex flex-wrap gap-3">
                 <div><field name="kit_logo" widget="image" options="{'size': [0, 90]}" nolabel="1"/>
-                  <div class="small"><label for="kit_logo"/></div></div>
+                  <div class="small">Logo</div></div>
                 <div><field name="kit_logo_dark" widget="image" options="{'size': [0, 90]}" nolabel="1"/>
-                  <div class="small"><label for="kit_logo_dark"/></div></div>
+                  <div class="small">Logo on dark</div></div>
                 <div><field name="kit_icon" widget="image" options="{'size': [90, 90]}" nolabel="1"/>
-                  <div class="small"><label for="kit_icon"/></div></div>
+                  <div class="small">Icon (square)</div></div>
               </div>
               <p class="text-muted small">PNG or JPG. Click a picture to upload or clear it.</p>
               <separator string="Colours"/>
@@ -178,7 +178,7 @@
                     </div>
                   </div>
                   <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                    <label for="slide_image" class="o_form_label mb-0"/>
+                    <span class="o_form_label mb-0">Picture</span>
                     <field name="slide_image" widget="image" options="{'size': [0, 60]}" nolabel="1"/>
                     <span class="flex-grow-1 text-muted small">Click the picture to upload or clear it.</span>
                     <button name="action_pick_library" type="object" string="From the library"
@@ -186,7 +186,7 @@
                     <button name="action_ai_image" type="object" string="✦ AI image" class="btn btn-outline-primary"/>
                   </div>
                   <div class="d-flex align-items-center flex-wrap gap-2">
-                    <label for="slide_look" class="o_form_label mb-0"/>
+                    <span class="o_form_label mb-0">Colours</span>
                     <field name="slide_look" widget="badges_selection" nolabel="1"/>
                     <span class="text-muted small">the three looks of the template, from the brand kit</span>
                   </div>
@@ -382,7 +382,7 @@
           <field name="description" nolabel="1" readonly="state == 'making'"
                  placeholder="e.g. A tidy desk in morning light with a laptop and a cup of coffee, seen from above"/>
           <div class="d-flex align-items-center gap-2 my-2">
-            <label for="style" class="o_form_label mb-0"/>
+            <span class="o_form_label mb-0">Style</span>
             <field name="style" widget="badges_selection" nolabel="1" readonly="state == 'making'"/>
           </div>
           <p class="text-muted small"><field name="shape_label" class="d-inline"/></p>

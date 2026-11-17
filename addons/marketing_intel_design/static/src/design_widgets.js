@@ -41,6 +41,15 @@ export class SlidesField extends X2ManyField {
 
 registry.category("fields").add("mi_slides", { ...x2ManyField, component: SlidesField });
 
+const FORMAT_PIXELS = {
+    square: [1080, 1080],
+    portrait: [1080, 1350],
+    story: [1080, 1920],
+    carousel: [1080, 1350],
+    poster: [2480, 3508],
+    email_header: [1200, 400],
+};
+
 const FORMAT_SHAPES = {
     square: [34, 34, "1080 × 1080"],
     portrait: [28, 35, "1080 × 1350"],
@@ -80,6 +89,12 @@ export class TemplateTiles extends Component {
         });
     }
     get value() { return this.props.record.data[this.props.name]; }
+    /** The tile's picture is drawn 220 px wide in the chosen format: its size is given so the page does not jump. */
+    get sampleWidth() { return 220; }
+    get sampleHeight() {
+        const [width, height] = FORMAT_PIXELS[this.props.record.data[this.props.formatField]] || [1, 1];
+        return Math.round((220 * height) / width);
+    }
     src(template) {
         const data = this.props.record.data;
         return `/marketing_intel_design/template/${template.id}/${data[this.props.formatField]}`
