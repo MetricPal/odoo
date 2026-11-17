@@ -11,4 +11,14 @@
     <field name="interval_type">minutes</field>
     <field name="active">True</field>
   </record>
+  <!-- Reads what Meta answered about the WhatsApp templates in review, and whether an approved one was paused. -->
+  <record id="cron_update_templates" model="ir.cron">
+    <field name="name">Messaging Marketing: update WhatsApp templates from Meta</field>
+    <field name="model_id" ref="model_mm_whatsapp_template"/>
+    <field name="state">code</field>
+    <field name="code">model._cron_update_from_meta()</field>
+    <field name="interval_number">1</field>
+    <field name="interval_type">hours</field>
+    <field name="active">True</field>
+  </record>
 </odoo>

@@ -255,9 +255,9 @@
                 <field name="result_audience" invisible="not res_id"/>
                 <field name="result_sent" invisible="channel not in ('email', 'sms', 'messaging', 'social')"/>
                 <field name="result_delivered" optional="show" invisible="channel not in ('email', 'sms', 'messaging')"/>
-                <field name="result_opened" invisible="channel != 'email'"/>
+                <field name="result_opened" string="Opened / Read" invisible="channel not in ('email', 'messaging')"/>
                 <field name="result_clicks" invisible="channel not in ('email', 'sms', 'messaging')"/>
-                <field name="result_replied" invisible="channel != 'email'"/>
+                <field name="result_replied" invisible="channel not in ('email', 'messaging')"/>
                 <field name="result_likes" optional="show" invisible="channel != 'social'"/>
                 <field name="result_comments" optional="show" invisible="channel != 'social'"/>
                 <field name="result_registrations" optional="show" invisible="channel not in ('event_virtual', 'event_physical')"/>
@@ -284,7 +284,8 @@
               </list>
             </field>
             <div class="text-muted small mt-2">Each channel's numbers come from its app: Email and SMS (audience, sent,
-              delivered, opened, clicked, replies, bounced), Messaging (recipients, sent, clicks, not sent), Social
+              delivered, opened, clicked, replies, bounced), Messaging (recipients, sent, delivered and read on WhatsApp,
+              clicks, replies, not sent), Social
               (posts, published, likes, comments), Events (seats, registrations, attended). Leads, won deals and revenue
               come from CRM and Sales records tagged with the campaign. Updated every hour and on Refresh.</div>
           </page>

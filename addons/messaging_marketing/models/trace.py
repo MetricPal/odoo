@@ -18,6 +18,9 @@ TRACE_STATES = [
     ('queued', 'Waiting to send'),
     ('sending', 'Sending'),
     ('sent', 'Sent'),
+    ('delivered', 'Delivered'),
+    ('read', 'Read'),
+    ('replied', 'Replied'),
     ('failed', 'Not sent'),
     ('unknown', 'Outcome unknown'),
     ('held', 'Held'),
@@ -29,6 +32,14 @@ TRACE_STATES = [
 COMMAND_STATES = {
     'queued': 'queued', 'dispatching': 'sending', 'accepted': 'sent', 'unknown': 'unknown',
     'failed': 'failed', 'held': 'held', 'expired': 'expired', 'cancelled': 'cancelled',
+}
+# The message left: Sent, and the steps after it. A recipient shows the furthest step reached.
+REACHED = ('sent', 'delivered', 'read', 'replied')
+REPLY_DAYS = 7
+WHATSAPP_REASONS = {
+    'invalid_recipient': 'This number is not on WhatsApp, or WhatsApp cannot deliver to it.',
+    'unsupported': 'Meta did not accept the template for this message (not approved, paused or changed).',
+    'rate_limited': 'Meta limited how many people this number may write to; retries ran out.',
 }
 REASONS = {
     'invalid_recipient': 'The person blocked the bot, closed their account, or is not on the channel\'s test list.',
@@ -58,6 +69,11 @@ class Trace(models.Model):
     command_id = fields.Many2one('omni.command', readonly=True, ondelete='set null', string='Omnichannel message')
     note = fields.Char(readonly=True, string='Details')
     sent_at = fields.Datetime(readonly=True, string='Sent on')
+    delivered_at = fields.Datetime(readonly=True, string='Delivered on')
+    read_at = fields.Datetime(readonly=True, string='Read on')
+    replied_at = fields.Datetime(readonly=True, string='Replied on')
+    reply_conversation_id = fields.Many2one('omni.conversation', readonly=True, ondelete='set null',
+                                            string='Conversation')
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -80,15 +96,58 @@ class Trace(models.Model):
 
     def _sync_from_command(self, command):
         state = COMMAND_STATES.get(command.state)
-        if not state or state == self.state:
+        if not state or state == self.state or (state == 'sent' and self.state in REACHED):
             return
         values = {'state': state}
         if state == 'sent':
             values.update(sent_at=fields.Datetime.now(), note=False)
         elif state in ('failed', 'held', 'expired', 'unknown'):
             code = command.current_attempt_id.reason_code if command.current_attempt_id else ''
-            values['note'] = _(REASONS[code]) if code in REASONS else (command.held_reason or False)
+            values['note'] = self._failure_note(code, command)
         self.write(values)
+
+    def _failure_note(self, code, command):
+        """Why the message was not sent, in words for the marketer. A channel can say it more precisely."""
+        if self.channel == 'whatsapp' and code in WHATSAPP_REASONS:
+            return _(WHATSAPP_REASONS[code])
+        return _(REASONS[code]) if code in REASONS else (command.held_reason or False)
+
+    def _report(self, status, when):
+        """The channel reports what happened to a sent message: delivered, read or failed (after Sent)."""
+        self.ensure_one()
+        when = when or fields.Datetime.now()
+        if status == 'failed':
+            if self.state in ('sent', 'delivered'):
+                self.write({'state': 'failed', 'note': self._undelivered_note()})
+            return
+        values = {}
+        if status in ('delivered', 'read') and not self.delivered_at:
+            values['delivered_at'] = when
+        if status == 'read' and not self.read_at:
+            values['read_at'] = when
+        order = ('sent', 'delivered', 'read', 'replied')
+        if self.state in order and status in order and order.index(status) > order.index(self.state):
+            values['state'] = status
+        if values:
+            self.write(values)
+
+    def _undelivered_note(self):
+        if self.channel == 'whatsapp':
+            return _('WhatsApp could not deliver it: the number is not on WhatsApp, or Meta held it back.')
+        return _('The channel could not deliver it to this person.')
+
+    def _mark_replied(self, message):
+        """The person answered within a week of the mailing: the furthest step is Replied."""
+        self.ensure_one()
+        self.write({'state': 'replied', 'replied_at': message.occurred_at or fields.Datetime.now(),
+                    'reply_conversation_id': message.conversation_id.id})
+
+    def action_open_conversation(self):
+        self.ensure_one()
+        conversation = self.reply_conversation_id
+        conversation.check_access('read')
+        return {'type': 'ir.actions.act_window', 'res_model': 'omni.conversation', 'res_id': conversation.id,
+                'view_mode': 'form', 'target': 'current'}
 
 
 class Command(models.Model):

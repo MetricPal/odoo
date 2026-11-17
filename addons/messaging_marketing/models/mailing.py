@@ -24,6 +24,7 @@ from odoo.addons.omni_channel.models.foundation import protected_input
 from odoo.addons.omni_channel.providers.base import installed_adapters
 
 from .contact import CHANNELS
+from .trace import REACHED
 
 internal, trusted = capability('_mm_internal')
 
@@ -81,6 +82,15 @@ class Mailing(models.Model):
                "('channel_type_id.code', '=', channel)]",
         help='The Omnichannel channel (bot or business number) that sends this mailing.')
     body = fields.Text(string='Message', tracking=True)
+    wa_template_id = fields.Many2one(
+        'mm.whatsapp.template', string='Template', ondelete='restrict', tracking=True, check_company=True,
+        domain="[('channel_id', '=', channel_id), ('state', 'in', ('approved', 'review', 'paused'))]",
+        help='WhatsApp only lets a business start a conversation with a text Meta has approved. '
+             'The template gives the message; change the text in the template.')
+    wa_template_state = fields.Selection(related='wa_template_id.state', string='Template status')
+    wa_header = fields.Char(related='wa_template_id.header')
+    wa_footer = fields.Char(related='wa_template_id.footer')
+    wa_button_label = fields.Char(related='wa_template_id.button_label')
     list_ids = fields.Many2many('mm.list', string='Send to lists',
                                 domain="[('company_id', '=', company_id), ('purpose_id', '=', purpose_id)]")
     reason = fields.Text(string='Note for the approver',
@@ -110,6 +120,8 @@ class Mailing(models.Model):
     policy_hash = fields.Char(readonly=True, copy=False)
     expires_at = fields.Datetime(readonly=True, copy=False, string='Approval valid until')
     sent_at = fields.Datetime(readonly=True, copy=False, string='Sending started')
+    waiting_reason = fields.Char(readonly=True, copy=False,
+                                 help='Why an approved mailing has not started yet; it starts by itself.')
     trace_ids = fields.One2many('mm.trace', 'mailing_id', readonly=True, string='Recipients')
 
     # Audience and checks (live in draft; from the frozen list once submitted)
@@ -137,12 +149,18 @@ class Mailing(models.Model):
     recipient_count = fields.Integer(compute='_compute_results', string='Recipients')
     queued_count = fields.Integer(compute='_compute_results', string='Waiting to send')
     sent_count = fields.Integer(compute='_compute_results', string='Sent')
+    delivered_count = fields.Integer(compute='_compute_results', string='Delivered')
+    read_count = fields.Integer(compute='_compute_results', string='Read',
+                                help='People who read it. Only people who keep read receipts on are counted.')
+    replied_count = fields.Integer(compute='_compute_results', string='Replied',
+                                   help='People who answered within 7 days. STOP is counted apart, as an opt-out.')
+    reports_delivery = fields.Boolean(compute='_compute_reports_delivery')
     failed_count = fields.Integer(compute='_compute_results', string='Not sent')
     skipped_count = fields.Integer(compute='_compute_results', string='Skipped')
     click_count = fields.Integer(compute='_compute_results', string='Link clicks')
 
     _protected = {'state', 'requester_id', 'approval_request_id', 'payload', 'payload_hash', 'policy_hash',
-                  'expires_at', 'sent_at', 'source_id', 'company_id', 'purpose_id'}
+                  'expires_at', 'sent_at', 'source_id', 'company_id', 'purpose_id', 'waiting_reason'}
 
     @api.constrains('scheduled_at', 'schedule')
     def _check_schedule(self):
@@ -176,7 +194,7 @@ class Mailing(models.Model):
         self.check_access('read')
         vals = {'name': _('%s (copy)', self.name), 'channel': self.channel, 'channel_id': self.channel_id.id,
                 'body': self.body, 'list_ids': [fields.Command.set(self.list_ids.ids)], 'reason': self.reason,
-                'track_links': self.track_links, 'utm_campaign_id': self.utm_campaign_id.id,
+                'wa_template_id': self.wa_template_id.id, 'track_links': self.track_links, 'utm_campaign_id': self.utm_campaign_id.id,
                 'price_per_message': self.price_per_message, 'purpose_id': self.purpose_id.id}
         vals.update(default or {})
         return self.create(vals)
@@ -218,6 +236,21 @@ class Mailing(models.Model):
                 ('channel_type_id.code', '=', self.channel), ('active', '=', True)], limit=1)
         if self.channel == 'telegram':
             self.price_per_message = 0
+        if self.wa_template_id and (self.channel != 'whatsapp' or self.wa_template_id.channel_id != self.channel_id):
+            self.wa_template_id = False
+
+    @api.onchange('wa_template_id')
+    def _onchange_wa_template(self):
+        if self.wa_template_id:
+            self.body = self.wa_template_id.body
+
+    def _template_doc(self):
+        """What the approver approves about the template: which one, by Meta's name and language."""
+        self.ensure_one()
+        template = self.wa_template_id
+        if self.channel != 'whatsapp' or not template:
+            return None
+        return {'id': template.id, 'name': template.meta_name, 'language': template.language}
 
     # ------------------------------------------------------------------ audience
 
@@ -301,7 +334,8 @@ class Mailing(models.Model):
             row.char_count = len(row.preview_text)
             row.link_count = len(set(re.findall(TEXT_URL_REGEX, row.body or '')))
 
-    @api.depends('channel', 'channel_id', 'channel_id.selected_sender_id.health', 'channel_id.dispatch_enabled')
+    @api.depends('channel', 'channel_id', 'channel_id.selected_sender_id.health', 'channel_id.dispatch_enabled',
+                 'wa_template_id', 'wa_template_id.state', 'state')
     def _compute_channel_problem(self):
         for row in self:
             row.channel_problem = row._channel_problem(strict=False)
@@ -329,6 +363,30 @@ class Mailing(models.Model):
         if not channel.dispatch_enabled and not strict:
             return _('Sending is paused on this channel. Approved messages wait until an Omnichannel '
                      'administrator enables sending.')
+        return '' if strict else self._template_hint()
+
+    def _template_hint(self):
+        """What the template's review at Meta means for this WhatsApp mailing right now, or ''."""
+        self.ensure_one()
+        if self.channel != 'whatsapp' or self.state not in ('draft', 'pending', 'approved'):
+            return ''
+        template = self.wa_template_id
+        if not template:
+            usable = self.env['mm.whatsapp.template'].sudo().search_count([
+                ('channel_id', '=', self.channel_id.id), ('state', 'in', ('approved', 'review', 'paused'))], limit=1)
+            return '' if usable else _(
+                'No approved template for this number yet. WhatsApp only lets a business start a conversation '
+                'with a text Meta has approved. Write one under Configuration, WhatsApp templates.')
+        name = template.display_name
+        if template.state == 'review':
+            return _('“%s” is in review at Meta. You can submit the mailing for approval now; it is sent only '
+                     'once Meta approves the template.', name)
+        if template.state == 'paused':
+            return _('Waiting: Meta paused “%s”. The mailing goes out once Meta lifts the pause, or choose '
+                     'another template (as a new draft).', name)
+        if template.state in ('rejected', 'draft'):
+            return _('Not sent: Meta rejected “%s”. Duplicate the mailing to change it, and choose another '
+                     'template.', name)
         return ''
 
     @api.depends('state', 'schedule', 'scheduled_at')
@@ -348,14 +406,27 @@ class Mailing(models.Model):
             row.is_requester = row.requester_id == self.env.user
             row.is_due = row.schedule == 'now' or bool(row.scheduled_at and row.scheduled_at <= now)
 
-    @api.depends('trace_ids.state')
+    @api.depends('channel')
+    def _compute_reports_delivery(self):
+        for row in self:
+            row.reports_delivery = row._reports_delivery()
+
+    def _reports_delivery(self):
+        """Whether the channel tells delivered and read. WhatsApp does; Telegram does not."""
+        self.ensure_one()
+        return self.channel == 'whatsapp'
+
+    @api.depends('trace_ids.state', 'trace_ids.delivered_at', 'trace_ids.read_at', 'trace_ids.replied_at')
     def _compute_results(self):
         Click = self.env['link.tracker.click'].sudo()
         for row in self:
             states = row.trace_ids.mapped('state')
             row.recipient_count = len(states)
             row.queued_count = sum(s in ('queued', 'sending') for s in states)
-            row.sent_count = states.count('sent')
+            row.sent_count = sum(s in REACHED for s in states)
+            row.delivered_count = len(row.trace_ids.filtered('delivered_at'))
+            row.read_count = len(row.trace_ids.filtered('read_at'))
+            row.replied_count = len(row.trace_ids.filtered('replied_at'))
             row.failed_count = sum(s in ('failed', 'held', 'expired', 'unknown', 'cancelled') for s in states)
             row.skipped_count = states.count('skipped')
             row.click_count = Click.search_count([('link_id.utm_reference', '=', f'{row._name},{row.id}')]) \
@@ -398,8 +469,8 @@ class Mailing(models.Model):
 
     def _shorten_links(self):
         """Replace links by tracked short links before the text is frozen (users can only read trackers)."""
-        if not self.track_links or not public_base(self._tracking_base()):
-            return
+        if not self.track_links or not public_base(self._tracking_base()) or self.channel == 'whatsapp':
+            return  # a WhatsApp template's text is fixed by Meta's review: its links cannot differ per mailing
         base = self._tracking_base().rstrip('/') + '/r/'
         if not [url for url in re.findall(TEXT_URL_REGEX, self.body or '') if not url.startswith(base)]:
             return
@@ -410,7 +481,19 @@ class Mailing(models.Model):
     def _check_ready(self):
         self.ensure_one()
         problems = []
-        if not (self.body or '').strip():
+        template = self.wa_template_id
+        if self.channel == 'whatsapp':
+            if not template:
+                problems.append(_('Choose a template: WhatsApp only sends texts Meta has approved.'))
+            elif template.state in ('draft', 'rejected') or template.channel_id != self.channel_id:
+                problems.append(_('Choose a template of this number that Meta approved or is reviewing.'))
+            elif self.body != template.body:
+                self.write({'body': template.body})  # the message is the template's text, nothing else
+        elif template:
+            self.write({'wa_template_id': False})
+        if problems:
+            pass
+        elif not (self.body or '').strip():
             problems.append(_('Write the message.'))
         elif len(render(self.body, self.env['mm.contact'].new({'name': 'X' * 40}))) > LIMITS.get(self.channel, 4096):
             problems.append(_('The message is longer than %s characters.', LIMITS.get(self.channel, 4096)))
@@ -440,7 +523,7 @@ class Mailing(models.Model):
             'schema': 1, 'mailing': self.id, 'company': self.company_id.id, 'purpose': self.purpose_id.code,
             'channel': self.channel, 'channel_id': channel.id, 'generation': channel.generation,
             'sender': channel.selected_sender_id.external_key, 'body': self.body,
-            'lists': sorted(self.list_ids.ids), 'recipients': recipients,
+            'template': self._template_doc(), 'lists': sorted(self.list_ids.ids), 'recipients': recipients,
             'audience': {'members': len(members), **{k: v for k, v in split.items() if k != 'ok'}},
             'scheduled_at': fields.Datetime.to_string(self.scheduled_at) if self.schedule == 'later' else False,
             'utm': {'campaign': self.utm_campaign_id.id, 'source': self.source_id.id},
@@ -488,6 +571,7 @@ class Mailing(models.Model):
                 or channel.generation != self.payload.get('generation')
                 or channel.selected_sender_id.external_key != self.payload.get('sender')
                 or self.body != self.payload.get('body')
+                or self._template_doc() != self.payload.get('template')
                 or digest(self._policy()) != self.policy_hash):
             raise UserError(_('This approval expired or the channel or its approvers changed. '
                               'Duplicate the mailing for a new review.'))
@@ -551,6 +635,36 @@ class Mailing(models.Model):
         self.sudo()._start_sending()
         return True
 
+    def _send_blocker(self):
+        """``(kind, text)`` when an approved mailing cannot start now, else ``('', '')``.
+
+        ``wait``: it starts by itself once the reason is gone (the scheduler tries again).
+        ``stop``: it can never go out as approved; it is cancelled with the reason.
+        """
+        self.ensure_one()
+        if self.channel != 'whatsapp':
+            return '', ''
+        template = self.wa_template_id
+        if template.state == 'approved':
+            return '', ''
+        if template.state in ('review', 'paused'):
+            return 'wait', self._template_hint()
+        return 'stop', _('Not sent: Meta rejected “%s” after this mailing was approved. Duplicate the mailing '
+                         'to change it, and choose another template.', template.display_name) if template else _(
+                             'Not sent: a WhatsApp mailing needs a template that Meta approved.')
+
+    def _command_payload(self, payload, contact):
+        """What the channel needs in the message it sends (the reviewed text stays in ``body``).
+
+        WhatsApp sends the approved template by Meta's name, with the person's values for its numbered fields.
+        """
+        self.ensure_one()
+        if self.channel == 'whatsapp':
+            template = self.wa_template_id
+            payload.update(operation='template.send', template={
+                'name': template.meta_name, 'language': template.language, 'body': template._values(contact)})
+        return payload
+
     def _start_sending(self):
         """Queue one Omnichannel message per frozen recipient who can still receive it."""
         self.ensure_one()
@@ -558,6 +672,16 @@ class Mailing(models.Model):
         if self.state != 'approved':
             raise UserError(_('Only an approved mailing that has not been sent can be sent.'))
         self._frozen()
+        kind, text = self._send_blocker()
+        if kind == 'wait':
+            if self.waiting_reason != text:
+                internal(self).write({'waiting_reason': text})
+            return False
+        if kind == 'stop':
+            internal(self).write({'state': 'cancelled', 'waiting_reason': False})
+            self.message_post(body=text)
+            self._audit('mm.cancelled', _('The approved mailing could not go out as approved.'))
+            return False
         request = self._approved_evidence()
         channel = self.channel_id.sudo()
         sender = channel.selected_sender_id
@@ -586,12 +710,12 @@ class Mailing(models.Model):
             command = command.with_user(self.requester_id).sudo()
             if command_policy is None:
                 command_policy = digest(command._policy_document())
-            payload = {
+            payload = self._command_payload({
                 'schema': 1, 'uuid': command.uuid, 'company': command.company_id.id,
                 'purpose': command.purpose_id.code, 'channel': channel.id, 'generation': channel.generation,
                 'sender': sender.external_key, 'account': sender.account_id.external_account_key,
                 'recipient': address, 'body': body, 'operation': 'message.send', **command._extra_payload(),
-            }
+            }, contact)
             omni_internal(command).write({
                 'state': 'queued', 'sender_id': sender.id, 'channel_generation': channel.generation,
                 'payload': payload, 'payload_hash': digest(payload), 'policy_hash': command_policy,
@@ -599,7 +723,7 @@ class Mailing(models.Model):
             })
             command._audit('message.queued', _('Queued from an approved mailing.'))
             trace.write({'state': 'queued', 'command_id': command.id})
-        internal(self).write({'state': 'sending', 'sent_at': now})
+        internal(self).write({'state': 'sending', 'sent_at': now, 'waiting_reason': False})
         internal(request).write({'executed_at': now})
         self._audit('mm.sending', _('Approved mailing queued for sending.'))
         self._check_done()
@@ -611,9 +735,12 @@ class Mailing(models.Model):
 
     @api.model
     def _cron_send_scheduled(self, limit=20):
-        """Start approved mailings whose time has come (immediate ones are started on approval)."""
-        due = self.sudo().search([('state', '=', 'approved'), ('schedule', '=', 'later'),
-                                  ('scheduled_at', '<=', fields.Datetime.now())], limit=limit)
+        """Start approved mailings whose time has come (immediate ones are started on approval), and those
+        that were waiting for their channel (for example a template still in review)."""
+        due = self.sudo().search([
+            ('state', '=', 'approved'),
+            '|', '&', ('schedule', '=', 'later'), ('scheduled_at', '<=', fields.Datetime.now()),
+            ('waiting_reason', '!=', False)], limit=limit)
         for mailing in due:
             try:
                 with self.env.cr.savepoint():
@@ -628,6 +755,20 @@ class Mailing(models.Model):
         return {'type': 'ir.actions.act_window', 'name': _('Recipients: %s', self.name), 'res_model': 'mm.trace',
                 'view_mode': 'list,graph', 'domain': [('mailing_id', '=', self.id)],
                 'context': {'search_default_group_state': 1, 'create': False}}
+
+    def _action_traces(self, name, domain):
+        action = self.action_view_traces()
+        action.update(name=name, domain=action['domain'] + domain)
+        return action
+
+    def action_view_delivered(self):
+        return self._action_traces(_('Delivered: %s', self.name), [('delivered_at', '!=', False)])
+
+    def action_view_read(self):
+        return self._action_traces(_('Read: %s', self.name), [('read_at', '!=', False)])
+
+    def action_view_replied(self):
+        return self._action_traces(_('Replied: %s', self.name), [('replied_at', '!=', False)])
 
     def action_view_clicks(self):
         self.ensure_one()

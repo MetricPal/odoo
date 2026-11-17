@@ -1,9 +1,15 @@
-"""Inbound messages from Omnichannel: STOP replies and adding chats as contacts."""
+"""Inbound messages from Omnichannel: STOP replies, replies to a mailing, delivery reports, and adding chats as
+contacts."""
 
 import re
+from datetime import timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
+
+from odoo.addons.omni_channel.models.inbox import internal as inbox_internal
+
+from .trace import REACHED, REPLY_DAYS
 
 # Whole-message replies that withdraw marketing consent on that channel.
 STOP_WORDS = {'STOP', 'STOP ALL', 'STOPALL', 'UNSUBSCRIBE', 'BERHENTI'}
@@ -29,27 +35,69 @@ class InboundMessage(models.Model):
         for message in messages:
             if is_stop(message.body):
                 message.sudo()._mm_opt_out()
+            else:
+                message.sudo()._mm_reply()
         return messages
 
-    def _mm_opt_out(self):
-        """Record the reply as an opt-out for the matching marketing contact, if any."""
+    def _mm_contacts(self):
+        """``(channel code, marketing contacts)`` of the person who wrote this message."""
         conversation = self.conversation_id
         channel = conversation.channel_id.channel_type_id.code
         if channel not in CHANNEL_CODES:
-            return
+            return channel, self.env['mm.contact']
         key = conversation.identity_id.external_key
         domain = [('company_id', '=', self.company_id.id)]
         if channel == 'telegram':
             domain.append(('telegram_chat', '=', key))
         else:
             domain.append(('whatsapp', '=', whatsapp_number(key)))
-        contacts = self.env['mm.contact'].sudo().search(domain)
+        return channel, self.env['mm.contact'].sudo().search(domain)
+
+    def _mm_reply(self):
+        """An answer within a week of a mailing counts as a reply to the latest one the person received."""
+        channel, contacts = self._mm_contacts()
+        if not contacts:
+            return
+        since = (self.occurred_at or fields.Datetime.now()) - timedelta(days=REPLY_DAYS)
+        trace = self.env['mm.trace'].sudo().search([
+            ('contact_id', 'in', contacts.ids), ('channel', '=', channel), ('state', 'in', REACHED),
+            ('mailing_id.channel_id', '=', self.conversation_id.channel_id.id),
+            ('sent_at', '>=', since)], order='sent_at desc, id desc', limit=1)
+        if trace and trace.state != 'replied':
+            trace._mark_replied(self)
+
+    def _mm_opt_out(self):
+        """Record the reply as an opt-out for the matching marketing contact, if any."""
+        conversation = self.conversation_id
+        channel, contacts = self._mm_contacts()
         contacts = contacts.filtered(lambda c: c[channel + '_status'] != 'opted_out')
         if contacts:
             contacts._record_consent(channel, 'opt_out', 'keyword', _(
                 'Replied “%(text)s” on %(channel)s at %(time)s UTC (message %(key)s).',
                 text=(self.body or '').strip()[:40], channel=conversation.channel_id.name,
                 time=self.occurred_at, key=self.external_key))
+
+
+class WebhookEvent(models.Model):
+    _inherit = 'omni.webhook.event'
+
+    @api.model
+    def _store(self, endpoint, event, raw_hash):
+        """A channel's report about a mailing message (delivered, read, failed) goes to its recipient line.
+
+        Reports about anything else stay as Omnichannel keeps them.
+        """
+        record = super()._store(endpoint, event, raw_hash)
+        if (event.kind == 'receipt' and record.state == 'unresolved'
+                and record.reason_code == 'receipt_reconciliation_pending' and event.message_key):
+            command = self.env['omni.command'].sudo().search([
+                ('channel_id', '=', endpoint.channel_id.id), ('provider_message_key', '=', event.message_key),
+                ('mm_trace_id', '!=', False)], limit=1)
+            if command:
+                when = fields.Datetime.to_datetime(event.occurred_at) if event.occurred_at else False
+                command.mm_trace_id._report(event.body, when)
+                inbox_internal(record).write({'state': 'processed', 'reason_code': False})
+        return record
 
 
 class Conversation(models.Model):

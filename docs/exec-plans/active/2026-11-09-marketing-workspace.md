@@ -9,8 +9,8 @@ boards 11.1 to 11.3. M5 research desk built 2026-11-13 in `marketing_intel_resea
 `marketing_intel_design` from the approved boards 13.1 to 13.4 (drawn with Pillow and Odoo's own fonts, not from
 HTML: no HTML-to-image program is installed here; AI images need an image provider set in Hermes). M7 content
 calendar built 2026-11-16 in `marketing_intel_calendar` from the approved boards 14.1 and 14.2 (a read-only view over
-the three apps' own records; an approved message or post does not move from the calendar). Next: M8 WhatsApp
-outbound templates and per-channel results. New screens need approved mocks first (CLAUDE.md); the
+the three apps' own records; an approved message or post does not move from the calendar). M8 WhatsApp
+outbound templates and per-channel results built 2026-11-17 (not yet tried against Meta). Next: M0 findings, M1. New screens need approved mocks first (CLAUDE.md); the
 role model and assistant jobs are proposed in ADR 0016 (`docs/design-decisions/0016-marketing-roles-and-jobs.md`).
 Builds on the marketing roadmap (P0 to P6 delivered 2026-10-25), ADR 0012 (department assistants), ADR 0014
 (the assistant as a shared service) and ADR 0015 (agents working together).

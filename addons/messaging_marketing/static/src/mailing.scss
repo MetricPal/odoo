@@ -70,6 +70,17 @@
 
         .o_field_widget, span { white-space: pre-wrap; }
     }
+    // A WhatsApp template's link button, under the text.
+    .o_mm_bubble_button {
+        border-top: 1px solid $border-color;
+        margin-top: .4rem;
+        padding-top: .4rem;
+        text-align: center;
+        color: #0b6bcb;
+
+        .o_field_widget, span { color: #0b6bcb !important; }
+    }
+    .o_mm_phone_whatsapp .o_mm_phone_bar { background: #008069; }
     .o_mm_phone_empty {
         color: $text-muted;
         text-align: center;

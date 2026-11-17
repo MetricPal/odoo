@@ -12,6 +12,22 @@ Format:
 
 
 
+## 2026-11-17 — Marketing: WhatsApp templates and per-channel results (plan M8)
+
+- What: Messaging Marketing can now start WhatsApp conversations. **WhatsApp templates** (board 15.1, approved
+  2026-11-16) are written with the mailing's fields ({first_name}, {name}), submitted to Meta from the app and
+  followed until Meta answers (hourly cron `update WhatsApp templates from Meta`); only an approved template can be
+  used in a mailing, and the approver still reviews every mailing. Mailings and recipient lines now show sent,
+  delivered, read, replied and failed (reports from the WhatsApp webhook; replies within 7 days count to the latest
+  mailing); the campaign results use them (Telegram reports no delivered/read, so those stay empty).
+  `omni_whatsapp` gains the Meta business calls (`providers/business.py`), template sending and webhook receipts.
+- Reason: Meta only allows approved templates outside a person's 24-hour window (plan M8).
+- Affected: messaging_marketing (20.0.1.2.0, new model `mm.whatsapp.template`, demo `whatsapp_demo.xml`),
+  omni_whatsapp, omni_channel (dispatch), marketing_intel_plan (results), marketing_intel_team (panel).
+- Notes: needs `phonenumbers` in the virtualenv for number normalisation (the contact tests fail without it).
+  Tests: messaging_marketing 28 pass on a fresh demo database; omni_whatsapp unit tests pass when run directly
+  (`test_business` 7, `test_webhook` 17; `test_adapter` 3 skipped without Odoo). Not tried against Meta itself.
+
 ## 2026-11-16 — Marketing: content calendar (plan M7)
 
 - What: new module `marketing_intel_calendar` (approved boards 14.1 and 14.2). **Campaigns › Calendar** (the one new

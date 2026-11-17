@@ -77,11 +77,33 @@ def _object(pairs):
     return value
 
 
+@dataclass(frozen=True)
+class StatusUpdate:
+    """What Meta reports about a message this number sent: delivered, read or failed."""
+    message_id: str
+    recipient_id: str
+    status: str
+    occurred_at: str
+
+
+STATUS_KINDS = ("delivered", "read", "failed")
+
+
 def text_messages(raw, headers, *, app_secret, business_account_id, phone_number_id, now=None):
     """Authenticate before decoding; bind each message to the configured WABA and number.
 
     Status-only notifications and non-text messages produce no text messages.
     This does not acknowledge, persist, deduplicate, process or send anything.
+    """
+    return notifications(raw, headers, app_secret=app_secret, business_account_id=business_account_id,
+                         phone_number_id=phone_number_id, now=now)[0]
+
+
+def notifications(raw, headers, *, app_secret, business_account_id, phone_number_id, now=None):
+    """``(text messages, status updates)`` of one authenticated webhook call, same checks as above.
+
+    A status of a kind this version does not use ("sent", or a new one) is skipped; a malformed one rejects
+    the whole call, like a malformed message.
     """
     if not _id(business_account_id) or not _id(phone_number_id):
         raise WebhookRejected("scope")
@@ -102,7 +124,7 @@ def text_messages(raw, headers, *, app_secret, business_account_id, phone_number
                 stack.extend((item, depth + 1) for item in node)
         if value.get("object") != "whatsapp_business_account" or not isinstance(value.get("entry"), list):
             raise WebhookRejected("schema")
-        messages = []
+        messages, statuses = [], []
         seen = set()
         upper = (now or datetime.now(UTC)) + timedelta(minutes=5)
         for entry in value["entry"]:
@@ -145,7 +167,28 @@ def text_messages(raw, headers, *, app_secret, business_account_id, phone_number
                                                 occurred.strftime("%Y-%m-%d %H:%M:%S")))
                     if len(messages) > MAX_MESSAGES:
                         raise WebhookRejected("size")
-        return tuple(messages)
+                reports = data.get("statuses", [])
+                if not isinstance(reports, list):
+                    raise WebhookRejected("schema")
+                for item in reports:
+                    if item.get("status") not in STATUS_KINDS:
+                        continue
+                    key, recipient, stamp = item["id"], item["recipient_id"], item["timestamp"]
+                    if not _text(key, 256) or key != key.strip() or not _id(recipient):
+                        raise WebhookRejected("identity")
+                    if not isinstance(stamp, str) or re.fullmatch(r"[0-9]{1,12}", stamp) is None:
+                        raise WebhookRejected("timestamp")
+                    occurred = datetime.fromtimestamp(int(stamp), UTC)
+                    if occurred.year < 2000 or occurred > upper:
+                        raise WebhookRejected("timestamp")
+                    if (key, item["status"]) in seen:
+                        continue  # Meta repeats a report; once is enough
+                    seen.add((key, item["status"]))
+                    statuses.append(StatusUpdate(key, recipient, item["status"],
+                                                 occurred.strftime("%Y-%m-%d %H:%M:%S")))
+                    if len(statuses) > MAX_MESSAGES:
+                        raise WebhookRejected("size")
+        return tuple(messages), tuple(statuses)
     except WebhookRejected:
         raise
     except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError, OSError):

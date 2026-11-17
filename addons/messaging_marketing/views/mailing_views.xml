@@ -20,6 +20,7 @@
         </header>
         <sheet>
           <field name="is_requester" invisible="1"/><field name="is_due" invisible="1"/>
+          <field name="reports_delivery" invisible="1"/>
           <field name="approval_request_id" invisible="1"/><field name="currency_id" invisible="1"/>
           <field name="char_limit" invisible="1"/><field name="link_count" invisible="1"/>
           <div class="oe_button_box" name="button_box" invisible="state in ('draft', 'pending', 'refused')">
@@ -28,6 +29,27 @@
             </button>
             <button name="action_view_traces" type="object" class="oe_stat_button" icon="send">
               <field name="sent_count" widget="statinfo" string="Sent"/>
+            </button>
+            <button name="action_view_delivered" type="object" class="oe_stat_button" icon="done_all"
+                    invisible="not reports_delivery">
+              <field name="delivered_count" widget="statinfo" string="Delivered"/>
+            </button>
+            <button name="action_view_read" type="object" class="oe_stat_button" icon="visibility"
+                    invisible="not reports_delivery"
+                    title="People who read it. Only people who keep read receipts on are counted.">
+              <field name="read_count" widget="statinfo" string="Read"/>
+            </button>
+            <button type="object" name="action_view_traces" class="oe_stat_button" icon="done_all"
+                    invisible="reports_delivery or state not in ('sending', 'done')" title="Telegram does not report this">
+              <div class="o_stat_info"><span class="o_stat_value">—</span><span class="o_stat_text">Delivered</span></div>
+            </button>
+            <button type="object" name="action_view_traces" class="oe_stat_button" icon="visibility"
+                    invisible="reports_delivery or state not in ('sending', 'done')" title="Telegram does not report this">
+              <div class="o_stat_info"><span class="o_stat_value">—</span><span class="o_stat_text">Read</span></div>
+            </button>
+            <button name="action_view_replied" type="object" class="oe_stat_button" icon="reply"
+                    title="People who answered within 7 days. STOP is counted apart, as an opt-out.">
+              <field name="replied_count" widget="statinfo" string="Replied"/>
             </button>
             <button name="action_view_traces" type="object" class="oe_stat_button" icon="error" invisible="not failed_count">
               <field name="failed_count" widget="statinfo" string="Not sent"/>
@@ -53,6 +75,16 @@
                        groups="base.group_no_one"/>
                 <field name="list_ids" widget="many2many_tags" readonly="state != 'draft'"
                        options="{'no_create': true}" placeholder="Choose one or more lists"/>
+                <label for="wa_template_id" invisible="channel != 'whatsapp'"/>
+                <div class="d-flex align-items-center gap-2" invisible="channel != 'whatsapp'">
+                  <field name="wa_template_id" nolabel="1" readonly="state != 'draft'" required="channel == 'whatsapp' and state == 'draft'"
+                         options="{'no_create': true}" placeholder="Choose a template of this number"/>
+                  <field name="wa_template_state" nolabel="1" widget="badge" invisible="not wa_template_id"
+                         decoration-success="wa_template_state == 'approved'" decoration-warning="wa_template_state in ('review', 'paused')"
+                         decoration-danger="wa_template_state == 'rejected'"/>
+                  <button name="%(action_templates)d" type="action" string="Write a template" class="btn-link text-nowrap"
+                          invisible="wa_template_id or state != 'draft'" context="{'default_channel_id': channel_id}"/>
+                </div>
               </group>
 
               <div class="o_mm_audience" name="audience" invisible="not list_ids">
@@ -65,10 +97,12 @@
               </div>
 
               <label for="body" string="Message" class="o_mm_label"/>
-              <field name="body" nolabel="1" readonly="state != 'draft'" class="o_mm_body"
+              <div class="small text-muted mb-1" invisible="channel != 'whatsapp'">The template's text; change it in the template.</div>
+              <field name="body" nolabel="1" readonly="state != 'draft' or channel == 'whatsapp'" class="o_mm_body"
                      placeholder="Hi {first_name}, our Ramadan offer starts today: 20% off everything until Sunday. Reply STOP to stop these messages."/>
               <div class="d-flex justify-content-between small text-muted mb-3" invisible="state != 'draft'">
-                <span>Personalise with <code>{first_name}</code> or <code>{name}</code>. Tell people how to stop: replies of STOP opt them out automatically.</span>
+                <span invisible="channel != 'whatsapp'"/>
+                <span invisible="channel == 'whatsapp'">Personalise with <code>{first_name}</code> or <code>{name}</code>. Tell people how to stop: replies of STOP opt them out automatically.</span>
                 <span class="text-nowrap ms-2" invisible="char_count &gt; char_limit"><field name="char_count" class="d-inline" nolabel="1"/> / <field name="char_limit" class="d-inline" nolabel="1"/></span>
                 <span class="text-nowrap ms-2 text-danger fw-bold" invisible="char_count &lt;= char_limit">Too long: <field name="char_count" class="d-inline" nolabel="1"/> / <field name="char_limit" class="d-inline" nolabel="1"/></span>
               </div>
@@ -82,7 +116,8 @@
               <group string="Tracking and cost">
                 <field name="utm_campaign_id" readonly="state != 'draft'" options="{'no_quick_create': true}"
                        placeholder="Optional: report results under a campaign"/>
-                <field name="track_links" readonly="state != 'draft'" invisible="not link_count and state == 'draft'"/>
+                <field name="track_links" readonly="state != 'draft'"
+                       invisible="channel == 'whatsapp' or (not link_count and state == 'draft')"/>
                 <field name="price_per_message" invisible="channel != 'whatsapp'" readonly="state != 'draft'"/>
                 <field name="cost_estimate" invisible="channel != 'whatsapp' or not price_per_message"/>
               </group>
@@ -95,7 +130,8 @@
                   <span class="o_mm_phone_title"><field name="channel_id" nolabel="1" readonly="1" options="{'no_open': true}" placeholder="Your channel"/></span>
                 </div>
                 <div class="o_mm_phone_screen">
-                  <div class="o_mm_bubble" invisible="not preview_text"><field name="preview_text" nolabel="1" readonly="1"/></div>
+                  <div class="o_mm_bubble" invisible="not preview_text"><div class="fw-bold" invisible="channel != 'whatsapp' or not wa_header"><field name="wa_header" nolabel="1" readonly="1"/></div><field name="preview_text" nolabel="1" readonly="1"/><div class="small text-muted" invisible="channel != 'whatsapp' or not wa_footer"><field name="wa_footer" nolabel="1" readonly="1"/></div><div class="o_mm_bubble_button" invisible="channel != 'whatsapp' or not wa_button_label"><field name="wa_button_label" nolabel="1" readonly="1"/></div></div>
+
                   <div class="o_mm_phone_empty" invisible="preview_text">Your message appears here as recipients will see it.</div>
                 </div>
               </div>
@@ -112,9 +148,13 @@
                       decoration-danger="state in ('failed', 'expired')" decoration-warning="state in ('held', 'unknown')">
                   <field name="contact_id"/>
                   <field name="address"/>
-                  <field name="state" widget="badge"/>
+                  <field name="state" widget="badge" decoration-success="state in ('delivered', 'read')"
+                         decoration-primary="state == 'replied'" decoration-danger="state in ('failed', 'expired')"/>
                   <field name="sent_at"/>
                   <field name="note"/>
+                  <field name="reply_conversation_id" column_invisible="1"/>
+                  <button name="action_open_conversation" type="object" string="Open the conversation"
+                          class="btn-link" invisible="not reply_conversation_id"/>
                 </list>
               </field>
             </page>
@@ -139,6 +179,9 @@
         <field name="sent_at" optional="show"/>
         <field name="audience_count" optional="show"/>
         <field name="sent_count" optional="show"/>
+        <field name="delivered_count" optional="hide"/>
+        <field name="read_count" optional="hide"/>
+        <field name="replied_count" optional="hide"/>
         <field name="failed_count" optional="hide"/>
         <field name="click_count" optional="show"/>
         <field name="requester_id" widget="many2one_avatar_user" optional="show"/>

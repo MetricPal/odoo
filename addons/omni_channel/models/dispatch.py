@@ -285,7 +285,7 @@ class OmniDispatchCommand(models.Model):
     current_attempt_id = fields.Many2one(
         "omni.attempt", readonly=True, copy=False, ondelete="restrict",
     )
-    provider_message_key = fields.Char(readonly=True, copy=False)
+    provider_message_key = fields.Char(readonly=True, copy=False, index="btree_not_null")
     reconciliation_evidence = fields.Text(readonly=True, copy=False)
     _due_index = models.Index("(state, next_attempt_at, id)")
     _protected = OmniCommand._protected | {

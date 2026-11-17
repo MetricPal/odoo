@@ -10,3 +10,4 @@ access_consent_wizard_user,Record opt-in,model_mm_consent_wizard,group_mm_user,c
 access_import_user,Add messaging contacts,model_mm_contact_import,group_mm_user,crud
 access_mailing_user,Messaging mailing,model_mm_mailing,group_mm_user,crud
 access_trace_user,Messaging mailing recipients,model_mm_trace,group_mm_user,r
+access_template_user,WhatsApp template,model_mm_whatsapp_template,group_mm_user,crud

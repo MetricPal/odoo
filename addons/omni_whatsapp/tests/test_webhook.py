@@ -116,8 +116,28 @@ class TestWebhook(unittest.TestCase):
         data["messages"][0]["type"] = "image"
         self.assertEqual(parse(value), ())
         del data["messages"]
-        data["statuses"] = [{"id": "wamid.synthetic-1", "status": "delivered"}]
+        stamp = str(int(NOW.timestamp()))
+        data["statuses"] = [
+            {"id": "wamid.synthetic-1", "status": "sent", "recipient_id": "60123456789", "timestamp": stamp},
+            {"id": "wamid.synthetic-1", "status": "delivered", "recipient_id": "60123456789", "timestamp": stamp},
+            {"id": "wamid.synthetic-1", "status": "delivered", "recipient_id": "60123456789", "timestamp": stamp},
+            {"id": "wamid.synthetic-1", "status": "read", "recipient_id": "60123456789", "timestamp": stamp},
+            {"id": "wamid.synthetic-2", "status": "failed", "recipient_id": "60123456780", "timestamp": stamp,
+             "errors": [{"code": 131026, "title": "never stored"}]},
+        ]
         self.assertEqual(parse(value), ())
+        raw = json.dumps(value).encode()
+        messages, statuses = webhook.notifications(
+            raw, signed(raw), app_secret=APP_SECRET, business_account_id=WABA, phone_number_id=PHONE, now=NOW)
+        self.assertEqual(messages, ())
+        # "sent" is already known from the send itself; a repeated report counts once.
+        self.assertEqual([(s.message_id, s.status, s.recipient_id) for s in statuses], [
+            ("wamid.synthetic-1", "delivered", "60123456789"), ("wamid.synthetic-1", "read", "60123456789"),
+            ("wamid.synthetic-2", "failed", "60123456780")])
+        self.assertEqual(statuses[0].occurred_at, NOW.strftime("%Y-%m-%d %H:%M:%S"))
+        data["statuses"] = [{"id": "wamid.synthetic-1", "status": "delivered"}]  # no recipient, no time
+        with self.assertRaisesRegex(webhook.WebhookRejected, "schema"):
+            parse(value)
 
     def test_multiple_text_messages_preserved(self):
         value = fixture()
@@ -180,14 +200,17 @@ class TestWebhook(unittest.TestCase):
             with self.subTest(location=location):
                 self.assertEqual(parse(value), ())
 
-    def test_inbound_adapter_does_not_enable_outbound_dispatch(self):
+    def test_adapter_sends_templates_only(self):
         init = (ADDON / "providers/__init__.py").read_text()
         self.assertIn("module='omni_whatsapp'", init)
         adapter = ast.parse((ADDON / 'providers/adapter.py').read_text())
         cls = next(node for node in adapter.body if isinstance(node, ast.ClassDef))
         dispatch = next(node for node in cls.body if isinstance(node, ast.Assign)
                         and any(isinstance(t, ast.Name) and t.id == 'dispatch_supported' for t in node.targets))
-        self.assertIs(dispatch.value.value, False)
+        self.assertIs(dispatch.value.value, True)
+        source = (ADDON / 'providers/adapter.py').read_text()
+        self.assertIn("payload.get('operation') != 'template.send'", source)
+        self.assertNotIn("'message.send'", source.split('class WhatsAppAdapter')[1], "Free text is never sent")
         manifest = ast.literal_eval((ADDON / "__manifest__.py").read_text())
         self.assertEqual(manifest["depends"], ["omni_channel"])
         self.assertEqual(manifest["data"], ["views/credentials.xml"])

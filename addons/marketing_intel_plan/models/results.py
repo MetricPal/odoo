@@ -154,8 +154,12 @@ class PlanItem(models.Model):
                     'result_failed': record.bounced + record.failed + record.canceled}
         if record._name == 'mm.mailing':
             audience = record.recipient_count or record.audience_count
+            # WhatsApp reports delivered and read; Telegram does not (those stay empty). Replies: both.
+            reports = record.reports_delivery
             return {'result_audience': audience, 'result_sent': record.sent_count,
-                    'result_delivered': record.sent_count, 'result_clicks': record.click_count,
+                    'result_delivered': record.delivered_count if reports else 0,
+                    'result_opened': record.read_count if reports else 0,
+                    'result_clicks': record.click_count, 'result_replied': record.replied_count,
                     'result_failed': record.failed_count + record.skipped_count}
         if record._name == 'omni.social.campaign':
             versions = record.publication_ids.filtered(lambda p: p.state != 'cancelled')

@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+  <!-- Board 15.1: a WhatsApp number (not connected: it has no credentials and cannot send) and templates in
+       every status, so the templates page and a WhatsApp mailing can be looked at on a demo database. -->
+  <record id="demo_whatsapp_channel" model="omni.channel">
+    <field name="name">Spring Shop WhatsApp (demo)</field>
+    <field name="purpose_id" ref="omni_channel.purpose_marketing"/>
+    <field name="channel_type_id" ref="omni_channel.channel_type_whatsapp"/>
+  </record>
+  <record id="demo_template_spring_en" model="mm.whatsapp.template">
+    <field name="name">Spring offer</field>
+    <field name="channel_id" ref="demo_whatsapp_channel"/>
+    <field name="language">en</field>
+    <field name="body">Hi {first_name}, spring is here! Every plant is 20% off for two weeks, and orders over RM 150 ship for free.</field>
+    <field name="footer">Reply STOP to stop these messages</field>
+    <field name="button_label">Shop now</field>
+    <field name="button_url">https://springshop.example/spring</field>
+    <field name="meta_name">spring_offer_demo</field>
+    <field name="meta_id">900001</field>
+    <field name="state">approved</field>
+    <field name="submitted_at" eval="(DateTime.today() - relativedelta(days=6)).strftime('%Y-%m-%d 02:10:00')"/>
+  </record>
+  <record id="demo_template_spring_ms" model="mm.whatsapp.template">
+    <field name="name">Spring offer</field>
+    <field name="channel_id" ref="demo_whatsapp_channel"/>
+    <field name="language">ms</field>
+    <field name="body">Hai {first_name}, musim bunga sudah tiba! Semua pokok diskaun 20% selama dua minggu, dan penghantaran percuma untuk pesanan melebihi RM 150.</field>
+    <field name="footer">Balas STOP untuk berhenti</field>
+    <field name="button_label">Beli sekarang</field>
+    <field name="button_url">https://springshop.example/spring</field>
+    <field name="meta_name">spring_offer_demo</field>
+    <field name="meta_id">900002</field>
+    <field name="state">review</field>
+    <field name="submitted_at" eval="DateTime.today().strftime('%Y-%m-%d 02:12:00')"/>
+  </record>
+  <record id="demo_template_workshop" model="mm.whatsapp.template">
+    <field name="name">Workshop reminder</field>
+    <field name="channel_id" ref="demo_whatsapp_channel"/>
+    <field name="language">en</field>
+    <field name="body">Hi {first_name}, your repotting workshop is on Saturday. Send us your card number to keep your seat.</field>
+    <field name="meta_name">workshop_reminder_demo</field>
+    <field name="meta_id">900003</field>
+    <field name="state">rejected</field>
+    <field name="meta_reason">The message looks like it asks for sensitive information</field>
+    <field name="submitted_at" eval="(DateTime.today() - relativedelta(days=2)).strftime('%Y-%m-%d 03:00:00')"/>
+  </record>
+  <record id="demo_template_loyalty" model="mm.whatsapp.template">
+    <field name="name">Loyalty points</field>
+    <field name="channel_id" ref="demo_whatsapp_channel"/>
+    <field name="language">en</field>
+    <field name="body">Hi {first_name}, you have plant points waiting. Use them before the end of the month.</field>
+    <field name="meta_name">loyalty_points_demo</field>
+    <field name="meta_id">900004</field>
+    <field name="state">paused</field>
+    <field name="submitted_at" eval="(DateTime.today() - relativedelta(days=20)).strftime('%Y-%m-%d 03:00:00')"/>
+  </record>
+  <record id="demo_template_raya" model="mm.whatsapp.template">
+    <field name="name">Hari Raya greeting</field>
+    <field name="channel_id" ref="demo_whatsapp_channel"/>
+    <field name="language">ms</field>
+    <field name="header">Selamat Hari Raya</field>
+    <field name="body">Hai {first_name}, Selamat Hari Raya daripada kami semua di Spring Shop! Nikmati diskaun 15% untuk semua pokok minggu ini.</field>
+    <field name="footer">Balas STOP untuk berhenti</field>
+    <field name="button_label">Beli sekarang</field>
+    <field name="button_url">https://springshop.example/raya</field>
+  </record>
+</odoo>

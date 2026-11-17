@@ -11,4 +11,5 @@
   <menuitem id="menu_config" name="Configuration" parent="menu_root" sequence="90"/>
   <menuitem id="menu_consents" name="Opt-in history" parent="menu_config" action="action_consents" sequence="10"/>
   <menuitem id="menu_blacklist" name="Blacklist" parent="menu_config" action="action_blacklist" sequence="20"/>
+  <menuitem id="menu_templates" name="WhatsApp templates" parent="menu_config" action="action_templates" sequence="30"/>
 </odoo>

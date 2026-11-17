@@ -4,15 +4,22 @@
     <field name="name">mm.trace.list</field>
     <field name="model">mm.trace</field>
     <field name="arch" type="xml">
-      <list create="0" edit="0" delete="0" decoration-success="state == 'sent'" decoration-muted="state in ('skipped', 'cancelled')"
+      <list create="0" edit="0" delete="0" decoration-muted="state in ('skipped', 'cancelled')"
             decoration-danger="state in ('failed', 'expired')" decoration-warning="state in ('held', 'unknown')">
         <field name="mailing_id" optional="hide"/>
         <field name="contact_id"/>
         <field name="address"/>
-        <field name="state" widget="badge" decoration-success="state == 'sent'" decoration-info="state in ('queued', 'sending')"
+        <field name="state" widget="badge" decoration-success="state in ('delivered', 'read')"
+               decoration-primary="state == 'replied'" decoration-info="state in ('queued', 'sending')"
                decoration-danger="state in ('failed', 'expired')" decoration-warning="state in ('held', 'unknown')"/>
         <field name="sent_at"/>
+        <field name="delivered_at" optional="hide"/>
+        <field name="read_at" optional="show"/>
+        <field name="replied_at" optional="hide"/>
         <field name="note"/>
+        <field name="reply_conversation_id" column_invisible="1"/>
+        <button name="action_open_conversation" type="object" string="Open the conversation" class="btn-link"
+                invisible="not reply_conversation_id"/>
       </list>
     </field>
   </record>
@@ -31,7 +38,10 @@
         <field name="contact_id"/>
         <field name="address"/>
         <field name="mailing_id"/>
-        <filter name="sent" string="Sent" domain="[('state', '=', 'sent')]"/>
+        <filter name="sent" string="Sent" domain="[('state', 'in', ('sent', 'delivered', 'read', 'replied'))]"/>
+        <filter name="delivered" string="Delivered" domain="[('delivered_at', '!=', False)]"/>
+        <filter name="read" string="Read" domain="[('read_at', '!=', False)]"/>
+        <filter name="replied" string="Replied" domain="[('replied_at', '!=', False)]"/>
         <filter name="waiting" string="Waiting to send" domain="[('state', 'in', ('queued', 'sending'))]"/>
         <filter name="problems" string="Not sent" domain="[('state', 'in', ('failed', 'held', 'expired', 'unknown'))]"/>
         <filter name="skipped" string="Skipped" domain="[('state', '=', 'skipped')]"/>
@@ -49,8 +59,8 @@
     <field name="context">{'search_default_group_mailing': 1}</field>
     <field name="help" type="html">
       <p class="o_view_nocontent_empty_folder">No messages sent yet</p>
-      <p>Each person a mailing is sent to appears here with what happened: sent, skipped (for example after
-        opting out) or not sent, with the reason.</p>
+      <p>Each person a mailing is sent to appears here with what happened: sent, delivered, read, replied, skipped
+        (for example after opting out) or not sent, with the reason.</p>
     </field>
   </record>
 </odoo>

@@ -1,4 +1,4 @@
-from . import connection, webhook, adapter
+from . import connection, webhook, business, adapter
 
 from odoo.addons.omni_channel.providers.base import register_adapter
 

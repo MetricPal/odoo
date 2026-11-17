@@ -1,1 +1,1 @@
-from . import contact, mailing, trace, approval, inbound
+from . import contact, template, mailing, trace, approval, inbound

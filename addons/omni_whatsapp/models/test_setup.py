@@ -7,6 +7,7 @@ import re
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.addons.omni_channel.models.command import internal
 from odoo.addons.omni_channel.models.test_diagnostic import DiagnosticSpec
 
 from ..providers.connection import GraphReadOnly
@@ -94,3 +95,33 @@ class WhatsAppTestSetup(models.Model):
         if not self.is_whatsapp or step != 4:
             return super().action_setup_complete_step(step)
         return self._diag_complete_step(SPEC, lambda: super(WhatsAppTestSetup, self).action_setup_complete_step(step))
+
+    # ------------------------------------------------------------------ Switch on sending (templates only)
+
+    def action_enable_whatsapp_dispatch(self):
+        """Let approved template messages leave from this number. Each check says what to change in Meta.
+
+        Nothing is sent now. Free text stays off: the adapter sends approved templates only.
+        """
+        self.ensure_one()
+        self._require_manager()
+        sender, generation = self.selected_sender_id, self.generation
+        if not self.is_whatsapp or not self.active or not sender:
+            raise UserError(_('Finish the setup of this WhatsApp number first: it needs a selected sender.'))
+        if not self.approval_type_id.active or self.approval_type_id.company_id != self.company_id:
+            raise UserError(_('Choose who approves messages from this number first (the approval type).'))
+        if not self.endpoint_ids.filtered(lambda endpoint: endpoint.account_id == sender.account_id
+                                          and endpoint._allowed()):
+            raise UserError(_('Switch on receiving first: Meta reports delivered and read through the same webhook. '
+                              'In Meta, the webhook must be subscribed to "messages".'))
+        if not sender._check_health():  # read-only check at Meta, before any lock
+            raise UserError(_('Meta did not confirm this number. Check the access token, then try again.'))
+        # The same token must be allowed to read (and so manage) templates.
+        sender.account_id.sudo()._whatsapp_template_list()
+        self._lock()
+        if self.selected_sender_id != sender or self.generation != generation:
+            raise UserError(_('The selected sender changed. Try again.'))
+        internal(self).write({'dispatch_enabled': True})
+        self._audit('whatsapp.dispatch_enabled',
+                    _('Sending switched on for approved template messages. Free text stays off.'))
+        return True

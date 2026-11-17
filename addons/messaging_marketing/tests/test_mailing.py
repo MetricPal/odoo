@@ -8,6 +8,7 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 
 from odoo.addons.messaging_marketing.models.inbound import is_stop
 from odoo.addons.messaging_marketing.models.mailing import Mailing, render
+from odoo.addons.messaging_marketing.models.template import numbered
 from odoo.addons.omni_channel.models.command import internal as omni_internal
 from odoo.addons.omni_channel.providers.base import HealthResult
 from odoo.addons.omni_channel.providers.dispatch import DispatchResult, dispatch_claim
@@ -24,7 +25,7 @@ class Adapter:
         return HealthResult(True, config['namespace'], config['account_key'], config['sender_key'])
 
     def validate_command(self, payload, config):
-        return payload['operation'] == 'message.send'
+        return payload['operation'] in ('message.send', 'template.send')
 
     def dispatch(self, claim):
         return self.result
@@ -80,6 +81,12 @@ class TestMailing(TransactionCase):
         cls.chen._record_consent('whatsapp', 'opt_out', 'keyword', '')
         cls.env['mm.blacklist'].create({'channel': 'whatsapp', 'address': '+60195550004'})
         cls.list = cls.env['mm.list'].create({'name': 'VIP', 'purpose_id': cls.team.id})
+        # A template Meta approved (the status is recorded by the server, as after Meta's answer).
+        cls.template = cls.env['mm.whatsapp.template'].create({
+            'name': 'Ramadan offer', 'channel_id': cls.channel.id, 'language': 'en',
+            'body': 'Hi {first_name}, 20% off until Sunday. Reply STOP to stop.',
+            'footer': 'Reply STOP to stop these messages', 'meta_name': 'ramadan_offer_1',
+            'meta_id': '900001', 'state': 'approved'})
         cls.env['mm.subscription'].create([{'list_id': cls.list.id, 'contact_id': c.id}
                                            for c in cls.aisha | cls.ben | cls.chen | cls.dina | cls.eve])
 
@@ -103,6 +110,7 @@ class TestMailing(TransactionCase):
         return self.env['mm.mailing'].with_user(self.marketer).create(dict({
             'name': 'Ramadan offer', 'channel': 'whatsapp', 'channel_id': self.channel.id,
             'purpose_id': self.team.id, 'list_ids': [fields.Command.set(self.list.ids)],
+            'wa_template_id': self.template.id,
             'body': 'Hi {first_name}, 20% off until Sunday. Reply STOP to stop.',
             'reason': 'Monthly offer for VIP customers', 'price_per_message': 0.25}, **values))
 
@@ -137,8 +145,8 @@ class TestMailing(TransactionCase):
         self.assertEqual(render('Hello {first_name} / {name}', self.aisha), 'Hello Aisha / Aisha Rahman')
 
     def test_submit_freezes_and_needs_a_complete_draft(self):
-        incomplete = self._mailing(reason=False, body='')
-        with self.assertRaisesRegex(UserError, 'Write the message'):
+        incomplete = self._mailing(reason=False, body='', wa_template_id=False)
+        with self.assertRaisesRegex(UserError, 'Choose a template'):
             incomplete.action_submit()
         mailing = self._mailing()
         mailing.action_submit()
@@ -252,7 +260,7 @@ class TestMailing(TransactionCase):
         self._approve(mailing)
         self._dispatch_all()
         self.assertEqual(mailing.trace_ids.state, 'failed')
-        self.assertIn('blocked', mailing.trace_ids.note)
+        self.assertIn('not on WhatsApp', mailing.trace_ids.note)
         self.assertEqual(self.sender.health, 'healthy', 'One refused recipient does not break the sender')
 
     def test_stop_reply_opts_out(self):
@@ -283,3 +291,191 @@ class TestMailing(TransactionCase):
         conversation = self.env['omni.conversation'].search([('endpoint_id', '=', endpoint.id)])
         action = conversation.with_user(self.marketer).action_mm_add_contact()
         self.assertEqual(action['res_id'], self.aisha.id, 'The chat is linked to the existing contact')
+
+    # ------------------------------------------------------------------ WhatsApp templates (plan M8, board 15.1)
+
+    def _draft_template(self, **values):
+        return self.env['mm.whatsapp.template'].with_user(self.marketer).create(dict({
+            'name': 'Spring offer', 'channel_id': self.channel.id, 'language': 'en',
+            'body': 'Hi {first_name}, spring is here! Every plant is 20% off.'}, **values))
+
+    def _meta(self, submit=None, templates=None):
+        """Stand-in for the WhatsApp connector's calls to Meta."""
+        Account = type(self.env['omni.account'])
+        calls = []
+
+        def fake_submit(account, **spec):
+            calls.append(spec)
+            return submit or {'id': '900100', 'status': 'review'}
+
+        for name, fake in (('_whatsapp_template_submit', fake_submit),
+                           ('_whatsapp_template_list', lambda account: list(templates or []))):
+            patcher = patch.object(Account, name, fake, create=True)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        return calls
+
+    def test_template_text_rules(self):
+        self.assertEqual(numbered('Dear {name}, hi {first_name} ({name})'),
+                         ('Dear {{1}}, hi {{2}} ({{1}})', ['name', 'first_name']))
+        template = self._draft_template(body='{first_name}, look at {this}', button_label='Shop now')
+        problems = '\n'.join(template._problems())
+        for text in ('Only {first_name} and {name}', 'cannot start or end with a field', 'both a text and a link'):
+            self.assertIn(text, problems)
+        template.write({'body': 'Hi {first_name}, welcome {name}.', 'button_url': 'https://shop.example/spring'})
+        self.assertFalse(template._problems())
+        self.assertEqual(template._values(self.aisha), ['Aisha', 'Aisha Rahman'])
+        self.assertEqual(template.preview_text, 'Hi Sara, welcome Sara Lim.')
+        self.assertEqual(template.display_name, 'Spring offer · English')
+
+    def test_template_goes_to_meta_and_follows_its_answer(self):
+        calls = self._meta()
+        template = self._draft_template(footer='Reply STOP to stop')
+        with self.assertRaises(AccessError):
+            template.write({'state': 'approved'})
+        template.action_submit()
+        self.assertEqual((template.state, template.meta_id), ('review', '900100'))
+        self.assertEqual(calls[0]['body'], 'Hi {{1}}, spring is here! Every plant is 20% off.')
+        self.assertEqual((calls[0]['example'], calls[0]['name']), (['Sara'], template.meta_name))
+        self.assertRegex(template.meta_name, r'^spring_offer_\d+$')
+        with self.assertRaisesRegex(UserError, 'cannot be changed'):
+            template.write({'body': 'Changed during the review'})
+        with self.assertRaisesRegex(UserError, 'is kept'):
+            template.unlink()
+        # Meta approves; the author is told.
+        self._meta(templates=[{'id': '900100', 'name': template.meta_name, 'language': 'en',
+                               'status': 'approved', 'reason': ''}])
+        template.action_update_from_meta()
+        self.assertEqual(template.state, 'approved')
+        self.assertIn('Approved by Meta', template.message_ids[0].body)
+        # Another language keeps Meta's name; a rejection keeps Meta's reason; a new draft gets a new name.
+        malay = self.env['mm.whatsapp.template'].browse(template.action_copy_language()['res_id'])
+        self.assertEqual((malay.state, malay.meta_name), ('draft', template.meta_name))
+        self.assertNotEqual(malay.language, 'en')
+        self._meta(templates=[{'id': '900100', 'name': template.meta_name, 'language': 'en',
+                               'status': 'rejected', 'reason': 'INVALID_FORMAT'}])
+        self.env['mm.whatsapp.template']._cron_update_from_meta()
+        self.assertEqual((template.state, template.meta_reason), ('rejected', 'INVALID_FORMAT'))
+        again = self.env['mm.whatsapp.template'].browse(template.action_new_draft()['res_id'])
+        self.assertEqual((again.state, again.meta_name), ('draft', False))
+
+    def test_a_lost_answer_from_meta_is_settled_by_the_next_read(self):
+        self._meta(submit={'id': '', 'status': 'review'})
+        template = self._draft_template()
+        template.action_submit()
+        self.assertEqual((template.state, template.meta_id), ('review', False))
+        template.action_update_from_meta()  # Meta does not have it
+        self.assertEqual(template.state, 'draft')
+        self.assertIn('did not receive', template.meta_reason)
+
+    def test_templates_belong_to_the_team(self):
+        outsider = new_test_user(self.env, 'mmm_outsider', groups='messaging_marketing.group_mm_user')
+        self.assertFalse(self.env['mm.whatsapp.template'].with_user(outsider).search(
+            [('id', '=', self.template.id)]))
+        with self.assertRaises(AccessError):
+            self.env['mm.whatsapp.template'].with_user(outsider).create({
+                'name': 'Not mine', 'channel_id': self.channel.id, 'body': 'Hi {first_name}, hello.'})
+
+    # ------------------------------------------------------------------ a WhatsApp mailing (board 15.2)
+
+    def test_whatsapp_sends_the_template_with_the_persons_values(self):
+        mailing = self._mailing(body='Something else')
+        self._approve(mailing)
+        self.assertEqual(mailing.body, self.template.body, "The message is the template's text")
+        self.assertEqual(mailing.payload['template'],
+                         {'id': self.template.id, 'name': 'ramadan_offer_1', 'language': 'en'})
+        payload = mailing.trace_ids.command_id.payload
+        self.assertEqual(payload['operation'], 'template.send')
+        self.assertEqual(payload['template'], {'name': 'ramadan_offer_1', 'language': 'en', 'body': ['Aisha']})
+        self.assertEqual(payload['body'], 'Hi Aisha, 20% off until Sunday. Reply STOP to stop.')
+
+    def test_a_mailing_waits_while_meta_reviews_or_pauses_the_template(self):
+        self.template.write({'state': 'review'})
+        mailing = self._mailing()
+        self.assertIn('in review at Meta', mailing.channel_problem)
+        self._approve(mailing)
+        self.assertEqual(mailing.state, 'approved', 'Approved by the approver, waiting for Meta')
+        self.assertIn('in review at Meta', mailing.waiting_reason)
+        self.assertFalse(mailing.trace_ids)
+        self.env['mm.mailing']._cron_send_scheduled()
+        self.assertEqual(mailing.state, 'approved')
+        self.template.write({'state': 'paused'})
+        mailing.invalidate_recordset(['channel_problem'])
+        self.assertIn('Meta paused', mailing.channel_problem)
+        self.template.write({'state': 'approved'})
+        self.env['mm.mailing']._cron_send_scheduled()
+        self.assertEqual(mailing.state, 'sending')
+        self.assertFalse(mailing.waiting_reason)
+
+    def test_a_template_rejected_after_approval_stops_the_mailing(self):
+        self.template.write({'state': 'review'})
+        mailing = self._mailing()
+        self._approve(mailing)
+        self.template.write({'state': 'rejected'})
+        self.env['mm.mailing']._cron_send_scheduled()
+        self.assertEqual(mailing.state, 'cancelled')
+        self.assertIn('Meta rejected', mailing.message_ids[0].body)
+        with self.assertRaisesRegex(UserError, 'Choose a template of this number'):
+            self._mailing(name='Again').action_submit()
+
+    # ------------------------------------------------------------------ delivered, read, replied (board 15.2 C)
+
+    def _inbox(self):
+        Endpoint = type(self.env['omni.inbound.endpoint'])
+        if hasattr(Endpoint, '_whatsapp_verified'):
+            patcher = patch.object(Endpoint, '_whatsapp_verified', lambda self: True)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        endpoint = self.env['omni.inbound.endpoint'].create({
+            'name': 'Shop inbox', 'channel_id': self.channel.id, 'account_id': self.account.id,
+            'external_key': 'wa-1'})
+        policy = self.env['omni.inbound.policy'].create({'name': 'Text intake', 'channel_id': self.channel.id})
+        policy.with_user(self.manager).action_activate()
+        endpoint.with_user(self.manager).action_enable()
+        return endpoint
+
+    def _receive(self, endpoint, kind, key, body, message_key):
+        endpoint._receive(json.dumps({'events': [{
+            'event_key': key, 'endpoint_key': 'wa-1', 'namespace': 'wa-1', 'kind': kind,
+            'sender_key': '60195550001', 'thread_key': '60195550001', 'message_key': message_key, 'body': body,
+            'occurred_at': fields.Datetime.to_string(fields.Datetime.now() - timedelta(seconds=30)),
+            'revision': 0, 'private': True}]}).encode(), {'X-Test-Signature': 'verified'})
+        self.env['omni.webhook.event']._process_batch()
+
+    def test_delivered_read_and_replied(self):
+        endpoint = self._inbox()
+        mailing = self._mailing()
+        self._approve(mailing)
+        self._dispatch_all()
+        trace = mailing.trace_ids
+        self.assertEqual((trace.state, mailing.sent_count, mailing.delivered_count), ('sent', 1, 0))
+        self.assertTrue(mailing.reports_delivery)
+        self._receive(endpoint, 'receipt', 'wa-msg-1:read', 'read', 'wa-msg-1')  # read can arrive first
+        self.assertEqual(trace.state, 'read')
+        self.assertTrue(trace.delivered_at and trace.read_at)
+        self._receive(endpoint, 'receipt', 'wa-msg-1:delivered', 'delivered', 'wa-msg-1')
+        self.assertEqual(trace.state, 'read', 'A recipient shows the furthest step reached')
+        event = self.env['omni.webhook.event'].search([('kind', '=', 'receipt')], limit=1)
+        self.assertEqual(event.state, 'processed', 'Reports about a mailing do not wait for a manual check')
+        self._receive(endpoint, 'receipt', 'other:delivered', 'delivered', 'not-ours')
+        self.assertEqual(self.env['omni.webhook.event'].search([('kind', '=', 'receipt')], limit=1).state,
+                         'unresolved', 'Other reports stay as Omnichannel keeps them')
+        self._receive(endpoint, 'message', 'evt-reply', 'Is the monstera included?', 'm-reply')
+        self.assertEqual(trace.state, 'replied')
+        self.assertTrue(trace.reply_conversation_id)
+        mailing.invalidate_recordset()
+        self.assertEqual((mailing.sent_count, mailing.delivered_count, mailing.read_count, mailing.replied_count),
+                         (1, 1, 1, 1))
+        self.assertEqual(mailing.action_view_replied()['domain'][-1], ('replied_at', '!=', False))
+        self.assertEqual(trace.with_user(self.marketer).action_open_conversation()['res_id'],
+                         trace.reply_conversation_id.id)
+
+    def test_a_delivery_failure_after_sending(self):
+        endpoint = self._inbox()
+        mailing = self._mailing()
+        self._approve(mailing)
+        self._dispatch_all()
+        self._receive(endpoint, 'receipt', 'wa-msg-1:failed', 'failed', 'wa-msg-1')
+        self.assertEqual(mailing.trace_ids.state, 'failed')
+        self.assertIn('could not deliver', mailing.trace_ids.note)
+        self.assertEqual((mailing.sent_count, mailing.failed_count), (0, 1))
