@@ -24,6 +24,14 @@
         <field name="description">Answers questions about approvals, activities and your work (demo)</field>
         <field name="engine_id" ref="demo_engine_local"/>
         <field name="access_scope">company</field>
+        <field name="state">paused</field>
+    </record>
+    <!-- It may read contacts, so a contact's chatter offers it under Assistants (ADR 0013 phase 3, board 11).
+         An active agent's data access cannot change: it is set while paused, then the agent answers. -->
+    <record id="demo_agent_ops" model="ai.agent">
+        <field name="access_ids" eval="[Command.clear(), Command.create({'model_name': 'res.partner', 'field_names': 'name, email, phone, city'})]"/>
+    </record>
+    <record id="demo_agent_ops" model="ai.agent">
         <field name="state">active</field>
     </record>
 

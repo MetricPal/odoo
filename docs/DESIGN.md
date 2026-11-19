@@ -385,6 +385,10 @@ conversation. In a record's chatter, **Assistants** sits after Log note; its com
 icon, **Send**, the hint "Answers in an internal note · uses your access rights", paperclip and expand. Question and
 answer are internal notes; the answer reads "<agent> · AI · on behalf of <person>". An assistant is not a person: no
 voice or video call buttons and no profile card on its avatar or name (owner, 2026-11-08).
+Built 2026-11-19 (chatter): Assistants shows only on records an answering assistant may read (its data access) and
+only for its audience; the box replaces the message composer while open; Ctrl+Enter sends. The question note starts
+with "Asked <agent>"; the answer note starts with "On behalf of <person>" (a line of the note, not the header). Not
+built yet from board 11: the emoji, paperclip and expand icons of the box.
 
 **Sync to Hermes progress** (approved mock 2026-11-08, board 15): the button reads "Syncing…" with a spinner while it
 runs; at the top of the profile form a "Syncing to Hermes" panel shows "Step N of 6", a bar and the six steps (done ✓,
@@ -615,6 +619,25 @@ owner's additions the same day).
 - **List**: When (or "No time yet"), Channel, Title, Campaign, Owner, Status badge; filters Mine and Not sent yet;
   group by Channel, Campaign, Status, Owner. A row opens the item in its own app.
 - Stage wording on the calendar's own filter and grouping: Draft, In review, Scheduled, Sent, Not sent.
+
+## WhatsApp templates and results per channel (`messaging_marketing`, `omni_whatsapp`, boards 15.1 to 15.3, approved 2026-11-16)
+
+- **WhatsApp templates** (Messaging Marketing › Configuration, the one new menu item): standard list (Template,
+  Language, Send from, Status) with **Update from Meta**; filters Approved by Meta, Waiting, Needs attention.
+  Status words everywhere: Draft, In review at Meta, Approved by Meta, Rejected by Meta, Paused by Meta.
+- **A template**: Send from, Language, Kind (Marketing); Header, Message (with ✦ Writing tools and the count in the
+  box), Footer, Button text and link, an example for each field used; the WhatsApp preview on the right. **Submit to
+  Meta** asks once, then the text is read-only; **Copy to another language** and **Edit as a new draft** make drafts.
+  A coloured line says what Meta answered (rejected with Meta's reason, paused, in review since).
+- **A WhatsApp mailing**: one new line, **Template** (this number's approved, in-review or paused templates, with its
+  status badge, or **Write a template**). The message is the template's text, read-only, without Writing tools
+  ("change it in the template"); Telegram keeps the free text box. The orange line says when the template is in
+  review, paused or rejected.
+- **Recipients**: Delivered, Read, Replied after Sent (the furthest step shows), with **Open the conversation** on a
+  reply; three stat buttons Delivered, Read, Replied (Telegram shows "—" for Delivered and Read).
+- **Campaign › Results**: Messaging gets Delivered, **Opened / Read** and Replies in "Channel activity detail".
+- **Department setup checklist**: "not switched on for sending" and "No WhatsApp template is approved by Meta yet".
+  **Switch on sending** on the WhatsApp channel's Operations.
 
 ## Agents working together (`ai_agent`, `ai_discuss`, `ai_home`)
 

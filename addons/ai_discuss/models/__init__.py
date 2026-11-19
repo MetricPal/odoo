@@ -1,1 +1,1 @@
-from . import agent, discuss_channel, res_partner, res_users, run
+from . import agent, discuss_channel, chatter, res_partner, res_users, run

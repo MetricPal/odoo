@@ -12,6 +12,39 @@ Format:
 
 
 
+## 2026-11-19 — Ask an assistant from a record's chatter (ADR 0013, phases 3 and 4)
+
+- What: **Assistants** after Log note in a record's chatter (approved board 11, 2026-11-08). It shows only when an
+  answering assistant the person may chat with has that kind of record in its data access. Its box: **To:** (the
+  assistant, with a picker showing department and description), "Ask <agent> about this <record>…", **Send** and
+  "Answers in an internal note · uses your access rights". The question is an internal note of the person ("Asked
+  <agent>"); the answer is an internal note of the assistant ("On behalf of <person>"), with its proposals and
+  **Open request**, or what went wrong in plain words, as in Discuss. Nothing is emailed. Agent data access can now
+  include Recruitment's applications and job positions (phase 4; offered only when Recruitment is installed, used
+  by no agent until a manager adds it). Demo: the Ops Assistant may read contacts, so a contact's chatter offers it.
+- Reason: plan `2026-11-08-assistants-in-discuss.md`, phases 3 and 4 (not started until now).
+- Affected: ai_discuss (new model `ai.chatter.question`, chatter template and component; the answer text is shared
+  with the Discuss chat), ai_agent (`SAFE_MODELS`, demo).
+- Tests: ai_agent and ai_discuss, 184 Python tests pass. The new browser test (`TestChatterAssistantsUI`) is skipped
+  here: `websocket-client` is not installed in `./.venv`. Checked by hand in the browser on a test database: the
+  button after Log note, the picker (department and description), the box and hint, sending (the question note),
+  the answer note with the AI label and "On behalf of", and the note when the assistant cannot answer. That check
+  found and fixed two faults the Python tests could not see (the chatter template did not load; Owl 3's `t-model`
+  needs `.proxy`). Not built from board 11: the emoji, paperclip and expand icons of the box.
+- Demo: the Ops Assistant reads contacts; the demo pauses it, sets that access and reactivates it (an active agent's
+  data access cannot change); on an existing demo database the record is skipped, so add it by hand there.
+
+## 2026-11-19 — WhatsApp templates: Writing tools on the template, not on the mailing
+
+- What: the ✦ Writing tools and the character count move into a WhatsApp template's message box (board 15.1). On a
+  WhatsApp mailing the message is the template's fixed text, so Writing tools are hidden there (they drew over the
+  read-only text, and a rewrite was replaced by the template's text on submit). Telegram mailings keep them.
+  DESIGN.md gains the M8 section.
+- Affected: marketing_intel_writing (target `mm.whatsapp.template.body`, kind messaging; views), messaging_marketing
+  (template field `channel`, always WhatsApp, for the 1,024 limit).
+- Tests: messaging_marketing and marketing_intel_writing, 42 pass. Views checked on the server (the browser pane was
+  hidden, so the forms were not looked at).
+
 ## 2026-11-17 — Marketing home page: "Today" (redesign)
 
 - What: the Marketing panel is redesigned from the approved boards 18.1 to 18.3

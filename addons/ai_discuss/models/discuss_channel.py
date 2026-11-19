@@ -157,28 +157,7 @@ class DiscussChannel(models.Model):
         if asked.ai_asking_message_ids:
             # The status lines are replaced by the answer.
             self.env['mail.message'].sudo().browse(asked.ai_asking_message_ids).exists().unlink()
-        if run.state == 'completed':
-            body = plaintext2html(run.answer or '')
-            if asked.child_run_ids:
-                lines = []
-                for child in asked.child_run_ids:
-                    lines.append(Markup('%s <a href="/odoo/ai.agent.run/%s">%s</a>') % (
-                        self.env._('Asked %(agent)s: %(question)s', agent=child.agent_id.name, question=child.name),
-                        child.id, self.env._('View')))
-                body += Markup('<p><small>%s</small></p>') % Markup(' · ').join(lines)
-            for proposal in self.env['ai.agent.proposal'].sudo().search([('run_id', '=', run.id)]):
-                body += Markup('<p><b>%s</b> · %s · <a href="/odoo/approval.center.request/%s">%s</a></p>') % (
-                    _('Proposed: %s', proposal.name), _('Waiting for approval'), proposal.request_id.id,
-                    _('Open request'))
-        else:
-            # What is wrong in plain words, and a link to fix it or who to ask (owner, 2026-11-13); the technical
-            # reason stays on the run, for AI Agent managers.
-            reason = run.with_user(self.env.user).sudo()._reason_for_people()
-            body = Markup('<p>%s</p>') % reason['text']
-            if reason['url']:
-                body += Markup('<p><a class="btn btn-sm btn-primary" href="%s">%s</a></p>') % (
-                    reason['url'], reason['label'])
-        self._ai_reply(body)
+        self._ai_reply(answer_body(self.env, run))
 
     # ------------------------------------------------------------------
     # Web client
@@ -194,3 +173,29 @@ class DiscussChannel(models.Model):
         res.attr('ai_agent_description', lambda c: c.sudo().ai_agent_id.description or '',
                  predicate=is_assistant_chat)
         res.attr('ai_agent_paused', lambda c: c.sudo().ai_agent_id.state != 'active', predicate=is_assistant_chat)
+
+
+def answer_body(env, run):
+    """What an assistant posts when a run ends, in Discuss and in a chatter: the answer with the agents it asked and
+    what it proposed, or what is wrong in plain words. ``run`` is read in sudo; ``env`` is the asking person's."""
+    if run.state != 'completed':
+        # What is wrong in plain words, and a link to fix it or who to ask (owner, 2026-11-13); the technical
+        # reason stays on the run, for AI Agent managers.
+        reason = run.with_user(env.user).sudo()._reason_for_people()
+        body = Markup('<p>%s</p>') % reason['text']
+        if reason['url']:
+            body += Markup('<p><a class="btn btn-sm btn-primary" href="%s">%s</a></p>') % (
+                reason['url'], reason['label'])
+        return body
+    body = plaintext2html(run.answer or '')
+    asked = run.followup_of_id
+    if asked.child_run_ids:
+        lines = [Markup('%s <a href="/odoo/ai.agent.run/%s">%s</a>') % (
+            env._('Asked %(agent)s: %(question)s', agent=child.agent_id.name, question=child.name), child.id,
+            env._('View')) for child in asked.child_run_ids]
+        body += Markup('<p><small>%s</small></p>') % Markup(' · ').join(lines)
+    for proposal in env['ai.agent.proposal'].sudo().search([('run_id', '=', run.id)]):
+        body += Markup('<p><b>%s</b> · %s · <a href="/odoo/approval.center.request/%s">%s</a></p>') % (
+            env._('Proposed: %s', proposal.name), env._('Waiting for approval'), proposal.request_id.id,
+            env._('Open request'))
+    return body

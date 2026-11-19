@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- Assistants after Log note (approved board 11); its box replaces the message composer while open.
+         The box is placed before the composer's condition changes: the next xpath needs it unchanged. -->
+    <t t-inherit="mail.Chatter" t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('o-mail-Chatter-logNote')]" position="after">
+            <button t-if="this.aiAssistants.agents.length" class="o_ai_chatter_assistants btn text-nowrap" t-att-class="{
+                'btn-primary active': this.state.composerType === 'ai',
+                'btn-secondary': this.state.composerType !== 'ai',
+            }" t-att-disabled="!this.state.thread.canPostMessage and this.thread().id" t-on-click="() => this.toggleComposer('ai')">
+                Assistants
+            </button>
+        </xpath>
+        <xpath expr="//t[@t-if='this.state.composerType']" position="after">
+            <AiChatterAsk t-if="this.state.composerType === 'ai' and this.state.thread.id"
+                agents="this.aiAssistants.agents" recordLabel="this.aiAssistants.recordLabel"
+                resModel="this.state.thread.model" resId="this.state.thread.id" onSent.bind="this.onAiAsked"/>
+        </xpath>
+        <xpath expr="//t[@t-if='this.state.composerType']" position="attributes">
+            <attribute name="t-if">this.state.composerType and this.state.composerType !== 'ai'</attribute>
+        </xpath>
+    </t>
+
+    <t t-name="ai_discuss.ChatterAsk">
+        <div class="o_ai_chatter_ask pt-3 pb-2 d-flex flex-column gap-2">
+            <div class="d-flex align-items-center gap-2 o_ai_chatter_ask_indent">
+                <span class="fw-bold">To:</span>
+                <Dropdown>
+                    <button type="button" class="btn btn-sm btn-light rounded-pill o_ai_chatter_ask_to">
+                        <t t-out="this.agent?.name"/> <i class="oi" data-icon="arrow_drop_down" aria-hidden="true"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <DropdownItem t-foreach="this.props.agents" t-as="agent" t-key="agent.id"
+                                      class="{ 'active': agent.id === this.agent?.id }" onSelected="() => this.choose(agent)">
+                            <div class="d-flex flex-column o_ai_chatter_ask_option">
+                                <span class="d-flex justify-content-between gap-3">
+                                    <span t-att-class="{ 'fw-bold': agent.id === this.agent?.id }" t-out="agent.name"/>
+                                    <small class="text-muted" t-out="agent.department"/>
+                                </span>
+                                <small t-if="agent.description" class="text-muted" t-out="agent.description"/>
+                            </div>
+                        </DropdownItem>
+                    </t>
+                </Dropdown>
+            </div>
+            <div class="d-flex gap-2">
+                <img class="o_ai_chatter_ask_avatar rounded flex-shrink-0" t-att-src="this.avatarUrl" alt=""/>
+                <label class="visually-hidden" for="o_ai_chatter_ask_box" t-out="this.placeholder"/>
+                <textarea id="o_ai_chatter_ask_box" class="form-control" rows="2" t-att-placeholder="this.placeholder"
+                          t-model.proxy="this.state.text" t-on-keydown="this.onKeydown" autofocus="autofocus"/>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap o_ai_chatter_ask_indent">
+                <button type="button" class="btn btn-primary" t-att-disabled="!this.state.text.trim() or this.state.sending"
+                        t-on-click="() => this.send()">Send</button>
+                <small class="text-muted">Answers in an internal note · uses your access rights</small>
+            </div>
+        </div>
+    </t>
+</templates>

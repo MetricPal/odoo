@@ -1,6 +1,7 @@
 # 2026-11-08 Assistants in Discuss and the chatter
 
-Status: phases 1 and 2 done 2026-11-08 (`ai_discuss` 20.0.1.0.0); phases 3 and 4 not started. ADR: `docs/design-decisions/0013-assistants-in-discuss-and-chatter.md`.
+Status: phases 1 and 2 done 2026-11-08 (`ai_discuss` 20.0.1.0.0); phases 3 and 4 built 2026-11-19 (checked in the
+browser; emoji, paperclip and expand of the chatter box not built). ADR: `docs/design-decisions/0013-assistants-in-discuss-and-chatter.md`.
 Mocks: https://claude.ai/artifact/9Uw7Mzz6KG8FXCZ3m6mqtd boards 10 (Discuss page), 11 (chatter Assistants
 button), 12 (messaging menu and chat window). Build only what they show.
 
@@ -39,8 +40,12 @@ approval.
 3. **Chatter Assistants composer.** Template extension of `mail.Chatter`: Assistants button after Log note, a
    composer with To: (agent picker filtered by the record's model in the agent's data scope), the box with the
    placeholder "Ask <agent> about this <record>…", Send, paperclip and expand. Question and answer posted as notes.
+   **Built 2026-11-19** (`ai_discuss.ai.chatter.question`): To: with the picker, the box, Send, the hint; question
+   and answer are internal notes, the answer by the assistant's partner "On behalf of" the person. Not built: emoji,
+   paperclip, expand.
 4. **Recruitment data scope** (needed for the approved example): `hr.applicant` and `hr.job` allowed in agent data
    access when the Recruitment app is installed, off by default.
+   **Built 2026-11-19**: both are in `SAFE_MODELS`; offered only when Recruitment is installed; no agent has them.
 
 ## Verification
 

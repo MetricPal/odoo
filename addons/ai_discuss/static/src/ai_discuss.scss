@@ -35,3 +35,18 @@
     width: 60%;
     z-index: 1;
 }
+
+// Ask an assistant from the chatter (ADR 0013 phase 3, approved board 11): the To: line and Send align with the box,
+// after the person's avatar.
+.o_ai_chatter_ask {
+    .o_ai_chatter_ask_avatar {
+        width: 32px;
+        height: 32px;
+    }
+    .o_ai_chatter_ask_indent {
+        padding-left: calc(32px + #{map-get($spacers, 2)});
+    }
+}
+.o_ai_chatter_ask_option {
+    min-width: 260px;
+}

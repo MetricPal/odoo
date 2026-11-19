@@ -6,8 +6,10 @@ from odoo.orm.domains import Domain
 
 from .common import digest, internal, loading_demo, manager, trusted
 
+# Business data an AI Agent manager may let an agent read; a model shows only when its app is installed, and no agent
+# reads it until a manager adds it. Recruitment (applications, job positions): ADR 0013 phase 4.
 SAFE_MODELS = {'res.partner', 'crm.lead', 'sale.order', 'product.product', 'product.template',
-               'stock.quant', 'purchase.order', 'project.task'}
+               'stock.quant', 'purchase.order', 'project.task', 'hr.applicant', 'hr.job'}
 SCALAR_TYPES = {'char', 'text', 'integer', 'float', 'monetary', 'boolean', 'date', 'datetime', 'selection'}
 CONTEXT_BUDGET = 60000  # characters of JSON context sent with one question
 SOURCE_EXCERPT_MAX = 8000

@@ -66,3 +66,65 @@ class TestAssistantChatUI(HttpCase):
                 console.log('test successful');
             })();
         """, login='discuss_ui_person', timeout=120)
+
+
+@tagged('post_install', '-at_install')
+class TestChatterAssistantsUI(HttpCase):
+    """Approved board 11 (2026-11-08): the chatter's Assistants button and its box (ADR 0013 phase 3)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        env_patch = patch.dict('os.environ', {'AI_AGENT_ENDPOINTS': 'hermes.example.com:443',
+                                              'AI_AGENT_SECRET_TEST': 'synthetic-not-a-live-key'})
+        env_patch.start()
+        cls.addClassCleanup(env_patch.stop)
+        engine = cls.env['ai.agent.engine'].create({'name': 'UI engine', 'url': 'https://hermes.example.com',
+            'secret_reference': 'AI_AGENT_SECRET_TEST', 'management_url': 'https://hermes.example.com',
+            'management_secret_reference': 'AI_AGENT_SECRET_TEST'})
+        internal(engine).write({'state': 'ready'})
+        cls.person = new_test_user(cls.env, 'chatter_ui_person', password='chatter_ui_person',
+                                   groups='base.group_user,ai_agent.group_user,base.group_partner_manager')
+        hr = cls.env['hr.department'].create({'name': 'Human Resources'})
+        Agent = cls.env['ai.agent']
+        for name, description in (('Customer helper', 'Customers and their history'),
+                                  ('Second helper', 'Another one')):
+            Agent.create({'name': name, 'description': description, 'engine_id': engine.id,
+                          'department_id': hr.id, 'user_ids': [Command.set(cls.person.ids)],
+                          'access_ids': [Command.create({'model_name': 'res.partner', 'field_names': 'name'})]
+                          }).action_activate()
+        cls.customer = cls.env['res.partner'].create({'name': 'Hannah Glover'})
+
+    def test_ask_an_assistant_from_the_chatter(self):
+        with patch.object(type(self.env['ai.agent']), '_context_for', return_value={}):
+            self.browser_js(f'/odoo/res.partner/{self.customer.id}', """
+                (async () => {
+                    const wait = async (p, what) => {
+                        for (let i = 0; i < 150; i++) { if (p()) return; await new Promise(r => setTimeout(r, 100)); }
+                        throw new Error(what + ' missing: ' + document.body.innerText.slice(0, 1500));
+                    };
+                    const button = () => document.querySelector('.o_ai_chatter_assistants');
+                    await wait(button, 'Assistants button');
+                    const order = [...button().parentElement.querySelectorAll('button')].map(b => b.textContent.trim());
+                    if (order.indexOf('Assistants') !== order.indexOf('Log note') + 1) throw new Error('Order: ' + order);
+                    button().click();
+                    const box = () => document.querySelector('#o_ai_chatter_ask_box');
+                    await wait(box, 'Ask box');
+                    if (document.querySelector('.o-mail-Composer')) throw new Error('Message composer also open');
+                    if (box().placeholder !== 'Ask Customer helper about this contact…') throw new Error('Placeholder: ' + box().placeholder);
+                    if (!document.body.innerText.includes('Answers in an internal note · uses your access rights')) throw new Error('Hint missing');
+                    document.querySelector('.o_ai_chatter_ask_to').click();
+                    await wait(() => document.body.innerText.includes('Another one'), 'Assistant picker');
+                    [...document.querySelectorAll('.o_ai_chatter_ask_option')].find(o => o.textContent.includes('Second helper')).click();
+                    await wait(() => box().placeholder === 'Ask Second helper about this contact…', 'Chosen assistant');
+                    box().value = 'How long has she been a customer?';
+                    box().dispatchEvent(new Event('input', { bubbles: true }));
+                    await wait(() => ![...document.querySelectorAll('.o_ai_chatter_ask button')].find(b => b.textContent.trim() === 'Send').disabled, 'Send enabled');
+                    [...document.querySelectorAll('.o_ai_chatter_ask button')].find(b => b.textContent.trim() === 'Send').click();
+                    await wait(() => !box(), 'Box closed after sending');
+                    await wait(() => document.body.innerText.includes('Asked Second helper'), 'Question note');
+                    console.log('test successful');
+                })();
+            """, login='chatter_ui_person', timeout=120)
+        asked = self.env['ai.chatter.question'].sudo().search([('res_id', '=', self.customer.id)])
+        self.assertEqual((asked.agent_id.name, asked.question), ('Second helper', 'How long has she been a customer?'))

@@ -1,6 +1,6 @@
 {
     'name': 'AI Agent: Discuss and chatter',
-    'version': '20.0.1.3.0',
+    'version': '20.0.1.4.0',
     'category': 'Productivity',
     'summary': 'Chat with AI assistants in Discuss and ask them from a record\'s chatter',
     'description': 'Each AI agent gets its own chat partner, so people can find and ask the assistants they may use '
