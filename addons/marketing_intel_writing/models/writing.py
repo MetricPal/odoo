@@ -26,6 +26,7 @@ TARGETS = {
     ('mailing.mailing', 'body_arch'): 'email_body',
     ('mailing.mailing', 'body_plaintext'): 'sms',
     ('mm.mailing', 'body'): 'messaging',
+    ('mm.whatsapp.template', 'body'): 'messaging',
     ('omni.social.publication', 'body'): 'social',
     ('mi.plan', 'message'): 'campaign',
     ('mi.plan', 'audience'): 'campaign',

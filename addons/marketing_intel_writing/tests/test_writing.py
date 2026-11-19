@@ -54,6 +54,9 @@ class TestWritingTools(TransactionCase):
         self.assertEqual(subject['tools'][0], 'subjects', 'subject lines come first on an email subject')
         self.assertNotIn('fit', subject['tools'])
         self.assertNotIn('hashtags', self.Writing.get_tools('mm.mailing', 'body')['tools'])
+        template = self.Writing.get_tools('mm.whatsapp.template', 'body')
+        self.assertEqual((template['kind'], 'fit' in template['tools']), ('messaging', True))
+        self.assertEqual(self.Writing._limit('messaging', {'channel': 'whatsapp'})[0], 1024)
         self.assertIn('fit', self.Writing.get_tools('mailing.mailing', 'body_plaintext')['tools'])
         self.assertIn(self.env.lang or 'en_US', [code for code, _name in social['languages']])
         # The box's limit: the email standards set no hard subject length (RFC 5322 folds long headers), so the

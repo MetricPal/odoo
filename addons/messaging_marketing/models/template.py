@@ -87,6 +87,7 @@ class WhatsAppTemplate(models.Model):
     submitted_at = fields.Datetime(readonly=True, copy=False, string='Submitted on')
     checked_at = fields.Datetime(readonly=True, copy=False, string='Last checked')
 
+    channel = fields.Char(compute='_compute_channel', help='Always WhatsApp; tells Writing tools the limit.')
     char_count = fields.Integer(compute='_compute_preview', string='Characters')
     preview_text = fields.Text(compute='_compute_preview')
     uses_first_name = fields.Boolean(compute='_compute_preview')
@@ -101,6 +102,9 @@ class WhatsAppTemplate(models.Model):
         languages = dict(self._fields['language']._description_selection(self.env))
         for row in self:
             row.display_name = ' · '.join(filter(None, [row.name, languages.get(row.language)]))
+
+    def _compute_channel(self):
+        self.channel = 'whatsapp'
 
     @api.depends('body', 'example_first_name', 'example_name')
     def _compute_preview(self):

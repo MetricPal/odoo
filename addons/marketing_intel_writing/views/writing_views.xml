@@ -74,12 +74,32 @@
       </xpath>
       <xpath expr="//div[@name='mi_box_message']" position="inside">
         <xpath expr="//field[@name='body']" position="move"/>
-        <widget name="mi_writing_tools" field="body" invisible="state != 'draft'"/>
+        <!-- WhatsApp: the message is the template's text, written (with these tools) in the template -->
+        <widget name="mi_writing_tools" field="body" invisible="state != 'draft' or channel == 'whatsapp'"/>
       </xpath>
       <xpath expr="(//span[.//field[@name='char_count']])[1]" position="attributes">
         <attribute name="invisible">1</attribute>
       </xpath>
       <xpath expr="(//span[.//field[@name='char_count']])[2]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- WhatsApp template (board 15.1): the message box gets the tools and the count -->
+  <record id="mm_template_form_writing" model="ir.ui.view">
+    <field name="name">mm.whatsapp.template.form.writing</field>
+    <field name="model">mm.whatsapp.template</field>
+    <field name="inherit_id" ref="messaging_marketing.template_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='body']" position="before">
+        <div class="o_mi_text_box" name="mi_box_template"/>
+      </xpath>
+      <xpath expr="//div[@name='mi_box_template']" position="inside">
+        <xpath expr="//field[@name='body']" position="move"/>
+        <widget name="mi_writing_tools" field="body" invisible="state != 'draft'"/>
+      </xpath>
+      <xpath expr="//span[.//field[@name='char_count']]" position="attributes">
         <attribute name="invisible">1</attribute>
       </xpath>
     </field>
