@@ -106,7 +106,9 @@ class Plan(models.Model):
 
     phase = fields.Selection(PHASES, string='Stage', default='research', required=True, tracking=True, copy=False,
                              group_expand=True, index=True)
-    proposal_type = fields.Selection(PROPOSAL_TYPES, string='Proposal type', tracking=True,
+    # Mandatory (owner, 2026-11-20): it decides who approves. New campaigns start on Owned, the lightest route.
+    proposal_type = fields.Selection(PROPOSAL_TYPES, string='Proposal type', tracking=True, required=True,
+                                     default='owned',
                                      help='Paid: spends money outside (ads, paid social, influencers, outsourced work); '
                                           'approved by HOD, Finance and CEO. Owned: own channels (website, blog, '
                                           'pages, email); approved by the HOD. Earned: coverage, mentions, guest '
@@ -205,8 +207,6 @@ class Plan(models.Model):
                 raise UserError(_('This is a template: click “Use this template” to start a campaign from it.'))
             if plan.phase != 'research' or plan.proposal_state not in ('draft', 'changes'):
                 raise UserError(_('This proposal is already in approval or approved.'))
-            if not plan.proposal_type:
-                raise UserError(_('Choose the proposal type (Paid, Owned or Earned) first: it decides who approves.'))
             if not plan.channel_ids:
                 raise UserError(_('Choose at least one channel: a campaign without a channel is not valid.'))
             routes = plan._routes()
@@ -403,8 +403,6 @@ class Plan(models.Model):
                 return _('Update the proposal as asked, then submit it again'), True
             if self.proposal_state == 'refused':
                 return _('Proposal refused'), False
-            if not self.proposal_type:
-                return _('Choose the proposal type, then submit the proposal for approval'), True
             return _('Finish the market research, then submit the proposal for approval'), True
         if self.phase == 'results':
             return _('Check the results, then start the evaluation'), True

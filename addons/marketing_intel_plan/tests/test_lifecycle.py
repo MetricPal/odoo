@@ -1,6 +1,9 @@
+from psycopg2 import IntegrityError
+
 from odoo import Command, fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
+from odoo.tools import mute_logger
 
 
 @tagged('post_install', '-at_install')
@@ -101,9 +104,7 @@ class TestLifecycle(TransactionCase):
         plan = self._plan(proposal_type='paid', budget=0)
         self.assertEqual(plan.approval_route, 'HOD › CEO')
 
-    def test_submit_needs_type_channel_and_approvers(self):
-        with self.assertRaises(UserError):
-            self._plan().action_submit_proposal()
+    def test_submit_needs_channel_and_approvers(self):
         with self.assertRaises(UserError):
             self._plan(proposal_type='paid', channel_ids=[]).action_submit_proposal()
         self.env['mi.approver'].search([('role', '=', 'ceo')]).user_id = self.outsider
@@ -190,3 +191,10 @@ class TestLifecycle(TransactionCase):
         self.assertIn(plan.id, [c['id'] for c in data['campaigns']])
         self.assertIn('management', self.env['mi.panel.layout']._catalogue())
         self.assertEqual(self.env['mi.panel.layout']._default_blocks('manager')[0]['key'], 'management')
+
+    def test_proposal_type_is_mandatory(self):
+        plan = self.env['mi.plan'].with_user(self.owner).create({'name': 'No type given', 'brand_id': self.brand.id})
+        self.assertEqual(plan.proposal_type, 'owned', 'A new campaign starts on Owned, the lightest route')
+        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'), self.env.cr.savepoint():
+            plan.proposal_type = False
+            plan.flush_recordset()

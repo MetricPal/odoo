@@ -12,6 +12,20 @@ Format:
 
 
 
+## 2026-11-20 — Campaigns: Proposal type is mandatory
+
+- What: a campaign's Proposal type (Paid, Owned, Earned) can no longer be empty. A new campaign starts on Owned;
+  the owner changes it on the form while the proposal is a draft, as before. Campaigns that had none get Paid when
+  they have a budget or spend lines, otherwise Owned (migration 20.0.1.9.0 of `marketing_intel_plan`). Templates get
+  a value the same way. The "Choose the proposal type first" message and next step are gone, since it is always set.
+- Reason: owner, 2026-11-20.
+- Affected areas: `marketing_intel_plan` 20.0.1.9.0 (field required with a default, pre-migration).
+- Migration: on the live database four campaigns had no type, all without budget or spend; they become Owned.
+- Tests: `TestLifecycle` 13 pass (one new; the submit test no longer tries an empty type). The migration was run on
+  the test database with three emptied campaigns (no budget: Owned; a budget: Paid; spend lines only: Paid).
+  Nine other tests in `marketing_intel_plan` and `marketing_intel_work` fail the same way with and without this
+  change (panel roles, channel drafts and review); not caused by it.
+
 ## 2026-11-19 — Ask an assistant from a record's chatter (ADR 0013, phases 3 and 4)
 
 - What: **Assistants** after Log note in a record's chatter (approved board 11, 2026-11-08). It shows only when an
