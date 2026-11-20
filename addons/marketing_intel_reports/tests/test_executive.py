@@ -83,3 +83,10 @@ class TestExecutiveOverview(TransactionCase):
         self.assertEqual([r['name'] for r in rows], ['Overview campaign'])
         self.assertEqual(rows[0]['health'], 'off_track')
         self.assertIn('budget', rows[0]['why'])
+
+    def test_filter_options_for_the_search_bar(self):
+        options = self.env['mi.report.executive'].get_filter_options()
+        codes = [channel['id'] for channel in options['channels']]
+        self.assertIn('email', codes)
+        self.assertEqual(len(codes), len(set(codes)), 'Each channel is offered once')
+        self.assertIsInstance(options['teams'], list)

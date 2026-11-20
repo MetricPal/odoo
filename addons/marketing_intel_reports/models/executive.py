@@ -150,6 +150,18 @@ class ExecutiveOverview(models.AbstractModel):
     # ------------------------------------------------------------------ the page
 
     @api.model
+    def get_filter_options(self):
+        """What the search bar's Filters offer (owner, 2026-11-20: Odoo's search, as on Campaigns): the channels, and
+        for the Head of department each Senior's team. A Senior's team is fixed, so it is not offered."""
+        role = self._role()
+        team_options = self._teams(role)[0] if role != 'junior' else []
+        return {
+            'channels': [{'id': code, 'label': label} for code, label in CHANNELS],
+            'teams': team_options,
+            'team_fixed': role == 'senior',
+        }
+
+    @api.model
     def get_overview(self, period='quarter', brand_id=False, channel=False, team=False, compare=True):
         period = period if period in PERIODS else 'quarter'
         today = fields.Date.context_today(self)

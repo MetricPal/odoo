@@ -26,6 +26,20 @@ Format:
   Nine other tests in `marketing_intel_plan` and `marketing_intel_work` fail the same way with and without this
   change (panel roles, channel drafts and review); not caused by it.
 
+## 2026-11-20 — Executive overview: filters in Odoo's search bar, as on Campaigns
+
+- What: the Executive overview's own filter row (Brand and Channel drop-downs, Compare checkbox) and the This month /
+  This quarter / This year buttons are replaced by Odoo's search bar. Brand is searched in the box; Filters lists the
+  periods, the channels, each Senior's team (Head of department only) and Compare periods, one of each kind at a time.
+  It opens with This quarter and Compare periods. Favorites work; Custom Filter is not offered on this page.
+- Reason: owner, 2026-11-20: the filters should look and work like the Campaigns search.
+- Affected areas: `marketing_intel_reports` (new `get_filter_options`; the page reads the search bar's choices). The
+  search bar menu and box hide Custom Filter only where the search model asks for it (this page); every other
+  search is unchanged.
+- Tests: `/marketing_intel_reports` 8 tests pass (one new). Checked in the browser on the test database: the facets,
+  the Filters dropdown, single choice of the period, "This year" from the empty state, a brand search, and Campaigns
+  still offering Custom Filter. Not seen: the Team filters (needs a Head of department with Seniors). No JS test.
+
 ## 2026-11-19 — Ask an assistant from a record's chatter (ADR 0013, phases 3 and 4)
 
 - What: **Assistants** after Log note in a record's chatter (approved board 11, 2026-11-08). It shows only when an

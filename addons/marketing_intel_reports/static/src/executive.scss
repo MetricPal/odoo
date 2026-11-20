@@ -55,6 +55,7 @@
 }
 
 @media print {
-    .o_mi_exec .o_mi_exec_filters,
+    .o_mi_exec .o_mi_exec_status,
+    .o_mi_exec .o_control_panel_actions,
     .o_mi_exec .o_mi_exec_print { display: none !important; }
 }

@@ -1,14 +1,40 @@
-import { registry } from "@web/core/registry";
-import { useService } from "@web/core/utils/hooks";
+import { useBus, useService } from "@web/core/utils/hooks";
 import { Layout } from "@web/search/layout";
+import { SearchBar } from "@web/search/search_bar/search_bar";
 import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 
 const CIRCLE = 2 * Math.PI * 50;
-const PERIODS = [
-    ["month", "This month"],
-    ["quarter", "This quarter"],
-    ["year", "This year"],
-];
+
+/**
+ * What the search bar asks for (owner, 2026-11-20: Odoo's search, as on Campaigns): the period, channel and team
+ * filters that are on, Compare, and the brand searched in the box (a brand picked from the suggestions, or the first
+ * brand whose name matches the typed text). No period means This quarter.
+ */
+export async function searchChoices(searchModel, orm) {
+    const on = new Set(searchModel.query.map((q) => searchModel.searchItems[q.searchItemId]?.name).filter(Boolean));
+    const named = (prefix) => [...on].find((name) => name.startsWith(prefix))?.slice(prefix.length) || false;
+    let brand = false;
+    const leaves = searchModel.domain.filter((leaf) => Array.isArray(leaf) && leaf[0] === "brand_id");
+    for (const [, operator, value] of leaves) {
+        if (typeof value === "number") {
+            brand = value;
+            break;
+        }
+        const ids = await orm.search("mi.brand", [["name", operator, value]], { limit: 1, order: "name" });
+        if (ids.length) {
+            brand = ids[0];
+            break;
+        }
+    }
+    const team = named("team_");
+    return {
+        period: named("period_") || "quarter",
+        channel: named("channel_"),
+        team: team ? Number(team) : false,
+        compare: on.has("compare"),
+        brand_id: brand,
+    };
+}
 
 /**
  * Insights › Reports › Executive overview (boards 17.1 to 17.3): the numbers of the Head of department's or the
@@ -16,36 +42,28 @@ const PERIODS = [
  */
 export class ExecutiveOverview extends Component {
     static template = "marketing_intel_reports.ExecutiveOverview";
-    static components = { Layout };
+    static components = { Layout, SearchBar };
     props = useProps();
 
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.periods = PERIODS;
-        this.state = proxy({ data: null, period: "quarter", brand: 0, channel: "", team: 0, compare: true });
+        this.searchModel = this.env.searchModel;
+        this.state = proxy({ data: null });
         onWillStart(() => this.load());
+        useBus(this.searchModel, "update", () => this.load());
     }
 
     async load() {
-        const { period, brand, channel, team, compare } = this.state;
-        this.state.data = await this.orm.call("mi.report.executive", "get_overview", [], {
-            period, brand_id: brand || false, channel: channel || false, team: team || false, compare,
-        });
+        const choices = await searchChoices(this.searchModel, this.orm);
+        this.state.data = await this.orm.call("mi.report.executive", "get_overview", [], choices);
     }
-
-    async setPeriod(period) {
-        this.state.period = period;
-        await this.load();
-    }
-    async onFilter(name, ev) {
-        const value = ev.target.value;
-        this.state[name] = name === "channel" ? value : Number(value);
-        await this.load();
-    }
-    async onCompare(ev) {
-        this.state.compare = ev.target.checked;
-        await this.load();
+    /** "This year" on an empty period: the same as picking This year in Filters. */
+    setPeriod(period) {
+        const item = Object.values(this.searchModel.searchItems).find((i) => i.name === `period_${period}`);
+        if (item && !this.searchModel.query.some((q) => q.searchItemId === item.id)) {
+            this.searchModel.toggleSearchItem(item.id);
+        }
     }
     print() {
         window.print();
@@ -113,4 +131,3 @@ export class ExecutiveOverview extends Component {
 
 const FUNNEL_COLORS = ["#145045", "#1d6b5a", "#4f8a78", "#7fa99a", "#2e8b6e"];
 
-registry.category("actions").add("marketing_intel_reports.executive", ExecutiveOverview);

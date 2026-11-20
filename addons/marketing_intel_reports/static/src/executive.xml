@@ -8,16 +8,11 @@
             <t t-out="this.state.data.label"/>
           </span>
         </t>
+        <t t-set-slot="control-panel-actions">
+          <SearchBar autofocus="false"/>
+        </t>
         <t t-set-slot="control-panel-navigation-additional">
-          <div class="d-flex gap-2">
-            <div class="btn-group" role="group" aria-label="Period">
-              <button t-foreach="this.periods" t-as="p" t-key="p[0]" type="button" class="btn btn-secondary"
-                      t-att-class="{ active: this.state.period === p[0] }"
-                      t-att-aria-pressed="this.state.period === p[0] ? 'true' : 'false'"
-                      t-on-click="() => this.setPeriod(p[0])" t-out="p[1]"/>
-            </div>
-            <button type="button" class="btn btn-secondary o_mi_exec_print" t-on-click="() => this.print()">Print</button>
-          </div>
+          <button type="button" class="btn btn-secondary o_mi_exec_print" t-on-click="() => this.print()">Print</button>
         </t>
 
         <div class="o_mi_exec_page">
@@ -25,29 +20,8 @@
           <div t-elif="this.state.data.denied" class="p-5 text-center text-muted" t-out="this.state.data.message"/>
           <t t-else="">
             <t t-set="d" t-value="this.state.data"/>
-            <!-- filters -->
-            <div class="o_mi_exec_filters d-flex flex-wrap align-items-center gap-2 mb-3">
-              <select class="form-select w-auto" name="mi_exec_brand" aria-label="Brand" t-on-change="(ev) => this.onFilter('brand', ev)">
-                <option value="0" t-att-selected="!d.selected.brand">Brand: All brands</option>
-                <option t-foreach="d.filters.brands" t-as="b" t-key="b.id" t-att-value="b.id"
-                        t-att-selected="d.selected.brand === b.id" t-out="'Brand: ' + b.label"/>
-              </select>
-              <select class="form-select w-auto" name="mi_exec_channel" aria-label="Channel" t-on-change="(ev) => this.onFilter('channel', ev)">
-                <option value="" t-att-selected="!d.selected.channel">Channel: All channels</option>
-                <option t-foreach="d.filters.channels" t-as="c" t-key="c.id" t-att-value="c.id"
-                        t-att-selected="d.selected.channel === c.id" t-out="'Channel: ' + c.label"/>
-              </select>
-              <span t-if="d.filters.team_fixed" class="form-control w-auto text-muted bg-light">Team: Your team (fixed)</span>
-              <select t-elif="d.filters.teams.length" class="form-select w-auto" name="mi_exec_team" aria-label="Team" t-on-change="(ev) => this.onFilter('team', ev)">
-                <option value="0" t-att-selected="!d.selected.team">Team: All teams</option>
-                <option t-foreach="d.filters.teams" t-as="t" t-key="t.id" t-att-value="t.id"
-                        t-att-selected="d.selected.team === t.id" t-out="'Team: ' + t.label"/>
-              </select>
-              <div class="form-check ms-2 mb-0">
-                <input type="checkbox" class="form-check-input" id="mi_exec_compare" name="mi_exec_compare"
-                       t-att-checked="this.state.compare" t-on-change="(ev) => this.onCompare(ev)"/>
-                <label class="form-check-label" for="mi_exec_compare">Compare with the previous <t t-out="d.previous_label"/></label>
-              </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 o_mi_exec_status">
+              <span t-if="d.filters.team_fixed" class="text-muted small">Your team</span>
               <span class="flex-grow-1"/>
               <span class="text-muted small">Updated <t t-out="d.updated"/> · <a href="#" t-on-click.prevent="() => this.load()">Refresh</a></span>
             </div>
@@ -183,5 +157,18 @@
         </div>
       </Layout>
     </div>
+  </t>
+
+  <!-- The report reads only its own filters, so a custom filter would change nothing: not offered here. -->
+  <t t-inherit="web.SearchBarMenu" t-inherit-mode="extension">
+    <xpath expr="//DropdownItem[@onSelected.bind='this.onAddCustomFilterClick']" position="attributes">
+      <attribute name="t-if">!this.env.searchModel.hideCustomFilter</attribute>
+    </xpath>
+  </t>
+
+  <t t-name="marketing_intel_reports.ExecutiveOverviewAction">
+    <WithSearch t-if="this.state.options" t-props="this.withSearchProps">
+      <ExecutiveOverview/>
+    </WithSearch>
   </t>
 </templates>

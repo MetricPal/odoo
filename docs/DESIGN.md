@@ -589,9 +589,13 @@ owner's additions the same day).
 
 - **Insights › Reports** is a section heading with no page; under it Executive overview, Channel performance, Funnel and
   attribution and Audience (the last three say "This report is not built yet." until their mocks are approved).
-- **Executive overview**: Odoo's control panel with the page name, the dates and **This month / This quarter / This
-  year** with **Print** (the browser's print to PDF). Filters: Brand, Channel, Team (Head of department: all teams or one
-  Senior's team; Senior: "Your team (fixed)") and "Compare with the previous …". Then six numbers (Spend with budget,
+- **Executive overview**: Odoo's control panel with the page name, the dates, Odoo's search bar and **Print** (the
+  browser's print to PDF). The filters are in the search bar, as on Campaigns (owner, 2026-11-20): **Brand** is
+  searched in the box; **Filters** has This month / This quarter / This year, then the channels, then each Senior's
+  team (Head of department only; a Senior's own team is fixed and the page says "Your team"), then **Compare periods**.
+  Only one period, one channel and one team are on at a time; no period means This quarter. Opens with This quarter
+  and Compare periods on. Favorites save a search; no Custom Filter (the report reads only its own filters). Then six
+  numbers (Spend with budget,
   Leads, Cost per lead, Won deals, Revenue, Revenue / spend) with the change against the previous period; **Month by
   month** (spend and revenue bars; weeks in a month) beside the **Conversion funnel** (leads, opportunities, each CRM
   stage, won, with the share of the stage before; leads to won and the biggest drop); **By channel** with the donut on
